@@ -53,8 +53,8 @@ class LlmModelResolver
             'model_key' => $model->model_key,
             'provider_name' => $model->provider?->name,
             'provider_code' => $model->provider?->code,
-            'input_price_per_million' => (float) $model->input_price_per_million_tokens,
-            'output_price_per_million' => (float) $model->output_price_per_million_tokens,
+            'input_price_per_million' => PlatformAiSettings::convertFromUnits((float) $model->input_price_per_million_tokens),
+            'output_price_per_million' => PlatformAiSettings::convertFromUnits((float) $model->output_price_per_million_tokens),
         ];
     }
 }

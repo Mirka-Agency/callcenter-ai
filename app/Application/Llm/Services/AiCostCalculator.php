@@ -3,6 +3,7 @@
 namespace App\Application\Llm\Services;
 
 use App\Models\LlmModel;
+use App\Models\PlatformAiSettings;
 
 class AiCostCalculator
 {
@@ -16,13 +17,13 @@ class AiCostCalculator
     {
         return [
             'cost' => $this->calculate($model, $inputTokens, $outputTokens, $cachedTokens, $reasoningTokens),
-            'input_price' => (float) $model->input_price_per_million_tokens,
-            'output_price' => (float) $model->output_price_per_million_tokens,
+            'input_price' => PlatformAiSettings::convertFromUnits((float) $model->input_price_per_million_tokens),
+            'output_price' => PlatformAiSettings::convertFromUnits((float) $model->output_price_per_million_tokens),
             'cached_price' => $model->cached_input_price_per_million_tokens
-                ? (float) $model->cached_input_price_per_million_tokens
+                ? PlatformAiSettings::convertFromUnits((float) $model->cached_input_price_per_million_tokens)
                 : null,
             'reasoning_price' => $model->reasoning_price_per_million_tokens
-                ? (float) $model->reasoning_price_per_million_tokens
+                ? PlatformAiSettings::convertFromUnits((float) $model->reasoning_price_per_million_tokens)
                 : null,
         ];
     }

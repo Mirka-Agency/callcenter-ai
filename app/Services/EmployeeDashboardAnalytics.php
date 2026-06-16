@@ -6,7 +6,10 @@ use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\EmployeePerformanceSnapshot;
+use App\Models\OrganizationUser;
 use App\Support\JalaliDate;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 class EmployeeDashboardAnalytics
 {
@@ -197,22 +200,19 @@ class EmployeeDashboardAnalytics
 
     private function scoreTrend(int $days = 30): array
     {
-        $from = now()->subDays($days)->startOfDay();
+        return $this->dailyTrendSeries($days, function (Collection $items): array {
+            if ($items->isEmpty()) {
+                return ['avg_score' => null, 'count' => 0];
+            }
 
-        $grouped = $this->analysisQuery()
-            ->where('analyzed_at', '>=', $from)
-            ->orderBy('analyzed_at')
-            ->get()
-            ->groupBy(fn ($a) => $a->analyzed_at->format('Y-m-d'));
-
-        return $grouped->map(fn ($items, $date) => [
-            'period' => $date,
-            'avg_score' => round((float) $items->avg('score'), 1),
-            'count' => $items->count(),
-        ])->values()->all();
+            return [
+                'avg_score' => round((float) $items->avg('score'), 1),
+                'count' => $items->count(),
+            ];
+        });
     }
 
-    private function sentimentTrend(): array
+    private function sentimentTrend(int $days = 30): array
     {
         $weights = [
             AnalysisSentiment::Positive->value => 100,
@@ -221,17 +221,45 @@ class EmployeeDashboardAnalytics
             AnalysisSentiment::Negative->value => 20,
         ];
 
-        $from = now()->subDays(14)->startOfDay();
+        return $this->dailyTrendSeries($days, function (Collection $items) use ($weights): array {
+            if ($items->isEmpty()) {
+                return ['satisfaction' => null, 'count' => 0];
+            }
+
+            return [
+                'satisfaction' => round($items->avg(fn ($a) => $weights[$a->sentiment->value] ?? 50), 1),
+                'count' => $items->count(),
+            ];
+        });
+    }
+
+    /**
+     * @param  callable(Collection<int, ConversationAnalysis>): array<string, mixed>  $aggregator
+     * @return list<array<string, mixed>>
+     */
+    private function dailyTrendSeries(int $days, callable $aggregator): array
+    {
+        $from = now()->subDays($days - 1)->startOfDay();
 
         $grouped = $this->analysisQuery()
             ->where('analyzed_at', '>=', $from)
             ->orderBy('analyzed_at')
             ->get()
-            ->groupBy(fn ($a) => $a->analyzed_at->format('Y-m-d'));
+            ->groupBy(fn (ConversationAnalysis $analysis) => $analysis->analyzed_at->format('Y-m-d'));
 
-        return $grouped->map(fn ($items, $date) => [
-            'period' => $date,
-            'satisfaction' => round($items->avg(fn ($a) => $weights[$a->sentiment->value] ?? 50), 1),
-        ])->values()->all();
+        $series = [];
+
+        for ($offset = 0; $offset < $days; $offset++) {
+            $date = $from->copy()->addDays($offset);
+            $period = $date->format('Y-m-d');
+            $items = $grouped->get($period, collect());
+
+            $series[] = array_merge([
+                'period' => $period,
+                'label' => JalaliDate::monthDay($period),
+            ], $aggregator($items));
+        }
+
+        return $series;
     }
 }

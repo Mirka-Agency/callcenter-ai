@@ -2,19 +2,31 @@
     'label' => null,
     'placeholder' => 'انتخاب تاریخ',
     'clearable' => false,
+    'defer' => false,
 ])
 
 @php
-    $wireModel = $attributes->wire('model')->value();
+    $wireModel = null;
+
+    foreach ($attributes->getAttributes() as $key => $value) {
+        if (str_starts_with($key, 'wire:model')) {
+            $wireModel = $value;
+            break;
+        }
+    }
+
+    if ($wireModel === null && method_exists($attributes, 'wire')) {
+        $wireModel = $attributes->wire('model')->value();
+    }
 @endphp
 
 <div
+    wire:ignore
     {{ $attributes->except(['wire:model', 'wire:model.live', 'wire:model.blur', 'wire:model.defer', 'wire:model.lazy'])->merge(['class' => 'relative']) }}
     data-jalali-date-input
+    @if ($defer) data-wire-defer="1" @endif
     @if ($wireModel) data-wire-model="{{ $wireModel }}" @endif
 >
-    <input type="hidden" {{ $attributes->whereStartsWith('wire:model') }}>
-
     @if ($label)
         <label class="mb-1 block text-xs font-medium text-zinc-500">{{ $label }}</label>
     @endif

@@ -46,10 +46,14 @@ trait HasAnalysisListFilters
     public bool $showMoreDatePresets = false;
 
     public bool $showCustomDateRange = false;
+    public ?string $draftCustomFrom = null;
+    public ?string $draftCustomTo = null;
 
     public function mount(): void
     {
         $this->showCustomDateRange = $this->datePreset === ReportDatePreset::Custom->value;
+        $this->draftCustomFrom = $this->customFrom;
+        $this->draftCustomTo = $this->customTo;
     }
 
     public function updatedDatePreset(): void
@@ -60,18 +64,6 @@ trait HasAnalysisListFilters
             $this->showCustomDateRange = false;
         }
 
-        $this->resetPage();
-    }
-
-    public function updatedCustomFrom(): void
-    {
-        $this->datePreset = ReportDatePreset::Custom->value;
-        $this->resetPage();
-    }
-
-    public function updatedCustomTo(): void
-    {
-        $this->datePreset = ReportDatePreset::Custom->value;
         $this->resetPage();
     }
 
@@ -135,9 +127,13 @@ trait HasAnalysisListFilters
         if ($preset !== ReportDatePreset::Custom->value) {
             $this->customFrom = null;
             $this->customTo = null;
+            $this->draftCustomFrom = null;
+            $this->draftCustomTo = null;
             $this->showCustomDateRange = false;
         } else {
             $this->showCustomDateRange = true;
+            $this->draftCustomFrom = $this->customFrom;
+            $this->draftCustomTo = $this->customTo;
         }
     }
 
@@ -146,10 +142,25 @@ trait HasAnalysisListFilters
         $this->showCustomDateRange = ! $this->showCustomDateRange;
 
         if ($this->showCustomDateRange) {
-            $this->setDatePreset(ReportDatePreset::Custom->value);
+            $this->draftCustomFrom = $this->customFrom;
+            $this->draftCustomTo = $this->customTo;
         } elseif ($this->datePreset === ReportDatePreset::Custom->value) {
             $this->setDatePreset(ReportDatePreset::Last30->value);
         }
+    }
+
+    public function applyCustomDateRange(?string $from = null, ?string $to = null): void
+    {
+        if ($from !== null || $to !== null) {
+            $this->draftCustomFrom = $from ?: null;
+            $this->draftCustomTo = $to ?: null;
+        }
+
+        $this->customFrom = $this->draftCustomFrom;
+        $this->customTo = $this->draftCustomTo;
+        $this->datePreset = ReportDatePreset::Custom->value;
+        $this->showCustomDateRange = true;
+        $this->resetPage();
     }
 
     public function toggleMoreDatePresets(): void
@@ -160,6 +171,8 @@ trait HasAnalysisListFilters
     public function clearDateFilter(): void
     {
         $this->setDatePreset(ReportDatePreset::Last30->value);
+        $this->draftCustomFrom = null;
+        $this->draftCustomTo = null;
     }
 
     public function filterByAgent(?int $employeeId): void
@@ -173,6 +186,8 @@ trait HasAnalysisListFilters
         $this->datePreset = ReportDatePreset::Last30->value;
         $this->customFrom = null;
         $this->customTo = null;
+        $this->draftCustomFrom = null;
+        $this->draftCustomTo = null;
         $this->filterEmployeeId = null;
         $this->callStatus = null;
         $this->directionFilter = null;

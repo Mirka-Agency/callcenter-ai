@@ -11,6 +11,7 @@ use App\Models\Customer;
 use App\Models\LlmModel;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
+use App\Models\PlatformAiSettings;
 use Illuminate\Support\Arr;
 
 class DemoAnalyticsBuilder
@@ -133,8 +134,12 @@ class DemoAnalyticsBuilder
                     'output_tokens' => $outputTokens,
                     'total_tokens' => $inputTokens + $outputTokens,
                     'cost' => $cost,
-                    'input_price_snapshot' => $defaultModel?->input_price_per_million_tokens,
-                    'output_price_snapshot' => $defaultModel?->output_price_per_million_tokens,
+                    'input_price_snapshot' => $defaultModel
+                        ? PlatformAiSettings::convertFromUnits((float) $defaultModel->input_price_per_million_tokens)
+                        : null,
+                    'output_price_snapshot' => $defaultModel
+                        ? PlatformAiSettings::convertFromUnits((float) $defaultModel->output_price_per_million_tokens)
+                        : null,
                     'processing_duration_ms' => $faker->numberBetween(1_800, 4_500),
                     'analyzed_at' => $analyzedAt,
                 ],

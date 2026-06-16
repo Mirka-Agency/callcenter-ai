@@ -28,7 +28,6 @@
                             <x-saas.user-cell
                                 :employee="$employee"
                                 :subtitle="$employee->position ?? $employee->department"
-                                :href="route('employer.employees.show', $employee)"
                             />
                         </td>
                         <td class="text-zinc-500">{{ $employee->user?->email }}</td>
@@ -40,7 +39,10 @@
                             </span>
                         </td>
                         <td class="text-end">
-                            <a href="{{ route('employer.employees.show', $employee) }}" class="text-sm font-medium text-zinc-900 hover:underline dark:text-white">مشاهده</a>
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ route('employer.intelligence.performance.show', $employee) }}" class="saas-btn-primary text-sm">عملکرد</a>
+                                <a href="{{ route('employer.employees.edit', $employee) }}" class="saas-btn-secondary text-sm">ویرایش</a>
+                            </div>
                         </td>
                     </tr>
                 @empty

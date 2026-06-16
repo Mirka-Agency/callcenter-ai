@@ -2,17 +2,22 @@
 
 namespace App\Livewire\Employer\Employees;
 
+use App\Livewire\Employer\Employees\Concerns\ManagesEmployeeAvatar;
 use App\Models\OrganizationUser;
 use App\Services\EmployerContext;
 use App\Services\OrganizationActivityLogger;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('layouts.employer')]
 #[Title('ویرایش کارشناس')]
 class Edit extends Component
 {
+    use ManagesEmployeeAvatar;
+    use WithFileUploads;
+
     public OrganizationUser $employee;
 
     public string $first_name = '';
@@ -56,6 +61,7 @@ class Edit extends Component
             'position' => ['nullable', 'string', 'max:255'],
             'department' => ['nullable', 'string', 'max:255'],
             'is_active' => ['boolean'],
+            ...$this->avatarValidationRules(),
         ]);
 
         $this->employee->update([
@@ -75,6 +81,10 @@ class Edit extends Component
             ]);
         }
 
+        if ($this->employee->user) {
+            $this->persistAvatar($this->employee->user);
+        }
+
         OrganizationActivityLogger::log(
             organizationId: $this->employee->organization_id,
             type: 'employee_updated',
@@ -84,7 +94,7 @@ class Edit extends Component
 
         session()->flash('status', 'کارشناس به‌روزرسانی شد.');
 
-        $this->redirect(route('employer.employees.show', $this->employee), navigate: true);
+        $this->redirect(route('employer.employees.index'), navigate: true);
     }
 
     public function render()

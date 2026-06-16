@@ -55,6 +55,8 @@ class PlatformAiSettingsPage extends Page implements HasForms
         $this->form->fill([
             'allow_negative_balance' => $settings->allow_negative_balance,
             'currency' => $settings->currency,
+            'billing_unit_currency' => $settings->billing_unit_currency ?? 'USD',
+            'billing_unit_price' => $settings->billing_unit_price ?? 500_000,
             'estimation_words_per_minute' => $settings->estimation_words_per_minute,
             'estimation_tokens_per_word' => $settings->estimation_tokens_per_word,
             'ratio_short_support' => $ratios[ConversationEstimateType::ShortSupport->value] ?? 0.15,
@@ -80,6 +82,24 @@ class PlatformAiSettingsPage extends Page implements HasForms
                         Toggle::make('allow_negative_balance')
                             ->label(__('filament.fields.allow_negative_balances'))
                             ->helperText(__('filament.fields.allow_negative_balances_helper')),
+                    ])
+                    ->columns(2),
+                Section::make(__('filament.sections.billing_unit'))
+                    ->description(__('filament.sections.billing_unit_description'))
+                    ->schema([
+                        TextInput::make('billing_unit_currency')
+                            ->label(__('filament.fields.billing_unit_currency'))
+                            ->default('USD')
+                            ->maxLength(3)
+                            ->required()
+                            ->helperText(__('filament.fields.billing_unit_currency_helper')),
+                        TextInput::make('billing_unit_price')
+                            ->label(fn (callable $get) => __('filament.fields.billing_unit_price').' ('.($get('currency') ?: PlatformAiSettings::currencyCode()).')')
+                            ->persianNumeric(null, 2)
+                            ->required()
+                            ->minValue(0)
+                            ->step(0.01)
+                            ->helperText(__('filament.fields.billing_unit_price_helper')),
                     ])
                     ->columns(2),
                 Section::make(__('filament.sections.cost_estimation_defaults'))
@@ -150,6 +170,8 @@ class PlatformAiSettingsPage extends Page implements HasForms
 
         PlatformAiSettings::current()->update([
             'currency' => $data['currency'],
+            'billing_unit_currency' => $data['billing_unit_currency'],
+            'billing_unit_price' => $data['billing_unit_price'],
             'allow_negative_balance' => $data['allow_negative_balance'],
             'estimation_words_per_minute' => (int) $data['estimation_words_per_minute'],
             'estimation_tokens_per_word' => $data['estimation_tokens_per_word'],

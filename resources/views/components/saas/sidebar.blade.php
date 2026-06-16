@@ -18,16 +18,42 @@
 
     <nav class="flex-1 space-y-1 overflow-y-auto p-4">
         @foreach ($navItems as $item)
+            @php
+                $isActive = request()->routeIs($item['route'].'*') || request()->routeIs($item['route']);
+                $highlightedSample = request()->query('sample');
+            @endphp
             <a
                 href="{{ route($item['route']) }}"
                 @class([
                     'saas-nav-item',
-                    'saas-nav-item-active' => request()->routeIs($item['route'].'*') || request()->routeIs($item['route']),
+                    'saas-nav-item-active' => $isActive,
                 ])
             >
                 <x-saas.icon :name="$item['icon']" class="h-4 w-4" />
                 {{ $item['label'] }}
             </a>
+
+            @if (! empty($item['children']))
+                <div class="me-2 space-y-0.5 border-e border-zinc-200 pe-2 dark:border-zinc-800">
+                    <p class="px-3 py-1.5 text-[11px] font-medium tracking-wide text-zinc-400">مکالمات نمونه</p>
+                    @foreach ($item['children'] as $child)
+                        @php
+                            $childSampleId = $child['query']['sample'] ?? null;
+                            $childActive = $isActive && $highlightedSample === $childSampleId;
+                        @endphp
+                        <a
+                            href="{{ route($child['route'], $child['query'] ?? []) }}#sample-conversations"
+                            @class([
+                                'saas-nav-subitem',
+                                'saas-nav-subitem-active' => $childActive,
+                                'opacity-50' => ! ($child['available'] ?? true),
+                            ])
+                        >
+                            {{ $child['label'] }}
+                        </a>
+                    @endforeach
+                </div>
+            @endif
         @endforeach
     </nav>
 

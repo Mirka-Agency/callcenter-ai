@@ -5,6 +5,7 @@ namespace App\Livewire\Employer\Intelligence\Concerns;
 use App\DTOs\ReportFilter;
 use App\Enums\ReportDatePreset;
 use App\Services\EmployerContext;
+use Carbon\Carbon;
 use Livewire\Attributes\Url;
 
 trait HasPerformanceFilters
@@ -25,6 +26,14 @@ trait HasPerformanceFilters
     public function updatedCustomFrom(): void
     {
         $this->datePreset = ReportDatePreset::Custom->value;
+    }
+
+    public function updatedDatePreset(): void
+    {
+        if ($this->datePreset !== ReportDatePreset::Custom->value) {
+            $this->customFrom = null;
+            $this->customTo = null;
+        }
     }
 
     public function updatedCustomTo(): void
@@ -54,8 +63,8 @@ trait HasPerformanceFilters
         return ReportFilter::make(
             organizationId: EmployerContext::organizationId(),
             preset: $preset,
-            customFrom: $this->customFrom ? \Carbon\Carbon::parse($this->customFrom) : null,
-            customTo: $this->customTo ? \Carbon\Carbon::parse($this->customTo) : null,
+            customFrom: $this->customFrom ? Carbon::parse($this->customFrom) : null,
+            customTo: $this->customTo ? Carbon::parse($this->customTo) : null,
             employeeIds: $employeeIds,
         );
     }

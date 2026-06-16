@@ -100,11 +100,11 @@
         <div class="saas-card">
             <h2 class="text-lg font-semibold">ابعاد عملکرد</h2>
             <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز هر بعد در بازه انتخاب‌شده</p>
-            <div class="mt-5 grid gap-4 sm:grid-cols-2">
+            <div class="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-5">
                 @foreach ($dimensions as $key => $score)
-                    <x-saas.metric-bar
+                    <x-saas.dimension-ring
                         :label="AnalysisInsightPresenter::dimensionLabel($key)"
-                        :value="$score"
+                        :score="$score"
                     />
                 @endforeach
             </div>

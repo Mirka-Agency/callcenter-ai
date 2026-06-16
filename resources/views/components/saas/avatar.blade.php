@@ -19,11 +19,13 @@
     }
 
     $sizes = AvatarPresenter::sizeClasses($size);
+    $roundedClass = ($user && ! $employee) ? 'rounded-full' : 'rounded-lg';
 @endphp
 
 <span
     {{ $attributes->class([
         'saas-avatar bg-gradient-to-br',
+        $roundedClass,
         $avatar['gradient'],
         $sizes['box'],
         $ring ? 'ring-white dark:ring-zinc-900 '.$sizes['ring'] : '',

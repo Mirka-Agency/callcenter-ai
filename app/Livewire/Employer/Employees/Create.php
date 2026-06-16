@@ -3,6 +3,7 @@
 namespace App\Livewire\Employer\Employees;
 
 use App\Enums\UserRole;
+use App\Livewire\Employer\Employees\Concerns\ManagesEmployeeAvatar;
 use App\Models\OrganizationUser;
 use App\Models\User;
 use App\Services\EmployerContext;
@@ -10,11 +11,15 @@ use App\Services\OrganizationActivityLogger;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('layouts.employer')]
 #[Title('افزودن کارشناس')]
 class Create extends Component
 {
+    use ManagesEmployeeAvatar;
+    use WithFileUploads;
+
     public string $first_name = '';
 
     public string $last_name = '';
@@ -42,6 +47,7 @@ class Create extends Component
             'position' => ['nullable', 'string', 'max:255'],
             'department' => ['nullable', 'string', 'max:255'],
             'is_active' => ['boolean'],
+            ...$this->avatarValidationRules(),
         ]);
 
         $organizationId = EmployerContext::organizationId();
@@ -63,6 +69,8 @@ class Create extends Component
             'department' => $data['department'],
             'is_active' => $data['is_active'],
         ]);
+
+        $this->persistAvatar($user);
 
         OrganizationActivityLogger::log(
             organizationId: $organizationId,

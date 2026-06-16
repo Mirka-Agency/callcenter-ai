@@ -24,6 +24,11 @@ class Index extends Component
 
     public bool $showDrilldown = false;
 
+    public function mount(): void
+    {
+        $this->mountHasReportFilters();
+    }
+
     public function drilldown(string $dimension, string $value): void
     {
         $this->drilldownDimension = $dimension;
@@ -63,13 +68,26 @@ class Index extends Component
         $employees = OrganizationUser::query()
             ->where('organization_id', EmployerContext::organizationId())
             ->where('is_active', true)
+            ->with('user:id,avatar_path,name')
             ->orderBy('first_name')
-            ->get(['id', 'first_name', 'last_name', 'department']);
+            ->get(['id', 'user_id', 'first_name', 'last_name', 'department']);
 
         return view('livewire.employer.reports.index', [
             'dashboard' => $dashboard,
-            'presets' => ReportDatePreset::selectable(),
+            'primaryDatePresets' => [
+                ReportDatePreset::Today,
+                ReportDatePreset::Yesterday,
+                ReportDatePreset::Last7,
+                ReportDatePreset::Last30,
+                ReportDatePreset::ThisMonth,
+            ],
+            'moreDatePresets' => [
+                ReportDatePreset::PreviousMonth,
+                ReportDatePreset::CurrentQuarter,
+                ReportDatePreset::CurrentYear,
+            ],
             'filterEmployees' => $employees,
+            'employeesById' => $employees->keyBy('id'),
             'filter' => $filter,
             'drilldownAnalyses' => $drilldownFilter
                 ? $analytics->drilldownAnalyses($drilldownFilter, 20)

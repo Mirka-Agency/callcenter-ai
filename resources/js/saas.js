@@ -4,20 +4,54 @@ import './waveform-player';
 import { initJalaliDateInputs } from './jalali-date-input';
 import { initReportCharts } from './reports-charts';
 
-if (document.querySelector('[data-report-chart]')) {
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initReportCharts);
-    } else {
-        initReportCharts();
-    }
-}
-
 document.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('open-command-palette'));
     }
 });
+
+function navigateTo(href) {
+    if (! href) {
+        return;
+    }
+
+    if (window.Livewire?.navigate) {
+        window.Livewire.navigate(href);
+    } else {
+        window.location.assign(href);
+    }
+}
+
+function initClickableTableRows() {
+    const isInteractiveTarget = (target) => target.closest('button, a, input, select, textarea, label, [data-row-ignore]');
+
+    document.addEventListener('click', (event) => {
+        const row = event.target.closest('[data-row-href]');
+
+        if (! row || isInteractiveTarget(event.target)) {
+            return;
+        }
+
+        event.preventDefault();
+        navigateTo(row.dataset.rowHref);
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+            return;
+        }
+
+        const row = event.target.closest('[data-row-href]');
+
+        if (! row || isInteractiveTarget(event.target)) {
+            return;
+        }
+
+        event.preventDefault();
+        navigateTo(row.dataset.rowHref);
+    });
+}
 
 function escapeHtml(value) {
     return String(value)
@@ -111,4 +145,10 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initJalaliDateInputs);
 } else {
     initJalaliDateInputs();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initClickableTableRows);
+} else {
+    initClickableTableRows();
 }

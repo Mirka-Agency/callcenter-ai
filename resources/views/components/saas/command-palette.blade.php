@@ -9,6 +9,11 @@
                     <x-saas.icon :name="$item['icon']" class="h-4 w-4 text-zinc-400" />
                     {{ $item['label'] }}
                 </a>
+                @foreach ($item['children'] ?? [] as $child)
+                    <a href="{{ route($child['route'], $child['query'] ?? []) }}#sample-conversations" class="flex items-center gap-3 rounded-md py-2 pe-3 ps-9 text-xs text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800" @click="commandOpen = false">
+                        {{ $child['label'] }}
+                    </a>
+                @endforeach
             @endforeach
         </div>
     </div>

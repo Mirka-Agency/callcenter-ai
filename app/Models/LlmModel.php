@@ -47,6 +47,8 @@ class LlmModel extends Model
             ? ($reasoningTokens / 1_000_000) * (float) $this->reasoning_price_per_million_tokens
             : 0;
 
-        return round($inputCost + $outputCost + $cachedCost + $reasoningCost, 6);
+        return PlatformAiSettings::convertFromUnits(
+            round($inputCost + $outputCost + $cachedCost + $reasoningCost, 6),
+        );
     }
 }

@@ -31,6 +31,7 @@ class Show extends Component
         $membershipId = EmployeeContext::membership()->id;
 
         return view('livewire.employer.customers.show', [
+            'analytics' => $service->profileAnalytics($this->customer),
             'timeline' => $service->timeline($this->customer),
             'employees' => $service->assignedEmployees($this->customer),
             'nextActions' => $service->aggregatedNextActions($this->customer),

@@ -114,6 +114,7 @@ class AiPerformanceAnalytics
         $to = $filter->to;
 
         return $query
+            ->with('user:id,avatar_path,name')
             ->withCount(['conversationAnalyses as total_analyzed' => fn (Builder $q) => $q
                 ->whereBetween('analyzed_at', [$from, $to]),
             ])
@@ -126,6 +127,7 @@ class AiPerformanceAnalytics
                 'id' => $employee->id,
                 'name' => $employee->full_name,
                 'department' => $employee->department,
+                'avatar_url' => $employee->avatarUrl(),
                 'average_score' => round((float) $employee->average_score, 1),
                 'total_analyzed' => (int) $employee->total_analyzed,
             ]);

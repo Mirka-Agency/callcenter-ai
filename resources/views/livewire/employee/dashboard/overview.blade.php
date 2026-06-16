@@ -1,3 +1,52 @@
+@php
+    $scoreTrend = $cockpit['score_trend'];
+    $sentimentTrend = $cockpit['sentiment_trend'];
+    $hasScoreTrend = collect($scoreTrend)->contains(fn (array $point) => $point['avg_score'] !== null);
+    $hasSentimentTrend = collect($sentimentTrend)->contains(fn (array $point) => $point['satisfaction'] !== null);
+
+    $chartOptions = [
+        'plugins' => ['legend' => ['display' => false]],
+        'scales' => [
+            'x' => ['ticks' => ['maxTicksLimit' => 7, 'autoSkip' => true], 'grid' => ['display' => false]],
+            'y' => ['min' => 0, 'max' => 100, 'ticks' => ['stepSize' => 25]],
+        ],
+    ];
+
+    $scoreChart = [
+        'labels' => collect($scoreTrend)->pluck('label')->all(),
+        'datasets' => [[
+            'label' => 'میانگین امتیاز',
+            'data' => collect($scoreTrend)->pluck('avg_score')->all(),
+            'borderColor' => 'rgb(99, 102, 241)',
+            'backgroundColor' => 'rgba(99, 102, 241, 0.12)',
+            'fill' => true,
+            'tension' => 0.35,
+            'spanGaps' => true,
+            'pointRadius' => 3,
+            'pointHoverRadius' => 5,
+            'borderWidth' => 2,
+        ]],
+        'options' => $chartOptions,
+    ];
+
+    $sentimentChart = [
+        'labels' => collect($sentimentTrend)->pluck('label')->all(),
+        'datasets' => [[
+            'label' => 'رضایت مشتری (%)',
+            'data' => collect($sentimentTrend)->pluck('satisfaction')->all(),
+            'borderColor' => 'rgb(16, 185, 129)',
+            'backgroundColor' => 'rgba(16, 185, 129, 0.12)',
+            'fill' => true,
+            'tension' => 0.35,
+            'spanGaps' => true,
+            'pointRadius' => 3,
+            'pointHoverRadius' => 5,
+            'borderWidth' => 2,
+        ]],
+        'options' => $chartOptions,
+    ];
+@endphp
+
 <div class="saas-page">
     <section class="saas-hero">
         <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -33,43 +82,30 @@
     <div class="grid gap-6 lg:grid-cols-2">
         <div class="saas-card">
             <h2 class="text-lg font-semibold">روند عملکرد</h2>
-            <p class="text-sm text-zinc-500">میانگین امتیاز روزانه</p>
-            <div class="mt-4 space-y-2">
-                @php $max = max(1, collect($cockpit['score_trend'])->max('avg_score') ?? 1); @endphp
-                @forelse (array_slice($cockpit['score_trend'], -10) as $point)
-                    <div>
-                        <div class="mb-1 flex justify-between text-xs text-zinc-500">
-                            <span>{{ $point['period'] }}</span>
-                            <span>{{ $point['avg_score'] }} ({{ $point['count'] }} تماس)</span>
-                        </div>
-                        <div class="h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                            <div class="h-2 rounded-full bg-indigo-500" style="width: {{ min(100, ($point['avg_score'] / $max) * 100) }}%"></div>
-                        </div>
-                    </div>
-                @empty
+            <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز روزانه در ۳۰ روز اخیر</p>
+            @if ($hasScoreTrend)
+                <div class="mt-4 h-56" wire:ignore>
+                    <canvas id="employee-score-trend" data-report-chart data-type="line" data-config='@json($scoreChart)'></canvas>
+                </div>
+            @else
+                <div class="mt-4">
                     <x-saas.empty-state title="هنوز داده روندی وجود ندارد" description="با تحلیل تماس‌ها، امتیازها اینجا نمایش داده می‌شوند." />
-                @endforelse
-            </div>
+                </div>
+            @endif
         </div>
 
         <div class="saas-card">
             <h2 class="text-lg font-semibold">روند رضایت مشتری</h2>
-            <div class="mt-4 space-y-2">
-                @php $maxSat = max(1, collect($cockpit['sentiment_trend'])->max('satisfaction') ?? 1); @endphp
-                @forelse (array_slice($cockpit['sentiment_trend'], -10) as $point)
-                    <div>
-                        <div class="mb-1 flex justify-between text-xs text-zinc-500">
-                            <span>{{ $point['period'] }}</span>
-                            <span>{{ $point['satisfaction'] }}%</span>
-                        </div>
-                        <div class="h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                            <div class="h-2 rounded-full bg-emerald-500" style="width: {{ min(100, ($point['satisfaction'] / $maxSat) * 100) }}%"></div>
-                        </div>
-                    </div>
-                @empty
+            <p class="mt-1 text-sm text-zinc-500">شاخص رضایت روزانه در ۳۰ روز اخیر</p>
+            @if ($hasSentimentTrend)
+                <div class="mt-4 h-56" wire:ignore>
+                    <canvas id="employee-sentiment-trend" data-report-chart data-type="line" data-config='@json($sentimentChart)'></canvas>
+                </div>
+            @else
+                <div class="mt-4">
                     <x-saas.empty-state title="داده رضایت وجود ندارد" description="روند احساسات به مرور زمان شکل می‌گیرد." />
-                @endforelse
-            </div>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -82,7 +118,7 @@
             <div class="mt-4 grid gap-4 sm:grid-cols-3">
                 <div class="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-900">
                     <p class="text-sm text-zinc-500">بهترین اخیر</p>
-                    <p class="text-2xl font-bold">{{ collect($cockpit['score_trend'])->max('avg_score') ?: '—' }}</p>
+                    <p class="text-2xl font-bold">{{ collect($scoreTrend)->pluck('avg_score')->filter()->max() ?: '—' }}</p>
                 </div>
                 <div class="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-900">
                     <p class="text-sm text-zinc-500">تماس‌های تحلیل‌شده</p>

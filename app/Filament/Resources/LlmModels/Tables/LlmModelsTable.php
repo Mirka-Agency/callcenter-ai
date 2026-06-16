@@ -28,11 +28,11 @@ class LlmModelsTable
                 TextColumn::make('model_key')->badge()->searchable(),
                 TextColumn::make('input_price_per_million_tokens')
                     ->label(__('filament.fields.input_per_1m'))
-                    ->money(fn () => PlatformAiSettings::currencyCode())
+                    ->money(fn () => PlatformAiSettings::billingUnitCurrency())
                     ->sortable(),
                 TextColumn::make('output_price_per_million_tokens')
                     ->label(__('filament.fields.output_per_1m'))
-                    ->money(fn () => PlatformAiSettings::currencyCode())
+                    ->money(fn () => PlatformAiSettings::billingUnitCurrency())
                     ->sortable(),
                 TextColumn::make('est_cost_per_minute')
                     ->label(__('filament.fields.est_per_min'))

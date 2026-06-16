@@ -5,12 +5,15 @@
     $isDefaultDate = $datePreset === ReportDatePreset::Last30->value
         && ! $customFrom
         && ! $customTo;
+    $hasActiveFilters = ! $isDefaultDate
+        || $selectedEmployeeIds !== []
+        || $compareMode;
 @endphp
 
 <div class="saas-card space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-3">
         <h2 class="text-sm font-semibold uppercase tracking-wider text-zinc-500">فیلترها</h2>
-        @if ($filter->hasActiveFilters())
+        @if ($hasActiveFilters)
             <button type="button" wire:click="clearFilters" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
                 پاک کردن همه فیلترها
             </button>
@@ -73,9 +76,9 @@
         @if ($showCustomDateRange || $datePreset === 'custom')
             <div data-deferred-date-range class="flex flex-wrap items-center gap-3 rounded-lg border border-indigo-200/80 bg-indigo-50/50 px-4 py-3 dark:border-indigo-500/30 dark:bg-indigo-950/20">
                 <label class="text-sm text-zinc-500">از</label>
-                <x-saas.jalali-date-input wire:key="filter-custom-from" wire:model="draftCustomFrom" defer class="text-sm" />
+                <x-saas.jalali-date-input wire:key="reports-custom-from" wire:model="draftCustomFrom" defer class="text-sm" />
                 <label class="text-sm text-zinc-500">تا</label>
-                <x-saas.jalali-date-input wire:key="filter-custom-to" wire:model="draftCustomTo" defer class="text-sm" />
+                <x-saas.jalali-date-input wire:key="reports-custom-to" wire:model="draftCustomTo" defer class="text-sm" />
                 <button type="button" data-apply-deferred-date-range class="saas-btn-primary text-sm">
                     تایید بازه
                 </button>
@@ -83,63 +86,34 @@
         @endif
     </div>
 
-    <div class="flex flex-wrap gap-2 border-t border-zinc-200/80 pt-4 dark:border-zinc-800">
-        <span class="w-full text-sm font-medium text-zinc-700 dark:text-zinc-300">فیلتر سریع</span>
-        <button
-            type="button"
-            wire:click="applyQuickFilter('missed')"
-            @class([
-                'rounded-md px-3 py-1.5 text-xs font-medium transition',
-                'bg-red-600 text-white' => $callStatus === 'missed',
-                'bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400' => $callStatus !== 'missed',
-            ])
-        >تماس‌های از دست رفته</button>
-    </div>
-
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div>
-            <label class="text-sm font-medium text-zinc-700 dark:text-zinc-300">کارشناس</label>
-            <select wire:model.live="filterEmployeeId" class="saas-input mt-1 text-sm">
-                <option value="">همه کارشناسان</option>
-                @foreach ($employees as $employee)
-                    <option value="{{ $employee->id }}">{{ $employee->full_name }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div>
-            <label class="text-sm font-medium text-zinc-700 dark:text-zinc-300">وضعیت تماس</label>
-            <select wire:model.live="callStatus" class="saas-input mt-1 text-sm">
-                <option value="">همه وضعیت‌ها</option>
-                @foreach ($callStatuses as $status)
-                    <option value="{{ $status->value }}">{{ $status->label() }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div>
-            <label class="text-sm font-medium text-zinc-700 dark:text-zinc-300">جهت تماس</label>
-            <select wire:model.live="directionFilter" class="saas-input mt-1 text-sm">
-                <option value="">همه</option>
-                @foreach ($directions as $direction)
-                    <option value="{{ $direction->value }}">{{ $direction->label() }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-            <div>
-                <label class="text-sm font-medium text-zinc-700 dark:text-zinc-300">حداقل مدت (دقیقه)</label>
-                <input wire:model.live.debounce.500ms="durationMin" type="number" min="0" placeholder="۰" class="saas-input mt-1 text-sm">
+    @if ($filterEmployees->isNotEmpty())
+        <div class="space-y-3 border-t border-zinc-200/80 pt-4 dark:border-zinc-800">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <p class="text-sm font-medium text-zinc-700 dark:text-zinc-300">کارشناسان</p>
+                <label class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                    <input type="checkbox" wire:model.live="compareMode" class="rounded border-zinc-300 dark:border-zinc-600">
+                    حالت مقایسه در نمودارها
+                </label>
             </div>
-            <div>
-                <label class="text-sm font-medium text-zinc-700 dark:text-zinc-300">حداکثر مدت (دقیقه)</label>
-                <input wire:model.live.debounce.500ms="durationMax" type="number" min="0" placeholder="∞" class="saas-input mt-1 text-sm">
+
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" wire:click="clearEmployeeFilter" @class([
+                    'saas-chip',
+                    'border-indigo-300 bg-indigo-50 text-indigo-800 dark:border-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-200' => $selectedEmployeeIds === [],
+                    'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300' => $selectedEmployeeIds !== [],
+                ])>همه کارشناسان</button>
+                @foreach ($filterEmployees as $employee)
+                    <x-saas.agent-chip
+                        :employee="$employee"
+                        wire:click="toggleEmployee({{ $employee->id }})"
+                        :active="in_array($employee->id, $selectedEmployeeIds)"
+                    />
+                @endforeach
             </div>
         </div>
-    </div>
+    @endif
 
-    @if (! $isDefaultDate || $filterEmployeeId || $callStatus || $directionFilter || $durationMin || $durationMax)
+    @if ($hasActiveFilters)
         <div class="flex flex-wrap items-center gap-2 border-t border-zinc-200/80 pt-4 dark:border-zinc-800">
             <span class="text-xs font-medium text-zinc-500">فیلترهای فعال:</span>
             @if (! $isDefaultDate)
@@ -151,30 +125,14 @@
                     @endif
                 </button>
             @endif
-            @if ($filterEmployeeId)
-                @php $activeEmployee = $employees->firstWhere('id', $filterEmployeeId); @endphp
-                <button type="button" wire:click="filterByAgent(null)" class="rounded-md bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
-                    کارشناس: {{ $activeEmployee?->full_name ?? '—' }} ×
+            @if ($selectedEmployeeIds !== [])
+                <button type="button" wire:click="clearEmployeeFilter" class="rounded-md bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                    {{ count($selectedEmployeeIds) }} کارشناس انتخاب‌شده ×
                 </button>
             @endif
-            @if ($callStatus)
-                <button type="button" wire:click="$set('callStatus', null)" class="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                    وضعیت: {{ \App\Domain\Voip\Enums\CallStatus::tryFrom($callStatus)?->label() }} ×
-                </button>
-            @endif
-            @if ($directionFilter)
-                <button type="button" wire:click="$set('directionFilter', null)" class="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                    جهت: {{ \App\Domain\Voip\Enums\CallDirection::tryFrom($directionFilter)?->label() }} ×
-                </button>
-            @endif
-            @if ($durationMin)
-                <button type="button" wire:click="$set('durationMin', null)" class="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                    حداقل {{ $durationMin }} دقیقه ×
-                </button>
-            @endif
-            @if ($durationMax)
-                <button type="button" wire:click="$set('durationMax', null)" class="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                    حداکثر {{ $durationMax }} دقیقه ×
+            @if ($compareMode)
+                <button type="button" wire:click="$set('compareMode', false)" class="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                    حالت مقایسه ×
                 </button>
             @endif
         </div>

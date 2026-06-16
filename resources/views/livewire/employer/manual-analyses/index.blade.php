@@ -18,7 +18,7 @@
         </div>
     @endif
 
-    <div class="mx-auto max-w-3xl">
+    <div class="grid gap-6 lg:grid-cols-2 lg:items-start">
         <div class="saas-card border-indigo-200/50 shadow-md shadow-indigo-500/5 dark:border-indigo-500/20">
             <x-saas.manual-upload-panel
                 :employees="$employees"
@@ -29,6 +29,11 @@
                 :show-metadata="$showMetadata"
             />
         </div>
+
+        <x-saas.sample-conversations
+            :samples="$sampleConversations"
+            :highlighted-id="$highlightedSampleId"
+        />
     </div>
 
     <div class="space-y-4">
@@ -48,8 +53,8 @@
                         <option value="{{ $employee->id }}">{{ $employee->full_name }}</option>
                     @endforeach
                 </select>
-                <x-saas.jalali-date-input wire:model.live="dateFrom" class="text-sm" />
-                <x-saas.jalali-date-input wire:model.live="dateUntil" class="text-sm" />
+                <x-saas.jalali-date-input wire:key="upload-date-from" wire:model.live="dateFrom" class="text-sm" />
+                <x-saas.jalali-date-input wire:key="upload-date-until" wire:model.live="dateUntil" class="text-sm" />
             </div>
         </div>
 

@@ -27,6 +27,7 @@ class Show extends Component
         $service = app(CustomerIntelligenceService::class);
 
         return view('livewire.employer.customers.show', [
+            'analytics' => $service->profileAnalytics($this->customer),
             'timeline' => $service->timeline($this->customer),
             'employees' => $service->assignedEmployees($this->customer),
             'nextActions' => $service->aggregatedNextActions($this->customer),

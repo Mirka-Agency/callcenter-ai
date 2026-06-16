@@ -14,65 +14,72 @@
         </div>
     @endif
 
-    <div class="saas-card">
-        <h2 class="text-lg font-semibold">آپلود فایل صوتی</h2>
-        <p class="mt-1 text-sm text-zinc-500">فرمت‌های پشتیبانی‌شده: mp3، wav، m4a، ogg، flac (حداکثر ۵۰ مگابایت)</p>
+    <div class="grid gap-6 lg:grid-cols-2 lg:items-start">
+        <div class="saas-card">
+            <h2 class="text-lg font-semibold">آپلود فایل صوتی</h2>
+            <p class="mt-1 text-sm text-zinc-500">فرمت‌های پشتیبانی‌شده: mp3، wav، m4a، ogg، flac (حداکثر ۵۰ مگابایت)</p>
 
-        <div class="mt-6 grid gap-4 lg:grid-cols-2">
-            <div class="lg:col-span-2">
-                <label class="text-sm font-medium">فایل صوتی *</label>
-                <input wire:model="audio" type="file" accept=".mp3,.wav,.m4a,.ogg,.flac,audio/*" class="saas-input mt-1">
-                @error('audio') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                <div wire:loading wire:target="audio" class="mt-2 text-sm text-amber-600">در حال آپلود فایل...</div>
-                <div wire:loading.remove wire:target="audio" class="mt-2 text-xs text-zinc-500">
-                    فایل صوتی را انتخاب کنید، سپس روی <strong>آپلود و تحلیل</strong> کلیک کنید.
+            <div class="mt-6 grid gap-4 lg:grid-cols-2">
+                <div class="lg:col-span-2">
+                    <label class="text-sm font-medium">فایل صوتی *</label>
+                    <input wire:model="audio" type="file" accept=".mp3,.wav,.m4a,.ogg,.flac,audio/*" class="saas-input mt-1">
+                    @error('audio') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                    <div wire:loading wire:target="audio" class="mt-2 text-sm text-amber-600">در حال آپلود فایل...</div>
+                    <div wire:loading.remove wire:target="audio" class="mt-2 text-xs text-zinc-500">
+                        فایل صوتی را انتخاب کنید، سپس روی <strong>آپلود و تحلیل</strong> کلیک کنید.
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-sm font-medium">عنوان</label>
+                    <input wire:model="title" class="saas-input mt-1" placeholder="عنوان اختیاری">
+                </div>
+                <div>
+                    <label class="text-sm font-medium">دسته‌بندی</label>
+                    <input wire:model="category" class="saas-input mt-1" placeholder="مثلاً فروش، پشتیبانی">
+                </div>
+                <div>
+                    <label class="text-sm font-medium">نام مشتری</label>
+                    <input wire:model="customerName" class="saas-input mt-1">
+                </div>
+                <div>
+                    <label class="text-sm font-medium">تلفن مشتری</label>
+                    <input wire:model="customerPhone" class="saas-input mt-1">
+                </div>
+                <div>
+                    <label class="text-sm font-medium">تاریخ مکالمه</label>
+                    <input wire:model="conversationDate" type="datetime-local" class="saas-input mt-1">
+                </div>
+                <div>
+                    <label class="text-sm font-medium">برچسب‌ها</label>
+                    <input wire:model="tags" class="saas-input mt-1" placeholder="با کاما جدا کنید">
+                </div>
+                <div class="lg:col-span-2">
+                    <label class="text-sm font-medium">یادداشت‌ها</label>
+                    <textarea wire:model="notes" rows="3" class="saas-input mt-1"></textarea>
+                </div>
+
+                <div class="lg:col-span-2">
+                    <button
+                        type="button"
+                        id="upload-analyze-button"
+                        wire:click="submitForAnalysis"
+                        wire:loading.attr="disabled"
+                        wire:target="submitForAnalysis"
+                        class="saas-btn-primary"
+                    >
+                        <span wire:loading.remove wire:target="submitForAnalysis">آپلود و تحلیل</span>
+                        <span wire:loading wire:target="submitForAnalysis">در حال تحلیل فایل...</span>
+                    </button>
+                    <p wire:loading wire:target="submitForAnalysis" class="mt-2 text-sm text-blue-600">فایل در صف پردازش قرار گرفت...</p>
                 </div>
             </div>
-
-            <div>
-                <label class="text-sm font-medium">عنوان</label>
-                <input wire:model="title" class="saas-input mt-1" placeholder="عنوان اختیاری">
-            </div>
-            <div>
-                <label class="text-sm font-medium">دسته‌بندی</label>
-                <input wire:model="category" class="saas-input mt-1" placeholder="مثلاً فروش، پشتیبانی">
-            </div>
-            <div>
-                <label class="text-sm font-medium">نام مشتری</label>
-                <input wire:model="customerName" class="saas-input mt-1">
-            </div>
-            <div>
-                <label class="text-sm font-medium">تلفن مشتری</label>
-                <input wire:model="customerPhone" class="saas-input mt-1">
-            </div>
-            <div>
-                <label class="text-sm font-medium">تاریخ مکالمه</label>
-                <input wire:model="conversationDate" type="datetime-local" class="saas-input mt-1">
-            </div>
-            <div>
-                <label class="text-sm font-medium">برچسب‌ها</label>
-                <input wire:model="tags" class="saas-input mt-1" placeholder="با کاما جدا کنید">
-            </div>
-            <div class="lg:col-span-2">
-                <label class="text-sm font-medium">یادداشت‌ها</label>
-                <textarea wire:model="notes" rows="3" class="saas-input mt-1"></textarea>
-            </div>
-
-            <div class="lg:col-span-2">
-                <button
-                    type="button"
-                    id="upload-analyze-button"
-                    wire:click="submitForAnalysis"
-                    wire:loading.attr="disabled"
-                    wire:target="submitForAnalysis"
-                    class="saas-btn-primary"
-                >
-                    <span wire:loading.remove wire:target="submitForAnalysis">آپلود و تحلیل</span>
-                    <span wire:loading wire:target="submitForAnalysis">در حال تحلیل فایل...</span>
-                </button>
-                <p wire:loading wire:target="submitForAnalysis" class="mt-2 text-sm text-blue-600">فایل در صف پردازش قرار گرفت...</p>
-            </div>
         </div>
+
+        <x-saas.sample-conversations
+            :samples="$sampleConversations"
+            :highlighted-id="$highlightedSampleId"
+        />
     </div>
 
     <div class="grid gap-4">

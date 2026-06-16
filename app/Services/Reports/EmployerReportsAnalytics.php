@@ -21,8 +21,8 @@ class EmployerReportsAnalytics
 
     public function dashboard(ReportFilter $filter): array
     {
-        return Cache::remember(
-            'employer_reports:'.$filter->cacheKey(),
+        $dashboard = Cache::remember(
+            'employer_reports:v2:'.$filter->cacheKey(),
             120,
             fn () => [
                 'kpis' => $this->kpis($filter),
@@ -37,6 +37,47 @@ class EmployerReportsAnalytics
                 'executive_summary' => app(ReportExecutiveSummaryService::class)->generate($filter, $this, false),
             ],
         );
+
+        return $this->withEmployeeAvatars($dashboard);
+    }
+
+    /** @param  array<string, mixed>  $dashboard */
+    private function withEmployeeAvatars(array $dashboard): array
+    {
+        $ids = collect($dashboard['leaderboards'] ?? [])
+            ->flatten(1)
+            ->pluck('id')
+            ->merge(collect($dashboard['employee_comparison'] ?? [])->pluck('id'))
+            ->unique()
+            ->filter()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return $dashboard;
+        }
+
+        $avatars = OrganizationUser::query()
+            ->whereIn('id', $ids)
+            ->with('user:id,avatar_path,name')
+            ->get()
+            ->mapWithKeys(fn (OrganizationUser $employee) => [
+                $employee->id => $employee->avatarUrl(),
+            ]);
+
+        $applyAvatars = fn (array $row) => array_merge($row, [
+            'avatar_url' => $avatars[$row['id']] ?? $row['avatar_url'] ?? null,
+        ]);
+
+        $dashboard['employee_comparison'] = collect($dashboard['employee_comparison'] ?? [])
+            ->map($applyAvatars)
+            ->values()
+            ->all();
+
+        $dashboard['leaderboards'] = collect($dashboard['leaderboards'] ?? [])
+            ->map(fn ($board) => collect($board)->map($applyAvatars)->values()->all())
+            ->all();
+
+        return $dashboard;
     }
 
     public function executiveSummary(ReportFilter $filter): string
@@ -130,6 +171,7 @@ class EmployerReportsAnalytics
             return [
                 'id' => $employee['id'],
                 'name' => $employee['name'],
+                'avatar_url' => $employee['avatar_url'] ?? null,
                 'average_score' => $employee['average_score'],
                 'average_lead_score' => $lead['average_lead_score'] ?? 0,
                 'total_analyzed' => $employee['total_analyzed'],

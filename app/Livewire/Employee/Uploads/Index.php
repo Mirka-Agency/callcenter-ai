@@ -12,7 +12,9 @@ use App\Livewire\Concerns\InteractsWithManualAudioUpload;
 use App\Models\Call;
 use App\Services\AiBillingService;
 use App\Services\EmployeeContext;
+use App\Support\SampleConversations;
 use App\Support\UserFacingError;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
@@ -45,6 +47,17 @@ class Index extends Component
     public string $tags = '';
 
     public ?string $conversationDate = null;
+
+    public ?string $highlightedSampleId = null;
+
+    public function mount(): void
+    {
+        $sampleId = request()->string('sample')->toString();
+
+        if ($sampleId !== '' && SampleConversations::find($sampleId) !== null) {
+            $this->highlightedSampleId = $sampleId;
+        }
+    }
 
     public function submitForAnalysis(ManualAudioUploadService $uploadService): void
     {
@@ -101,7 +114,78 @@ class Index extends Component
         } catch (\Throwable $e) {
             $message = UserFacingError::upload();
 
-            \Illuminate\Support\Facades\Log::error('Employee upload exception', [
+            Log::error('Employee upload exception', [
+                'message' => $e->getMessage(),
+                'class' => $e::class,
+            ]);
+            $this->addError('audio', $message);
+            $this->dispatchUploadErrorToast($message);
+
+            return;
+        }
+
+        $this->reset(['audio', 'title', 'customerName', 'customerPhone', 'notes', 'category', 'tags', 'conversationDate']);
+        $this->selectedFileName = null;
+        $this->selectedFileSize = null;
+        $this->dispatchUploadSuccessToast(route('employee.uploads.show', $callId));
+    }
+
+    public function submitSampleForAnalysis(string $sampleId, ManualAudioUploadService $uploadService): void
+    {
+        $sample = SampleConversations::find($sampleId);
+
+        if ($sample === null || ! ($sample['available'] ?? false)) {
+            $message = 'فایل این مکالمه نمونه هنوز در دسترس نیست.';
+            $this->addError('audio', $message);
+            $this->dispatchUploadErrorToast($message);
+
+            return;
+        }
+
+        $this->validate([
+            'title' => 'nullable|string|max:255',
+            'customerName' => 'nullable|string|max:255',
+            'customerPhone' => 'nullable|string|max:50',
+            'notes' => 'nullable|string|max:5000',
+            'category' => 'nullable|string|max:100',
+            'tags' => 'nullable|string|max:500',
+            'conversationDate' => 'nullable|date',
+        ]);
+
+        try {
+            $membership = EmployeeContext::membership();
+
+            $callId = $uploadService->uploadFromSample(
+                organizationId: $membership->organization_id,
+                uploaderUserId: auth()->id(),
+                uploaderType: UploaderType::Employee,
+                organizationUserId: $membership->id,
+                absolutePath: $sample['absolute_path'],
+                displayFilename: $sample['filename'],
+                metadata: new ManualUploadMetadata(
+                    title: $this->title ?: $sample['title'],
+                    customerName: $this->customerName ?: null,
+                    customerPhone: $this->customerPhone ?: null,
+                    notes: $this->notes ?: $sample['description'],
+                    category: $this->category ?: $sample['category'],
+                    tags: $this->parseTags($this->tags) ?? ['نمونه دمو'],
+                    conversationDate: $this->conversationDate ? new \DateTimeImmutable($this->conversationDate) : null,
+                ),
+            );
+        } catch (InsufficientWalletBalanceException|ValidationException $e) {
+            $message = $e instanceof ValidationException
+                ? ($e->validator->errors()->first('audio') ?: $e->validator->errors()->first() ?: 'شروع تحلیل نمونه ناموفق بود.')
+                : $e->getMessage();
+
+            $this->addError('audio', $message);
+            $this->dispatchUploadErrorToast($message);
+
+            return;
+        } catch (\Throwable $e) {
+            $message = UserFacingError::upload();
+
+            Log::error('Employee sample conversation upload exception', [
+                'sample_id' => $sampleId,
                 'message' => $e->getMessage(),
                 'class' => $e::class,
             ]);
@@ -118,9 +202,7 @@ class Index extends Component
     }
 
     #[On('processing-job-updated')]
-    public function onProcessingJobUpdated(): void
-    {
-    }
+    public function onProcessingJobUpdated(): void {}
 
     public function render()
     {
@@ -142,6 +224,7 @@ class Index extends Component
             'uploads' => $uploads,
             'organizationId' => EmployeeContext::organizationId(),
             'wallet' => app(AiBillingService::class)->walletOverview(EmployeeContext::organizationId()),
+            'sampleConversations' => SampleConversations::all(),
         ]);
     }
 

@@ -9,8 +9,7 @@
     @livewireStyles
     <script>
         (function () {
-            const dark = localStorage.getItem('theme') === 'dark'
-                || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            const dark = localStorage.getItem('theme') === 'dark';
             document.documentElement.classList.toggle('dark', dark);
         })();
     </script>

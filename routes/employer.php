@@ -7,7 +7,6 @@ use App\Livewire\Employer\Dashboard\Overview as EmployerDashboard;
 use App\Livewire\Employer\Employees\Create as EmployeeCreate;
 use App\Livewire\Employer\Employees\Edit as EmployeeEdit;
 use App\Livewire\Employer\Employees\Index as EmployeesIndex;
-use App\Livewire\Employer\Employees\Show as EmployeeShow;
 use App\Livewire\Employer\ManualAnalyses\Index as ManualAnalysesIndex;
 use App\Livewire\Employer\ManualAnalyses\Show as ManualAnalysesShow;
 use App\Livewire\Employer\Intelligence\Index as IntelligenceIndex;
@@ -29,7 +28,6 @@ Route::middleware(['auth', 'employer'])->group(function () {
     Route::prefix('employees')->name('employees.')->group(function () {
         Route::get('/', EmployeesIndex::class)->name('index');
         Route::get('/create', EmployeeCreate::class)->name('create');
-        Route::get('/{employee}', EmployeeShow::class)->name('show');
         Route::get('/{employee}/edit', EmployeeEdit::class)->name('edit');
     });
 

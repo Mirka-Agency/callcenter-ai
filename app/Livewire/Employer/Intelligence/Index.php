@@ -37,6 +37,7 @@ class Index extends Component
         return view('livewire.employer.intelligence.index', [
             'analyses' => $query->paginate($filter),
             'overview' => $query->overview($filter),
+            'charts' => $query->charts($filter),
             'filter' => $filter,
             'employees' => $employees,
             'primaryDatePresets' => [

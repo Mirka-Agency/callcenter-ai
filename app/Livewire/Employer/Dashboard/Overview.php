@@ -12,7 +12,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('layouts.employer')]
-#[Title('داشبورد تیم')]
+#[Title('داشبورد مدیر')]
 class Overview extends Component
 {
     public function render()

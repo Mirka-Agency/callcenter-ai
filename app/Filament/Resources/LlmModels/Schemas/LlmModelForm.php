@@ -37,24 +37,24 @@ class LlmModelForm
                     ->description(__('filament.sections.token_pricing_description'))
                     ->schema([
                         TextInput::make('input_price_per_million_tokens')
-                            ->label(fn () => __('filament.fields.input_price_per_1m').' ('.PlatformAiSettings::currencyCode().')')
+                            ->label(fn () => __('filament.fields.input_price_per_1m').' ('.PlatformAiSettings::billingUnitCurrency().')')
                             ->persianNumeric(null, 6)
                             ->required()
                             ->minValue(0)
                             ->step(0.000001),
                         TextInput::make('output_price_per_million_tokens')
-                            ->label(fn () => __('filament.fields.output_price_per_1m').' ('.PlatformAiSettings::currencyCode().')')
+                            ->label(fn () => __('filament.fields.output_price_per_1m').' ('.PlatformAiSettings::billingUnitCurrency().')')
                             ->persianNumeric(null, 6)
                             ->required()
                             ->minValue(0)
                             ->step(0.000001),
                         TextInput::make('cached_input_price_per_million_tokens')
-                            ->label(fn () => __('filament.fields.cached_input_price_per_1m').' ('.PlatformAiSettings::currencyCode().')')
+                            ->label(fn () => __('filament.fields.cached_input_price_per_1m').' ('.PlatformAiSettings::billingUnitCurrency().')')
                             ->persianNumeric(null, 6)
                             ->minValue(0)
                             ->step(0.000001),
                         TextInput::make('reasoning_price_per_million_tokens')
-                            ->label(fn () => __('filament.fields.reasoning_price_per_1m').' ('.PlatformAiSettings::currencyCode().')')
+                            ->label(fn () => __('filament.fields.reasoning_price_per_1m').' ('.PlatformAiSettings::billingUnitCurrency().')')
                             ->persianNumeric(null, 6)
                             ->minValue(0)
                             ->step(0.000001),

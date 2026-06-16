@@ -124,8 +124,8 @@ class AiCostEstimatorService
 
         return [
             'model' => $model,
-            'input_price' => (float) $model->input_price_per_million_tokens,
-            'output_price' => (float) $model->output_price_per_million_tokens,
+            'input_price' => PlatformAiSettings::convertFromUnits((float) $model->input_price_per_million_tokens),
+            'output_price' => PlatformAiSettings::convertFromUnits((float) $model->output_price_per_million_tokens),
             'cost_per_minute' => $this->costPerMinute($model, $type),
             'cost_per_hour' => $this->costPerHour($model, $type),
             'duration_estimates' => collect($durations)

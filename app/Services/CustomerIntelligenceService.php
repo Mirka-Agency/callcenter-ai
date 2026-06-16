@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\OrganizationUser;
+use App\Support\CustomerPresenter;
 use App\Support\CustomerTenantGuard;
 use App\Support\JalaliDate;
 use Illuminate\Support\Collection;
@@ -168,6 +170,82 @@ class CustomerIntelligenceService
             });
 
         return array_values(array_unique(array_filter($actions)));
+    }
+
+    /** @return array<string, mixed> */
+    public function profileAnalytics(Customer $customer): array
+    {
+        $analyses = ConversationAnalysis::query()
+            ->where('organization_id', $customer->organization_id)
+            ->whereHas('call', fn ($q) => $q->where('customer_id', $customer->id))
+            ->orderBy('analyzed_at')
+            ->get();
+
+        $calls = Call::query()
+            ->where('organization_id', $customer->organization_id)
+            ->where('customer_id', $customer->id)
+            ->get();
+
+        $scores = $analyses->pluck('score')->filter();
+        $durations = $calls->pluck('duration_seconds')->filter(fn (?int $seconds) => $seconds && $seconds > 0);
+
+        $scoreSeries = $analyses
+            ->filter(fn (ConversationAnalysis $analysis) => $analysis->score !== null)
+            ->map(function (ConversationAnalysis $analysis) {
+                $leadScore = $analysis->lead_quality_json['score'] ?? null;
+
+                return [
+                    'label' => JalaliDate::monthDay($analysis->analyzed_at),
+                    'score' => (int) $analysis->score,
+                    'lead_score' => is_numeric($leadScore) ? (int) $leadScore : null,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $sentimentCounts = [];
+        foreach ($analyses as $analysis) {
+            if (! $analysis->sentiment) {
+                continue;
+            }
+
+            $key = $analysis->sentiment->value;
+            $sentimentCounts[$key] = ($sentimentCounts[$key] ?? 0) + 1;
+        }
+
+        $sentimentBreakdown = collect($sentimentCounts)
+            ->map(function (int $count, string $key) {
+                $sentiment = AnalysisSentiment::tryFrom($key);
+
+                return [
+                    'key' => $key,
+                    'label' => $sentiment?->label() ?? $key,
+                    'count' => $count,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $concerns = collect($customer->common_concerns_json ?? [])
+            ->map(fn (array $concern) => [
+                'type' => $concern['type'] ?? 'other',
+                'label' => CustomerPresenter::concernLabel($concern['type'] ?? 'other'),
+                'count' => (int) ($concern['count'] ?? 0),
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'average_score' => $scores->isNotEmpty() ? round((float) $scores->avg(), 1) : null,
+            'analyzed_calls' => $analyses->count(),
+            'answer_rate' => CustomerPresenter::answerRate($customer),
+            'average_duration_label' => $this->formatDuration(
+                $durations->isNotEmpty() ? (int) round($durations->avg()) : null,
+            ),
+            'score_series' => $scoreSeries,
+            'sentiment_breakdown' => $sentimentBreakdown,
+            'concerns' => $concerns,
+        ];
     }
 
     private function mergeIdentity(Customer $customer, ConversationAnalysis $analysis, ?string $phone): void

@@ -16,9 +16,9 @@
     @if ($datePreset === 'custom')
         <div class="flex flex-wrap items-center gap-3">
             <label class="text-sm text-zinc-500">از</label>
-            <x-saas.jalali-date-input wire:model.live="customFrom" class="text-sm" />
+            <x-saas.jalali-date-input wire:key="performance-custom-from" wire:model.live="customFrom" class="text-sm" />
             <label class="text-sm text-zinc-500">تا</label>
-            <x-saas.jalali-date-input wire:model.live="customTo" class="text-sm" />
+            <x-saas.jalali-date-input wire:key="performance-custom-to" wire:model.live="customTo" class="text-sm" />
         </div>
     @endif
 

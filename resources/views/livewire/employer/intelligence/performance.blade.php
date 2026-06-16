@@ -110,17 +110,69 @@
         </div>
     @endif
 
-    <div class="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
-        @foreach ([
-            'best_quality' => 'بالاترین امتیاز',
-            'best_lead' => 'بهترین لید',
-            'most_improved' => 'بیشترین پیشرفت',
-            'most_calls' => 'بیشترین تماس',
-            'best_sentiment' => 'بالاترین رضایت',
-        ] as $key => $title)
-            <div class="saas-widget">
-                <h3 class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{{ $title }}</h3>
-                <ol class="mt-3 space-y-1">
+    @php
+        $rankingMeta = [
+            'best_quality' => [
+                'title' => 'بالاترین امتیاز',
+                'subtitle' => 'کیفیت مکالمه',
+                'accent' => 'indigo',
+                'icon' => 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.8 6.5 20l1-6.2L3 9.4l6.2-.9L12 3z',
+            ],
+            'best_lead' => [
+                'title' => 'بهترین لید',
+                'subtitle' => 'میانگین امتیاز لید',
+                'accent' => 'emerald',
+                'icon' => 'M3 17l6-6 4 4 8-8M14 7h7v7',
+            ],
+            'most_improved' => [
+                'title' => 'بیشترین پیشرفت',
+                'subtitle' => 'رشد دوره اخیر',
+                'accent' => 'amber',
+                'icon' => 'M4 14l4-4 3 3 5-6 4 4M20 8V4h-4',
+            ],
+            'most_calls' => [
+                'title' => 'بیشترین تماس',
+                'subtitle' => 'حجم فعالیت',
+                'accent' => 'sky',
+                'icon' => 'M5 7a2 2 0 0 1 2-2h2l2 4-1.5 1.5a12 12 0 0 0 5 5L16 14l4 2v2a2 2 0 0 1-2 2h-1C10.4 20 4 13.6 4 6V5z',
+            ],
+            'best_sentiment' => [
+                'title' => 'بالاترین رضایت',
+                'subtitle' => 'احساس مثبت مشتری',
+                'accent' => 'rose',
+                'icon' => 'M12 21s-7-4.4-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.6-7 10-7 10z',
+            ],
+        ];
+    @endphp
+
+    <div class="grid gap-4 sm:grid-cols-2">
+        @foreach ($rankingMeta as $key => $meta)
+            @php
+                $accentClasses = match ($meta['accent']) {
+                    'emerald' => 'from-emerald-500/10 to-emerald-100/30 border-emerald-200/70 dark:from-emerald-500/15 dark:to-emerald-950/20 dark:border-emerald-500/20',
+                    'amber' => 'from-amber-500/10 to-amber-100/30 border-amber-200/70 dark:from-amber-500/15 dark:to-amber-950/20 dark:border-amber-500/20',
+                    'sky' => 'from-sky-500/10 to-sky-100/30 border-sky-200/70 dark:from-sky-500/15 dark:to-sky-950/20 dark:border-sky-500/20',
+                    'rose' => 'from-rose-500/10 to-rose-100/30 border-rose-200/70 dark:from-rose-500/15 dark:to-rose-950/20 dark:border-rose-500/20',
+                    default => 'from-indigo-500/10 to-indigo-100/30 border-indigo-200/70 dark:from-indigo-500/15 dark:to-indigo-950/20 dark:border-indigo-500/20',
+                };
+            @endphp
+            <div @class([
+                'saas-widget border bg-gradient-to-b',
+                $accentClasses,
+            ])>
+                <div class="flex items-start gap-3">
+                    <span class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/80 text-zinc-700 shadow-sm dark:bg-zinc-900/70 dark:text-zinc-200">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="{{ $meta['icon'] }}" />
+                        </svg>
+                    </span>
+                    <div>
+                        <h3 class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">{{ $meta['title'] }}</h3>
+                        <p class="mt-0.5 text-[11px] text-zinc-500">{{ $meta['subtitle'] }}</p>
+                    </div>
+                </div>
+
+                <ol class="mt-3 space-y-1.5">
                     @forelse (array_slice($dashboard['rankings'][$key] ?? [], 0, 3) as $i => $row)
                         <li>
                             @php
@@ -140,7 +192,9 @@
                             />
                         </li>
                     @empty
-                        <li class="text-xs text-zinc-500">—</li>
+                        <li class="rounded-lg border border-dashed border-zinc-200 px-3 py-4 text-center text-xs text-zinc-500 dark:border-zinc-700">
+                            داده کافی برای رتبه‌بندی وجود ندارد.
+                        </li>
                     @endforelse
                 </ol>
             </div>

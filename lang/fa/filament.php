@@ -199,6 +199,10 @@ return [
         'currency' => 'ارز',
         'wallet_currency' => 'ارز کیف پول',
         'wallet_currency_helper' => 'کد ISO، مثلاً IRR برای ریال ایران.',
+        'billing_unit_currency' => 'ارز واحد قیمت‌گذاری',
+        'billing_unit_currency_helper' => 'واحدی که قیمت مدل‌ها با آن ثبت می‌شود، مثلاً USD.',
+        'billing_unit_price' => 'قیمت هر واحد',
+        'billing_unit_price_helper' => 'هر ۱ واحد قیمت‌گذاری معادل چند واحد ارز کیف پول است. با تغییر این مقدار، همه هزینه‌ها به‌روز می‌شوند.',
         'allow_negative_balances' => 'مجاز بودن موجودی منفی',
         'allow_negative_balances_helper' => 'در صورت فعال بودن، تحلیل هوش مصنوعی حتی با اعتبار ناکافی انجام می‌شود.',
         'average_words_per_minute' => 'میانگین کلمات در دقیقه',
@@ -240,6 +244,8 @@ return [
         'credentials' => 'اعتبارنامه',
         'settings' => 'تنظیمات',
         'billing' => 'صورتحساب',
+        'billing_unit' => 'قیمت واحد',
+        'billing_unit_description' => 'نرخ تبدیل واحد قیمت‌گذاری مدل‌ها به ارز کیف پول. قیمت مدل‌ها را فقط یک‌بار وارد کنید؛ تغییر نرخ اینجا همه جا اعمال می‌شود.',
         'usage' => 'مصرف',
         'analysis' => 'تحلیل',
         'lead_quality' => 'تحلیل کیفیت لید',
@@ -262,7 +268,7 @@ return [
         'cost_estimation_defaults_description' => 'برای برنامه‌ریزی در برآوردگر هزینه استفاده می‌شود. بر صورتحساب واقعی تأثیری ندارد.',
         'model_details' => 'مشخصات مدل',
         'token_pricing' => 'قیمت‌گذاری توکن',
-        'token_pricing_description' => 'قیمت هر یک میلیون توکن به واحد پول پلتفرم. مقادیر اعشاری بدون جداکننده هزارگان وارد شوند.',
+        'token_pricing_description' => 'قیمت هر یک میلیون توکن به ارز واحد (نه ارز کیف پول). برای تبدیل به ارز کیف پول، نرخ را در صورتحساب پلتفرم تنظیم کنید.',
     ],
 
     'relation_managers' => [
