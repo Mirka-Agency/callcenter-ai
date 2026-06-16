@@ -35,6 +35,16 @@ trait InteractsWithProcessingQueue
         $this->resetPage();
     }
 
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
     public function bootInteractsWithProcessingQueue(): void
     {
         app(ProcessingQueueFlusher::class)->syncOrphans($this->queueOrganizationId());

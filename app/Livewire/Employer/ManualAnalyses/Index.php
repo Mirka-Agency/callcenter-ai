@@ -59,6 +59,10 @@ class Index extends Component
 
     public ?string $dateUntil = null;
 
+    public ?string $draftCustomFrom = null;
+
+    public ?string $draftCustomTo = null;
+
     public ?string $highlightedSampleId = null;
 
     public function mount(): void
@@ -68,6 +72,31 @@ class Index extends Component
         if ($sampleId !== '' && SampleConversations::find($sampleId) !== null) {
             $this->highlightedSampleId = $sampleId;
         }
+
+        $this->draftCustomFrom = $this->dateFrom;
+        $this->draftCustomTo = $this->dateUntil;
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterEmployeeId(): void
+    {
+        $this->resetPage();
+    }
+
+    public function applyCustomDateRange(?string $from = null, ?string $to = null): void
+    {
+        if ($from !== null || $to !== null) {
+            $this->draftCustomFrom = $from ?: null;
+            $this->draftCustomTo = $to ?: null;
+        }
+
+        $this->dateFrom = $this->draftCustomFrom;
+        $this->dateUntil = $this->draftCustomTo;
+        $this->resetPage();
     }
 
     public function submitForAnalysis(ManualAudioUploadService $uploadService): void

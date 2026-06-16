@@ -1,5 +1,5 @@
 <div class="space-y-8">
-    <div>
+    <div data-tour="crm-header">
         <h1 class="text-3xl font-semibold tracking-tight">یکپارچه‌سازی CRM</h1>
         <p class="mt-2 text-zinc-500">CRM خود را متصل کنید تا شناسه تماس‌گیرنده شناسایی شود و هوش مشتری در تماس‌های ورودی غنی‌تر گردد.</p>
     </div>
@@ -17,7 +17,7 @@
             </p>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-2">
+        <div class="grid gap-4 md:grid-cols-2" data-tour="crm-connections">
             @foreach ($connections as $connection)
                 <div class="saas-card">
                     <div class="flex items-center justify-between">

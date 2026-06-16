@@ -59,7 +59,12 @@ readonly class AnalysisListFilter
     public function hasActiveFilters(): bool
     {
         return $this->employeeId !== null
-            || $this->statuses !== []
+            || $this->hasUserFilters();
+    }
+
+    public function hasUserFilters(): bool
+    {
+        return $this->statuses !== []
             || $this->direction !== null
             || $this->minDurationSeconds !== null
             || $this->maxDurationSeconds !== null

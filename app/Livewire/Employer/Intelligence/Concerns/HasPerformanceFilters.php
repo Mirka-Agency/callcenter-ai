@@ -6,6 +6,7 @@ use App\DTOs\ReportFilter;
 use App\Enums\ReportDatePreset;
 use App\Services\EmployerContext;
 use Carbon\Carbon;
+use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 
 trait HasPerformanceFilters
@@ -23,9 +24,19 @@ trait HasPerformanceFilters
     #[Url(as: 'employees')]
     public array $selectedEmployeeIds = [];
 
-    public function updatedCustomFrom(): void
+    public bool $showMoreDatePresets = false;
+
+    public bool $showCustomDateRange = false;
+
+    public ?string $draftCustomFrom = null;
+
+    public ?string $draftCustomTo = null;
+
+    public function mountPerformanceFilters(): void
     {
-        $this->datePreset = ReportDatePreset::Custom->value;
+        $this->showCustomDateRange = $this->datePreset === ReportDatePreset::Custom->value;
+        $this->draftCustomFrom = $this->customFrom;
+        $this->draftCustomTo = $this->customTo;
     }
 
     public function updatedDatePreset(): void
@@ -33,12 +44,8 @@ trait HasPerformanceFilters
         if ($this->datePreset !== ReportDatePreset::Custom->value) {
             $this->customFrom = null;
             $this->customTo = null;
+            $this->showCustomDateRange = false;
         }
-    }
-
-    public function updatedCustomTo(): void
-    {
-        $this->datePreset = ReportDatePreset::Custom->value;
     }
 
     public function updatedSelectedEmployeeIds(): void
@@ -48,9 +55,91 @@ trait HasPerformanceFilters
         ));
     }
 
+    public function setDatePreset(string $preset): void
+    {
+        $this->datePreset = $preset;
+
+        if ($preset !== ReportDatePreset::Custom->value) {
+            $this->customFrom = null;
+            $this->customTo = null;
+            $this->draftCustomFrom = null;
+            $this->draftCustomTo = null;
+            $this->showCustomDateRange = false;
+        } else {
+            $this->showCustomDateRange = true;
+            $this->draftCustomFrom = $this->customFrom;
+            $this->draftCustomTo = $this->customTo;
+        }
+    }
+
+    #[Renderless]
+    public function openCustomDateRangePanel(): void
+    {
+        $this->showCustomDateRange = true;
+        $this->draftCustomFrom = $this->customFrom;
+        $this->draftCustomTo = $this->customTo;
+    }
+
+    public function closeCustomDateRangePanel(): void
+    {
+        if (! $this->showCustomDateRange) {
+            return;
+        }
+
+        $this->showCustomDateRange = false;
+
+        if ($this->datePreset === ReportDatePreset::Custom->value) {
+            $this->setDatePreset(ReportDatePreset::Last30->value);
+        }
+    }
+
+    public function toggleCustomDateRange(): void
+    {
+        if ($this->showCustomDateRange) {
+            $this->closeCustomDateRangePanel();
+
+            return;
+        }
+
+        $this->openCustomDateRangePanel();
+    }
+
+    public function applyCustomDateRange(?string $from = null, ?string $to = null): void
+    {
+        if ($from !== null || $to !== null) {
+            $this->draftCustomFrom = $from ?: null;
+            $this->draftCustomTo = $to ?: null;
+        }
+
+        $this->customFrom = $this->draftCustomFrom;
+        $this->customTo = $this->draftCustomTo;
+        $this->datePreset = ReportDatePreset::Custom->value;
+        $this->showCustomDateRange = true;
+    }
+
+    #[Renderless]
+    public function toggleMoreDatePresets(): void
+    {
+        $this->showMoreDatePresets = ! $this->showMoreDatePresets;
+    }
+
+    public function clearDateFilter(): void
+    {
+        $this->setDatePreset(ReportDatePreset::Last30->value);
+        $this->draftCustomFrom = null;
+        $this->draftCustomTo = null;
+    }
+
     public function clearEmployeeFilter(): void
     {
         $this->selectedEmployeeIds = [];
+    }
+
+    public function clearFilters(): void
+    {
+        $this->setDatePreset(ReportDatePreset::Last30->value);
+        $this->clearEmployeeFilter();
+        $this->showMoreDatePresets = false;
     }
 
     protected function performanceFilter(?int $employeeId = null): ReportFilter

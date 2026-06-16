@@ -24,7 +24,7 @@ use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 #[Layout('layouts.employee')]
-#[Title('آپلودهای من')]
+#[Title('آپلود تماس')]
 class Index extends Component
 {
     use DispatchesUploadToasts;
@@ -48,6 +48,16 @@ class Index extends Component
 
     public ?string $conversationDate = null;
 
+    public string $search = '';
+
+    public ?string $dateFrom = null;
+
+    public ?string $dateUntil = null;
+
+    public ?string $draftCustomFrom = null;
+
+    public ?string $draftCustomTo = null;
+
     public ?string $highlightedSampleId = null;
 
     public function mount(): void
@@ -57,6 +67,26 @@ class Index extends Component
         if ($sampleId !== '' && SampleConversations::find($sampleId) !== null) {
             $this->highlightedSampleId = $sampleId;
         }
+
+        $this->draftCustomFrom = $this->dateFrom;
+        $this->draftCustomTo = $this->dateUntil;
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function applyCustomDateRange(?string $from = null, ?string $to = null): void
+    {
+        if ($from !== null || $to !== null) {
+            $this->draftCustomFrom = $from ?: null;
+            $this->draftCustomTo = $to ?: null;
+        }
+
+        $this->dateFrom = $this->draftCustomFrom;
+        $this->dateUntil = $this->draftCustomTo;
+        $this->resetPage();
     }
 
     public function submitForAnalysis(ManualAudioUploadService $uploadService): void
@@ -124,9 +154,8 @@ class Index extends Component
             return;
         }
 
-        $this->reset(['audio', 'title', 'customerName', 'customerPhone', 'notes', 'category', 'tags', 'conversationDate']);
-        $this->selectedFileName = null;
-        $this->selectedFileSize = null;
+        $this->resetUploadFormFields();
+        $this->markUploadZoneSuccess();
         $this->dispatchUploadSuccessToast(route('employee.uploads.show', $callId));
     }
 
@@ -195,9 +224,8 @@ class Index extends Component
             return;
         }
 
-        $this->reset(['audio', 'title', 'customerName', 'customerPhone', 'notes', 'category', 'tags', 'conversationDate']);
-        $this->selectedFileName = null;
-        $this->selectedFileSize = null;
+        $this->resetUploadFormFields();
+        $this->markUploadZoneSuccess();
         $this->dispatchUploadSuccessToast(route('employee.uploads.show', $callId));
     }
 
@@ -206,22 +234,30 @@ class Index extends Component
 
     public function render()
     {
+        $membershipId = EmployeeContext::membership()->id;
+
         $uploads = Call::query()
             ->where('organization_id', EmployeeContext::organizationId())
             ->where('source', ConversationSource::ManualUpload)
-            ->where(function ($query) {
-                $membershipId = EmployeeContext::membership()->id;
-
+            ->where(function ($query) use ($membershipId) {
                 $query->where('organization_user_id', $membershipId)
                     ->orWhere('uploader_id', auth()->id());
             })
+            ->when($this->search, fn ($q) => $q->where(function ($query) {
+                $query->where('title', 'like', "%{$this->search}%")
+                    ->orWhere('customer_name', 'like', "%{$this->search}%")
+                    ->orWhere('customer_phone', 'like', "%{$this->search}%");
+            }))
+            ->when($this->dateFrom, fn ($q) => $q->whereDate('created_at', '>=', $this->dateFrom))
+            ->when($this->dateUntil, fn ($q) => $q->whereDate('created_at', '<=', $this->dateUntil))
             ->withPlayableOrAnalyzedAudio()
             ->with(['latestAnalysis', 'recording', 'processingJob'])
             ->latest()
-            ->paginate(12);
+            ->paginate(15);
 
         return view('livewire.employee.uploads.index', [
             'uploads' => $uploads,
+            'membership' => EmployeeContext::membership()->load('user'),
             'organizationId' => EmployeeContext::organizationId(),
             'wallet' => app(AiBillingService::class)->walletOverview(EmployeeContext::organizationId()),
             'sampleConversations' => SampleConversations::all(),

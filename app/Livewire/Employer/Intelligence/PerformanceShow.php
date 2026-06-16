@@ -24,6 +24,7 @@ class PerformanceShow extends Component
     {
         abort_unless($employee->organization_id === EmployerContext::organizationId(), 404);
         $this->employee = $employee->load('user');
+        $this->mountPerformanceFilters();
     }
 
     public function export(string $format)
@@ -43,10 +44,29 @@ class PerformanceShow extends Component
         $filter = $this->performanceFilter($this->employee->id);
         $profile = app(EmployeePerformanceAnalytics::class)->employeeProfile($filter, $this->employee);
 
+        $employees = OrganizationUser::query()
+            ->where('organization_id', EmployerContext::organizationId())
+            ->where('is_active', true)
+            ->with('user:id,avatar_path,name')
+            ->orderBy('first_name')
+            ->get(['id', 'user_id', 'first_name', 'last_name', 'department']);
+
         return view('livewire.employer.intelligence.performance-show', [
             'profile' => $profile,
-            'presets' => ReportDatePreset::selectable(),
             'filter' => $filter,
+            'filterEmployees' => $employees,
+            'primaryDatePresets' => [
+                ReportDatePreset::Today,
+                ReportDatePreset::Yesterday,
+                ReportDatePreset::Last7,
+                ReportDatePreset::Last30,
+                ReportDatePreset::ThisMonth,
+            ],
+            'moreDatePresets' => [
+                ReportDatePreset::PreviousMonth,
+                ReportDatePreset::CurrentQuarter,
+                ReportDatePreset::CurrentYear,
+            ],
         ]);
     }
 }

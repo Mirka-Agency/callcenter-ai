@@ -141,24 +141,15 @@
         ],
     ];
 
-    $filterLoadingTargets = 'datePreset,customFrom,customTo,applyCustomDateRange,selectedEmployeeIds,compareMode,setDatePreset,toggleCustomDateRange,toggleMoreDatePresets,clearDateFilter,clearFilters,clearEmployeeFilter,toggleEmployee';
-    $overlayLoadingTargets = 'datePreset,customFrom,customTo,applyCustomDateRange,selectedEmployeeIds,compareMode,setDatePreset,toggleCustomDateRange,toggleMoreDatePresets,clearDateFilter,clearFilters,clearEmployeeFilter,toggleEmployee';
+    $filterLoadingTargets = 'datePreset,customFrom,customTo,applyCustomDateRange,selectedEmployeeIds,compareMode,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter,toggleEmployee';
+    $overlayLoadingTargets = 'datePreset,customFrom,customTo,applyCustomDateRange,selectedEmployeeIds,compareMode,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter,toggleEmployee';
 @endphp
 
 <div class="saas-page space-y-6">
-    <div
-        wire:loading.flex
-        wire:target="{{ $overlayLoadingTargets }}"
-        class="saas-loading-overlay hidden"
-    >
-        <div class="flex flex-col items-center gap-3 rounded-xl border border-zinc-200/80 bg-white/95 px-8 py-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900/95">
-            <span class="inline-flex h-10 w-10 animate-spin rounded-full border-[3px] border-indigo-500 border-t-transparent"></span>
-            <p class="text-sm font-semibold text-zinc-900 dark:text-white">در حال به‌روزرسانی گزارش...</p>
-            <p class="text-xs text-zinc-500">لطفاً چند لحظه صبر کنید</p>
-        </div>
-    </div>
+    <x-saas.filter-loading-overlay :target="$overlayLoadingTargets" />
 
     <x-saas.page-header
+        data-tour="page-header"
         title="گزارش‌های مدیریتی"
         description="داشبورد تصمیم‌گیری برای مدیران — عملکرد تیم، لیدها، نگرانی‌ها و مصرف هوش مصنوعی."
     >
@@ -176,7 +167,7 @@
         'filterEmployees' => $filterEmployees,
     ])
 
-    <section class="saas-hero saas-hero--accent">
+    <section class="saas-hero saas-hero--accent" data-tour="report-summary">
         <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">خلاصه مدیریتی</p>
         <p class="mt-3 text-base leading-8 text-zinc-700 dark:text-zinc-200">{{ $dashboard['executive_summary'] }}</p>
     </section>
@@ -196,6 +187,7 @@
         </div>
     @endif
 
+    <div data-tour="report-kpis" class="space-y-4">
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <x-saas.stat-card label="کل تماس‌ها" :value="number_format($kpis['total_calls'])" />
         <x-saas.stat-card label="تحلیل‌شده" :value="number_format($kpis['total_analyzed'])" :trend="$deltas['total_analyzed']" />
@@ -211,8 +203,9 @@
         <x-saas.stat-card label="هزینه AI" :value="$kpis['total_ai_cost']" :hint="number_format($kpis['total_tokens']).' توکن'" />
         <x-saas.stat-card label="برترین کارشناس" :value="$kpis['top_employee']" :hint="'امتیاز: '.$kpis['top_employee_score']" />
     </div>
+    </div>
 
-    <div class="grid gap-6 lg:grid-cols-2">
+    <div class="grid gap-6 lg:grid-cols-2" data-tour="report-charts">
         <div class="saas-card">
             <h2 class="text-lg font-semibold">روند فعالیت تماس</h2>
             <p class="mt-1 text-sm text-zinc-500">حجم تماس‌ها در بازه انتخاب‌شده — برای جزئیات روی هر میله کلیک کنید</p>
@@ -323,7 +316,7 @@
         </div>
     @endif
 
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="grid gap-4 sm:grid-cols-2" data-tour="report-rankings">
         @foreach ($rankingMeta as $key => $meta)
             @php
                 $accentClasses = match ($meta['accent']) {

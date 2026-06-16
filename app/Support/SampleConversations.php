@@ -14,38 +14,17 @@ class SampleConversations
         return [
             [
                 'id' => 'sales-follow-up',
-                'title' => 'پیگیری فروش',
+                'title' => 'پیگیری پیشنهاد فروش',
                 'description' => 'پیگیری پس از ارسال پیشنهاد قیمت به مشتری بالقوه',
                 'category' => 'فروش',
                 'filename' => '01-sales-follow-up.mp3',
             ],
             [
-                'id' => 'support-complaint',
-                'title' => 'رسیدگی به شکایت',
-                'description' => 'مکالمه پشتیبانی برای بررسی و حل نارضایتی مشتری',
-                'category' => 'پشتیبانی',
-                'filename' => '02-support-complaint.mp3',
-            ],
-            [
-                'id' => 'new-customer-welcome',
-                'title' => 'خوش‌آمدگویی مشتری جدید',
-                'description' => 'معرفی خدمات و راهنمایی اولیه برای مشتری تازه‌ثبت‌نام‌شده',
+                'id' => 'sales-subscription-renewal',
+                'title' => 'فروش و تمدید اشتراک',
+                'description' => 'تماس فروش برای ترغیب مشتری به تمدید یا ارتقای اشتراک',
                 'category' => 'فروش',
-                'filename' => '03-new-customer-welcome.mp3',
-            ],
-            [
-                'id' => 'subscription-renewal',
-                'title' => 'تمدید اشتراک',
-                'description' => 'تماس یادآوری و ترغیب به تمدید اشتراک در حال اتمام',
-                'category' => 'فروش',
-                'filename' => '04-subscription-renewal.mp3',
-            ],
-            [
-                'id' => 'technical-guidance',
-                'title' => 'راهنمایی فنی',
-                'description' => 'پاسخ به سؤال فنی مشتری و راهنمایی گام‌به‌گام',
-                'category' => 'پشتیبانی',
-                'filename' => '05-technical-guidance.mp3',
+                'filename' => '02-sales-subscription-renewal.mp3',
             ],
         ];
     }

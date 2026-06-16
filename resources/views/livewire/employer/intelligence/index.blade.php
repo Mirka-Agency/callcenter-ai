@@ -76,24 +76,15 @@
         ],
     ];
 
-    $filterLoadingTargets = 'search,datePreset,customFrom,customTo,applyCustomDateRange,filterEmployeeId,callStatus,directionFilter,durationMin,durationMax,applyQuickFilter,setDatePreset,toggleCustomDateRange,toggleMoreDatePresets,clearDateFilter,clearFilters,sortByColumn,filterByAgent';
-    $overlayLoadingTargets = 'datePreset,customFrom,customTo,applyCustomDateRange,filterEmployeeId,callStatus,directionFilter,durationMin,durationMax,applyQuickFilter,setDatePreset,toggleCustomDateRange,toggleMoreDatePresets,clearDateFilter,clearFilters,sortByColumn,filterByAgent';
+    $filterLoadingTargets = 'search,datePreset,customFrom,customTo,applyCustomDateRange,filterEmployeeId,callStatus,directionFilter,durationMin,durationMax,applyQuickFilter,setDatePreset,closeCustomDateRangePanel,toggleMoreDatePresets,clearDateFilter,clearFilters,sortByColumn,filterByAgent';
+    $overlayLoadingTargets = 'datePreset,customFrom,customTo,applyCustomDateRange,filterEmployeeId,callStatus,directionFilter,durationMin,durationMax,applyQuickFilter,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,sortByColumn,filterByAgent';
 @endphp
 
 <div class="saas-page space-y-6">
-    <div
-        wire:loading.flex
-        wire:target="{{ $overlayLoadingTargets }}"
-        class="saas-loading-overlay hidden"
-    >
-        <div class="flex flex-col items-center gap-3 rounded-xl border border-zinc-200/80 bg-white/95 px-8 py-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900/95">
-            <span class="inline-flex h-10 w-10 animate-spin rounded-full border-[3px] border-indigo-500 border-t-transparent"></span>
-            <p class="text-sm font-semibold text-zinc-900 dark:text-white">در حال به‌روزرسانی نتایج...</p>
-            <p class="text-xs text-zinc-500">لطفاً چند لحظه صبر کنید</p>
-        </div>
-    </div>
+    <x-saas.filter-loading-overlay :target="$overlayLoadingTargets" />
 
     <x-saas.page-header
+        data-tour="page-header"
         title="تحلیل تماس‌ها"
         description="پایش کیفیت مکالمات، روند تحلیل‌ها و بررسی جزئیات هر تماس در یک نما."
     >
@@ -113,7 +104,7 @@
     ])
 
     <div class="space-y-6">
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6" data-tour="analysis-stats">
         <x-saas.stat-card label="تحلیل‌های فیلترشده" :value="number_format($overview['total'])" />
         <x-saas.stat-card label="میانگین امتیاز" :value="$overview['average_score'] ?: '—'" hint="کیفیت مکالمه" />
         <x-saas.stat-card label="میانگین لید" :value="$overview['average_lead_score'] ?: '—'" :hint="$overview['high_lead_count'] ? $overview['high_lead_count'].' لید بالا' : null" />
@@ -141,7 +132,7 @@
         </div>
     @endif
 
-    <div class="grid gap-6 lg:grid-cols-2">
+    <div class="grid gap-6 lg:grid-cols-2" data-tour="analysis-charts">
         <div class="saas-card">
             <h2 class="text-lg font-semibold">روند کیفیت مکالمه</h2>
             <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز در بازه فیلتر فعلی</p>
@@ -209,7 +200,7 @@
         @endif
     </div>
 
-    <div class="saas-card overflow-hidden p-0">
+    <div class="saas-card overflow-hidden p-0" data-tour="analysis-list">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200/80 px-6 py-4 dark:border-zinc-800">
             <div>
                 <h2 class="text-lg font-semibold">لیست تحلیل مکالمات</h2>

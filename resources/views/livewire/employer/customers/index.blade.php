@@ -1,14 +1,15 @@
 <div class="saas-page space-y-8">
     <x-saas.page-header
+        data-tour="page-header"
         title="مشتریان"
         description="پایگاه هوش مشتری — ساخته‌شده خودکار از تحلیل تماس‌ها."
     />
 
-    <div class="saas-card">
+    <div class="saas-card" data-tour="customers-search">
         <input wire:model.live.debounce.300ms="search" type="search" placeholder="جستجو بر اساس نام، شرکت یا شماره..." class="saas-input max-w-md">
     </div>
 
-    <div class="grid gap-4 lg:grid-cols-2">
+    <div class="grid gap-4 lg:grid-cols-2" data-tour="customers-grid">
         @forelse ($customers as $customer)
             <x-saas.customer-card
                 :customer="$customer"

@@ -3,13 +3,7 @@ import './echo';
 import './waveform-player';
 import { initJalaliDateInputs } from './jalali-date-input';
 import { initReportCharts } from './reports-charts';
-
-document.addEventListener('keydown', (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent('open-command-palette'));
-    }
-});
+import { initEmployerOnboarding } from './employer-onboarding';
 
 function navigateTo(href) {
     if (! href) {
@@ -151,4 +145,10 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initClickableTableRows);
 } else {
     initClickableTableRows();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initEmployerOnboarding);
+} else {
+    initEmployerOnboarding();
 }

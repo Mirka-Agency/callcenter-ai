@@ -7,17 +7,21 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\EmployeePerformanceSnapshot;
 use App\Models\OrganizationUser;
+use App\Services\Performance\Calculators\JsonFieldAggregator;
 use App\Support\JalaliDate;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Carbon\CarbonInterface;
 
 class EmployeeDashboardAnalytics
 {
-    public function __construct(private OrganizationUser $employee) {}
+    public function __construct(
+        private OrganizationUser $employee,
+        private ?JsonFieldAggregator $jsonFieldAggregator = null,
+    ) {}
 
     public static function forEmployee(OrganizationUser $employee): self
     {
-        return new self($employee);
+        return new self($employee, app(JsonFieldAggregator::class));
     }
 
     public function cockpit(): array
@@ -59,23 +63,23 @@ class EmployeeDashboardAnalytics
         $badges = [];
 
         if ($cockpit['performance_score'] >= 90) {
-            $badges[] = ['icon' => 'star', 'title' => 'Top Performer', 'description' => 'Scored 90+ on recent analysis'];
+            $badges[] = ['icon' => 'star', 'title' => 'عملکرد برتر', 'description' => 'امتیاز ۹۰+ در تحلیل‌های اخیر'];
         }
         if ($cockpit['weekly_delta'] > 5) {
-            $badges[] = ['icon' => 'trend', 'title' => 'Rising Star', 'description' => 'Improved 5+ points this week'];
+            $badges[] = ['icon' => 'trend', 'title' => 'ستاره در حال رشد', 'description' => 'بیش از ۵ واحد بهبود در این هفته'];
         }
         if ($cockpit['analyzed_count'] >= 10) {
-            $badges[] = ['icon' => 'calls', 'title' => 'Conversation Pro', 'description' => '10+ analyzed conversations'];
+            $badges[] = ['icon' => 'calls', 'title' => 'حرفه‌ای مکالمه', 'description' => 'بیش از ۱۰ تماس تحلیل‌شده'];
         }
         if ($cockpit['customer_satisfaction'] >= 80) {
-            $badges[] = ['icon' => 'heart', 'title' => 'Customer Champion', 'description' => 'High customer satisfaction'];
+            $badges[] = ['icon' => 'heart', 'title' => 'قهرمان رضایت', 'description' => 'رضایت بالای مشتریان'];
         }
         if ($cockpit['monthly_delta'] > 0) {
-            $badges[] = ['icon' => 'growth', 'title' => 'Monthly Climber', 'description' => 'Positive monthly improvement'];
+            $badges[] = ['icon' => 'growth', 'title' => 'پیشرفت ماهانه', 'description' => 'رشد مثبت نسبت به ماه قبل'];
         }
 
         if (empty($badges)) {
-            $badges[] = ['icon' => 'sparkles', 'title' => 'Getting Started', 'description' => 'Complete more calls to earn badges'];
+            $badges[] = ['icon' => 'sparkles', 'title' => 'شروع مسیر', 'description' => 'با تحلیل تماس‌های بیشتر نشان‌ها را باز کنید'];
         }
 
         return $badges;
@@ -100,30 +104,41 @@ class EmployeeDashboardAnalytics
 
     public function recommendations(): array
     {
-        $weaknesses = [];
+        return collect($this->topImprovementAreas(5, 10)['items'])
+            ->map(fn (array $row) => [
+                'topic' => $row['item'],
+                'priority' => $row['count'] >= 3 ? 'high' : ($row['count'] >= 2 ? 'medium' : 'low'),
+                'occurrences' => $row['count'],
+                'tip' => "روی «{$row['item']}» در مکالمات بعدی تمرکز کنید.",
+            ])
+            ->all();
+    }
 
-        $this->analysisQuery()
-            ->latest('analyzed_at')
-            ->limit(10)
-            ->get()
-            ->each(function (ConversationAnalysis $analysis) use (&$weaknesses) {
-                foreach ($analysis->weaknesses_json ?? [] as $weakness) {
-                    $weaknesses[$weakness] = ($weaknesses[$weakness] ?? 0) + 1;
-                }
-            });
+    /** @return list<array{item: string, count: int}> */
+    public function topStrengths(int $limit = 5): array
+    {
+        return $this->aggregator()->rankedItems(
+            $this->analysisQuery()->latest('analyzed_at')->limit(20)->get(),
+            'strengths_json',
+            $limit,
+        );
+    }
 
-        arsort($weaknesses);
-
-        return array_slice(array_map(
-            fn ($item, $count) => [
-                'topic' => $item,
-                'priority' => $count >= 3 ? 'high' : ($count >= 2 ? 'medium' : 'low'),
-                'occurrences' => $count,
-                'tip' => "Focus coaching on: {$item}",
-            ],
-            array_keys($weaknesses),
-            array_values($weaknesses),
-        ), 0, 5);
+    /** @return array{items: list<array{item: string, count: int}>, derived: bool} */
+    public function topImprovementAreas(int $limit = 5, int $analysisLimit = 50): array
+    {
+        return $this->aggregator()->rankedImprovementAreas(
+            $this->analysisQuery()
+                ->latest('analyzed_at')
+                ->limit($analysisLimit)
+                ->get([
+                    'weaknesses_json',
+                    'performance_dimensions_json',
+                    'concerns_json',
+                    'operational_insights_json',
+                ]),
+            $limit,
+        );
     }
 
     public function recentCalls(): array
@@ -158,7 +173,12 @@ class EmployeeDashboardAnalytics
             ->where('organization_user_id', $this->employee->id);
     }
 
-    private function periodAverage(?Carbon $from = null, ?Carbon $to = null): ?float
+    private function aggregator(): JsonFieldAggregator
+    {
+        return $this->jsonFieldAggregator ??= app(JsonFieldAggregator::class);
+    }
+
+    private function periodAverage(?CarbonInterface $from = null, ?CarbonInterface $to = null): ?float
     {
         $query = $this->analysisQuery();
 

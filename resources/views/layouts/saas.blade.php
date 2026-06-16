@@ -8,6 +8,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
     <title>{{ $title ?? config('app.name') }}</title>
+    @if (($portal ?? '') === 'employer')
+        @php
+            $onboardingRoutes = \App\Support\Onboarding\EmployerOnboarding::routeUrls();
+        @endphp
+        <script>
+            window.__employerOnboarding = {
+                currentRoute: @json(\Illuminate\Support\Facades\Route::currentRouteName()),
+                routes: @json($onboardingRoutes),
+            };
+        </script>
+    @endif
     @vite(['resources/css/saas.css', 'resources/js/saas.js'])
     @livewireStyles
     <script>
@@ -17,7 +28,7 @@
         })();
     </script>
 </head>
-<body class="saas-shell" x-data="{ commandOpen: false, sidebarOpen: false }" @open-command-palette.window="commandOpen = true" @keydown.escape.window="commandOpen = false">
+<body class="saas-shell" x-data="{ sidebarOpen: false }" @keydown.escape.window="sidebarOpen = false">
     @include('components.saas.impersonation-banner')
 
     @include('components.saas.sidebar', ['portal' => $portal ?? 'employer', 'navItems' => $navItems ?? []])
@@ -30,8 +41,6 @@
         </main>
     </div>
 
-    @include('components.saas.command-palette', ['navItems' => $navItems ?? []])
-
     @if (($portal ?? '') === 'employee' && auth()->check())
         <livewire:employee.incoming-call-center />
     @endif
@@ -39,6 +48,10 @@
     @auth
         @include('components.saas.toast-stack')
     @endauth
+
+    @if (($portal ?? '') === 'employer')
+        <x-saas.onboarding-tour portal="employer" />
+    @endif
 
     @livewireScripts
     <script>

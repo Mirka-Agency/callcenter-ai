@@ -1,5 +1,5 @@
 <div class="space-y-8">
-    <div>
+    <div data-tour="voip-header">
         <h1 class="text-3xl font-semibold tracking-tight">VoIP</h1>
         <p class="mt-2 text-zinc-500">سیستم تلفن خود را متصل کنید تا تماس‌های ورودی و شناسه تماس‌گیرنده را در فضای کاری کارشناس دریافت کنید.</p>
     </div>
@@ -10,7 +10,7 @@
             'description' => 'تنظیمات VoIP هنوز کامل نشده‌اند. پس از اتصال و تأیید سرویس، جزئیات تماس و وب‌هوک اینجا نمایش داده می‌شود.',
         ])
     @else
-        <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100">
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100" data-tour="voip-guide">
             <p class="font-medium">راهنمای اتصال VoIP</p>
             <p class="mt-1 text-emerald-800/90 dark:text-emerald-200/90">
                 وب‌هوک ارائه‌دهنده VoIP خود را به <code class="rounded bg-white/60 px-1 dark:bg-black/30">/webhooks/voip/{connection_id}</code> برای رویدادهای تماس هدایت کنید.
@@ -22,13 +22,13 @@
             </p>
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-3">
+        <div class="grid gap-4 sm:grid-cols-3" data-tour="voip-stats">
             <x-saas.stat-card label="تماس‌های امروز" :value="$todayCalls" />
             <x-saas.stat-card label="این ماه" :value="$monthCalls" />
             <x-saas.stat-card label="اتصالات" :value="$connections->where('is_active', true)->count()" />
         </div>
 
-        <div class="grid gap-4 md:grid-cols-2">
+        <div class="grid gap-4 md:grid-cols-2" data-tour="voip-connections">
             @foreach ($connections as $connection)
                 <div class="saas-card">
                     <h3 class="font-semibold">{{ $connection->name }}</h3>

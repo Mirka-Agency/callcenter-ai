@@ -1,79 +1,38 @@
-<div class="space-y-8">
+<div class="saas-page space-y-10">
+    @php
+        $filterLoadingTargets = 'search,applyCustomDateRange';
+    @endphp
+
+    <x-saas.filter-loading-overlay :target="$filterLoadingTargets" />
+
     <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
-            <h1 class="text-3xl font-semibold tracking-tight">آپلودهای من</h1>
-            <p class="mt-2 text-zinc-500">فایل‌های صوتی را برای تحلیل هوش مصنوعی آپلود کنید.</p>
+            <p class="text-sm font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">آپلود تماس</p>
+            <h1 class="text-3xl font-semibold tracking-tight">تحلیل هوشمند مکالمات</h1>
+            <p class="mt-2 max-w-2xl text-zinc-500">فایل صوتی تماس را آپلود کنید — هوش مصنوعی در چند دقیقه گفتار، کیفیت و عملکرد را تحلیل می‌کند.</p>
         </div>
-        <a href="{{ route('employee.processing-queue.index') }}" class="saas-btn-secondary">صف پردازش</a>
+        <a href="{{ route('employee.processing-queue.index') }}" class="saas-btn-secondary shrink-0">صف پردازش</a>
     </div>
 
-    @if (($wallet['balance'] ?? 0) <= 0)
+    @if (($wallet['balance'] ?? 0) < (($wallet['currency'] ?? 'IRR') === 'IRR' ? 1000 : 0.01))
         <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
             موجودی کیف پول هوش مصنوعی کافی نیست ({{ \App\Models\PlatformAiSettings::formatMoney($wallet['balance'] ?? 0) }}).
-            تا زمانی که سازمان کیف پول هوش مصنوعی را شارژ نکند، آپلودها با خطا مواجه می‌شوند.
+            تا زمانی که سازمان کیف پول را شارژ نکند، آپلودها با خطا مواجه می‌شوند.
+        </div>
+    @elseif (($wallet['balance'] ?? 0) < (($wallet['currency'] ?? 'IRR') === 'IRR' ? 100_000 : 10))
+        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+            موجودی کیف پول کم است ({{ \App\Models\PlatformAiSettings::formatMoney($wallet['balance']) }}). قبل از حجم بالای تحلیل، شارژ کیف پول سازمان را در نظر بگیرید.
         </div>
     @endif
 
     <div class="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <div class="saas-card">
-            <h2 class="text-lg font-semibold">آپلود فایل صوتی</h2>
-            <p class="mt-1 text-sm text-zinc-500">فرمت‌های پشتیبانی‌شده: mp3، wav، m4a، ogg، flac (حداکثر ۵۰ مگابایت)</p>
-
-            <div class="mt-6 grid gap-4 lg:grid-cols-2">
-                <div class="lg:col-span-2">
-                    <label class="text-sm font-medium">فایل صوتی *</label>
-                    <input wire:model="audio" type="file" accept=".mp3,.wav,.m4a,.ogg,.flac,audio/*" class="saas-input mt-1">
-                    @error('audio') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    <div wire:loading wire:target="audio" class="mt-2 text-sm text-amber-600">در حال آپلود فایل...</div>
-                    <div wire:loading.remove wire:target="audio" class="mt-2 text-xs text-zinc-500">
-                        فایل صوتی را انتخاب کنید، سپس روی <strong>آپلود و تحلیل</strong> کلیک کنید.
-                    </div>
-                </div>
-
-                <div>
-                    <label class="text-sm font-medium">عنوان</label>
-                    <input wire:model="title" class="saas-input mt-1" placeholder="عنوان اختیاری">
-                </div>
-                <div>
-                    <label class="text-sm font-medium">دسته‌بندی</label>
-                    <input wire:model="category" class="saas-input mt-1" placeholder="مثلاً فروش، پشتیبانی">
-                </div>
-                <div>
-                    <label class="text-sm font-medium">نام مشتری</label>
-                    <input wire:model="customerName" class="saas-input mt-1">
-                </div>
-                <div>
-                    <label class="text-sm font-medium">تلفن مشتری</label>
-                    <input wire:model="customerPhone" class="saas-input mt-1">
-                </div>
-                <div>
-                    <label class="text-sm font-medium">تاریخ مکالمه</label>
-                    <input wire:model="conversationDate" type="datetime-local" class="saas-input mt-1">
-                </div>
-                <div>
-                    <label class="text-sm font-medium">برچسب‌ها</label>
-                    <input wire:model="tags" class="saas-input mt-1" placeholder="با کاما جدا کنید">
-                </div>
-                <div class="lg:col-span-2">
-                    <label class="text-sm font-medium">یادداشت‌ها</label>
-                    <textarea wire:model="notes" rows="3" class="saas-input mt-1"></textarea>
-                </div>
-
-                <div class="lg:col-span-2">
-                    <button
-                        type="button"
-                        id="upload-analyze-button"
-                        wire:click="submitForAnalysis"
-                        wire:loading.attr="disabled"
-                        wire:target="submitForAnalysis"
-                        class="saas-btn-primary"
-                    >
-                        <span wire:loading.remove wire:target="submitForAnalysis">آپلود و تحلیل</span>
-                        <span wire:loading wire:target="submitForAnalysis">در حال تحلیل فایل...</span>
-                    </button>
-                    <p wire:loading wire:target="submitForAnalysis" class="mt-2 text-sm text-blue-600">فایل در صف پردازش قرار گرفت...</p>
-                </div>
-            </div>
+        <div class="saas-card border-indigo-200/50 shadow-md shadow-indigo-500/5 dark:border-indigo-500/20">
+            <x-saas.manual-upload-panel
+                :upload-zone-state="$uploadZoneState"
+                :selected-file-name="$selectedFileName"
+                :selected-file-size="$selectedFileSize"
+                :show-metadata="$showMetadata"
+            />
         </div>
 
         <x-saas.sample-conversations
@@ -82,37 +41,67 @@
         />
     </div>
 
-    <div class="grid gap-4">
-        @forelse ($uploads as $upload)
-            <a href="{{ route('employee.uploads.show', $upload) }}" class="saas-card block transition hover:border-zinc-300 dark:hover:border-zinc-600" wire:key="upload-{{ $upload->id }}">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <p class="font-semibold">{{ $upload->displayTitle() }}</p>
-                        <p class="mt-1 text-sm text-zinc-500">
-                            {{ shamsi($upload->created_at, 'datetime') }}
-                            @if ($upload->customer_name) · {{ $upload->customer_name }} @endif
-                        </p>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        @include('livewire.shared.upload-status-badge', ['call' => $upload, 'analysis' => $upload->latestAnalysis])
-                        @if ($upload->latestAnalysis)
-                            <span class="text-xl font-bold text-emerald-600">{{ $upload->latestAnalysis->score }}</span>
-                        @endif
-                    </div>
-                </div>
-                @include('livewire.shared.processing-job-progress', ['job' => $upload->processingJob])
-                @if ($upload->latestAnalysis)
-                    <p class="mt-3 text-xs text-zinc-400">
-                        {{ number_format($upload->latestAnalysis->total_tokens) }} توکن · {{ \App\Models\PlatformAiSettings::formatMoney($upload->latestAnalysis->cost) }}
-                    </p>
-                @endif
-            </a>
-        @empty
-            <x-saas.empty-state title="هنوز آپلودی وجود ندارد" description="یک فایل صوتی آپلود کنید تا تحلیل هوش مصنوعی آغاز شود." />
-        @endforelse
-    </div>
+    <div class="space-y-4">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+                <h2 class="text-xl font-semibold">آپلودهای اخیر من</h2>
+                <p class="mt-1 text-sm text-zinc-500">تاریخچه تحلیل‌های دستی شما</p>
+            </div>
+        </div>
 
-    {{ $uploads->links() }}
+        <div class="saas-card">
+            <div class="grid gap-4 sm:grid-cols-2">
+                <input wire:model.live.debounce.300ms="search" type="search" placeholder="جستجو در عنوان، مشتری یا تلفن..." class="saas-input text-sm">
+            </div>
+
+            <div data-deferred-date-range class="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-indigo-200/80 bg-indigo-50/50 px-4 py-3 dark:border-indigo-500/30 dark:bg-indigo-950/20">
+                <label class="text-sm text-zinc-500">از</label>
+                <x-saas.jalali-date-input wire:key="employee-upload-date-from" wire:model="draftCustomFrom" defer class="text-sm" />
+                <label class="text-sm text-zinc-500">تا</label>
+                <x-saas.jalali-date-input wire:key="employee-upload-date-until" wire:model="draftCustomTo" defer class="text-sm" />
+                <button type="button" data-apply-deferred-date-range class="saas-btn-primary text-sm">
+                    تایید بازه
+                </button>
+            </div>
+        </div>
+
+        <div class="grid gap-4" wire:loading.class="opacity-60" wire:target="{{ $filterLoadingTargets }}">
+            @forelse ($uploads as $upload)
+                <a href="{{ route('employee.uploads.show', $upload) }}" class="saas-card block transition hover:border-zinc-300 dark:hover:border-zinc-600" wire:key="upload-{{ $upload->id }}">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex min-w-0 items-center gap-4">
+                            <x-saas.avatar :employee="$membership" size="md" />
+                            <div class="min-w-0">
+                                <p class="font-semibold">{{ $upload->displayTitle() }}</p>
+                                <p class="mt-1 text-sm text-zinc-500">
+                                    {{ shamsi($upload->created_at, 'datetime') }}
+                                    @if ($upload->customer_name)
+                                        · {{ $upload->customer_name }}
+                                    @endif
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            @include('livewire.shared.upload-status-badge', ['call' => $upload, 'analysis' => $upload->latestAnalysis])
+                            @if ($upload->latestAnalysis)
+                                <span class="text-xl font-bold text-emerald-600">{{ $upload->latestAnalysis->score }}</span>
+                            @endif
+                        </div>
+                    </div>
+                    @include('livewire.shared.processing-job-progress', ['job' => $upload->processingJob])
+                    @if ($upload->latestAnalysis)
+                        <p class="mt-3 text-xs text-zinc-400">
+                            {{ number_format($upload->latestAnalysis->total_tokens) }} توکن · {{ \App\Models\PlatformAiSettings::formatMoney($upload->latestAnalysis->cost) }}
+                        </p>
+                    @endif
+                </a>
+            @empty
+                <x-saas.empty-state title="آپلود دستی وجود ندارد" description="اولین تماس خود را در بالا آپلود کنید تا تحلیل آغاز شود." />
+            @endforelse
+        </div>
+
+        {{ $uploads->links() }}
+    </div>
 </div>
 
 @script
@@ -134,11 +123,6 @@
                     }));
                 }
             });
-    }
-
-    const uploadBtn = document.getElementById('upload-analyze-button');
-    if (uploadBtn) {
-        uploadBtn.addEventListener('click', () => {});
     }
 </script>
 @endscript

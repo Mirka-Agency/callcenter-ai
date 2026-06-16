@@ -1,6 +1,7 @@
 <aside
     class="saas-sidebar -translate-x-full rtl:translate-x-full lg:translate-x-0 rtl:lg:translate-x-0"
     :class="{ 'translate-x-0 rtl:translate-x-0': sidebarOpen }"
+    data-tour="sidebar"
     x-cloak
 >
     <div class="flex h-16 items-center gap-3 border-b border-zinc-200/80 px-5 dark:border-zinc-800">
@@ -24,6 +25,7 @@
             @endphp
             <a
                 href="{{ route($item['route']) }}"
+                data-tour-nav="{{ $item['route'] }}"
                 @class([
                     'saas-nav-item',
                     'saas-nav-item-active' => $isActive,
@@ -70,7 +72,7 @@
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit" class="saas-nav-item w-full text-start">
-                    <x-saas.icon name="home" class="h-4 w-4" />
+                    <x-saas.icon name="logout" class="h-4 w-4" />
                     خروج
                 </button>
             </form>

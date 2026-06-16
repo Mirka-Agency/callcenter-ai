@@ -30,10 +30,15 @@
     ];
 
     $profileUrl = fn (array $agent) => route('employer.intelligence.performance.show', $agent['id']).'?preset='.$datePreset.'&from='.$customFrom.'&to='.$customTo;
+
+    $filterLoadingTargets = 'datePreset,customFrom,customTo,applyCustomDateRange,selectedEmployeeIds,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter';
 @endphp
 
-<div class="space-y-6" wire:loading.class="opacity-60">
+<div class="saas-page space-y-6">
+    <x-saas.filter-loading-overlay :target="$filterLoadingTargets" />
+
     <x-saas.page-header
+        data-tour="page-header"
         title="عملکرد کارشناسان"
         description="مقایسه، رتبه‌بندی و شناسایی فرصت‌های مربیگری تیم تماس."
     >
@@ -44,9 +49,14 @@
         </x-slot:actions>
     </x-saas.page-header>
 
-    @include('livewire.employer.intelligence.partials.performance-filters')
+    @include('livewire.employer.intelligence.partials.performance-filters', [
+        'primaryDatePresets' => $primaryDatePresets,
+        'moreDatePresets' => $moreDatePresets,
+        'filterEmployees' => $filterEmployees,
+    ])
 
-    <section class="saas-hero saas-hero--accent">
+    <div class="space-y-6" wire:loading.class="opacity-60" wire:target="{{ $filterLoadingTargets }}">
+    <section class="saas-hero saas-hero--accent" data-tour="performance-summary">
         <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">جمع‌بندی مدیریتی</p>
         <p class="mt-3 text-base leading-8 text-zinc-700 dark:text-zinc-200">{{ $dashboard['executive_summary'] }}</p>
     </section>
@@ -58,7 +68,7 @@
         <x-saas.stat-card label="میانگین رضایت مشتری" :value="$kpis['average_sentiment'] ? $kpis['average_sentiment'].'%' : '—'" :trend="$deltas['average_sentiment']" />
     </div>
 
-    <section class="space-y-4" x-data="{ filter: 'all' }">
+    <section class="space-y-4" data-tour="performance-cards" x-data="{ filter: 'all' }">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h2 class="text-xl font-semibold">کارت‌های عملکرد</h2>
@@ -84,7 +94,7 @@
         </div>
     </section>
 
-    <div class="grid gap-6 lg:grid-cols-2">
+    <div class="grid gap-6 lg:grid-cols-2" data-tour="performance-charts">
         <div class="saas-card">
             <h2 class="text-lg font-semibold">روند کیفیت مکالمه</h2>
             <div class="mt-4 h-64" wire:ignore>
@@ -145,7 +155,7 @@
         ];
     @endphp
 
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="grid gap-4 sm:grid-cols-2" data-tour="performance-rankings">
         @foreach ($rankingMeta as $key => $meta)
             @php
                 $accentClasses = match ($meta['accent']) {
@@ -199,5 +209,6 @@
                 </ol>
             </div>
         @endforeach
+    </div>
     </div>
 </div>

@@ -6,6 +6,7 @@ use App\DTOs\ReportFilter;
 use App\Enums\ReportDatePreset;
 use App\Services\EmployerContext;
 use Carbon\Carbon;
+use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 
 trait HasReportFilters
@@ -74,16 +75,36 @@ trait HasReportFilters
         }
     }
 
-    public function toggleCustomDateRange(): void
+    #[Renderless]
+    public function openCustomDateRangePanel(): void
     {
-        $this->showCustomDateRange = ! $this->showCustomDateRange;
+        $this->showCustomDateRange = true;
+        $this->draftCustomFrom = $this->customFrom;
+        $this->draftCustomTo = $this->customTo;
+    }
 
-        if ($this->showCustomDateRange) {
-            $this->draftCustomFrom = $this->customFrom;
-            $this->draftCustomTo = $this->customTo;
-        } elseif ($this->datePreset === ReportDatePreset::Custom->value) {
+    public function closeCustomDateRangePanel(): void
+    {
+        if (! $this->showCustomDateRange) {
+            return;
+        }
+
+        $this->showCustomDateRange = false;
+
+        if ($this->datePreset === ReportDatePreset::Custom->value) {
             $this->setDatePreset(ReportDatePreset::Last30->value);
         }
+    }
+
+    public function toggleCustomDateRange(): void
+    {
+        if ($this->showCustomDateRange) {
+            $this->closeCustomDateRangePanel();
+
+            return;
+        }
+
+        $this->openCustomDateRangePanel();
     }
 
     public function applyCustomDateRange(?string $from = null, ?string $to = null): void
@@ -99,6 +120,7 @@ trait HasReportFilters
         $this->showCustomDateRange = true;
     }
 
+    #[Renderless]
     public function toggleMoreDatePresets(): void
     {
         $this->showMoreDatePresets = ! $this->showMoreDatePresets;

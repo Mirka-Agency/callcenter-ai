@@ -18,7 +18,7 @@
 @endphp
 
 <div class="saas-page">
-    <section class="saas-hero">
+    <section class="saas-hero" data-tour="dashboard-hero">
         <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
                 <p class="text-sm font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">داشبورد مدیر</p>
@@ -45,13 +45,13 @@
 
     <x-saas.smart-call-intelligence-card />
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-tour="dashboard-stats">
         <x-saas.stat-card label="تماس‌های امروز" :value="$cockpit['calls_today']" />
         <x-saas.stat-card label="میانگین کیفیت لید" :value="$teamKpis['average_lead_score'] ?: '—'" />
         <x-saas.stat-card label="رضایت مشتری" :value="$teamKpis['average_sentiment'] ? $teamKpis['average_sentiment'].'%' : '—'" />
     </div>
 
-    <section class="saas-section" x-data="{ filter: 'all' }">
+    <section class="saas-section" data-tour="dashboard-agents" x-data="{ filter: 'all' }">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h2 class="saas-section-title">عملکرد کارشناسان</h2>
@@ -85,7 +85,7 @@
     </section>
 
     <div class="grid gap-6 lg:grid-cols-3">
-        <div class="saas-card lg:col-span-2">
+        <div class="saas-card lg:col-span-2" data-tour="dashboard-quality">
             <h2 class="text-lg font-semibold">روند کیفیت تیم</h2>
             <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز مکالمه در بازه ۳۰ روز اخیر</p>
             <div class="mt-4 h-56" wire:ignore>
@@ -93,7 +93,7 @@
             </div>
         </div>
 
-        <div class="saas-card">
+        <div class="saas-card" data-tour="dashboard-activity">
             <h2 class="text-lg font-semibold">فعالیت اخیر</h2>
             <div class="mt-4 space-y-3">
                 @forelse ($activityFeed as $activity)

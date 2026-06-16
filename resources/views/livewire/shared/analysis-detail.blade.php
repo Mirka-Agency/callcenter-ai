@@ -11,7 +11,7 @@
     $customerName = AnalysisInsightPresenter::customerName($analysis);
 @endphp
 
-<div class="space-y-6">
+<div class="space-y-6" data-tour="analysis-detail">
     @if ($backUrl)
         <a href="{{ $backUrl }}" class="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
             <svg class="h-4 w-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">

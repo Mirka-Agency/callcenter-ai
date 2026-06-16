@@ -7,7 +7,12 @@
         && ! $customTo;
 @endphp
 
-<div class="saas-card space-y-5">
+<div
+    class="saas-card space-y-5"
+    data-tour="analysis-filters"
+    wire:key="analysis-date-filters-{{ $datePreset }}-{{ $customFrom }}-{{ $customTo }}"
+    x-data="{ showCustom: @js($showCustomDateRange || $datePreset === 'custom'), showMore: @js($showMoreDatePresets) }"
+>
     <div class="flex flex-wrap items-center justify-between gap-3">
         <h2 class="text-sm font-semibold uppercase tracking-wider text-zinc-500">فیلترها</h2>
         @if ($filter->hasActiveFilters())
@@ -35,27 +40,32 @@
 
             <button
                 type="button"
-                wire:click="toggleCustomDateRange"
-                @class([
-                    'rounded-md px-3 py-1.5 text-xs font-medium transition',
-                    'bg-indigo-600 text-white shadow-sm' => $datePreset === 'custom' || $showCustomDateRange,
-                    'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200' => $datePreset !== 'custom' && ! $showCustomDateRange,
-                ])
+                @click="
+                    if (showCustom) {
+                        if (@js($datePreset === 'custom')) {
+                            $wire.closeCustomDateRangePanel();
+                        }
+                        showCustom = false;
+                    } else {
+                        showCustom = true;
+                    }
+                "
+                :class="showCustom || @js($datePreset === 'custom') ? 'bg-indigo-600 text-white shadow-sm' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200'"
+                class="rounded-md px-3 py-1.5 text-xs font-medium transition"
             >بازه دلخواه</button>
 
             <button
                 type="button"
-                wire:click="toggleMoreDatePresets"
+                @click="showMore = !showMore"
                 @class([
                     'rounded-md px-3 py-1.5 text-xs font-medium transition',
                     'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' => collect($moreDatePresets)->contains(fn ($p) => $p->value === $datePreset),
                     'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200' => ! collect($moreDatePresets)->contains(fn ($p) => $p->value === $datePreset),
                 ])
-            >{{ $showMoreDatePresets ? 'بستن' : 'بیشتر' }}</button>
+            ><span x-text="showMore ? 'بستن' : 'بیشتر'"></span></button>
         </div>
 
-        @if ($showMoreDatePresets)
-            <div class="flex flex-wrap gap-2 border-s-2 border-zinc-200 ps-3 dark:border-zinc-700">
+        <div x-show="showMore" x-cloak class="flex flex-wrap gap-2 border-s-2 border-zinc-200 ps-3 dark:border-zinc-700">
                 @foreach ($moreDatePresets as $preset)
                     <button
                         type="button"
@@ -67,11 +77,9 @@
                         ])
                     >{{ $preset->label() }}</button>
                 @endforeach
-            </div>
-        @endif
+        </div>
 
-        @if ($showCustomDateRange || $datePreset === 'custom')
-            <div data-deferred-date-range class="flex flex-wrap items-center gap-3 rounded-lg border border-indigo-200/80 bg-indigo-50/50 px-4 py-3 dark:border-indigo-500/30 dark:bg-indigo-950/20">
+        <div x-show="showCustom" x-cloak data-deferred-date-range class="flex flex-wrap items-center gap-3 rounded-lg border border-indigo-200/80 bg-indigo-50/50 px-4 py-3 dark:border-indigo-500/30 dark:bg-indigo-950/20">
                 <label class="text-sm text-zinc-500">از</label>
                 <x-saas.jalali-date-input wire:key="filter-custom-from" wire:model="draftCustomFrom" defer class="text-sm" />
                 <label class="text-sm text-zinc-500">تا</label>
@@ -79,8 +87,7 @@
                 <button type="button" data-apply-deferred-date-range class="saas-btn-primary text-sm">
                     تایید بازه
                 </button>
-            </div>
-        @endif
+        </div>
     </div>
 
     <div class="flex flex-wrap gap-2 border-t border-zinc-200/80 pt-4 dark:border-zinc-800">

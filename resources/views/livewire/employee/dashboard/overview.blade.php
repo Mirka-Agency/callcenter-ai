@@ -149,6 +149,46 @@
 
     <div class="grid gap-6 lg:grid-cols-2">
         <div class="saas-card">
+            <h2 class="text-lg font-semibold">نقاط قوت پرتکرار</h2>
+            <p class="mt-1 text-sm text-zinc-500">نکاتی که در تماس‌های اخیر شما بیشترین تکرار را داشته‌اند</p>
+            <ul class="mt-4 space-y-3">
+                @forelse ($topStrengths as $item)
+                    <li class="flex items-start gap-2 rounded-lg bg-emerald-50/60 px-3 py-2 text-sm dark:bg-emerald-950/20">
+                        <span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-emerald-500"></span>
+                        <span class="flex-1">{{ $item['item'] }}</span>
+                        <span class="shrink-0 text-xs text-zinc-500">{{ $item['count'] }} بار</span>
+                    </li>
+                @empty
+                    <x-saas.empty-state title="نقطه قوتی ثبت نشده" />
+                @endforelse
+            </ul>
+        </div>
+
+        <div class="saas-card">
+            <h2 class="text-lg font-semibold">نقاط قابل بهبود</h2>
+            <p class="mt-1 text-sm text-zinc-500">
+                @if ($weaknessesDerived ?? false)
+                    بر اساس ابعاد عملکرد، نگرانی‌ها و فرصت‌های ازدست‌رفته در تماس‌های اخیر
+                @else
+                    مواردی که بیشتر در تحلیل‌ها نیازمند توجه بوده‌اند
+                @endif
+            </p>
+            <ul class="mt-4 space-y-3">
+                @forelse ($topWeaknesses as $item)
+                    <li class="flex items-start gap-2 rounded-lg bg-amber-50/60 px-3 py-2 text-sm dark:bg-amber-950/20">
+                        <span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-amber-500"></span>
+                        <span class="flex-1">{{ $item['item'] }}</span>
+                        <span class="shrink-0 text-xs text-zinc-500">{{ $item['count'] }} بار</span>
+                    </li>
+                @empty
+                    <x-saas.empty-state title="نقطه قابل بهبودی ثبت نشده" />
+                @endforelse
+            </ul>
+        </div>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-2">
+        <div class="saas-card">
             <div class="flex items-center justify-between">
                 <h2 class="text-lg font-semibold">تماس‌های من</h2>
                 <a href="{{ route('employee.calls') }}" class="text-sm text-indigo-600 hover:underline">همه تماس‌ها</a>

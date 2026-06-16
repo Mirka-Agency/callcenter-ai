@@ -7,7 +7,7 @@
         <a href="{{ route('employer.employees.index') }}" class="saas-btn-secondary">بازگشت</a>
     </div>
 
-    <form wire:submit="save" class="saas-card max-w-2xl space-y-5">
+    <form wire:submit="save" class="saas-card max-w-2xl space-y-5" data-tour="employee-form">
         <div class="flex flex-col gap-4 border-b border-zinc-200/80 pb-5 dark:border-zinc-800 sm:flex-row sm:items-center">
             @if ($avatar)
                 <img

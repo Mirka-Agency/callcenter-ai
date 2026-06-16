@@ -1,5 +1,11 @@
 <div class="space-y-8" @if($autoRefresh) wire:poll.5s @endif>
-    <div class="flex flex-wrap items-center justify-between gap-4">
+    @php
+        $filterLoadingTargets = 'search,statusFilter';
+    @endphp
+
+    <x-saas.filter-loading-overlay :target="$filterLoadingTargets" />
+
+    <div class="flex flex-wrap items-center justify-between gap-4" data-tour="queue-header">
         <div>
             <h1 class="text-3xl font-semibold tracking-tight">صف پردازش</h1>
             <p class="mt-2 text-zinc-500">نظارت بر آپلود فایل‌های صوتی و کارهای تحلیل هوش مصنوعی به‌صورت لحظه‌ای.</p>
@@ -7,7 +13,7 @@
         <button type="button" wire:click="refreshQueue" class="saas-btn-secondary">بروزرسانی</button>
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5" data-tour="queue-stats">
         <div class="saas-card"><p class="text-sm text-zinc-500">مجموع</p><p class="mt-1 text-2xl font-bold">{{ $stats['total'] }}</p></div>
         <div class="saas-card"><p class="text-sm text-zinc-500">در صف</p><p class="mt-1 text-2xl font-bold text-amber-600">{{ $stats['queued'] }}</p></div>
         <div class="saas-card"><p class="text-sm text-zinc-500">در حال پردازش</p><p class="mt-1 text-2xl font-bold text-blue-600">{{ $stats['processing'] }}</p></div>
@@ -15,7 +21,7 @@
         <div class="saas-card"><p class="text-sm text-zinc-500">ناموفق</p><p class="mt-1 text-2xl font-bold text-red-600">{{ $stats['failed'] }}</p></div>
     </div>
 
-    <div class="saas-card">
+    <div class="saas-card" data-tour="queue-filters">
         <div class="flex flex-wrap gap-4">
             <input wire:model.live.debounce.300ms="search" type="search" placeholder="جستجو بر اساس نام فایل..." class="saas-input max-w-md flex-1">
             <select wire:model.live="statusFilter" class="saas-input w-auto">
@@ -26,7 +32,7 @@
             </select>
         </div>
 
-        <div class="mt-6 overflow-x-auto">
+        <div class="mt-6 overflow-x-auto" wire:loading.class="opacity-60" wire:target="{{ $filterLoadingTargets }}" data-tour="queue-table">
             <table class="saas-table w-full min-w-[900px]">
                 <thead>
                     <tr>

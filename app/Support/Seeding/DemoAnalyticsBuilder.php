@@ -10,6 +10,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\LlmModel;
 use App\Models\Organization;
+use App\Models\OrganizationActivity;
 use App\Models\OrganizationUser;
 use App\Models\PlatformAiSettings;
 use Illuminate\Support\Arr;
@@ -147,7 +148,46 @@ class DemoAnalyticsBuilder
 
         }
 
+        $this->seedOrganizationActivities($organization);
         $this->syncCustomerStats($customers);
+    }
+
+    private function seedOrganizationActivities(Organization $organization): void
+    {
+        OrganizationActivity::query()
+            ->where('organization_id', $organization->id)
+            ->where('metadata->source', 'demo_seeder')
+            ->delete();
+
+        $items = ConversationAnalysis::query()
+            ->where('organization_id', $organization->id)
+            ->with(['call:id,customer_id,customer_name,caller_number', 'call.customer:id,name,company_name', 'employee:user_id,id'])
+            ->latest('analyzed_at')
+            ->limit(10)
+            ->get();
+
+        foreach ($items->take(6) as $analysis) {
+            $call = $analysis->call;
+            $customer = $call?->customer?->displayName()
+                ?? $call?->customer_name
+                ?? $call?->caller_number
+                ?? 'مکالمه';
+
+            OrganizationActivity::query()->create([
+                'organization_id' => $organization->id,
+                'user_id' => $analysis->employee?->user_id,
+                'type' => 'analysis_completed',
+                'title' => 'تحلیل تماس تکمیل شد',
+                'description' => "مکالمه با {$customer} با امتیاز {$analysis->score} ثبت شد.",
+                'metadata' => [
+                    'source' => 'demo_seeder',
+                    'analysis_id' => $analysis->id,
+                    'call_id' => $analysis->call_id,
+                ],
+                'created_at' => $analysis->analyzed_at,
+                'updated_at' => $analysis->analyzed_at,
+            ]);
+        }
     }
 
     /** @param  \Illuminate\Support\Collection<int, Customer>  $customers */

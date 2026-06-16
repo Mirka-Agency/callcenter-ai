@@ -61,6 +61,11 @@ class CustomerIntelligenceService
         $call->update(['customer_id' => $customer->id]);
     }
 
+    public function relinkCallsByPhone(Customer $customer): void
+    {
+        $this->linkCallsByPhone($customer);
+    }
+
     private function linkCallsByPhone(Customer $customer): void
     {
         Call::query()

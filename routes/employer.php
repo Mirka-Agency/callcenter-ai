@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Employer\Crm\Index as CrmIndex;
+use App\Livewire\Employer\Customers\Edit as CustomersEdit;
 use App\Livewire\Employer\Customers\Index as CustomersIndex;
 use App\Livewire\Employer\Customers\Show as CustomersShow;
 use App\Livewire\Employer\Dashboard\Overview as EmployerDashboard;
@@ -9,6 +10,7 @@ use App\Livewire\Employer\Employees\Edit as EmployeeEdit;
 use App\Livewire\Employer\Employees\Index as EmployeesIndex;
 use App\Livewire\Employer\ManualAnalyses\Index as ManualAnalysesIndex;
 use App\Livewire\Employer\ManualAnalyses\Show as ManualAnalysesShow;
+use App\Livewire\Employer\Profile\Edit as ProfileEdit;
 use App\Livewire\Employer\Intelligence\Index as IntelligenceIndex;
 use App\Livewire\Employer\Intelligence\Performance as IntelligencePerformance;
 use App\Livewire\Employer\Intelligence\PerformanceShow as IntelligencePerformanceShow;
@@ -51,10 +53,12 @@ Route::middleware(['auth', 'employer'])->group(function () {
     Route::get('/crm', CrmIndex::class)->name('crm.index');
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', CustomersIndex::class)->name('index');
+        Route::get('/{customer}/edit', CustomersEdit::class)->name('edit');
         Route::get('/{customer}', CustomersShow::class)->name('show');
     });
     Route::get('/voip', VoipIndex::class)->name('voip.index');
     Route::get('/reports', ReportsIndex::class)->name('reports.index');
     Route::redirect('/analytics', '/reports')->name('analytics.index');
     Route::get('/wallet', WalletIndex::class)->name('wallet.index');
+    Route::get('/profile', ProfileEdit::class)->name('profile.edit');
 });

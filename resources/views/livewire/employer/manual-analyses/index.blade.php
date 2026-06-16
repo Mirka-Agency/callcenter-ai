@@ -1,5 +1,11 @@
 <div class="space-y-10">
-    <div class="flex flex-wrap items-center justify-between gap-4">
+    @php
+        $filterLoadingTargets = 'search,filterEmployeeId,applyCustomDateRange';
+    @endphp
+
+    <x-saas.filter-loading-overlay :target="$filterLoadingTargets" />
+
+    <div class="flex flex-wrap items-center justify-between gap-4" data-tour="manual-upload-header">
         <div>
             <p class="text-sm font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">آپلود تماس</p>
             <h1 class="text-3xl font-semibold tracking-tight">تحلیل هوشمند مکالمات</h1>
@@ -19,7 +25,7 @@
     @endif
 
     <div class="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <div class="saas-card border-indigo-200/50 shadow-md shadow-indigo-500/5 dark:border-indigo-500/20">
+        <div class="saas-card border-indigo-200/50 shadow-md shadow-indigo-500/5 dark:border-indigo-500/20" data-tour="manual-upload-panel">
             <x-saas.manual-upload-panel
                 :employees="$employees"
                 :show-employee-assign="true"
@@ -30,13 +36,15 @@
             />
         </div>
 
-        <x-saas.sample-conversations
-            :samples="$sampleConversations"
-            :highlighted-id="$highlightedSampleId"
-        />
+        <div data-tour="manual-samples">
+            <x-saas.sample-conversations
+                :samples="$sampleConversations"
+                :highlighted-id="$highlightedSampleId"
+            />
+        </div>
     </div>
 
-    <div class="space-y-4">
+    <div class="space-y-4" data-tour="manual-history">
         <div class="flex flex-wrap items-end justify-between gap-4">
             <div>
                 <h2 class="text-xl font-semibold">آپلودهای اخیر</h2>
@@ -53,12 +61,20 @@
                         <option value="{{ $employee->id }}">{{ $employee->full_name }}</option>
                     @endforeach
                 </select>
-                <x-saas.jalali-date-input wire:key="upload-date-from" wire:model.live="dateFrom" class="text-sm" />
-                <x-saas.jalali-date-input wire:key="upload-date-until" wire:model.live="dateUntil" class="text-sm" />
+            </div>
+
+            <div data-deferred-date-range class="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-indigo-200/80 bg-indigo-50/50 px-4 py-3 dark:border-indigo-500/30 dark:bg-indigo-950/20">
+                <label class="text-sm text-zinc-500">از</label>
+                <x-saas.jalali-date-input wire:key="upload-date-from" wire:model="draftCustomFrom" defer class="text-sm" />
+                <label class="text-sm text-zinc-500">تا</label>
+                <x-saas.jalali-date-input wire:key="upload-date-until" wire:model="draftCustomTo" defer class="text-sm" />
+                <button type="button" data-apply-deferred-date-range class="saas-btn-primary text-sm">
+                    تایید بازه
+                </button>
             </div>
         </div>
 
-        <div class="grid gap-4">
+        <div class="grid gap-4" wire:loading.class="opacity-60" wire:target="{{ $filterLoadingTargets }}">
             @forelse ($uploads as $upload)
                 <a href="{{ route('employer.manual-analyses.show', $upload) }}" class="saas-card block transition hover:border-zinc-300 dark:hover:border-zinc-600" wire:key="upload-{{ $upload->id }}">
                     <div class="flex flex-wrap items-center justify-between gap-4">

@@ -162,7 +162,8 @@ class EmployeePerformanceAnalytics
             ),
         );
 
-        $weaknesses = $this->jsonAggregator->topItems($data->analyses, 'weaknesses_json');
+        $improvementAreas = $this->jsonAggregator->rankedImprovementAreas($data->analyses, 5);
+        $weaknesses = collect($improvementAreas['items'])->pluck('item')->all();
 
         $profile = [
             'employee' => [

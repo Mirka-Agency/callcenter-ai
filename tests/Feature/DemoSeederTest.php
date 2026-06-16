@@ -10,6 +10,7 @@ use App\Models\Organization;
 use App\Models\OrganizationCrmConnection;
 use App\Models\OrganizationVoipConnection;
 use App\Models\OrganizationWallet;
+use App\Models\OrganizationActivity;
 use App\Models\User;
 use App\Services\Demo\DemoEmployeeProvisioner;
 use App\Services\EmployerDashboardAnalytics;
@@ -98,6 +99,8 @@ class DemoSeederTest extends TestCase
                 EmployerDashboardAnalytics::forOrganization($organization->id)->cockpit()['calls_today'],
             );
             $this->assertSame(DemoCatalog::CALLS_PER_ORGANIZATION, ConversationAnalysis::query()->where('organization_id', $organization->id)->count());
+            $this->assertNotEmpty(EmployerDashboardAnalytics::forOrganization($organization->id)->activityFeed(6));
+            $this->assertGreaterThan(0, OrganizationActivity::query()->where('organization_id', $organization->id)->count());
 
             $sampleAnalysis = ConversationAnalysis::query()
                 ->where('organization_id', $organization->id)

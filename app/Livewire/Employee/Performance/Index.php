@@ -2,28 +2,53 @@
 
 namespace App\Livewire\Employee\Performance;
 
-use App\Models\ConversationAnalysis;
+use App\DTOs\ReportFilter;
+use App\Enums\ReportDatePreset;
 use App\Services\EmployeeContext;
+use App\Services\EmployeeDashboardAnalytics;
+use App\Services\Performance\EmployeePerformanceAnalytics;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 #[Layout('layouts.employee')]
 #[Title('عملکرد من')]
 class Index extends Component
 {
+    #[Url(as: 'preset')]
+    public string $period = 'last_30';
+
+    public function setPeriod(string $preset): void
+    {
+        $this->period = $preset;
+    }
+
     public function render()
     {
-        $membershipId = EmployeeContext::membership()->id;
-        $query = ConversationAnalysis::query()->where('organization_user_id', $membershipId);
+        $membership = EmployeeContext::membership()->load('user');
+        $preset = ReportDatePreset::tryFrom($this->period) ?? ReportDatePreset::Last30;
+        $filter = ReportFilter::make(
+            organizationId: EmployeeContext::organizationId(),
+            preset: $preset,
+            employeeIds: [$membership->id],
+        );
+
+        $profile = app(EmployeePerformanceAnalytics::class)->employeeProfile($filter, $membership);
+        $dashboard = EmployeeDashboardAnalytics::forEmployee($membership);
 
         return view('livewire.employee.performance.index', [
-            'currentScore' => $query->clone()->latest('analyzed_at')->value('score'),
-            'weeklyScore' => round((float) $query->clone()->where('analyzed_at', '>=', now()->subWeek())->avg('score'), 1),
-            'monthlyScore' => round((float) $query->clone()->whereMonth('analyzed_at', now()->month)->avg('score'), 1),
-            'bestScore' => $query->clone()->max('score'),
-            'totalAnalyzed' => $query->clone()->count(),
-            'trend' => $query->clone()->latest('analyzed_at')->limit(10)->get(),
+            'membership' => $membership,
+            'profile' => $profile,
+            'achievements' => $dashboard->achievements(),
+            'recommendations' => $dashboard->recommendations(),
+            'periodPresets' => [
+                ReportDatePreset::Last7,
+                ReportDatePreset::Last30,
+                ReportDatePreset::ThisMonth,
+                ReportDatePreset::CurrentQuarter,
+            ],
+            'activePreset' => $preset,
         ]);
     }
 }

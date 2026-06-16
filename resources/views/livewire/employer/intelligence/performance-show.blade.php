@@ -30,9 +30,12 @@
             'borderRadius' => 6,
         ]],
     ];
+
+    $filterLoadingTargets = 'datePreset,customFrom,customTo,applyCustomDateRange,selectedEmployeeIds,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter';
 @endphp
 
-<div class="space-y-6" wire:loading.class="opacity-60">
+<div class="space-y-6" wire:loading.class="opacity-60" wire:target="{{ $filterLoadingTargets }}">
+    <x-saas.filter-loading-overlay :target="$filterLoadingTargets" />
     <a href="{{ route('employer.intelligence.performance') }}?preset={{ $datePreset }}&from={{ $customFrom }}&to={{ $customTo }}" class="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
         <svg class="h-4 w-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6" /></svg>
         بازگشت به عملکرد کارشناسان
@@ -72,7 +75,11 @@
         <p class="mt-6 text-sm leading-7 text-zinc-600 dark:text-zinc-300">{{ $profile['executive_summary'] }}</p>
     </section>
 
-    @include('livewire.employer.intelligence.partials.performance-filters')
+    @include('livewire.employer.intelligence.partials.performance-filters', [
+        'primaryDatePresets' => $primaryDatePresets,
+        'moreDatePresets' => $moreDatePresets,
+        'filterEmployees' => $filterEmployees,
+    ])
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-saas.stat-card label="تماس‌های پاسخ‌داده" :value="$metrics['answered_calls']" :hint="$metrics['total_calls'].' کل'" />

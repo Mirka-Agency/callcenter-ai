@@ -87,7 +87,13 @@
 @endphp
 
 <div class="saas-page space-y-8">
-    <section class="saas-hero">
+    @if (session('status'))
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-200">
+            {{ session('status') }}
+        </div>
+    @endif
+
+    <section class="saas-hero" data-tour="customer-profile">
         <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div class="flex items-start gap-5">
                 <x-saas.avatar :name="$customer->displayName()" size="xl" ring />
@@ -114,7 +120,7 @@
                     </div>
                 </div>
             </div>
-            <div class="flex flex-col items-start gap-4 sm:flex-row sm:items-center lg:flex-col lg:items-end">
+            <div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center lg:flex-col lg:items-end">
                 @if ($customer->latest_lead_score)
                     <x-saas.dimension-ring
                         label="امتیاز لید"
@@ -122,7 +128,10 @@
                         size="lg"
                     />
                 @endif
-                <a href="{{ $isEmployer ? route('employer.customers.index') : route('employee.customers.index') }}" class="saas-btn-secondary text-sm">بازگشت به لیست</a>
+                <div class="flex flex-wrap gap-2">
+                    <a href="{{ route($isEmployer ? 'employer.customers.edit' : 'employee.customers.edit', $customer) }}" class="saas-btn-primary text-sm">ویرایش</a>
+                    <a href="{{ $isEmployer ? route('employer.customers.index') : route('employee.customers.index') }}" class="saas-btn-secondary text-sm">بازگشت به لیست</a>
+                </div>
             </div>
         </div>
     </section>
@@ -239,7 +248,7 @@
         </div>
     </div>
 
-    <div class="saas-card">
+    <div class="saas-card" data-tour="customer-timeline">
         <div class="flex items-center justify-between">
             <div>
                 <h2 class="text-lg font-semibold">تاریخچه تماس‌ها</h2>

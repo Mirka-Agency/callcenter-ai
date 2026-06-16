@@ -18,6 +18,11 @@ class Performance extends Component
 {
     use HasPerformanceFilters;
 
+    public function mount(): void
+    {
+        $this->mountPerformanceFilters();
+    }
+
     public function export(string $format)
     {
         $filter = $this->performanceFilter();
@@ -44,9 +49,20 @@ class Performance extends Component
 
         return view('livewire.employer.intelligence.performance', [
             'dashboard' => $dashboard,
-            'presets' => ReportDatePreset::selectable(),
             'filterEmployees' => $employees,
             'filter' => $filter,
+            'primaryDatePresets' => [
+                ReportDatePreset::Today,
+                ReportDatePreset::Yesterday,
+                ReportDatePreset::Last7,
+                ReportDatePreset::Last30,
+                ReportDatePreset::ThisMonth,
+            ],
+            'moreDatePresets' => [
+                ReportDatePreset::PreviousMonth,
+                ReportDatePreset::CurrentQuarter,
+                ReportDatePreset::CurrentYear,
+            ],
         ]);
     }
 }

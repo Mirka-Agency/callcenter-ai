@@ -1,15 +1,15 @@
 <div class="saas-page">
-    <x-saas.page-header title="کارشناسان" description="مدیریت تیم و دسترسی‌ها.">
+    <x-saas.page-header data-tour="page-header" title="کارشناسان" description="مدیریت تیم و دسترسی‌ها.">
         <x-slot:actions>
             <a href="{{ route('employer.employees.create') }}" class="saas-btn-primary">افزودن کارشناس</a>
         </x-slot:actions>
     </x-saas.page-header>
 
-    <div class="saas-card">
+    <div class="saas-card" data-tour="employees-search">
         <input wire:model.live.debounce.300ms="search" type="search" placeholder="جستجوی کارشناسان..." class="saas-input max-w-md">
     </div>
 
-    <div class="saas-card overflow-hidden !p-0">
+    <div class="saas-card overflow-hidden !p-0" data-tour="employees-table">
         <table class="saas-table">
             <thead>
                 <tr>
