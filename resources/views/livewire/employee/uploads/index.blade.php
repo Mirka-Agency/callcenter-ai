@@ -32,6 +32,8 @@
                 :selected-file-name="$selectedFileName"
                 :selected-file-size="$selectedFileSize"
                 :show-metadata="$showMetadata"
+                :audio-ready="$audioReady"
+                :highlighted-sample-id="$highlightedSampleId"
             />
         </div>
 

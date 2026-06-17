@@ -12,11 +12,14 @@ trait InteractsWithManualAudioUpload
 
     public bool $showMetadata = false;
 
+    public bool $audioReady = false;
+
     public function updatedAudio(mixed $value): void
     {
         if ($value === null) {
             $this->selectedFileName = null;
             $this->selectedFileSize = null;
+            $this->audioReady = false;
 
             return;
         }
@@ -30,6 +33,7 @@ trait InteractsWithManualAudioUpload
 
         $this->selectedFileName = $filename !== 'unknown' ? $filename : null;
         $this->selectedFileSize = $size;
+        $this->audioReady = true;
         $this->uploadZoneState = 'idle';
         $this->resetErrorBag('audio');
     }
@@ -39,6 +43,7 @@ trait InteractsWithManualAudioUpload
         $this->reset('audio');
         $this->selectedFileName = null;
         $this->selectedFileSize = null;
+        $this->audioReady = false;
         $this->uploadZoneState = 'idle';
         $this->resetErrorBag('audio');
     }
@@ -55,6 +60,7 @@ trait InteractsWithManualAudioUpload
         $this->reset(['audio', 'title', 'customerName', 'customerPhone', 'notes', 'category', 'tags', 'conversationDate', 'employeeId']);
         $this->selectedFileName = null;
         $this->selectedFileSize = null;
+        $this->audioReady = false;
         $this->showMetadata = false;
     }
 }

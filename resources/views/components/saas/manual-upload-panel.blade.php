@@ -5,6 +5,8 @@
     'selectedFileName' => null,
     'selectedFileSize' => null,
     'showMetadata' => false,
+    'audioReady' => false,
+    'highlightedSampleId' => null,
 ])
 
 <div {{ $attributes->merge(['class' => 'space-y-6']) }}>
@@ -79,11 +81,17 @@
         wire:target="submitForAnalysis,audio"
         @class([
             'saas-btn-primary w-full py-3 text-base',
-            'opacity-50 cursor-not-allowed' => ! $selectedFileName,
+            'opacity-50 cursor-not-allowed' => ! $audioReady,
         ])
-        @if (! $selectedFileName) disabled @endif
+        @disabled(! $audioReady)
     >
         <span wire:loading.remove wire:target="submitForAnalysis">{{ __('ui.cta.start_analysis') }}</span>
         <span wire:loading wire:target="submitForAnalysis">در حال ارسال…</span>
     </button>
+
+    @if ($highlightedSampleId)
+        <p class="text-center text-xs text-zinc-500">
+            برای تحلیل سریع، از دکمه «تحلیل این نمونه» در بخش کناری استفاده کنید — نیازی به بارگذاری فایل نیست.
+        </p>
+    @endif
 </div>

@@ -33,7 +33,7 @@
 
                 <button
                     type="button"
-                    wire:click="submitSampleForAnalysis(@js($sample['id']))"
+                    wire:click.stop="submitSampleForAnalysis(@js($sample['id']))"
                     wire:loading.attr="disabled"
                     wire:target="submitSampleForAnalysis"
                     @class([

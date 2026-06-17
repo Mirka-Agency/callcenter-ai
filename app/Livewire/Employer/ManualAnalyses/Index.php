@@ -101,6 +101,21 @@ class Index extends Component
 
     public function submitForAnalysis(ManualAudioUploadService $uploadService): void
     {
+        if (! $this->audio) {
+            $this->audioReady = false;
+            $this->selectedFileName = null;
+            $this->selectedFileSize = null;
+
+            $message = $this->highlightedSampleId
+                ? __('ui.upload.audio_required')
+                : __('validation.required', ['attribute' => __('validation.attributes.audio')]);
+
+            $this->addError('audio', $message);
+            $this->dispatchUploadErrorToast($message);
+
+            return;
+        }
+
         try {
             $this->validate([
                 'audio' => 'required|file|max:51200',
@@ -192,16 +207,26 @@ class Index extends Component
             return;
         }
 
-        $this->validate([
-            'title' => 'nullable|string|max:255',
-            'customerName' => 'nullable|string|max:255',
-            'customerPhone' => 'nullable|string|max:50',
-            'notes' => 'nullable|string|max:5000',
-            'category' => 'nullable|string|max:100',
-            'tags' => 'nullable|string|max:500',
-            'conversationDate' => 'nullable|date',
-            'employeeId' => 'nullable|integer|exists:organization_user,id',
-        ]);
+        try {
+            $this->validate([
+                'title' => 'nullable|string|max:255',
+                'customerName' => 'nullable|string|max:255',
+                'customerPhone' => 'nullable|string|max:50',
+                'notes' => 'nullable|string|max:5000',
+                'category' => 'nullable|string|max:100',
+                'tags' => 'nullable|string|max:500',
+                'conversationDate' => 'nullable|date',
+                'employeeId' => 'nullable|integer|exists:organization_user,id',
+            ]);
+        } catch (ValidationException $e) {
+            $message = $e->validator->errors()->first()
+                ?: __('ui.upload.validation_failed');
+
+            $this->addError('audio', $message);
+            $this->dispatchUploadErrorToast($message);
+
+            return;
+        }
 
         $organizationId = EmployerContext::organizationId();
 
