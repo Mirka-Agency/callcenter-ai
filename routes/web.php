@@ -37,13 +37,3 @@ Route::post('/impersonation/stop', [\App\Http\Controllers\ImpersonationControlle
 Route::post('/webhooks/voip/{connection}', \App\Http\Controllers\VoipWebhookController::class)
     ->name('webhooks.voip');
 
-
-
-Route::get('create', function () {
-    \App\Models\User::create([
-        'name' => 'Test',
-        'role' => \App\Enums\UserRole::SuperAdmin,
-        'email' => 'test@test.com',
-        'password' => \Illuminate\Support\Facades\Hash::make('password'),
-    ]);
-});

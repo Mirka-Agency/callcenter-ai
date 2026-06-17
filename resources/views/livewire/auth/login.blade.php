@@ -1,8 +1,6 @@
 <div>
     <div class="saas-card text-center">
-        <div class="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-lg bg-zinc-900 text-lg font-bold text-white dark:bg-white dark:text-zinc-900">
-            {{ strtoupper(substr(config('app.name', 'C'), 0, 1)) }}
-        </div>
+        <p class="mb-2 text-sm font-medium text-indigo-600 dark:text-indigo-400">سامانه پایش مکالمات</p>
         <h1 class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">ورود به حساب</h1>
         <p class="mt-2 text-sm text-zinc-500">برای دسترسی به داشبورد تحلیل تماس، وارد شوید.</p>
     </div>

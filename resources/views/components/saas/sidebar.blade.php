@@ -4,12 +4,9 @@
     data-tour="sidebar"
     x-cloak
 >
-    <div class="flex h-16 items-center gap-3 border-b border-zinc-200/80 px-5 dark:border-zinc-800">
-        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-900 text-sm font-bold text-white dark:bg-white dark:text-zinc-900">
-            {{ strtoupper(substr(config('app.name', 'CC'), 0, 1)) }}
-        </div>
+    <div class="flex h-16 items-center border-b border-zinc-200/80 px-5 dark:border-zinc-800">
         <div>
-            <p class="text-sm font-semibold text-zinc-900 dark:text-white">{{ config('app.name', 'CallCenter') }}</p>
+            <p class="text-sm font-semibold text-zinc-900 dark:text-white">سامانه پایش مکالمات</p>
             <p class="text-xs text-zinc-500">{{ $portal === 'employer' ? 'کارفرما' : 'فضای کار' }}</p>
             @if ($impersonationContext ?? null)
                 <span class="impersonation-sidebar-badge">ورود به‌جای کاربر</span>
