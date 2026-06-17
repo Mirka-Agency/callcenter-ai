@@ -24,14 +24,10 @@ trait InteractsWithManualAudioUpload
             return;
         }
 
-        $filename = method_exists($value, 'getClientOriginalName')
-            ? $value->getClientOriginalName()
-            : 'unknown';
-        $size = method_exists($value, 'getSize')
-            ? $value->getSize()
-            : null;
+        $filename = $this->temporaryUploadFilename($value);
+        $size = $this->temporaryUploadSize($value);
 
-        $this->selectedFileName = $filename !== 'unknown' ? $filename : null;
+        $this->selectedFileName = $filename;
         $this->selectedFileSize = $size;
         $this->audioReady = true;
         $this->uploadZoneState = 'idle';
@@ -62,5 +58,37 @@ trait InteractsWithManualAudioUpload
         $this->selectedFileSize = null;
         $this->audioReady = false;
         $this->showMetadata = false;
+    }
+
+    private function temporaryUploadFilename(mixed $value): ?string
+    {
+        if (! is_object($value) || ! method_exists($value, 'getClientOriginalName')) {
+            return null;
+        }
+
+        $filename = $value->getClientOriginalName();
+
+        return filled($filename) && $filename !== 'unknown' ? $filename : null;
+    }
+
+    private function temporaryUploadSize(mixed $value): ?int
+    {
+        if (! is_object($value)) {
+            return null;
+        }
+
+        if (method_exists($value, 'metaFileData')) {
+            $size = $value->metaFileData()['size'] ?? null;
+
+            if ($size !== null) {
+                return (int) $size;
+            }
+        }
+
+        try {
+            return method_exists($value, 'getSize') ? (int) $value->getSize() : null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

@@ -129,7 +129,10 @@ return [
     */
 
     'temporary_file_upload' => [
-        'disk' => env('LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK'), // Example: 'local', 's3'             | Default: 'default'
+        // When RECORDINGS_DISK=s3, default temp uploads to S3 too so multi-instance deploys work.
+        'disk' => env('LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK') ?: (
+            env('RECORDINGS_DISK') === 's3' ? 's3' : env('FILESYSTEM_DISK', 'local')
+        ),
         'rules' => ['required', 'file', 'max:51200'],                                      // Example: ['file', 'mimes:png,jpg'] | Default: ['required', 'file', 'max:12288'] (12MB)
         'directory' => null,                                  // Example: 'tmp'                     | Default: 'livewire-tmp'
         'middleware' => null,                                 // Example: 'throttle:5,1'            | Default: 'throttle:60,1'

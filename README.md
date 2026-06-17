@@ -305,7 +305,8 @@ php artisan test
 - Set `APP_ENV=production`, `APP_DEBUG=false`, and a strong `APP_KEY`
 - Use MySQL/PostgreSQL instead of SQLite
 - Run a dedicated queue worker and Reverb server
-- Configure S3 (or compatible) storage for `RECORDINGS_DISK`
+- Configure S3 (or compatible) storage for `RECORDINGS_DISK` (Livewire temp uploads use the same S3 disk by default)
+- If you keep local disks, mount a **persistent volume** on `/var/www/html/storage` in CapRover
 - Set up LLM provider API keys in the admin panel
 - Configure organization VoIP/CRM connections
 - Run `php artisan config:cache`, `route:cache`, `view:cache`
