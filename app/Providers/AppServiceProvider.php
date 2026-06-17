@@ -18,6 +18,10 @@ class AppServiceProvider extends ServiceProvider
     {
         // CapRover terminates TLS at the proxy; force https URLs in production to avoid mixed content.
         if (config('app.env') === 'production') {
+            if ($rootUrl = config('app.url')) {
+                URL::forceRootUrl($rootUrl);
+            }
+
             URL::forceScheme('https');
         }
 

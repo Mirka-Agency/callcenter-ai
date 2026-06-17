@@ -7,6 +7,7 @@ mkdir -p \
     storage/framework/cache/data \
     storage/framework/sessions \
     storage/framework/views \
+    storage/app/private/livewire-tmp \
     storage/logs \
     bootstrap/cache \
     database
