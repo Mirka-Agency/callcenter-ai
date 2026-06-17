@@ -97,8 +97,8 @@
     @if ($analyzedCount === 0)
         <div class="saas-card">
             <x-saas.empty-state
-                title="@lang('ui.empty.no_coaching.title')"
-                description="@lang('ui.empty.no_coaching.description')"
+                title="{{ __('ui.empty.no_coaching.title') }}"
+                description="{{ __('ui.empty.no_coaching.description') }}"
             >
                 <div class="mt-6 flex flex-wrap justify-center gap-2">
                     <a href="{{ route('employee.uploads') }}" class="saas-btn-primary text-sm">@lang('ui.cta.upload_first_call')</a>
@@ -225,8 +225,8 @@
             @else
                 <div class="mt-4">
                     <x-saas.empty-state
-                        title="@lang('ui.empty.no_strengths.title')"
-                        description="@lang('ui.empty.no_strengths.description')"
+                        title="{{ __('ui.empty.no_strengths.title') }}"
+                        description="{{ __('ui.empty.no_strengths.description') }}"
                     />
                 </div>
             @endif
@@ -258,8 +258,8 @@
                         </li>
                     @empty
                         <x-saas.empty-state
-                            title="@lang('ui.empty.no_improvements.title')"
-                            description="@lang('ui.empty.no_improvements.description')"
+                            title="{{ __('ui.empty.no_improvements.title') }}"
+                            description="{{ __('ui.empty.no_improvements.description') }}"
                         />
                     @endforelse
                 </ul>
@@ -309,8 +309,8 @@
                         </li>
                     @empty
                         <x-saas.empty-state
-                            title="@lang('ui.empty.no_followups.title')"
-                            description="@lang('ui.empty.no_followups.description')"
+                            title="{{ __('ui.empty.no_followups.title') }}"
+                            description="{{ __('ui.empty.no_followups.description') }}"
                         />
                     @endforelse
                 </ul>

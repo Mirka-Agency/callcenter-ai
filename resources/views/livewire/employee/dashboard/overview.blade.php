@@ -90,8 +90,8 @@
             @else
                 <div class="mt-4">
                     <x-saas.empty-state
-                        title="@lang('ui.empty.chart_trend.title')"
-                        description="@lang('ui.empty.chart_trend.description')"
+                        title="{{ __('ui.empty.chart_trend.title') }}"
+                        description="{{ __('ui.empty.chart_trend.description') }}"
                     />
                 </div>
             @endif
@@ -107,8 +107,8 @@
             @else
                 <div class="mt-4">
                     <x-saas.empty-state
-                        title="@lang('ui.empty.chart_satisfaction.title')"
-                        description="@lang('ui.empty.chart_satisfaction.description')"
+                        title="{{ __('ui.empty.chart_satisfaction.title') }}"
+                        description="{{ __('ui.empty.chart_satisfaction.description') }}"
                     />
                 </div>
             @endif
@@ -166,8 +166,8 @@
                     </li>
                 @empty
                     <x-saas.empty-state
-                        title="@lang('ui.empty.no_strengths.title')"
-                        description="@lang('ui.empty.no_strengths.description')"
+                        title="{{ __('ui.empty.no_strengths.title') }}"
+                        description="{{ __('ui.empty.no_strengths.description') }}"
                     />
                 @endforelse
             </ul>
@@ -191,8 +191,8 @@
                     </li>
                 @empty
                     <x-saas.empty-state
-                        title="@lang('ui.empty.no_improvements.title')"
-                        description="@lang('ui.empty.no_improvements.description')"
+                        title="{{ __('ui.empty.no_improvements.title') }}"
+                        description="{{ __('ui.empty.no_improvements.description') }}"
                     />
                 @endforelse
             </ul>
@@ -216,8 +216,8 @@
                     </a>
                 @empty
                     <x-saas.empty-state
-                        title="@lang('ui.empty.no_calls.title')"
-                        description="@lang('ui.empty.no_calls.description')"
+                        title="{{ __('ui.empty.no_calls.title') }}"
+                        description="{{ __('ui.empty.no_calls.description') }}"
                     />
                 @endforelse
             </div>
@@ -233,8 +233,8 @@
                     </li>
                 @empty
                     <x-saas.empty-state
-                        title="@lang('ui.empty.no_followups.title')"
-                        description="@lang('ui.empty.no_followups.description')"
+                        title="{{ __('ui.empty.no_followups.title') }}"
+                        description="{{ __('ui.empty.no_followups.description') }}"
                     />
                 @endforelse
             </ul>
@@ -252,8 +252,8 @@
                 </div>
             @empty
                 <x-saas.empty-state
-                    title="@lang('ui.empty.no_recommendations.title')"
-                    description="@lang('ui.empty.no_recommendations.description')"
+                    title="{{ __('ui.empty.no_recommendations.title') }}"
+                    description="{{ __('ui.empty.no_recommendations.description') }}"
                 />
             @endforelse
         </div>

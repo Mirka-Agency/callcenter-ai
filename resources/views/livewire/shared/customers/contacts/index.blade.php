@@ -30,8 +30,8 @@
         @empty
             <div class="col-span-full">
                 <x-saas.empty-state
-                    title="@lang('ui.empty.no_contacts.title')"
-                    description="@lang('ui.empty.no_contacts.description')"
+                    title="{{ __('ui.empty.no_contacts.title') }}"
+                    description="{{ __('ui.empty.no_contacts.description') }}"
                 />
             </div>
         @endforelse

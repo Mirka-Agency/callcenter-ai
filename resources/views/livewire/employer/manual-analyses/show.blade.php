@@ -76,8 +76,8 @@
         @endif
     @else
         <x-saas.empty-state
-            title="@lang('ui.processing.pending_title')"
-            description="@lang('ui.processing.pending_description')"
+            title="{{ __('ui.processing.pending_title') }}"
+            description="{{ __('ui.processing.pending_description') }}"
         />
     @endif
 </div>

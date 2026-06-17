@@ -76,8 +76,8 @@
             @empty
                 <div class="col-span-full">
                     <x-saas.empty-state
-                        title="@lang('ui.empty.no_team_performance.title')"
-                        description="@lang('ui.empty.no_team_performance.description')"
+                        title="{{ __('ui.empty.no_team_performance.title') }}"
+                        description="{{ __('ui.empty.no_team_performance.description') }}"
                     />
                 </div>
             @endforelse
@@ -104,8 +104,8 @@
                     </div>
                 @empty
                     <x-saas.empty-state
-                        title="@lang('ui.empty.no_activity_feed.title')"
-                        description="@lang('ui.empty.no_activity_feed.description')"
+                        title="{{ __('ui.empty.no_activity_feed.title') }}"
+                        description="{{ __('ui.empty.no_activity_feed.description') }}"
                     />
                 @endforelse
             </div>

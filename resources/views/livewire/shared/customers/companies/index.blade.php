@@ -35,8 +35,8 @@
         @empty
             <div class="col-span-full">
                 <x-saas.empty-state
-                    title="@lang('ui.empty.no_companies.title')"
-                    description="@lang('ui.empty.no_companies.description')"
+                    title="{{ __('ui.empty.no_companies.title') }}"
+                    description="{{ __('ui.empty.no_companies.description') }}"
                 >
                     <a href="{{ route($companyCreateRoute) }}" class="saas-btn-primary mt-4 text-sm" wire:navigate>ثبت اولین سازمان</a>
                 </x-saas.empty-state>

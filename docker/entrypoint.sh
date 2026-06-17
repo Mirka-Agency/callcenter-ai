@@ -27,8 +27,8 @@ if [ "$APP_ENV" = "production" ]; then
     php artisan event:cache
 fi
 
-if [ "$RUN_MIGRATIONS" = "true" ]; then
-    php artisan migrate --force
+if [ "${CONTAINER_ROLE:-web}" = "web" ] && [ "${RUN_MIGRATIONS:-true}" != "false" ]; then
+    php artisan migrate --force --no-interaction
 fi
 
 case "${CONTAINER_ROLE:-web}" in

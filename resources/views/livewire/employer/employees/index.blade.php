@@ -49,8 +49,8 @@
                     <tr>
                         <td colspan="6" class="!py-12">
                             <x-saas.empty-state
-                                title="@lang('ui.empty.no_employees.title')"
-                                description="@lang('ui.empty.no_employees.description')"
+                                title="{{ __('ui.empty.no_employees.title') }}"
+                                description="{{ __('ui.empty.no_employees.description') }}"
                                 :action="route('employer.employees.create')"
                                 :actionLabel="__('ui.cta.add_employee')"
                             />

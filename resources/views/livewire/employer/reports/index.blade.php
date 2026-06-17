@@ -222,7 +222,7 @@
                 </div>
             @else
                 <div class="mt-4">
-                    <x-saas.empty-state title="@lang('ui.empty.no_activity.title')" description="@lang('ui.empty.no_activity.description')" />
+                    <x-saas.empty-state title="{{ __('ui.empty.no_activity.title') }}" description="{{ __('ui.empty.no_activity.description') }}" />
                 </div>
             @endif
         </div>
@@ -243,7 +243,7 @@
                 </div>
             @else
                 <div class="mt-4">
-                    <x-saas.empty-state title="@lang('ui.empty.chart_trend.title')" description="@lang('ui.empty.chart_trend.description')" />
+                    <x-saas.empty-state title="{{ __('ui.empty.chart_trend.title') }}" description="{{ __('ui.empty.chart_trend.description') }}" />
                 </div>
             @endif
         </div>
@@ -264,7 +264,7 @@
                 </div>
             @else
                 <div class="mt-4">
-                    <x-saas.empty-state title="@lang('ui.empty.chart_lead.title')" description="@lang('ui.empty.chart_lead.description')" />
+                    <x-saas.empty-state title="{{ __('ui.empty.chart_lead.title') }}" description="{{ __('ui.empty.chart_lead.description') }}" />
                 </div>
             @endif
         </div>
@@ -363,7 +363,7 @@
             </div>
         @else
             <div class="mt-4">
-                <x-saas.empty-state title="@lang('ui.empty.no_wallet_usage.title')" description="@lang('ui.empty.no_wallet_usage.description')" />
+                <x-saas.empty-state title="{{ __('ui.empty.no_wallet_usage.title') }}" description="{{ __('ui.empty.no_wallet_usage.description') }}" />
             </div>
         @endif
     </div>
@@ -384,7 +384,7 @@
 
                 <div class="overflow-x-auto p-4 sm:p-6">
                     @if ($drilldownAnalyses->isEmpty())
-                        <x-saas.empty-state title="@lang('ui.empty.no_analyses.title')" description="@lang('ui.empty.no_analyses.description')" />
+                        <x-saas.empty-state title="{{ __('ui.empty.no_analyses.title') }}" description="{{ __('ui.empty.no_analyses.description') }}" />
                     @else
                         <table class="saas-table min-w-[36rem]">
                             <thead>

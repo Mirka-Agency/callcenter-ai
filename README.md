@@ -165,9 +165,10 @@ Multi-stage image: Composer dependencies, Vite build, PHP-FPM + Nginx via Superv
 docker build -t callcenter .
 docker run -p 8000:8000 \
   -e APP_KEY=base64:... \
-  -e RUN_MIGRATIONS=true \
   callcenter
 ```
+
+Migrations run automatically on each web container start (`php artisan migrate --force`). Set `RUN_MIGRATIONS=false` to disable.
 
 ### Container roles
 

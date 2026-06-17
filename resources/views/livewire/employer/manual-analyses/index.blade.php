@@ -106,8 +106,8 @@
                 </a>
             @empty
                 <x-saas.empty-state
-                    title="@lang('ui.empty.no_uploads.title')"
-                    description="@lang('ui.empty.no_uploads.description')"
+                    title="{{ __('ui.empty.no_uploads.title') }}"
+                    description="{{ __('ui.empty.no_uploads.description') }}"
                 />
             @endforelse
         </div>

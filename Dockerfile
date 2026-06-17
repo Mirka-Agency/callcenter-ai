@@ -105,7 +105,8 @@ RUN mkdir -p \
 ENV APP_ENV=production \
     APP_DEBUG=false \
     LOG_CHANNEL=stderr \
-    CONTAINER_ROLE=web
+    CONTAINER_ROLE=web \
+    RUN_MIGRATIONS=true
 
 EXPOSE 8000
 

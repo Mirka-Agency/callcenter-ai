@@ -9,6 +9,7 @@ use App\Filament\Resources\Organizations\RelationManagers\CrmConnectionsRelation
 use App\Filament\Resources\Organizations\RelationManagers\EmployeeMembershipsRelationManager;
 use App\Filament\Resources\Organizations\RelationManagers\EmployeesRelationManager;
 use App\Filament\Resources\Organizations\RelationManagers\VoipConnectionsRelationManager;
+use App\Filament\Resources\Organizations\RelationManagers\WalletTransactionsRelationManager;
 use App\Filament\Resources\Organizations\Schemas\OrganizationForm;
 use App\Filament\Resources\Organizations\Tables\OrganizationsTable;
 use App\Models\Organization;
@@ -59,6 +60,7 @@ class OrganizationResource extends Resource
     public static function getRelations(): array
     {
         return [
+            WalletTransactionsRelationManager::class,
             EmployeesRelationManager::class,
             EmployeeMembershipsRelationManager::class,
             CrmConnectionsRelationManager::class,

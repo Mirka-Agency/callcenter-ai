@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WalletService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -102,5 +103,17 @@ class Organization extends Model
     public function wallet(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(OrganizationWallet::class);
+    }
+
+    public function walletTransactions(): HasMany
+    {
+        return $this->hasMany(WalletTransaction::class)->latest('created_at');
+    }
+
+    protected static function booted(): void
+    {
+        static::created(function (Organization $organization): void {
+            app(WalletService::class)->forOrganization($organization->id);
+        });
     }
 }

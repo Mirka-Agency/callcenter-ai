@@ -142,7 +142,7 @@
                 </div>
             @else
                 <div class="mt-4">
-                    <x-saas.empty-state title="@lang('ui.empty.chart_trend.title')" description="@lang('ui.empty.chart_trend.description')" />
+                    <x-saas.empty-state title="{{ __('ui.empty.chart_trend.title') }}" description="{{ __('ui.empty.chart_trend.description') }}" />
                 </div>
             @endif
         </div>
@@ -156,7 +156,7 @@
                 </div>
             @else
                 <div class="mt-4">
-                    <x-saas.empty-state title="@lang('ui.empty.chart_volume.title')" description="@lang('ui.empty.chart_volume.description')" />
+                    <x-saas.empty-state title="{{ __('ui.empty.chart_volume.title') }}" description="{{ __('ui.empty.chart_volume.description') }}" />
                 </div>
             @endif
         </div>
@@ -170,7 +170,7 @@
                 </div>
             @else
                 <div class="mt-4">
-                    <x-saas.empty-state title="@lang('ui.empty.chart_lead.title')" description="@lang('ui.empty.chart_lead.description')" />
+                    <x-saas.empty-state title="{{ __('ui.empty.chart_lead.title') }}" description="{{ __('ui.empty.chart_lead.description') }}" />
                 </div>
             @endif
         </div>
@@ -184,7 +184,7 @@
                 </div>
             @else
                 <div class="mt-4">
-                    <x-saas.empty-state title="@lang('ui.empty.chart_sentiment.title')" description="@lang('ui.empty.chart_sentiment.description')" />
+                    <x-saas.empty-state title="{{ __('ui.empty.chart_sentiment.title') }}" description="{{ __('ui.empty.chart_sentiment.description') }}" />
                 </div>
             @endif
         </div>
@@ -225,15 +225,15 @@
                 <div class="p-8">
                     @if ($filter->hasActiveFilters())
                         <x-saas.empty-state
-                            title="@lang('ui.empty.no_results_filter.title')"
-                            description="@lang('ui.empty.no_results_filter.description')"
+                            title="{{ __('ui.empty.no_results_filter.title') }}"
+                            description="{{ __('ui.empty.no_results_filter.description') }}"
                         >
                             <button type="button" wire:click="clearFilters" class="saas-btn-primary mt-4">@lang('ui.cta.clear_filters')</button>
                         </x-saas.empty-state>
                     @else
                         <x-saas.empty-state
-                            title="@lang('ui.empty.no_analyses.title')"
-                            description="@lang('ui.empty.no_analyses.description')"
+                            title="{{ __('ui.empty.no_analyses.title') }}"
+                            description="{{ __('ui.empty.no_analyses.description') }}"
                         />
                     @endif
                 </div>

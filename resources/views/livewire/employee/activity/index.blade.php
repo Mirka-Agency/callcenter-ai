@@ -118,8 +118,8 @@
         @else
             <div class="mt-4">
                 <x-saas.empty-state
-                    title="@lang('ui.empty.chart_volume.title')"
-                    description="@lang('ui.empty.chart_volume.description')"
+                    title="{{ __('ui.empty.chart_volume.title') }}"
+                    description="{{ __('ui.empty.chart_volume.description') }}"
                 />
             </div>
         @endif
@@ -164,8 +164,8 @@
         @if (count($timeline) === 0)
             <div class="saas-card">
                 <x-saas.empty-state
-                    title="@lang('ui.empty.no_results_filter.title')"
-                    description="@lang('ui.empty.no_results_filter.description')"
+                    title="{{ __('ui.empty.no_results_filter.title') }}"
+                    description="{{ __('ui.empty.no_results_filter.description') }}"
                 />
             </div>
         @else
@@ -298,8 +298,8 @@
                     </li>
                 @empty
                     <x-saas.empty-state
-                        title="@lang('ui.empty.no_followups.title')"
-                        description="@lang('ui.empty.no_followups.description')"
+                        title="{{ __('ui.empty.no_followups.title') }}"
+                        description="{{ __('ui.empty.no_followups.description') }}"
                     />
                 @endforelse
             </ul>

@@ -135,8 +135,8 @@
                 @else
                     <div class="mt-4">
                         <x-saas.empty-state
-                            title="@lang('ui.empty.chart_trend.title')"
-                            description="@lang('ui.empty.chart_trend.description')"
+                            title="{{ __('ui.empty.chart_trend.title') }}"
+                            description="{{ __('ui.empty.chart_trend.description') }}"
                         />
                     </div>
                 @endif
@@ -152,8 +152,8 @@
                 @else
                     <div class="mt-4">
                         <x-saas.empty-state
-                            title="@lang('ui.empty.chart_volume.title')"
-                            description="@lang('ui.empty.chart_volume.description')"
+                            title="{{ __('ui.empty.chart_volume.title') }}"
+                            description="{{ __('ui.empty.chart_volume.description') }}"
                         />
                     </div>
                 @endif
@@ -169,8 +169,8 @@
                 @else
                     <div class="mt-4">
                         <x-saas.empty-state
-                            title="@lang('ui.empty.chart_lead.title')"
-                            description="@lang('ui.empty.chart_lead.description')"
+                            title="{{ __('ui.empty.chart_lead.title') }}"
+                            description="{{ __('ui.empty.chart_lead.description') }}"
                         />
                     </div>
                 @endif
@@ -186,8 +186,8 @@
                 @else
                     <div class="mt-4">
                         <x-saas.empty-state
-                            title="@lang('ui.empty.chart_sentiment.title')"
-                            description="@lang('ui.empty.chart_sentiment.description')"
+                            title="{{ __('ui.empty.chart_sentiment.title') }}"
+                            description="{{ __('ui.empty.chart_sentiment.description') }}"
                         />
                     </div>
                 @endif
@@ -230,15 +230,15 @@
                 <div class="p-8">
                     @if ($filter->hasUserFilters())
                         <x-saas.empty-state
-                            title="@lang('ui.empty.no_results_filter.title')"
-                            description="@lang('ui.empty.no_results_filter.description')"
+                            title="{{ __('ui.empty.no_results_filter.title') }}"
+                            description="{{ __('ui.empty.no_results_filter.description') }}"
                         >
                             <button type="button" wire:click="clearFilters" class="saas-btn-primary mt-4">@lang('ui.cta.clear_filters')</button>
                         </x-saas.empty-state>
                     @else
                         <x-saas.empty-state
-                            title="@lang('ui.empty.no_calls.title')"
-                            description="@lang('ui.empty.no_calls.description')"
+                            title="{{ __('ui.empty.no_calls.title') }}"
+                            description="{{ __('ui.empty.no_calls.description') }}"
                         >
                             <div class="mt-6 flex flex-wrap justify-center gap-2">
                                 <a href="{{ route('employee.uploads') }}" class="saas-btn-primary text-sm">@lang('ui.cta.upload_first_call')</a>

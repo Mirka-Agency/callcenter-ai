@@ -174,7 +174,7 @@
                 </div>
             @else
                 <div class="mt-4">
-                    <x-saas.empty-state title="@lang('ui.empty.chart_trend.title')" description="@lang('ui.empty.chart_trend.description')" />
+                    <x-saas.empty-state title="{{ __('ui.empty.chart_trend.title') }}" description="{{ __('ui.empty.chart_trend.description') }}" />
                 </div>
             @endif
         </div>
@@ -188,7 +188,7 @@
                 </div>
             @else
                 <div class="mt-4">
-                    <x-saas.empty-state title="@lang('ui.empty.chart_sentiment.title')" description="@lang('ui.empty.chart_sentiment.description')" />
+                    <x-saas.empty-state title="{{ __('ui.empty.chart_sentiment.title') }}" description="{{ __('ui.empty.chart_sentiment.description') }}" />
                 </div>
             @endif
         </div>
@@ -328,7 +328,7 @@
                     @endif
                 </div>
             @empty
-                <x-saas.empty-state title="@lang('ui.empty.no_calls.title')" description="تماس‌های این مشتری پس از تحلیل، اینجا نمایش داده می‌شوند." />
+                <x-saas.empty-state title="{{ __('ui.empty.no_calls.title') }}" description="تماس‌های این مشتری پس از تحلیل، اینجا نمایش داده می‌شوند." />
             @endforelse
         </div>
     </div>

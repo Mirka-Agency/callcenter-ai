@@ -178,7 +178,7 @@
                 </div>
             @else
                 <div class="mt-4">
-                    <x-saas.empty-state title="@lang('ui.empty.no_wallet_usage.title')" description="@lang('ui.empty.no_wallet_usage.description')" />
+                    <x-saas.empty-state title="{{ __('ui.empty.no_wallet_usage.title') }}" description="{{ __('ui.empty.no_wallet_usage.description') }}" />
                 </div>
             @endif
         </div>
@@ -192,7 +192,7 @@
                 </div>
             @else
                 <div class="mt-4">
-                    <x-saas.empty-state title="@lang('ui.empty.no_wallet_usage.title')" description="@lang('ui.empty.no_wallet_usage.description')" />
+                    <x-saas.empty-state title="{{ __('ui.empty.no_wallet_usage.title') }}" description="{{ __('ui.empty.no_wallet_usage.description') }}" />
                 </div>
             @endif
         </div>
@@ -206,7 +206,7 @@
                 </div>
             @else
                 <div class="mt-4">
-                    <x-saas.empty-state title="@lang('ui.empty.no_wallet_usage.title')" description="@lang('ui.empty.no_wallet_usage.description')" />
+                    <x-saas.empty-state title="{{ __('ui.empty.no_wallet_usage.title') }}" description="{{ __('ui.empty.no_wallet_usage.description') }}" />
                 </div>
             @endif
         </div>
@@ -220,7 +220,7 @@
                 </div>
             @else
                 <div class="mt-4">
-                    <x-saas.empty-state title="@lang('ui.empty.no_wallet_usage.title')" description="@lang('ui.empty.no_wallet_usage.description')" />
+                    <x-saas.empty-state title="{{ __('ui.empty.no_wallet_usage.title') }}" description="{{ __('ui.empty.no_wallet_usage.description') }}" />
                 </div>
             @endif
         </div>
@@ -237,7 +237,7 @@
 
             @if ($recentTransactions->isEmpty())
                 <div class="mt-4">
-                    <x-saas.empty-state title="@lang('ui.empty.no_transactions.title')" description="@lang('ui.empty.no_transactions.description')" />
+                    <x-saas.empty-state title="{{ __('ui.empty.no_transactions.title') }}" description="{{ __('ui.empty.no_transactions.description') }}" />
                 </div>
             @else
                 <div class="mt-4 overflow-x-auto">

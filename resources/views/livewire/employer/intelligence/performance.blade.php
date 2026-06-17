@@ -89,8 +89,8 @@
             @empty
                 <div class="col-span-full">
                     <x-saas.empty-state
-                        title="@lang('ui.empty.no_activity.title')"
-                        description="@lang('ui.empty.no_activity.description')"
+                        title="{{ __('ui.empty.no_activity.title') }}"
+                        description="{{ __('ui.empty.no_activity.description') }}"
                     />
                 </div>
             @endforelse

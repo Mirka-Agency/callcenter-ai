@@ -163,8 +163,8 @@
     @if ($analyzedInPeriod === 0)
         <div class="saas-card">
             <x-saas.empty-state
-                title="@lang('ui.empty.no_analyses.title')"
-                description="@lang('ui.empty.no_analyses.description')"
+                title="{{ __('ui.empty.no_analyses.title') }}"
+                description="{{ __('ui.empty.no_analyses.description') }}"
             >
                 <div class="mt-6 flex flex-wrap justify-center gap-2">
                     <a href="{{ route('employee.calls') }}" class="saas-btn-secondary text-sm">تماس‌های من</a>
@@ -184,8 +184,8 @@
                 @else
                     <div class="mt-4">
                         <x-saas.empty-state
-                            title="@lang('ui.empty.chart_trend.title')"
-                            description="@lang('ui.empty.chart_trend.description')"
+                            title="{{ __('ui.empty.chart_trend.title') }}"
+                            description="{{ __('ui.empty.chart_trend.description') }}"
                         />
                     </div>
                 @endif
@@ -201,8 +201,8 @@
                 @else
                     <div class="mt-4">
                         <x-saas.empty-state
-                            title="@lang('ui.empty.chart_volume.title')"
-                            description="@lang('ui.empty.chart_volume.description')"
+                            title="{{ __('ui.empty.chart_volume.title') }}"
+                            description="{{ __('ui.empty.chart_volume.description') }}"
                         />
                     </div>
                 @endif
@@ -218,8 +218,8 @@
                 @else
                     <div class="mt-4">
                         <x-saas.empty-state
-                            title="@lang('ui.empty.chart_satisfaction.title')"
-                            description="@lang('ui.empty.chart_satisfaction.description')"
+                            title="{{ __('ui.empty.chart_satisfaction.title') }}"
+                            description="{{ __('ui.empty.chart_satisfaction.description') }}"
                         />
                     </div>
                 @endif
@@ -235,8 +235,8 @@
                 @else
                     <div class="mt-4">
                         <x-saas.empty-state
-                            title="@lang('ui.empty.chart_lead.title')"
-                            description="@lang('ui.empty.chart_lead.description')"
+                            title="{{ __('ui.empty.chart_lead.title') }}"
+                            description="{{ __('ui.empty.chart_lead.description') }}"
                         />
                     </div>
                 @endif
@@ -326,8 +326,8 @@
                 @empty
                     <x-saas.empty-state
                         class="sm:col-span-2"
-                        title="@lang('ui.empty.no_recommendations.title')"
-                        description="@lang('ui.empty.no_recommendations.description')"
+                        title="{{ __('ui.empty.no_recommendations.title') }}"
+                        description="{{ __('ui.empty.no_recommendations.description') }}"
                     />
                 @endforelse
             </div>
@@ -373,8 +373,8 @@
                 </a>
             @empty
                 <x-saas.empty-state
-                    title="@lang('ui.empty.no_calls.title')"
-                    description="@lang('ui.empty.no_calls.description')"
+                    title="{{ __('ui.empty.no_calls.title') }}"
+                    description="{{ __('ui.empty.no_calls.description') }}"
                 />
             @endforelse
         </div>
