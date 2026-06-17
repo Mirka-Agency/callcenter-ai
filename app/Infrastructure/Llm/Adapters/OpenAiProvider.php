@@ -38,8 +38,8 @@ class OpenAiProvider extends AbstractLlmProvider
     {
         $model = $this->resolveAudioAnalysisModel($request->model);
 
-        if ($refused = $this->refuseDemoAnalysis($request, $model)) {
-            return $refused;
+        if ($this->hasRealAudio($request) && ! $this->hasApiKey()) {
+            return $this->failure('برای تحلیل واقعی تماس، کلید API هوش مصنوعی باید در پنل ادمین تنظیم شود.');
         }
 
         if (! $this->hasApiKey()) {
