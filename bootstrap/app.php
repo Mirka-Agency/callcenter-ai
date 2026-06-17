@@ -24,15 +24,18 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // CapRover terminates TLS; trust proxy headers so signed URLs (Livewire uploads) validate.
+        // CapRover terminates TLS; trust proxy proto (not host) so signed URLs validate.
         $middleware->trustProxies(
-            at: env('TRUSTED_PROXIES', '*'),
+            at: '*',
             headers: Request::HEADER_X_FORWARDED_FOR
-                | Request::HEADER_X_FORWARDED_HOST
                 | Request::HEADER_X_FORWARDED_PORT
                 | Request::HEADER_X_FORWARDED_PROTO
                 | Request::HEADER_X_FORWARDED_AWS_ELB,
         );
+
+        $middleware->web(prepend: [
+            \App\Http\Middleware\TrustCapRoverTlsTermination::class,
+        ]);
 
         $middleware->alias([
             'employer' => \App\Http\Middleware\EnsureEmployer::class,
