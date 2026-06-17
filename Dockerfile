@@ -1,6 +1,18 @@
 # syntax=docker/dockerfile:1
 
-FROM composer:2 AS vendor
+FROM php:8.4-cli-alpine AS vendor
+
+RUN apk add --no-cache \
+        git \
+        icu-dev \
+        libzip-dev \
+        unzip \
+        $PHPIZE_DEPS \
+    && docker-php-ext-install intl zip \
+    && apk del $PHPIZE_DEPS \
+    && rm -rf /var/cache/apk/* /tmp/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
