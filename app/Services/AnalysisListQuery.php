@@ -94,7 +94,10 @@ class AnalysisListQuery
 
         $topAgentStats = (clone $query)
             ->whereNotNull('conversation_analyses.organization_user_id')
-            ->selectRaw('conversation_analyses.organization_user_id as agent_id, COUNT(*) as agent_total')
+            ->select([
+                'conversation_analyses.organization_user_id as agent_id',
+                DB::raw('COUNT(*) as agent_total'),
+            ])
             ->groupBy('conversation_analyses.organization_user_id')
             ->orderByDesc('agent_total')
             ->first();

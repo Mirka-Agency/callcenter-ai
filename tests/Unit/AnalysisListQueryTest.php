@@ -58,6 +58,41 @@ class AnalysisListQueryTest extends TestCase
         $this->assertSame(90, $results->first()->score);
     }
 
+    public function test_overview_resolves_top_agent_with_grouped_aggregate(): void
+    {
+        $organization = Organization::factory()->create();
+        $userA = User::factory()->create();
+        $userB = User::factory()->create();
+        $agentA = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $userA->id,
+            'first_name' => 'Ali',
+            'last_name' => 'Top',
+            'is_active' => true,
+        ]);
+        $agentB = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $userB->id,
+            'first_name' => 'Sara',
+            'last_name' => 'Second',
+            'is_active' => true,
+        ]);
+
+        $this->seedAnalysis($organization, $agentA, 'completed', 300, 90);
+        $this->seedAnalysis($organization, $agentA, 'completed', 300, 85);
+        $this->seedAnalysis($organization, $agentB, 'completed', 300, 80);
+
+        $filter = AnalysisListFilter::make(
+            organizationId: $organization->id,
+            preset: ReportDatePreset::Last30,
+        );
+
+        $overview = app(AnalysisListQuery::class)->overview($filter);
+
+        $this->assertSame('Ali Top', $overview['top_agent_name']);
+        $this->assertSame(2, $overview['top_agent_count']);
+    }
+
     private function seedAnalysis(
         Organization $organization,
         OrganizationUser $employee,
