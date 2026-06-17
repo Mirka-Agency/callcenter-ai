@@ -70,7 +70,28 @@
                             <td class="text-xs text-zinc-500">{{ shamsi($job->upload_started_at, 'datetime') }}</td>
                             <td class="text-xs text-zinc-500">{{ shamsi($job->processing_started_at, 'datetime') }}</td>
                             <td class="text-xs text-zinc-500">{{ shamsi($job->completed_at, 'datetime') }}</td>
-                            <td><a href="{{ $jobShowRoute($job) }}" class="text-sm font-medium text-indigo-600 hover:underline">جزئیات</a></td>
+                            <td>
+                                <div class="flex flex-wrap items-center justify-end gap-2">
+                                    <a href="{{ $jobShowRoute($job) }}" class="text-sm font-medium text-indigo-600 hover:underline">جزئیات</a>
+                                    @if ($job->status->isRecoverable())
+                                        <button
+                                            type="button"
+                                            wire:click="retryJob({{ $job->id }})"
+                                            wire:loading.attr="disabled"
+                                            wire:target="retryJob({{ $job->id }})"
+                                            class="text-sm font-medium text-emerald-700 hover:underline disabled:opacity-50"
+                                        >{{ __('ui.processing.retry') }}</button>
+                                        <button
+                                            type="button"
+                                            wire:click="deleteJob({{ $job->id }})"
+                                            wire:confirm="{{ __('ui.processing.delete_confirm') }}"
+                                            wire:loading.attr="disabled"
+                                            wire:target="deleteJob({{ $job->id }})"
+                                            class="text-sm font-medium text-red-600 hover:underline disabled:opacity-50"
+                                        >{{ __('ui.processing.delete') }}</button>
+                                    @endif
+                                </div>
+                            </td>
                         </tr>
                         @if ($job->error_message)
                             <tr>

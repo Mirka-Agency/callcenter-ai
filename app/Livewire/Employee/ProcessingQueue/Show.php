@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Employee\ProcessingQueue;
 
+use App\Livewire\Concerns\ManagesProcessingQueueJob;
 use App\Domain\Processing\Enums\ProcessingLogLevel;
 use App\Models\CallProcessingJob;
 use App\Services\EmployeeContext;
@@ -14,6 +15,8 @@ use Livewire\Component;
 #[Title('جزئیات کار')]
 class Show extends Component
 {
+    use ManagesProcessingQueueJob;
+
     public CallProcessingJob $job;
 
     public string $logLevelFilter = '';
@@ -39,6 +42,34 @@ class Show extends Component
         if ($jobUuid === $this->job->job_uuid) {
             $this->job->refresh()->load(['call.latestAnalysis', 'call.recording', 'logs']);
         }
+    }
+
+    protected function queueOrganizationId(): int
+    {
+        return EmployeeContext::organizationId();
+    }
+
+    protected function scopeProcessingJobs(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        $membershipId = EmployeeContext::membership()->id;
+
+        return $query->where(function (\Illuminate\Database\Eloquent\Builder $q) use ($membershipId) {
+            $q->where('organization_user_id', $membershipId)
+                ->orWhere('uploader_id', auth()->id());
+        });
+    }
+
+    public function retryProcessingJob(): void
+    {
+        $this->retryJob($this->job->id);
+        $this->job->refresh()->load(['call.latestAnalysis', 'call.recording', 'logs']);
+    }
+
+    public function deleteProcessingJob()
+    {
+        $this->deleteJob($this->job->id);
+
+        return $this->redirect(route('employee.processing-queue.index'), navigate: true);
     }
 
     public function render()

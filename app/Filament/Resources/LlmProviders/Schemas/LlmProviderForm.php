@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\LlmProviders\Schemas;
 
 use App\Domain\Llm\Enums\LlmProviderCode;
-use App\Models\LlmModel;
 use App\Models\LlmProvider;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
@@ -24,11 +23,12 @@ class LlmProviderForm
                             ->required()
                             ->maxLength(255),
                         Select::make('code')
+                            ->label(__('filament.fields.provider_adapter'))
                             ->options(collect(LlmProviderCode::cases())->mapWithKeys(
                                 fn (LlmProviderCode $code) => [$code->value => $code->label()],
                             ))
                             ->required()
-                            ->unique(ignoreRecord: true)
+                            ->helperText(__('filament.misc.provider_code_helper'))
                             ->disabledOn('edit'),
                         Toggle::make('is_active')
                             ->label(__('filament.fields.active'))
@@ -50,26 +50,6 @@ class LlmProviderForm
                             ->helperText(__('filament.misc.api_base_url_helper')),
                     ])
                     ->columns(2),
-                Section::make(__('filament.sections.default_model'))
-                    ->description(__('filament.misc.default_model_description'))
-                    ->schema([
-                        Select::make('default_llm_model_id')
-                            ->label(__('filament.fields.default_model'))
-                            ->options(function (?LlmProvider $record) {
-                                if (! $record?->id) {
-                                    return [];
-                                }
-
-                                return LlmModel::query()
-                                    ->where('provider_id', $record->id)
-                                    ->where('is_active', true)
-                                    ->orderBy('name')
-                                    ->pluck('name', 'id');
-                            })
-                            ->searchable()
-                            ->helperText(__('filament.misc.default_model_helper')),
-                    ])
-                    ->visibleOn('edit'),
                 Section::make(__('filament.sections.extra_configuration'))
                     ->schema([
                         KeyValue::make('config')

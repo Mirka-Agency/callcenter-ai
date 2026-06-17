@@ -189,6 +189,33 @@ class CallProcessingTracker
         return $job;
     }
 
+    public function requeueForAnalysis(CallProcessingJob $job): CallProcessingJob
+    {
+        $job = $this->transition(
+            job: $job,
+            status: ProcessingJobStatus::Queued,
+            stage: ProcessingJobStage::Queued,
+            attributes: [
+                'queued_at' => now(),
+                'processing_started_at' => null,
+                'completed_at' => null,
+                'waiting_seconds' => null,
+                'processing_duration_seconds' => null,
+                'error_message' => null,
+            ],
+            logLevel: ProcessingLogLevel::Info,
+            logSource: 'queue',
+            logMessage: 'تحلیل دوباره به صف پردازش اضافه شد',
+        );
+
+        $job->call?->update([
+            'processing_status' => \App\Domain\Call\Enums\CallProcessingStatus::Pending,
+            'processing_error' => null,
+        ]);
+
+        return $job;
+    }
+
     public function log(
         CallProcessingJob $job,
         ProcessingLogLevel $level,

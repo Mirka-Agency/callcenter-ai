@@ -24,9 +24,6 @@ class LlmProvidersTable
                     ->counts('models')
                     ->label(__('filament.fields.models'))
                     ->sortable(),
-                TextColumn::make('defaultModel.name')
-                    ->label(__('filament.fields.default_model'))
-                    ->placeholder(__('filament.misc.em_dash')),
                 IconColumn::make('api_key')
                     ->label(__('filament.fields.api_key'))
                     ->boolean()

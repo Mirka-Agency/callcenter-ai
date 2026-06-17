@@ -22,6 +22,15 @@ class CreateLlmModel extends CreateRecord
         $record = $this->record;
 
         if (! $record->is_default) {
+            $settings = PlatformAiSettings::current();
+
+            if ($settings->default_llm_model_id === $record->id) {
+                $settings->update([
+                    'default_llm_provider_id' => null,
+                    'default_llm_model_id' => null,
+                ]);
+            }
+
             return;
         }
 

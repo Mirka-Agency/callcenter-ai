@@ -12,30 +12,45 @@ class LlmModelResolver
     {
         unset($organizationId);
 
+        $model = $this->resolveActiveDefaultModel();
+
+        if (! $model) {
+            throw new \RuntimeException('No active LLM model configured. Mark one model as the platform default in Models & Pricing.');
+        }
+
+        return $model;
+    }
+
+    private function resolveActiveDefaultModel(): ?LlmModel
+    {
         $platform = PlatformAiSettings::current()->load('defaultModel.provider');
 
-        if ($platform->defaultModel?->is_active) {
+        if ($this->isUsableModel($platform->defaultModel)) {
             return $platform->defaultModel;
         }
 
-        $providerModel = LlmProvider::query()
+        $flaggedDefault = LlmModel::query()
+            ->with('provider')
             ->where('is_active', true)
-            ->whereNotNull('default_llm_model_id')
-            ->first()
-            ?->defaultModel;
+            ->where('is_default', true)
+            ->whereHas('provider', fn ($query) => $query->where('is_active', true))
+            ->first();
 
-        if ($providerModel?->is_active) {
-            return $providerModel;
+        if ($this->isUsableModel($flaggedDefault)) {
+            return $flaggedDefault;
         }
 
-        $fallback = LlmModel::query()->where('is_active', true)->where('is_default', true)->first()
-            ?? LlmModel::query()->where('is_active', true)->first();
+        return LlmModel::query()
+            ->with('provider')
+            ->where('is_active', true)
+            ->whereHas('provider', fn ($query) => $query->where('is_active', true))
+            ->orderBy('id')
+            ->first();
+    }
 
-        if (! $fallback) {
-            throw new \RuntimeException('No active LLM model configured. Set the platform default model in admin billing settings.');
-        }
-
-        return $fallback;
+    private function isUsableModel(?LlmModel $model): bool
+    {
+        return $model?->is_active && $model->provider?->is_active;
     }
 
     public function resolveProviderForOrganization(int $organizationId): ?LlmProvider

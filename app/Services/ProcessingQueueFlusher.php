@@ -87,6 +87,11 @@ class ProcessingQueueFlusher
         return $reconciled;
     }
 
+    public function clearLaravelJobsForCall(int $callId): int
+    {
+        return $this->deleteLaravelJobsForCall($callId);
+    }
+
     public function syncAfterQueueCommand(string $command): void
     {
         if (! in_array($command, ['queue:flush', 'queue:clear'], true)) {
@@ -145,24 +150,44 @@ class ProcessingQueueFlusher
     private function hasLaravelJobForCall(int $callId): bool
     {
         foreach (self::PROCESSING_JOB_CLASSES as $class) {
-            $escapedClass = str_replace('\\', '\\\\', $class);
-
-            $exists = DB::table('jobs')
-                ->where('payload', 'like', '%'.$escapedClass.'%')
-                ->where(function ($query) use ($callId) {
-                    $query
-                        ->where('payload', 'like', '%"callId";i:'.$callId.';%')
-                        ->orWhere('payload', 'like', '%"callId";i:'.$callId.'%')
-                        ->orWhere('payload', 'like', '%"callId":'.$callId.'%')
-                        ->orWhere('payload', 'like', '%"callId": '.$callId.'%');
-                })
-                ->exists();
-
-            if ($exists) {
+            if ($this->countLaravelJobsForCall($callId, $class) > 0) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private function deleteLaravelJobsForCall(int $callId, ?string $onlyClass = null): int
+    {
+        $classes = $onlyClass ? [$onlyClass] : self::PROCESSING_JOB_CLASSES;
+        $deleted = 0;
+
+        foreach ($classes as $class) {
+            $deleted += $this->countLaravelJobsForCall($callId, $class, delete: true);
+        }
+
+        return $deleted;
+    }
+
+    private function countLaravelJobsForCall(int $callId, string $class, bool $delete = false): int
+    {
+        $escapedClass = str_replace('\\', '\\\\', $class);
+
+        $query = DB::table('jobs')
+            ->where('payload', 'like', '%'.$escapedClass.'%')
+            ->where(function ($query) use ($callId) {
+                $query
+                    ->where('payload', 'like', '%"callId";i:'.$callId.';%')
+                    ->orWhere('payload', 'like', '%"callId";i:'.$callId.'%')
+                    ->orWhere('payload', 'like', '%"callId":'.$callId.'%')
+                    ->orWhere('payload', 'like', '%"callId": '.$callId.'%');
+            });
+
+        if ($delete) {
+            return $query->delete();
+        }
+
+        return $query->exists() ? 1 : 0;
     }
 }

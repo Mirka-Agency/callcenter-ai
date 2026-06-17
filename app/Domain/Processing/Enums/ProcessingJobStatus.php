@@ -27,4 +27,9 @@ enum ProcessingJobStatus: string
     {
         return in_array($this, [self::Completed, self::Failed, self::Cancelled], true);
     }
+
+    public function isRecoverable(): bool
+    {
+        return in_array($this, [self::Failed, self::Cancelled], true);
+    }
 }

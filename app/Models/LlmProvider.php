@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
-#[Fillable(['name', 'code', 'is_active', 'config', 'api_key', 'base_url', 'default_llm_model_id'])]
+#[Fillable(['name', 'code', 'is_active', 'config', 'api_key', 'base_url'])]
 class LlmProvider extends Model
 {
     /** @use HasFactory<\Database\Factories\LlmProviderFactory> */
@@ -26,11 +26,6 @@ class LlmProvider extends Model
     public function models(): HasMany
     {
         return $this->hasMany(LlmModel::class, 'provider_id');
-    }
-
-    public function defaultModel(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-    {
-        return $this->belongsTo(LlmModel::class, 'default_llm_model_id');
     }
 
     public function hasApiCredentials(): bool

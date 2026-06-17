@@ -56,9 +56,10 @@ class LlmModelSeeder extends Seeder
             ?? LlmModel::query()->first();
 
         if ($defaultModel) {
-            LlmProvider::query()
-                ->whereKey($defaultModel->provider_id)
-                ->update(['default_llm_model_id' => $defaultModel->id]);
+            \App\Models\PlatformAiSettings::current()->update([
+                'default_llm_provider_id' => $defaultModel->provider_id,
+                'default_llm_model_id' => $defaultModel->id,
+            ]);
         }
     }
 }

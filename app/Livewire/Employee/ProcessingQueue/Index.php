@@ -3,6 +3,7 @@
 namespace App\Livewire\Employee\ProcessingQueue;
 
 use App\Livewire\Concerns\InteractsWithProcessingQueue;
+use App\Livewire\Concerns\ManagesProcessingQueueJob;
 use App\Models\CallProcessingJob;
 use App\Services\EmployeeContext;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,6 +16,7 @@ use Livewire\Component;
 class Index extends Component
 {
     use InteractsWithProcessingQueue;
+    use ManagesProcessingQueueJob;
 
     protected function queueOrganizationId(): int
     {

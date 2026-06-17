@@ -10,6 +10,10 @@
         <div class="flex flex-wrap gap-2">
             <a href="{{ $queueIndexUrl }}" class="saas-btn-secondary">@lang('ui.cta.view_queue')</a>
             <a href="{{ $uploadUrl }}" class="saas-btn-secondary">مشاهده نتیجه بارگذاری</a>
+            @if ($job->status->isRecoverable())
+                <button type="button" wire:click="retryProcessingJob" class="saas-btn-primary">{{ __('ui.processing.retry') }}</button>
+                <button type="button" wire:click="deleteProcessingJob" wire:confirm="{{ __('ui.processing.delete_confirm') }}" class="saas-btn-secondary text-red-600">{{ __('ui.processing.delete') }}</button>
+            @endif
         </div>
     </div>
 
