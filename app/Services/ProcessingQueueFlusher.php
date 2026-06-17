@@ -177,11 +177,9 @@ class ProcessingQueueFlusher
         $query = DB::table('jobs')
             ->where('payload', 'like', '%'.$escapedClass.'%')
             ->where(function ($query) use ($callId) {
-                $query
-                    ->where('payload', 'like', '%"callId";i:'.$callId.';%')
-                    ->orWhere('payload', 'like', '%"callId";i:'.$callId.'%')
-                    ->orWhere('payload', 'like', '%"callId":'.$callId.'%')
-                    ->orWhere('payload', 'like', '%"callId": '.$callId.'%');
+                foreach ($this->callIdPayloadPatterns($callId) as $pattern) {
+                    $query->orWhere('payload', 'like', '%'.$pattern.'%');
+                }
             });
 
         if ($delete) {
@@ -189,5 +187,17 @@ class ProcessingQueueFlusher
         }
 
         return $query->exists() ? 1 : 0;
+    }
+
+    /** @return list<string> */
+    private function callIdPayloadPatterns(int $callId): array
+    {
+        return [
+            '"callId";i:'.$callId,
+            'callId\";i:'.$callId,
+            'callId";i:'.$callId,
+            '"callId":'.$callId,
+            '"callId": '.$callId,
+        ];
     }
 }

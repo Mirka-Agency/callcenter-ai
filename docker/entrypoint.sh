@@ -37,7 +37,7 @@ case "${CONTAINER_ROLE:-web}" in
         exec supervisord -c /etc/supervisord.conf
         ;;
     queue)
-        exec php artisan queue:work --sleep=3 --tries=3 --timeout=300
+        exec php artisan queue:work --sleep=3 --tries=3 --timeout=600
         ;;
     scheduler)
         exec php artisan schedule:work

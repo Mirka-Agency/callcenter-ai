@@ -172,13 +172,15 @@ Migrations run automatically on each web container start (`php artisan migrate -
 
 ### Container roles
 
-Set `CONTAINER_ROLE` to run different processes from the same image:
+The default `web` container runs **Nginx**, **PHP-FPM**, **queue worker**, and **scheduler** together via Supervisor (`docker/supervisord.conf`). No separate CapRover app is required for background jobs.
 
-| Role | Command |
-|------|---------|
-| `web` (default) | Nginx + PHP-FPM |
-| `queue` | `php artisan queue:work` |
-| `scheduler` | `php artisan schedule:work` |
+Set `CONTAINER_ROLE` only when you need a dedicated process:
+
+| Role | Processes |
+|------|-----------|
+| `web` (default) | Nginx + PHP-FPM + `queue:work` + `schedule:work` |
+| `queue` | `php artisan queue:work` only (optional extra workers) |
+| `scheduler` | `php artisan schedule:work` only |
 | `reverb` | `php artisan reverb:start` |
 
 Health check: `GET /up`
