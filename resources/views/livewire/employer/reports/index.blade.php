@@ -141,13 +141,10 @@
         ],
     ];
 
-    $filterLoadingTargets = 'datePreset,customFrom,customTo,applyCustomDateRange,selectedEmployeeIds,compareMode,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter,toggleEmployee';
-    $overlayLoadingTargets = 'datePreset,customFrom,customTo,applyCustomDateRange,selectedEmployeeIds,compareMode,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter,toggleEmployee';
+    $filterActionTargets = 'applyCustomDateRange,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter,toggleEmployee';
 @endphp
 
 <div class="saas-page space-y-6">
-    <x-saas.filter-loading-overlay :target="$overlayLoadingTargets" />
-
     <x-saas.page-header
         data-tour="page-header"
         title="گزارش‌های مدیریتی"
@@ -155,9 +152,7 @@
     >
         <x-slot:actions>
             <a href="{{ route('employer.intelligence.index') }}" class="saas-btn-secondary text-sm">تحلیل تماس‌ها</a>
-            <button type="button" wire:click="export('csv')" class="saas-btn-secondary text-sm">CSV</button>
-            <button type="button" wire:click="export('xlsx')" class="saas-btn-secondary text-sm">Excel</button>
-            <button type="button" wire:click="export('pdf')" class="saas-btn-secondary text-sm">PDF</button>
+            <x-saas.export-actions route-name="employer.reports.export" />
         </x-slot:actions>
     </x-saas.page-header>
 
@@ -166,6 +161,9 @@
         'moreDatePresets' => $moreDatePresets,
         'filterEmployees' => $filterEmployees,
     ])
+
+    <div class="relative space-y-6">
+        <x-saas.filter-loading-overlay scoped :target="$filterActionTargets" />
 
     <section class="saas-hero saas-hero--accent" data-tour="report-summary">
         <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">خلاصه مدیریتی</p>
@@ -431,6 +429,7 @@
             </div>
         </div>
     @endif
+    </div>
 </div>
 
 @script

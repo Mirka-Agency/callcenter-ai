@@ -45,11 +45,11 @@
         ],
     ];
 
-    $filterLoadingTargets = 'setPeriod';
+    $filterActionTargets = 'setPeriod';
 @endphp
 
-<div class="saas-page space-y-6" wire:loading.class="opacity-60" wire:target="{{ $filterLoadingTargets }}">
-    <x-saas.filter-loading-overlay :target="$filterLoadingTargets" />
+<div class="saas-page space-y-6">
+    <x-saas.filter-loading-overlay :target="$filterActionTargets" />
 
     <x-saas.page-header
         title="مربیگری فروش"

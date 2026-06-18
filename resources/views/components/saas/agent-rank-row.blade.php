@@ -17,7 +17,7 @@
 @endphp
 
 <{{ $tag }}
-    @if ($href) href="{{ $href }}" @endif
+    @if ($href) href="{{ $href }}" wire:navigate @endif
     {{ $attributes->class([
         'group flex items-start gap-3 rounded-lg border border-transparent px-2.5 py-2.5 transition',
         'hover:-translate-y-0.5 hover:border-zinc-200/80 hover:bg-zinc-50/70 hover:shadow-sm dark:hover:border-zinc-700 dark:hover:bg-zinc-800/60' => filled($href),

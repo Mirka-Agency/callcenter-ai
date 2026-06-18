@@ -3,11 +3,8 @@
 @endphp
 
 <aside
-    class="saas-sidebar lg:translate-x-0"
-    :class="{
-        'translate-x-0': $store.layout.sidebarOpen,
-        'translate-x-full max-lg:pointer-events-none': ! $store.layout.sidebarOpen,
-    }"
+    class="saas-sidebar"
+    :class="{ 'saas-sidebar--open': $store.layout.sidebarOpen }"
     data-tour="sidebar"
 >
     <div class="saas-sidebar-header">
@@ -120,14 +117,8 @@
 </aside>
 
 <div
-    x-show="$store.layout.sidebarOpen"
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="opacity-0"
-    x-transition:enter-end="opacity-100"
-    x-transition:leave="transition ease-in duration-200"
-    x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
     class="saas-sidebar-overlay"
+    :class="{ 'is-visible': $store.layout.sidebarOpen }"
+    :aria-hidden="! $store.layout.sidebarOpen"
     @click="$store.layout.closeSidebar()"
-    aria-hidden="true"
 ></div>

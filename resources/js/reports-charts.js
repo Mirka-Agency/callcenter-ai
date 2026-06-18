@@ -305,24 +305,28 @@ function initChart(canvas) {
 
     destroyChart(id);
 
-    const config = JSON.parse(canvas.dataset.config || '{}');
-    const type = canvas.dataset.type || 'line';
-    const datasetCount = config.datasets?.length ?? 1;
-    const options = deepMerge(baseOptions(type, datasetCount), config.options || {});
+    try {
+        const config = JSON.parse(canvas.dataset.config || '{}');
+        const type = canvas.dataset.type || 'line';
+        const datasetCount = config.datasets?.length ?? 1;
+        const options = deepMerge(baseOptions(type, datasetCount), config.options || {});
 
-    charts.set(id, new Chart(canvas, {
-        type,
-        data: config,
-        options,
-    }));
+        charts.set(id, new Chart(canvas, {
+            type,
+            data: config,
+            options,
+        }));
 
-    canvas.addEventListener('chart:click', (event) => {
-        const detail = event.detail || {};
+        canvas.addEventListener('chart:click', (event) => {
+            const detail = event.detail || {};
 
-        if (detail.dimension && detail.value !== undefined) {
-            window.Livewire?.dispatch('report-drilldown', detail);
-        }
-    });
+            if (detail.dimension && detail.value !== undefined) {
+                window.Livewire?.dispatch('report-drilldown', detail);
+            }
+        });
+    } catch (error) {
+        console.error(`Failed to initialize chart "${id}"`, error);
+    }
 }
 
 function wireDrilldown(canvas, chart) {

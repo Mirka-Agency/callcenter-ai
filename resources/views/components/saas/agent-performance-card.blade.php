@@ -12,7 +12,7 @@
 @endphp
 
 @if ($href)
-    <a href="{{ $href }}" {{ $attributes->merge(['class' => $cardClass]) }}>
+    <a href="{{ $href }}" wire:navigate {{ $attributes->merge(['class' => $cardClass]) }}>
         @include('components.saas.partials.agent-performance-card-body', ['agent' => $agent, 'tier' => $tier, 'showRank' => $showRank])
     </a>
 @else

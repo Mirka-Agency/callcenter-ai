@@ -1,9 +1,9 @@
 <div class="space-y-10">
     @php
-        $filterLoadingTargets = 'search,filterEmployeeId,applyCustomDateRange';
+        $filterActionTargets = 'applyCustomDateRange';
     @endphp
 
-    <x-saas.filter-loading-overlay :target="$filterLoadingTargets" />
+    <x-saas.filter-loading-overlay :target="$filterActionTargets" />
 
     <div class="flex flex-wrap items-center justify-between gap-4" data-tour="manual-upload-header">
         <div>
@@ -76,7 +76,7 @@
             </div>
         </div>
 
-        <div class="grid gap-4" wire:loading.class="opacity-60" wire:target="{{ $filterLoadingTargets }}">
+        <div class="grid gap-4">
             @forelse ($uploads as $upload)
                 <a href="{{ route('employer.manual-analyses.show', $upload) }}" class="saas-card block transition hover:border-zinc-300 dark:hover:border-zinc-600" wire:key="upload-{{ $upload->id }}">
                     <div class="flex flex-wrap items-center justify-between gap-4">

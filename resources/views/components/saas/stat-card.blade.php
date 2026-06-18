@@ -2,7 +2,7 @@
 
 <div {{ $attributes->merge(['class' => 'saas-stat']) }}>
     <p class="text-sm font-medium text-zinc-500">{{ $label }}</p>
-    <p class="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-white">{{ $value }}</p>
+    <p class="saas-stat-value">{{ $value }}</p>
     @if ($hint)
         <p class="text-sm text-zinc-500">{{ $hint }}</p>
     @endif

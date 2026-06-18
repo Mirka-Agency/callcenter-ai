@@ -98,12 +98,12 @@
         'options' => $chartOptions,
     ];
 
-    $filterLoadingTargets = 'setPeriod';
+    $filterActionTargets = 'setPeriod';
     $analyzedInPeriod = (int) ($metrics['total_analyzed'] ?? 0);
 @endphp
 
-<div class="saas-page space-y-6" wire:loading.class="opacity-60" wire:target="{{ $filterLoadingTargets }}">
-    <x-saas.filter-loading-overlay :target="$filterLoadingTargets" />
+<div class="saas-page space-y-6">
+    <x-saas.filter-loading-overlay :target="$filterActionTargets" />
 
     <section class="saas-hero saas-hero--accent" data-tour="performance-hero">
         <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">

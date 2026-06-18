@@ -1,7 +1,7 @@
 @php
     use App\Support\AgentPerformancePresenter;
 
-    $filterLoadingTargets = 'setPeriod,setType,updatedSearch';
+    $filterActionTargets = 'setPeriod,setType';
 
     $volumeChart = [
         'labels' => collect($volumeTrend)->pluck('label')->all(),
@@ -34,8 +34,8 @@
     $analyzedDeltaLabel = ($summary['analyzed_delta'] >= 0 ? '+' : '') . $summary['analyzed_delta'] . ' نسبت به دوره قبل';
 @endphp
 
-<div class="saas-page space-y-6" wire:loading.class="opacity-60" wire:target="{{ $filterLoadingTargets }}">
-    <x-saas.filter-loading-overlay :target="$filterLoadingTargets" />
+<div class="saas-page space-y-6">
+    <x-saas.filter-loading-overlay :target="$filterActionTargets" />
 
     <x-saas.page-header
         title="فعالیت اخیر"

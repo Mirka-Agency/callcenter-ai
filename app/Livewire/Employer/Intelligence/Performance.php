@@ -7,7 +7,6 @@ use App\Livewire\Employer\Intelligence\Concerns\HasPerformanceFilters;
 use App\Models\OrganizationUser;
 use App\Services\EmployerContext;
 use App\Services\Performance\EmployeePerformanceAnalytics;
-use App\Support\PerformanceReportExporter;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -21,18 +20,6 @@ class Performance extends Component
     public function mount(): void
     {
         $this->mountPerformanceFilters();
-    }
-
-    public function export(string $format)
-    {
-        $filter = $this->performanceFilter();
-
-        return match ($format) {
-            'csv' => PerformanceReportExporter::downloadTeamCsv($filter),
-            'xlsx', 'excel' => PerformanceReportExporter::downloadTeamExcel($filter),
-            'pdf' => PerformanceReportExporter::downloadTeamPdf($filter),
-            default => null,
-        };
     }
 
     public function render()

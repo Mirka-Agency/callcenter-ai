@@ -22,7 +22,7 @@
         <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
                 <p class="text-sm font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">داشبورد مدیر</p>
-                <h1 class="mt-1 text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">{{ $organization->title }}</h1>
+                <h1 class="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">{{ $organization->title }}</h1>
                 <p class="mt-2 max-w-2xl text-zinc-500">
                     نمای کلی عملکرد کارشناسان در ۳۰ روز اخیر
                 </p>

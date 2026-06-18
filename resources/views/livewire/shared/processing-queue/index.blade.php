@@ -1,9 +1,5 @@
-<div class="space-y-8" @if($autoRefresh) wire:poll.5s @endif>
-    @php
-        $filterLoadingTargets = 'search,statusFilter';
-    @endphp
 
-    <x-saas.filter-loading-overlay :target="$filterLoadingTargets" />
+<div class="space-y-8" @if($autoRefresh) wire:poll.5s @endif>
 
     <div class="flex flex-wrap items-center justify-between gap-4" data-tour="queue-header">
         <div>
@@ -32,7 +28,7 @@
             </select>
         </div>
 
-        <div class="mt-6 overflow-x-auto" wire:loading.class="opacity-60" wire:target="{{ $filterLoadingTargets }}" data-tour="queue-table">
+        <div class="mt-6 overflow-x-auto" data-tour="queue-table">
             <table class="saas-table w-full min-w-[900px]">
                 <thead>
                     <tr>

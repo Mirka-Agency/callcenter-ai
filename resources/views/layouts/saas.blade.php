@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl" x-data x-bind:class="$store.theme.dark ? 'dark' : ''">
+<html lang="fa" dir="rtl" x-data x-init="$nextTick(() => { $store.layout?.closeSidebar?.(); })" x-bind:class="$store.theme.dark ? 'dark' : ''">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -39,7 +39,18 @@
         })();
     </script>
 </head>
-<body class="saas-shell" @keydown.escape.window="$store.layout.closeSidebar()">
+<body
+    class="saas-shell"
+    @keydown.escape.window="$store.layout.closeSidebar()"
+>
+    <script>
+        document.documentElement.classList.remove('overflow-hidden');
+        document.body.classList.remove('overflow-hidden', 'employer-onboarding-open', 'employee-onboarding-open');
+    </script>
+    <div id="saas-request-progress" class="saas-request-progress" aria-hidden="true">
+        <div class="saas-request-progress__bar"></div>
+    </div>
+
     @include('components.saas.impersonation-banner')
 
     @include('components.saas.sidebar', ['portal' => $portal ?? 'employer', 'navItems' => $navItems ?? []])

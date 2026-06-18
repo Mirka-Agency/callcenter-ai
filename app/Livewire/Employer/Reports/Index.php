@@ -7,7 +7,6 @@ use App\Livewire\Employer\Reports\Concerns\HasReportFilters;
 use App\Models\OrganizationUser;
 use App\Services\EmployerContext;
 use App\Services\Reports\EmployerReportsAnalytics;
-use App\Support\EmployerReportExporter;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -41,18 +40,6 @@ class Index extends Component
         $this->showDrilldown = false;
         $this->drilldownDimension = null;
         $this->drilldownValue = null;
-    }
-
-    public function export(string $format)
-    {
-        $filter = $this->reportFilter();
-
-        return match ($format) {
-            'csv' => EmployerReportExporter::downloadCsv($filter),
-            'xlsx', 'excel' => EmployerReportExporter::downloadExcel($filter),
-            'pdf' => EmployerReportExporter::downloadPdf($filter),
-            default => null,
-        };
     }
 
     public function render()

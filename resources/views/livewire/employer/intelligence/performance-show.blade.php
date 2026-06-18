@@ -31,12 +31,11 @@
         ]],
     ];
 
-    $filterLoadingTargets = 'datePreset,customFrom,customTo,applyCustomDateRange,selectedEmployeeIds,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter';
+    $filterActionTargets = 'applyCustomDateRange,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter';
 @endphp
 
-<div class="space-y-6" wire:loading.class="opacity-60" wire:target="{{ $filterLoadingTargets }}">
-    <x-saas.filter-loading-overlay :target="$filterLoadingTargets" />
-    <a href="{{ route('employer.intelligence.performance') }}?preset={{ $datePreset }}&from={{ $customFrom }}&to={{ $customTo }}" class="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
+<div class="space-y-6">
+    <a href="{{ route('employer.intelligence.performance') }}?preset={{ $datePreset }}&from={{ $customFrom }}&to={{ $customTo }}" wire:navigate class="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
         <svg class="h-4 w-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6" /></svg>
         بازگشت به عملکرد کارشناسان
     </a>
@@ -65,11 +64,10 @@
             </div>
             <div class="flex flex-wrap items-center gap-4">
                 <x-saas.score-ring :score="$metrics['average_quality_score']" size="lg" label="امتیاز کلی" />
-                <div class="flex flex-wrap gap-2">
-                <button type="button" wire:click="export('csv')" class="saas-btn-secondary text-sm">CSV</button>
-                <button type="button" wire:click="export('xlsx')" class="saas-btn-secondary text-sm">Excel</button>
-                <button type="button" wire:click="export('pdf')" class="saas-btn-secondary text-sm">PDF</button>
-                </div>
+                <x-saas.export-actions
+                    route-name="employer.intelligence.performance.show.export"
+                    :route-params="['employee' => $profile['employee']['id']]"
+                />
             </div>
         </div>
         <p class="mt-6 text-sm leading-7 text-zinc-600 dark:text-zinc-300">{{ $profile['executive_summary'] }}</p>
@@ -80,6 +78,9 @@
         'moreDatePresets' => $moreDatePresets,
         'filterEmployees' => $filterEmployees,
     ])
+
+    <div class="relative space-y-6">
+        <x-saas.filter-loading-overlay scoped :target="$filterActionTargets" />
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-saas.stat-card label="تماس‌های پاسخ‌داده" :value="$metrics['answered_calls']" :hint="$metrics['total_calls'].' کل'" />
@@ -185,4 +186,5 @@
             @endforelse
         </div>
     </section>
+    </div>
 </div>

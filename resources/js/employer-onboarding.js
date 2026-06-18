@@ -250,11 +250,29 @@ class EmployerOnboardingTour {
             return false;
         }
 
-        if (! step.center && step.selector && this.findTarget(step.selector)) {
+        const routeUrl = window.__employerOnboarding?.routes?.[step.route];
+
+        if (! routeUrl) {
             return false;
         }
 
-        return Boolean(window.__employerOnboarding?.routes?.[step.route]);
+        const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+
+        if (step.selector?.includes('data-tour-nav') && isMobile) {
+            return true;
+        }
+
+        if (! step.center && step.selector && this.findTarget(step.selector)) {
+            const target = this.findTarget(step.selector);
+
+            if (target?.closest('.saas-sidebar') && isMobile && ! Alpine.store('layout')?.sidebarOpen) {
+                return true;
+            }
+
+            return false;
+        }
+
+        return true;
     }
 
     navigateToStep(step, stepIndex) {
@@ -266,6 +284,7 @@ class EmployerOnboardingTour {
             return;
         }
 
+        Alpine.store('layout')?.closeSidebar();
         this.ui.hidden = true;
         sessionStorage.setItem(RESUME_KEY, JSON.stringify({
             tourId: this.tourId,
@@ -273,11 +292,7 @@ class EmployerOnboardingTour {
             steps: this.steps,
         }));
 
-        if (window.Livewire?.navigate) {
-            window.Livewire.navigate(url);
-        } else {
-            window.location.assign(url);
-        }
+        window.location.assign(url);
     }
 
     next() {
@@ -345,6 +360,10 @@ class EmployerOnboardingTour {
         const target = step.center
             ? null
             : (step.fab ? this.findFabTarget() : this.findTarget(step.selector));
+
+        if (target?.closest('.saas-sidebar') && window.matchMedia('(max-width: 1023px)').matches) {
+            Alpine.store('layout')?.openSidebar();
+        }
 
         if (! target) {
             this.clearFocusTarget();

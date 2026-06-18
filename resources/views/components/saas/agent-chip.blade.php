@@ -17,6 +17,7 @@
 @if ($href)
     <a
         href="{{ $href }}"
+        wire:navigate
         {{ $attributes->class(['saas-chip', $chipClass]) }}
     >
         <x-saas.avatar :employee="$employee" :name="$label" :url="$url" size="xs" class="shrink-0" />

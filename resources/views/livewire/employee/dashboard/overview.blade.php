@@ -49,19 +49,19 @@
 
 <div class="saas-page">
     <section class="saas-hero" data-tour="dashboard-hero">
-        <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div class="flex items-center gap-5">
+        <div class="flex flex-col gap-6 sm:flex-row sm:items-center lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-5">
                 <x-saas.avatar :employee="$membership" size="xl" ring />
-                <div>
+                <div class="min-w-0">
                     <p class="text-sm font-medium uppercase tracking-wider text-indigo-600">داشبورد عملکرد</p>
-                    <h1 class="text-3xl font-bold tracking-tight">خوش آمدید، {{ $membership->first_name }}</h1>
+                    <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">خوش آمدید، {{ $membership->first_name }}</h1>
                     <p class="mt-2 text-zinc-500">مرکز بینش شخصی شما — روند عملکرد، نقاط قوت و اقدامات پیشنهادی در یک نگاه.</p>
                 </div>
             </div>
-            <div class="flex items-center gap-3 rounded-md bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-white shadow-sm">
+            <div class="flex w-full items-center justify-between gap-3 rounded-md bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3 text-white shadow-sm sm:w-auto sm:justify-start">
             <div>
                 <p class="text-xs uppercase opacity-80">امتیاز عملکرد</p>
-                <p class="text-3xl font-bold">{{ $cockpit['performance_score'] ?: '—' }}</p>
+                <p class="text-2xl font-bold sm:text-3xl">{{ $cockpit['performance_score'] ?: '—' }}</p>
             </div>
             @if ($cockpit['weekly_delta'] > 0)
                 <span class="rounded-md bg-white/20 px-2 py-1 text-xs">+{{ $cockpit['weekly_delta'] }} این هفته</span>

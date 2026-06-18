@@ -76,13 +76,10 @@
         ],
     ];
 
-    $filterLoadingTargets = 'search,datePreset,customFrom,customTo,applyCustomDateRange,filterEmployeeId,callStatus,directionFilter,durationMin,durationMax,applyQuickFilter,setDatePreset,closeCustomDateRangePanel,toggleMoreDatePresets,clearDateFilter,clearFilters,sortByColumn,filterByAgent';
-    $overlayLoadingTargets = 'datePreset,customFrom,customTo,applyCustomDateRange,filterEmployeeId,callStatus,directionFilter,durationMin,durationMax,applyQuickFilter,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,sortByColumn,filterByAgent';
+    $filterActionTargets = 'applyCustomDateRange,applyQuickFilter,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,sortByColumn,filterByAgent';
 @endphp
 
 <div class="saas-page space-y-6">
-    <x-saas.filter-loading-overlay :target="$overlayLoadingTargets" />
-
     <x-saas.page-header
         data-tour="page-header"
         title="تحلیل تماس‌ها"
@@ -103,7 +100,9 @@
         'filter' => $filter,
     ])
 
-    <div class="space-y-6">
+    <div class="relative space-y-6">
+        <x-saas.filter-loading-overlay scoped :target="$filterActionTargets" />
+
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6" data-tour="analysis-stats">
         <x-saas.stat-card label="تحلیل‌های فیلترشده" :value="number_format($overview['total'])" />
         <x-saas.stat-card label="میانگین امتیاز" :value="$overview['average_score'] ?: '—'" hint="کیفیت مکالمه" />
@@ -200,27 +199,27 @@
         @endif
     </div>
 
-    <div class="saas-card overflow-hidden p-0" data-tour="analysis-list">
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200/80 px-6 py-4 dark:border-zinc-800">
-            <div>
+    <div class="saas-card saas-analysis-list-panel overflow-hidden p-0" data-tour="analysis-list">
+        <div class="saas-list-toolbar flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200/80 px-4 py-4 dark:border-zinc-800 sm:px-6">
+            <div class="min-w-0">
                 <h2 class="text-lg font-semibold">لیست تحلیل مکالمات</h2>
                 <p class="mt-1 text-sm text-zinc-500">
                     {{ number_format($analyses->total()) }} نتیجه
                     @if ($filter->hasActiveFilters())
                         · فیلتر فعال
                     @endif
-                    · برای جزئیات روی هر ردیف کلیک کنید
+                    <span class="hidden sm:inline">· برای جزئیات روی هر ردیف کلیک کنید</span>
                 </p>
             </div>
             <input
                 wire:model.live.debounce.300ms="search"
                 type="search"
                 placeholder="جستجو در خلاصه، مشتری یا کارشناس..."
-                class="saas-input max-w-xs text-sm"
+                class="saas-input w-full text-sm sm:max-w-xs"
             >
         </div>
 
-        <div wire:loading.remove wire:target="{{ $filterLoadingTargets }}">
+        <div class="min-h-[12rem]">
             @if ($analyses->isEmpty())
                 <div class="p-8">
                     @if ($filter->hasActiveFilters())
@@ -238,8 +237,8 @@
                     @endif
                 </div>
             @else
-                <div class="overflow-x-auto">
-                    <div class="min-w-[58rem]">
+                <div class="saas-analysis-list-scroll overflow-x-auto lg:overflow-x-auto">
+                    <div class="saas-analysis-list-table min-w-[58rem] lg:min-w-[58rem]">
                         @php
                             $sortIcon = fn (string $column) => $sortBy === $column
                                 ? ($sortDir === 'asc' ? '↑' : '↓')

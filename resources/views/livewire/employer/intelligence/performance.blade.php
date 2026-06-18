@@ -31,21 +31,17 @@
 
     $profileUrl = fn (array $agent) => route('employer.intelligence.performance.show', $agent['id']).'?preset='.$datePreset.'&from='.$customFrom.'&to='.$customTo;
 
-    $filterLoadingTargets = 'datePreset,customFrom,customTo,applyCustomDateRange,selectedEmployeeIds,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter';
+    $filterActionTargets = 'applyCustomDateRange,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter';
 @endphp
 
 <div class="saas-page space-y-6">
-    <x-saas.filter-loading-overlay :target="$filterLoadingTargets" />
-
     <x-saas.page-header
         data-tour="page-header"
         title="عملکرد کارشناسان"
         description="مقایسه، رتبه‌بندی و شناسایی فرصت‌های مربیگری تیم تماس."
     >
         <x-slot:actions>
-            <button type="button" wire:click="export('csv')" class="saas-btn-secondary text-sm">CSV</button>
-            <button type="button" wire:click="export('xlsx')" class="saas-btn-secondary text-sm">Excel</button>
-            <button type="button" wire:click="export('pdf')" class="saas-btn-secondary text-sm">PDF</button>
+            <x-saas.export-actions route-name="employer.intelligence.performance.export" />
         </x-slot:actions>
     </x-saas.page-header>
 
@@ -55,7 +51,9 @@
         'filterEmployees' => $filterEmployees,
     ])
 
-    <div class="space-y-6" wire:loading.class="opacity-60" wire:target="{{ $filterLoadingTargets }}">
+    <div class="relative space-y-6">
+        <x-saas.filter-loading-overlay scoped :target="$filterActionTargets" />
+
     <section class="saas-hero saas-hero--accent" data-tour="performance-summary">
         <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">جمع‌بندی مدیریتی</p>
         <p class="mt-3 text-base leading-8 text-zinc-700 dark:text-zinc-200">{{ $dashboard['executive_summary'] }}</p>

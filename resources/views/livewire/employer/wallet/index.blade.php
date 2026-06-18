@@ -91,7 +91,7 @@
     };
 @endphp
 
-<div class="saas-page space-y-6">
+<div class="saas-page min-w-0 space-y-6">
     <x-saas.page-header
         data-tour="page-header"
         title="اعتبار تحلیل"
@@ -108,12 +108,12 @@
         </div>
     @endif
 
-    <section class="saas-hero saas-hero--accent" data-tour="wallet-balance">
-        <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
+    <section class="saas-hero saas-hero--accent min-w-0" data-tour="wallet-balance">
+        <div class="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div class="min-w-0 flex-1">
                 <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">موجودی فعلی</p>
-                <p class="mt-2 text-4xl font-bold tracking-tight text-zinc-900 dark:text-white">{{ $formatMoney($overview['balance']) }}</p>
-                <p class="mt-2 text-sm text-zinc-500">
+                <p class="mt-2 break-words text-2xl font-bold leading-tight tracking-tight text-zinc-900 dark:text-white sm:text-3xl lg:text-4xl">{{ $formatMoney($overview['balance']) }}</p>
+                <p class="mt-2 text-sm leading-6 text-zinc-500">
                     @if ($estimatedDaysRemaining !== null && $estimatedDaysRemaining > 0)
                         با میانگین مصرف ۳۰ روز اخیر، حدود {{ number_format($estimatedDaysRemaining) }} روز اعتبار باقی می‌ماند.
                     @elseif ($avgDailyCost <= 0)
@@ -124,7 +124,7 @@
                 </p>
             </div>
 
-            <div class="grid gap-3 sm:grid-cols-3">
+            <div class="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 <div class="saas-inline-stat">
                     <p class="text-xs text-zinc-500">مصرف امروز (تقریبی)</p>
                     <p class="mt-1 text-lg font-semibold">{{ $formatMoney(collect($dailyTrend)->last()['total_cost'] ?? 0) }}</p>
@@ -141,8 +141,8 @@
         </div>
     </section>
 
-    <div data-tour="wallet-stats" class="space-y-4">
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div data-tour="wallet-stats" class="min-w-0 space-y-4">
+    <div class="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-saas.stat-card label="تحلیل‌های این ماه" :value="number_format($overview['month_analyses'])" />
         <x-saas.stat-card label="هزینه این ماه" :value="$formatMoney($overview['month_cost'])" />
         <x-saas.stat-card label="توکن مصرف‌شده" :value="number_format($overview['month_tokens'])" hint="این ماه" />
@@ -152,7 +152,7 @@
         />
     </div>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @if ($showAiInfrastructure)
             <x-saas.stat-card label="مدل فعال" :value="$overview['model']['model_name'] ?? '—'" />
             <x-saas.stat-card label="ارائه‌دهنده" :value="$overview['model']['provider_name'] ?? '—'" />
@@ -168,12 +168,12 @@
     </div>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-2" data-tour="wallet-charts">
-        <div class="saas-card">
+    <div class="grid min-w-0 gap-6 lg:grid-cols-2" data-tour="wallet-charts">
+        <div class="saas-card min-w-0">
             <h2 class="text-lg font-semibold">روند مصرف روزانه</h2>
             <p class="mt-1 text-sm text-zinc-500">تعداد تحلیل و هزینه در ۳۰ روز گذشته</p>
             @if ($hasDailyTrend)
-                <div class="mt-4 h-64" wire:key="wallet-daily-usage-{{ md5(json_encode($dailyTrend)) }}">
+                <div class="saas-chart-shell" wire:key="wallet-daily-usage-{{ md5(json_encode($dailyTrend)) }}">
                     <canvas id="wallet-daily-usage" data-report-chart data-type="bar" data-config='@json($dailyUsageChart)'></canvas>
                 </div>
             @else
@@ -183,11 +183,11 @@
             @endif
         </div>
 
-        <div class="saas-card">
+        <div class="saas-card min-w-0">
             <h2 class="text-lg font-semibold">روند توکن‌ها</h2>
             <p class="mt-1 text-sm text-zinc-500">توکن ورودی و خروجی در ۳۰ روز گذشته</p>
             @if ($hasDailyTrend)
-                <div class="mt-4 h-64" wire:key="wallet-token-trend-{{ md5(json_encode($dailyTrend)) }}">
+                <div class="saas-chart-shell" wire:key="wallet-token-trend-{{ md5(json_encode($dailyTrend)) }}">
                     <canvas id="wallet-token-trend" data-report-chart data-type="line" data-config='@json($tokenTrendChart)'></canvas>
                 </div>
             @else
@@ -197,11 +197,11 @@
             @endif
         </div>
 
-        <div class="saas-card">
+        <div class="saas-card min-w-0">
             <h2 class="text-lg font-semibold">ترکیب توکن این ماه</h2>
             <p class="mt-1 text-sm text-zinc-500">سهم توکن ورودی و خروجی در مصرف ماه جاری</p>
             @if ($hasTokenSplit)
-                <div class="mt-4 mx-auto h-64 max-w-xs" wire:key="wallet-token-split-{{ md5(json_encode($monthOverview)) }}">
+                <div class="saas-chart-shell saas-chart-shell--sm" wire:key="wallet-token-split-{{ md5(json_encode($monthOverview)) }}">
                     <canvas id="wallet-token-split" data-report-chart data-type="doughnut" data-config='@json($tokenChart)'></canvas>
                 </div>
             @else
@@ -211,11 +211,11 @@
             @endif
         </div>
 
-        <div class="saas-card">
+        <div class="saas-card min-w-0">
             <h2 class="text-lg font-semibold">هزینه ماهانه</h2>
             <p class="mt-1 text-sm text-zinc-500">مجموع هزینه تحلیل‌ها در ۶ ماه اخیر</p>
             @if ($hasMonthlyTrend)
-                <div class="mt-4 h-64" wire:key="wallet-monthly-cost-{{ md5(json_encode($monthlyTrend)) }}">
+                <div class="saas-chart-shell" wire:key="wallet-monthly-cost-{{ md5(json_encode($monthlyTrend)) }}">
                     <canvas id="wallet-monthly-cost" data-report-chart data-type="bar" data-config='@json($monthlyCostChart)'></canvas>
                 </div>
             @else
@@ -226,8 +226,8 @@
         </div>
     </div>
 
-    <div class="grid gap-6 xl:grid-cols-3">
-        <div class="saas-card xl:col-span-2" data-tour="wallet-transactions">
+    <div class="grid min-w-0 gap-6 xl:grid-cols-3">
+        <div class="saas-card min-w-0 xl:col-span-2" data-tour="wallet-transactions">
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <h2 class="text-lg font-semibold">تراکنش‌های اخیر</h2>
@@ -240,8 +240,40 @@
                     <x-saas.empty-state title="{{ __('ui.empty.no_transactions.title') }}" description="{{ __('ui.empty.no_transactions.description') }}" />
                 </div>
             @else
-                <div class="mt-4 overflow-x-auto">
-                    <table class="saas-table min-w-[40rem]">
+                <div class="mt-4 space-y-3 lg:hidden">
+                    @foreach ($recentTransactions as $transaction)
+                        <div
+                            wire:key="wallet-tx-mobile-{{ $transaction->id }}"
+                            class="rounded-lg border border-zinc-200/80 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-900/50"
+                        >
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-xs text-zinc-500">{{ shamsi($transaction->created_at, 'datetime_short') }}</p>
+                                    <span @class(['saas-badge mt-2', $transactionBadgeClass($transaction->type)])>
+                                        {{ $transaction->type->label() }}
+                                    </span>
+                                </div>
+                                <p @class([
+                                    'shrink-0 whitespace-nowrap text-sm font-semibold tabular-nums',
+                                    'text-emerald-600 dark:text-emerald-400' => $transaction->amount > 0,
+                                    'text-amber-700 dark:text-amber-300' => $transaction->amount < 0,
+                                ])>
+                                    {{ $transaction->amount > 0 ? '+' : '' }}{{ $formatMoney($transaction->amount) }}
+                                </p>
+                            </div>
+                            <div class="mt-3 flex items-center justify-between gap-3 border-t border-zinc-200/60 pt-3 text-sm dark:border-zinc-800">
+                                <span class="text-zinc-500">موجودی پس از تراکنش</span>
+                                <span class="font-medium tabular-nums">{{ $formatMoney($transaction->balance_after) }}</span>
+                            </div>
+                            @if ($transaction->description)
+                                <p class="mt-2 text-sm leading-6 text-zinc-500">{{ $transaction->description }}</p>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+
+                <div class="mt-4 hidden min-w-0 overflow-x-auto lg:block">
+                    <table class="saas-table w-full">
                         <thead>
                             <tr>
                                 <th>تاریخ</th>
@@ -277,7 +309,7 @@
             @endif
         </div>
 
-        <div class="saas-card">
+        <div class="saas-card min-w-0">
             <h2 class="text-lg font-semibold">نرخ مصرف</h2>
             @if ($showAiInfrastructure)
                 <p class="mt-1 text-sm text-zinc-500">
@@ -288,14 +320,14 @@
             @endif
 
             <div class="mt-4 space-y-3">
-                <div class="rounded-lg border border-zinc-200/80 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/80">
+                <div class="min-w-0 rounded-lg border border-zinc-200/80 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/80">
                     <p class="text-xs font-medium uppercase tracking-wider text-zinc-500">توکن ورودی</p>
-                    <p class="mt-1 text-xl font-semibold">{{ $formatMoney($overview['model']['input_price_per_million'] ?? 0) }}</p>
+                    <p class="mt-1 break-words text-lg font-semibold leading-snug sm:text-xl">{{ $formatMoney($overview['model']['input_price_per_million'] ?? 0) }}</p>
                     <p class="mt-1 text-xs text-zinc-400">به ازای هر ۱ میلیون توکن</p>
                 </div>
-                <div class="rounded-lg border border-zinc-200/80 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/80">
+                <div class="min-w-0 rounded-lg border border-zinc-200/80 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/80">
                     <p class="text-xs font-medium uppercase tracking-wider text-zinc-500">توکن خروجی</p>
-                    <p class="mt-1 text-xl font-semibold">{{ $formatMoney($overview['model']['output_price_per_million'] ?? 0) }}</p>
+                    <p class="mt-1 break-words text-lg font-semibold leading-snug sm:text-xl">{{ $formatMoney($overview['model']['output_price_per_million'] ?? 0) }}</p>
                     <p class="mt-1 text-xs text-zinc-400">به ازای هر ۱ میلیون توکن</p>
                 </div>
             </div>

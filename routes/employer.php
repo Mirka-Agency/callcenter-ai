@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Employer\ReportExportController;
 use App\Livewire\Employer\Crm\Index as CrmIndex;
 use App\Livewire\Employer\Customers\Companies\Create as CustomerCompaniesCreate;
 use App\Livewire\Employer\Customers\Companies\Edit as CustomerCompaniesEdit;
@@ -40,7 +41,13 @@ Route::middleware(['auth', 'employer'])->group(function () {
 
     Route::prefix('intelligence')->name('intelligence.')->group(function () {
         Route::get('/', IntelligenceIndex::class)->name('index');
+        Route::get('/performance/export/{format}', [ReportExportController::class, 'teamPerformance'])
+            ->name('performance.export')
+            ->whereIn('format', ['csv', 'xlsx', 'pdf']);
         Route::get('/performance', IntelligencePerformance::class)->name('performance');
+        Route::get('/performance/{employee}/export/{format}', [ReportExportController::class, 'employeePerformance'])
+            ->name('performance.show.export')
+            ->whereIn('format', ['csv', 'xlsx', 'pdf']);
         Route::get('/performance/{employee}', IntelligencePerformanceShow::class)->name('performance.show');
         Route::get('/{analysis}', IntelligenceShow::class)->name('show');
     });
@@ -67,6 +74,9 @@ Route::middleware(['auth', 'employer'])->group(function () {
         Route::get('/{customer}', CustomersShow::class)->name('show');
     });
     Route::get('/voip', VoipIndex::class)->name('voip.index');
+    Route::get('/reports/export/{format}', [ReportExportController::class, 'reports'])
+        ->name('reports.export')
+        ->whereIn('format', ['csv', 'xlsx', 'pdf']);
     Route::get('/reports', ReportsIndex::class)->name('reports.index');
     Route::redirect('/analytics', '/reports')->name('analytics.index');
     Route::get('/wallet', WalletIndex::class)->name('wallet.index');
