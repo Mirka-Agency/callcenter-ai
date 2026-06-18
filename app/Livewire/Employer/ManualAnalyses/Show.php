@@ -42,7 +42,7 @@ class Show extends Component
 
     public function render()
     {
-        $playback = $this->recordingPlayback();
+        $playback = $this->stableRecordingPlaybackState($this->upload->recording);
 
         return view('livewire.employer.manual-analyses.show', [
             'recordingUrl' => $playback['url'],

@@ -10,6 +10,8 @@
         @unless ($embedded ?? false)
             <h2 class="text-lg font-semibold">{{ $recordingTitle ?? 'ضبط' }}</h2>
         @endunless
-        <x-saas.waveform-player :url="$recordingUrl" @class(['mt-4' => ! ($embedded ?? false)]) />
+        <div wire:ignore>
+            <x-saas.waveform-player :url="$recordingUrl" @class(['mt-4' => ! ($embedded ?? false)]) />
+        </div>
     </div>
 @endif

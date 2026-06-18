@@ -1,4 +1,4 @@
-<div class="space-y-8" @if($call->processingJob?->isActive()) wire:poll.5s @endif>
+<div class="space-y-8">
     <div class="flex items-center justify-between gap-4">
         <div class="flex min-w-0 items-center gap-4">
             @if ($upload->employee)
@@ -24,7 +24,9 @@
 
     @include('livewire.shared.recording-player', ['recordingUrl' => $recordingUrl ?? null, 'recordingExpired' => $recordingExpired ?? false])
 
-    @include('livewire.shared.call-processing-status', ['call' => $call, 'queueUrl' => $queueUrl])
+    <div @if($call->processingJob?->isActive()) wire:poll.5s @endif>
+        @include('livewire.shared.call-processing-status', ['call' => $call, 'queueUrl' => $queueUrl])
+    </div>
 
     @if ($analysis)
         <div class="grid gap-6 lg:grid-cols-3">

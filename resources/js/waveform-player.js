@@ -6,6 +6,20 @@ const players = new WeakMap();
 /** @type {WeakMap<HTMLElement, AbortController>} */
 const controllers = new WeakMap();
 
+function audioSourceKey(url) {
+    if (!url) {
+        return '';
+    }
+
+    try {
+        const parsed = new URL(url, window.location.origin);
+
+        return `${parsed.origin}${parsed.pathname}`;
+    } catch {
+        return url.split('?')[0] ?? url;
+    }
+}
+
 function formatTime(seconds) {
     if (!Number.isFinite(seconds) || seconds < 0) {
         return '0:00';
@@ -79,6 +93,7 @@ function destroyPlayer(root) {
     }
 
     delete root.dataset.waveformReady;
+    delete root.dataset.waveformSourceKey;
 }
 
 function initPlayer(root) {
@@ -125,6 +140,7 @@ function initPlayer(root) {
 
     players.set(root, wavesurfer);
     root.dataset.waveformReady = '1';
+    root.dataset.waveformSourceKey = audioSourceKey(url);
 
     const themeObserver = new MutationObserver(() => {
         const nextColors = themeColors();
@@ -225,6 +241,18 @@ function boot() {
                 : [...el.querySelectorAll('[data-waveform-player]')];
 
             roots.forEach((root) => {
+                if (root.closest('[wire\\:ignore]')) {
+                    return;
+                }
+
+                const instance = players.get(root);
+                const previousKey = root.dataset.waveformSourceKey ?? '';
+                const nextKey = audioSourceKey(root.dataset.url ?? '');
+
+                if (instance && root.dataset.waveformReady === '1' && previousKey !== '' && previousKey === nextKey) {
+                    return;
+                }
+
                 destroyPlayer(root);
                 initPlayer(root);
             });
