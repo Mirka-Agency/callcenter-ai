@@ -6,6 +6,49 @@ import { initReportCharts } from './reports-charts';
 import { initEmployerOnboarding } from './employer-onboarding';
 import { initEmployeeOnboarding } from './employee-onboarding';
 
+document.addEventListener('alpine:init', () => {
+    Alpine.store('layout', {
+        sidebarOpen: false,
+        toggleSidebar() {
+            this.sidebarOpen = ! this.sidebarOpen;
+            this.syncBodyScroll();
+        },
+        openSidebar() {
+            this.sidebarOpen = true;
+            this.syncBodyScroll();
+        },
+        closeSidebar() {
+            this.sidebarOpen = false;
+            this.syncBodyScroll();
+        },
+        syncBodyScroll() {
+            const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
+
+            document.body.classList.toggle('overflow-hidden', this.sidebarOpen && ! isDesktop);
+        },
+    });
+});
+
+function initMobileSidebar() {
+    const closeOnDesktop = () => {
+        if (window.matchMedia('(min-width: 1024px)').matches) {
+            Alpine.store('layout')?.closeSidebar();
+        }
+    };
+
+    window.addEventListener('resize', closeOnDesktop, { passive: true });
+
+    document.addEventListener('livewire:navigated', () => {
+        Alpine.store('layout')?.closeSidebar();
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMobileSidebar);
+} else {
+    initMobileSidebar();
+}
+
 function navigateTo(href) {
     if (! href) {
         return;

@@ -43,7 +43,62 @@
     }
 
     .saas-sidebar {
-        @apply fixed inset-y-0 start-0 z-40 flex w-64 flex-col border-e border-zinc-200/80 bg-white/80 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-900/80;
+        @apply fixed inset-y-0 start-0 z-50 flex w-64 flex-col border-e border-zinc-200/80 bg-white shadow-xl transition-transform duration-300 ease-out dark:border-zinc-800 dark:bg-zinc-900 max-lg:w-[min(20rem,calc(100vw-1.5rem))] max-lg:pb-[env(safe-area-inset-bottom)] lg:z-40 lg:bg-white/80 lg:shadow-none lg:backdrop-blur-xl dark:lg:bg-zinc-900/80;
+    }
+
+    .saas-sidebar-overlay {
+        @apply fixed inset-0 z-40 bg-zinc-950/60 backdrop-blur-[2px] lg:hidden;
+    }
+
+    .saas-sidebar-header {
+        @apply flex shrink-0 items-center justify-between gap-3 border-b border-zinc-200/80 bg-gradient-to-l from-indigo-50/80 via-white to-white px-4 py-4 dark:border-zinc-800 dark:from-indigo-950/40 dark:via-zinc-900 dark:to-zinc-900 lg:h-16 lg:from-transparent lg:via-transparent lg:to-transparent lg:px-5 lg:py-0;
+    }
+
+    .saas-sidebar-user {
+        @apply mx-4 mb-2 flex items-center gap-3 rounded-lg border border-indigo-100/80 bg-indigo-50/50 p-3 dark:border-indigo-500/20 dark:bg-indigo-950/30 lg:hidden;
+    }
+
+    .saas-mobile-menu-btn {
+        @apply inline-flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-200/80 bg-white text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800;
+    }
+
+    .saas-mobile-menu-icon {
+        @apply relative h-4 w-5;
+    }
+
+    .saas-mobile-menu-icon span {
+        @apply absolute start-0 block h-0.5 w-5 rounded-full bg-current transition-all duration-300 ease-out;
+    }
+
+    .saas-mobile-menu-icon span:nth-child(1) {
+        top: 0;
+    }
+
+    .saas-mobile-menu-icon span:nth-child(2) {
+        top: 0.4375rem;
+    }
+
+    .saas-mobile-menu-icon span:nth-child(3) {
+        top: 0.875rem;
+    }
+
+    .saas-mobile-menu-icon.is-open span:nth-child(1) {
+        top: 0.4375rem;
+        transform: rotate(45deg);
+    }
+
+    .saas-mobile-menu-icon.is-open span:nth-child(2) {
+        opacity: 0;
+        transform: scaleX(0);
+    }
+
+    .saas-mobile-menu-icon.is-open span:nth-child(3) {
+        top: 0.4375rem;
+        transform: rotate(-45deg);
+    }
+
+    .saas-sidebar-close {
+        @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-white lg:hidden;
     }
 
     .saas-main {
@@ -111,11 +166,19 @@
     }
 
     .saas-nav-item {
-        @apply flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white;
+        @apply flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white max-lg:min-h-11 max-lg:rounded-lg max-lg:px-4 max-lg:py-3;
     }
 
     .saas-nav-item-active {
-        @apply bg-zinc-900 text-white dark:bg-white dark:text-zinc-900;
+        @apply bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 max-lg:bg-gradient-to-l max-lg:from-indigo-600 max-lg:to-violet-600 max-lg:text-white max-lg:shadow-sm max-lg:shadow-indigo-500/20 dark:max-lg:from-indigo-500 dark:max-lg:to-violet-500 dark:max-lg:text-white;
+    }
+
+    .saas-nav-item-icon {
+        @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 max-lg:h-9 max-lg:w-9;
+    }
+
+    .saas-nav-item-active .saas-nav-item-icon {
+        @apply bg-white/20 text-white max-lg:bg-white/15;
     }
 
     .saas-nav-subitem {

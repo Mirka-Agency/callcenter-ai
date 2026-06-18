@@ -1,5 +1,5 @@
 <div
-    class="saas-card sticky top-0 z-10 shadow-sm"
+    class="saas-card lg:sticky lg:top-0 lg:z-10 shadow-sm"
     wire:key="coaching-period-{{ $period }}"
     data-tour="coaching-filters"
 >

@@ -15,14 +15,14 @@ class SampleConversations
             [
                 'id' => 'sales-follow-up',
                 'title' => 'پیگیری پیشنهاد فروش',
-                'description' => '',
+                'description' => 'تماس پیگیری بعد از ارسال پیش‌نویس قرارداد به مشتری',
                 'category' => 'فروش',
                 'filename' => '01-sales-follow-up.mp3',
             ],
             [
                 'id' => 'sales-subscription-renewal',
-                'title' => 'پیگیری پیشنهاد فروش',
-                'description' => '',
+                'title' => 'تمدید اشتراک سالانه',
+                'description' => 'مذاکره برای تمدید اشتراک و پاسخ به نگرانی‌های مشتری',
                 'category' => 'فروش',
                 'filename' => '02-sales-subscription-renewal.mp3',
             ],

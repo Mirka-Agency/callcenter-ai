@@ -39,13 +39,13 @@
         })();
     </script>
 </head>
-<body class="saas-shell" x-data="{ sidebarOpen: false }" @keydown.escape.window="sidebarOpen = false">
+<body class="saas-shell" @keydown.escape.window="$store.layout.closeSidebar()">
     @include('components.saas.impersonation-banner')
 
     @include('components.saas.sidebar', ['portal' => $portal ?? 'employer', 'navItems' => $navItems ?? []])
 
     <div class="saas-main">
-        @include('components.saas.topbar', ['portal' => $portal ?? 'employer'])
+    @include('components.saas.topbar', ['portal' => $portal ?? 'employer', 'navItems' => $navItems ?? []])
 
         <main class="saas-content">
             {{ $slot }}

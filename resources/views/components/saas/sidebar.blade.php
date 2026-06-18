@@ -1,20 +1,54 @@
+@php
+    $user = auth()->user();
+@endphp
+
 <aside
-    class="saas-sidebar -translate-x-full rtl:translate-x-full lg:translate-x-0 rtl:lg:translate-x-0"
-    :class="{ 'translate-x-0 rtl:translate-x-0': sidebarOpen }"
+    class="saas-sidebar lg:translate-x-0"
+    :class="{
+        'translate-x-0': $store.layout.sidebarOpen,
+        'translate-x-full max-lg:pointer-events-none': ! $store.layout.sidebarOpen,
+    }"
     data-tour="sidebar"
-    x-cloak
 >
-    <div class="flex h-16 items-center border-b border-zinc-200/80 px-5 dark:border-zinc-800">
-        <div>
-            <p class="text-sm font-semibold text-zinc-900 dark:text-white">سامانه پایش مکالمات</p>
-            <p class="text-xs text-zinc-500">{{ $portal === 'employer' ? 'کارفرما' : 'فضای کار' }}</p>
+    <div class="saas-sidebar-header">
+        <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-bold text-zinc-900 dark:text-white">{{ config('app.name') }}</p>
+            <p class="mt-0.5 text-xs text-zinc-500">{{ $portal === 'employer' ? 'پنل کارفرما' : 'فضای کار کارشناس' }}</p>
             @if ($impersonationContext ?? null)
-                <span class="impersonation-sidebar-badge">ورود به‌جای کاربر</span>
+                <span class="impersonation-sidebar-badge mt-1">ورود به‌جای کاربر</span>
             @endif
         </div>
+
+        <button
+            type="button"
+            class="saas-sidebar-close"
+            @click="$store.layout.closeSidebar()"
+            aria-label="بستن منو"
+        >
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
     </div>
 
-    <nav class="flex-1 space-y-1 overflow-y-auto p-4">
+    @if ($user)
+        <a
+            href="{{ route(($portal ?? 'employer').'.profile.edit') }}"
+            class="saas-sidebar-user"
+            @click="$store.layout.closeSidebar()"
+        >
+            <x-saas.avatar :user="$user" size="sm" ring />
+            <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-semibold text-zinc-900 dark:text-white">{{ $user->name }}</p>
+                <p class="truncate text-xs text-zinc-500">{{ $user->email }}</p>
+            </div>
+            <svg class="h-4 w-4 shrink-0 text-zinc-400 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+        </a>
+    @endif
+
+    <nav class="flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 py-3 lg:p-4" aria-label="منوی اصلی">
         @foreach ($navItems as $item)
             @php
                 $isActive = request()->routeIs($item['route'].'*') || request()->routeIs($item['route']);
@@ -27,14 +61,17 @@
                     'saas-nav-item',
                     'saas-nav-item-active' => $isActive,
                 ])
+                @click="$store.layout.closeSidebar()"
             >
-                <x-saas.icon :name="$item['icon']" class="h-4 w-4" />
-                {{ $item['label'] }}
+                <span class="saas-nav-item-icon">
+                    <x-saas.icon :name="$item['icon']" class="h-4 w-4" />
+                </span>
+                <span class="truncate">{{ $item['label'] }}</span>
             </a>
 
             @if (! empty($item['children']))
-                <div class="me-2 space-y-0.5 border-e border-zinc-200 pe-2 dark:border-zinc-800">
-                    <p class="px-3 py-1.5 text-[11px] font-medium tracking-wide text-zinc-400">مکالمات نمونه</p>
+                <div class="me-1 space-y-1 border-e-2 border-indigo-100 pe-2 dark:border-indigo-900/40">
+                    <p class="px-3 py-1.5 text-[11px] font-semibold tracking-wide text-indigo-500/80 dark:text-indigo-400/80">نمونه مکالمه</p>
                     @foreach ($item['children'] as $child)
                         @php
                             $childSampleId = $child['query']['sample'] ?? null;
@@ -43,10 +80,11 @@
                         <a
                             href="{{ route($child['route'], $child['query'] ?? []) }}#sample-conversations"
                             @class([
-                                'saas-nav-subitem',
+                                'saas-nav-subitem max-lg:min-h-10 max-lg:px-4 max-lg:py-2.5 max-lg:text-sm',
                                 'saas-nav-subitem-active' => $childActive,
                                 'opacity-50' => ! ($child['available'] ?? true),
                             ])
+                            @click="$store.layout.closeSidebar()"
                         >
                             {{ $child['label'] }}
                         </a>
@@ -56,21 +94,25 @@
         @endforeach
     </nav>
 
-    <div class="border-t border-zinc-200/80 p-4 dark:border-zinc-800">
+    <div class="shrink-0 border-t border-zinc-200/80 p-3 dark:border-zinc-800 lg:p-4">
         @if ($impersonationContext ?? null)
             <form method="POST" action="{{ route('impersonation.stop') }}" class="mb-2">
                 @csrf
                 <button type="submit" class="saas-nav-item w-full text-start text-amber-700 dark:text-amber-300">
-                    <x-saas.icon name="home" class="h-4 w-4" />
+                    <span class="saas-nav-item-icon">
+                        <x-saas.icon name="home" class="h-4 w-4" />
+                    </span>
                     بازگشت به مدیریت
                 </button>
             </form>
         @else
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <button type="submit" class="saas-nav-item w-full text-start">
-                    <x-saas.icon name="logout" class="h-4 w-4" />
-                    خروج
+                <button type="submit" class="saas-nav-item w-full text-start text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30 dark:hover:text-red-300">
+                    <span class="saas-nav-item-icon">
+                        <x-saas.icon name="logout" class="h-4 w-4" />
+                    </span>
+                    خروج از حساب
                 </button>
             </form>
         @endif
@@ -78,8 +120,14 @@
 </aside>
 
 <div
-    x-show="sidebarOpen"
-    x-transition.opacity
-    class="fixed inset-0 z-30 bg-zinc-950/50 lg:hidden"
-    @click="sidebarOpen = false"
+    x-show="$store.layout.sidebarOpen"
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="saas-sidebar-overlay"
+    @click="$store.layout.closeSidebar()"
+    aria-hidden="true"
 ></div>

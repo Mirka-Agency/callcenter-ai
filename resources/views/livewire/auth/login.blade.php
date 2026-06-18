@@ -1,6 +1,6 @@
 <div>
     <div class="saas-card text-center">
-        <p class="mb-2 text-sm font-medium text-indigo-600 dark:text-indigo-400">سامانه پایش مکالمات</p>
+        <p class="mb-2 text-sm font-medium text-indigo-600 dark:text-indigo-400">{{ config('app.name') }}</p>
         <h1 class="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">ورود به حساب</h1>
         <p class="mt-2 text-sm text-zinc-500">برای دسترسی به داشبورد تحلیل تماس، وارد شوید.</p>
     </div>

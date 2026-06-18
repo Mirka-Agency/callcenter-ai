@@ -8,7 +8,7 @@
 @endphp
 
 <div
-    class="saas-card sticky top-0 z-10 space-y-5 shadow-sm"
+    class="saas-card lg:sticky lg:top-0 lg:z-10 space-y-5 shadow-sm"
     wire:key="employee-call-filters-{{ $datePreset }}-{{ $customFrom }}-{{ $customTo }}"
     x-data="{ showCustom: @js($showCustomDateRange || $datePreset === 'custom'), showMore: @js($showMoreDatePresets) }"
     data-tour="call-filters"

@@ -190,9 +190,7 @@ class Index extends Component
             return;
         }
 
-        $this->resetUploadFormFields();
-        $this->markUploadZoneSuccess();
-        $this->dispatchUploadSuccessToast(route('employer.manual-analyses.show', $callId));
+        $this->redirect(route('employer.manual-analyses.show', $callId), navigate: true);
     }
 
     public function submitSampleForAnalysis(string $sampleId, ManualAudioUploadService $uploadService): void
@@ -281,9 +279,7 @@ class Index extends Component
             return;
         }
 
-        $this->resetUploadFormFields();
-        $this->markUploadZoneSuccess();
-        $this->dispatchUploadSuccessToast(route('employer.manual-analyses.show', $callId));
+        $this->redirect(route('employer.manual-analyses.show', $callId), navigate: true);
     }
 
     #[On('processing-job-updated')]

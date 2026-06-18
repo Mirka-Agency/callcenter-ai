@@ -25,6 +25,7 @@ class EmployeeUploadLivewireTest extends TestCase
         Livewire::test(Index::class)
             ->set('audio', UploadedFile::fake()->create('test.wav', 100, 'audio/wav'))
             ->call('submitForAnalysis')
-            ->assertHasNoErrors();
+            ->assertHasNoErrors()
+            ->assertRedirect();
     }
 }

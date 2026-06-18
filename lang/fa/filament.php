@@ -2,7 +2,7 @@
 
 return [
 
-    'brand' => 'مرکز تماس',
+    'brand' => 'آوایار',
 
     'navigation' => [
         'groups' => [

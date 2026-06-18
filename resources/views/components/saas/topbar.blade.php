@@ -1,17 +1,38 @@
+@php
+    $activeItem = collect($navItems ?? [])
+        ->first(fn (array $item) => request()->routeIs($item['route'].'*') || request()->routeIs($item['route']));
+    $activeNavLabel = $activeItem['label'] ?? null;
+@endphp
+
 <header class="saas-topbar">
-    <div class="flex items-center gap-3">
-        <button type="button" class="saas-btn-secondary !px-2.5 lg:hidden" @click="sidebarOpen = !sidebarOpen">
-            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
+    <div class="flex min-w-0 flex-1 items-center gap-3">
+        <button
+            type="button"
+            class="saas-mobile-menu-btn lg:hidden"
+            @click="$store.layout.toggleSidebar()"
+            aria-label="منوی ناوبری"
+            :aria-expanded="$store.layout.sidebarOpen"
+        >
+            <span class="saas-mobile-menu-icon" :class="{ 'is-open': $store.layout.sidebarOpen }" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+            </span>
         </button>
+
+        <div class="min-w-0 lg:hidden">
+            <p class="truncate text-sm font-semibold text-zinc-900 dark:text-white">
+                {{ $activeNavLabel ?? ($portal === 'employer' ? 'پنل کارفرما' : 'فضای کار') }}
+            </p>
+            <p class="truncate text-xs text-zinc-500">{{ config('app.name') }}</p>
+        </div>
     </div>
 
-    <div class="flex items-center gap-3">
+    <div class="flex shrink-0 items-center gap-2 sm:gap-3">
         @if ($impersonationContext ?? null)
-            <span class="impersonation-topbar-badge">ورود به‌جای کاربر</span>
+            <span class="impersonation-topbar-badge hidden sm:inline">ورود به‌جای کاربر</span>
         @endif
-        <button type="button" class="saas-btn-secondary !px-2.5" data-tour="topbar-theme" @click="$store.theme.toggle()">
+        <button type="button" class="saas-btn-secondary !px-2.5" data-tour="topbar-theme" @click="$store.theme.toggle()" aria-label="تغییر تم">
             <svg x-show="!$store.theme.dark" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
             </svg>
