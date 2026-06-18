@@ -4,12 +4,18 @@ namespace App\Application\Intelligence\Jobs;
 
 use App\Application\Llm\AnalysisManager;
 use App\Domain\Call\Enums\CallProcessingStatus;
+use App\Domain\Llm\Exceptions\LlmTransientException;
+use App\Domain\Processing\Enums\ProcessingJobStatus;
+use App\Domain\Processing\Enums\ProcessingLogLevel;
 use App\Domain\Recording\Contracts\RecordingDownloaderInterface;
 use App\Domain\Recording\Contracts\RecordingRepositoryInterface;
 use App\Domain\Recording\DTOs\RecordingData;
 use App\Models\Call;
+use App\Models\CallRecording;
 use App\Models\VoipCallLog;
 use App\Services\CallProcessingTracker;
+use App\Services\RecordingRetentionService;
+use App\Services\RecordingStorage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -21,9 +27,15 @@ class AnalyzeAudioJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
+    public int $tries = 5;
 
     public int $timeout = 600;
+
+    /** @return list<int> */
+    public function backoff(): array
+    {
+        return [30, 60, 120, 300];
+    }
 
     public function __construct(
         public int $callId,
@@ -35,6 +47,8 @@ class AnalyzeAudioJob implements ShouldQueue
         RecordingRepositoryInterface $recordings,
         RecordingDownloaderInterface $downloader,
         CallProcessingTracker $tracker,
+        RecordingStorage $recordingStorage,
+        RecordingRetentionService $retention,
     ): void {
         $call = Call::query()->findOrFail($this->callId);
         $job = $tracker->forCall($call->id);
@@ -49,7 +63,7 @@ class AnalyzeAudioJob implements ShouldQueue
         }
 
         try {
-            $this->ensureRecording($call, $recordings, $downloader);
+            $this->ensureRecording($call, $recordings, $downloader, $recordingStorage);
 
             $call->update(['processing_status' => CallProcessingStatus::Analyzing]);
 
@@ -67,17 +81,66 @@ class AnalyzeAudioJob implements ShouldQueue
             }
 
             $call->update(['processing_status' => CallProcessingStatus::Analyzed]);
-        } catch (\Throwable $e) {
-            $call->update([
-                'processing_status' => CallProcessingStatus::Failed,
-                'processing_error' => $e->getMessage(),
-            ]);
 
-            if ($job) {
-                $tracker->markFailed($job, $e->getMessage());
+            $this->scheduleRetentionAfterAnalysis($call->id, $retention);
+        } catch (\Throwable $e) {
+            if ($this->shouldRetry($e)) {
+                if ($job) {
+                    $tracker->log(
+                        $job,
+                        ProcessingLogLevel::Warning,
+                        'analysis',
+                        'خطای موقت سرویس هوش مصنوعی — تلاش مجدد ('.$this->attempts().'/'.$this->tries.')',
+                        ['error' => $e->getMessage()],
+                    );
+                }
+
+                throw $e;
             }
 
+            $this->markPermanentFailure($call, $job, $tracker, $e);
+
             throw $e;
+        }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        $call = Call::query()->find($this->callId);
+
+        if (! $call) {
+            return;
+        }
+
+        $tracker = app(CallProcessingTracker::class);
+        $job = $tracker->forCall($this->callId);
+
+        $this->markPermanentFailure($call, $job, $tracker, $exception);
+    }
+
+    private function shouldRetry(\Throwable $e): bool
+    {
+        if ($this->attempts() >= $this->tries) {
+            return false;
+        }
+
+        return $e instanceof LlmTransientException
+            || LlmTransientException::isTransientMessage($e->getMessage());
+    }
+
+    private function markPermanentFailure(
+        Call $call,
+        ?\App\Models\CallProcessingJob $job,
+        CallProcessingTracker $tracker,
+        \Throwable $e,
+    ): void {
+        $call->update([
+            'processing_status' => CallProcessingStatus::Failed,
+            'processing_error' => $e->getMessage(),
+        ]);
+
+        if ($job && $job->status !== ProcessingJobStatus::Failed) {
+            $tracker->markFailed($job, $e->getMessage());
         }
     }
 
@@ -85,10 +148,13 @@ class AnalyzeAudioJob implements ShouldQueue
         Call $call,
         RecordingRepositoryInterface $recordings,
         RecordingDownloaderInterface $downloader,
+        RecordingStorage $recordingStorage,
     ): void {
         $existing = $recordings->findByCallId($call->id);
 
         if ($existing?->status === 'completed' && $existing->storagePath) {
+            $recordingStorage->assertExists($existing->storagePath, $existing->storageDisk);
+
             return;
         }
 
@@ -128,6 +194,17 @@ class AnalyzeAudioJob implements ShouldQueue
             status: 'completed',
             id: $recordingId,
         ));
+
+        $recordingStorage->assertExists($result->storagePath, $result->storageDisk ?? config('recordings.disk', 'local'));
+    }
+
+    private function scheduleRetentionAfterAnalysis(int $callId, RecordingRetentionService $retention): void
+    {
+        $recording = CallRecording::query()->where('call_id', $callId)->latest()->first();
+
+        if ($recording) {
+            $retention->scheduleExpiryAfterAnalysis($recording);
+        }
     }
 
     public static function dispatchChain(int $callId, ?string $recordingUrl = null): void

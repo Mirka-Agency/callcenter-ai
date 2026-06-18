@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\ProcessingQueueJobService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -25,8 +26,11 @@ class ProcessingQueueJobServiceTest extends TestCase
     public function test_retry_requeues_failed_job_and_dispatches_analysis(): void
     {
         Bus::fake();
+        Storage::fake('local');
 
         [$job] = $this->seedFailedJob();
+
+        Storage::disk('local')->put('recordings/test.mp3', 'audio');
 
         app(ProcessingQueueJobService::class)->retry($job->fresh());
 

@@ -14,9 +14,24 @@ class RecordingRetentionService
         return max(1, (int) config('recordings.retention_days', 10));
     }
 
-    public function expiresAt(Carbon $uploadedAt): Carbon
+    public function expiresAt(Carbon $from): Carbon
     {
-        return $uploadedAt->copy()->addDays($this->retentionDays());
+        return $from->copy()->addDays($this->retentionDays());
+    }
+
+    public function scheduleExpiryAfterAnalysis(CallRecording $recording): void
+    {
+        $recording->update([
+            'expires_at' => $this->expiresAt(now()),
+            'is_expired' => false,
+            'expired_at' => null,
+        ]);
+
+        Log::info('Recording retention scheduled after analysis', [
+            'recording_id' => $recording->id,
+            'call_id' => $recording->call_id,
+            'expires_at' => $recording->expires_at,
+        ]);
     }
 
     public function isExpired(CallRecording $recording): bool

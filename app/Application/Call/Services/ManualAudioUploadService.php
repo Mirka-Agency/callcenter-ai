@@ -18,6 +18,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class ManualAudioUploadService
 {
@@ -41,7 +42,7 @@ class ManualAudioUploadService
 
         $validated = $this->validator->validate($file);
 
-        return DB::transaction(function () use (
+        $callId = DB::transaction(function () use (
             $organizationId,
             $uploaderUserId,
             $uploaderType,
@@ -68,7 +69,7 @@ class ManualAudioUploadService
                 'file_name' => $processingJob->file_name,
             ]);
 
-            $storagePath = $this->storeFile($file, $callId, $validated['extension']);
+            $storagePath = $this->storeFile($file, $callId, $validated['extension'], $validated['mime_type']);
 
             $this->recordings->create(new RecordingData(
                 callId: $callId,
@@ -82,10 +83,12 @@ class ManualAudioUploadService
 
             $this->tracker->markUploaded($processingJob);
 
-            AnalyzeAudioJob::dispatchChain($callId);
-
             return $callId;
         });
+
+        $this->dispatchAnalysis($callId);
+
+        return $callId;
     }
 
     public function uploadFromSample(
@@ -102,7 +105,7 @@ class ManualAudioUploadService
         $validated = $this->validator->validatePath($absolutePath, $displayFilename);
         $fileSize = filesize($absolutePath) ?: 0;
 
-        return DB::transaction(function () use (
+        $callId = DB::transaction(function () use (
             $organizationId,
             $uploaderUserId,
             $uploaderType,
@@ -150,37 +153,56 @@ class ManualAudioUploadService
 
             $this->tracker->markUploaded($processingJob);
 
-            AnalyzeAudioJob::dispatchChainSync($callId);
-
             return $callId;
         });
+
+        $this->dispatchAnalysis($callId);
+
+        return $callId;
     }
 
-    private function storeFile(UploadedFile $file, int $callId, string $extension): string
+    private function dispatchAnalysis(int $callId): void
     {
-        return $this->storeFileFromPath(
-            $file->getRealPath(),
-            $callId,
-            $extension,
-            $file->getMimeType() ?: 'audio/mpeg',
-        );
+        AnalyzeAudioJob::dispatchChain($callId);
+    }
+
+    private function storeFile(UploadedFile $file, int $callId, string $extension, string $mimeType): string
+    {
+        $path = $this->buildStoragePath($callId, $extension);
+
+        if ($file instanceof TemporaryUploadedFile) {
+            $storedPath = $file->storeAs(dirname($path), basename($path), [
+                'disk' => $this->recordingStorage->disk(),
+                'visibility' => 'private',
+                'ContentType' => $mimeType,
+            ]);
+
+            $this->recordingStorage->assertExists($storedPath);
+
+            return $storedPath;
+        }
+
+        $this->recordingStorage->putFromLocalPath($file->getRealPath(), $path, $mimeType);
+
+        return $path;
     }
 
     private function storeFileFromPath(string $sourcePath, int $callId, string $extension, string $mimeType): string
     {
-        $path = sprintf(
+        $path = $this->buildStoragePath($callId, $extension);
+
+        $this->recordingStorage->putFromLocalPath($sourcePath, $path, $mimeType);
+
+        return $path;
+    }
+
+    private function buildStoragePath(int $callId, string $extension): string
+    {
+        return sprintf(
             'recordings/%d/%s.%s',
             $callId,
             now()->format('YmdHis').'-'.Str::lower(Str::random(8)),
             $extension,
         );
-
-        $this->recordingStorage->put(
-            $path,
-            file_get_contents($sourcePath),
-            $mimeType,
-        );
-
-        return $path;
     }
 }

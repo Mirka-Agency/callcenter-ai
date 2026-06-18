@@ -8,33 +8,39 @@ use Illuminate\Support\Facades\Storage;
 
 class RecordingUrlService
 {
+    public function __construct(
+        private RecordingRetentionService $retention,
+        private RecordingStorage $storage,
+    ) {}
+
     public function resolve(?CallRecording $recording, ?string $fallbackUrl = null): ?string
     {
         if (! $recording?->storage_path) {
             return $fallbackUrl;
         }
 
-        $retention = app(RecordingRetentionService::class);
-
-        if ($retention->isExpired($recording)) {
-            $retention->purgeIfDue($recording);
+        if ($this->retention->isExpired($recording)) {
+            $this->retention->purgeIfDue($recording);
 
             return null;
         }
 
-        $diskName = $recording->storage_disk ?: config('recordings.disk', 'local');
-        $disk = Storage::disk($diskName);
+        $diskName = $this->storage->resolveDisk(
+            $recording->storage_path,
+            $recording->storage_disk,
+        );
 
-        if (! $disk->exists($recording->storage_path)) {
+        if ($diskName === null) {
             Log::warning('Recording file missing for playback', [
                 'recording_id' => $recording->id,
-                'disk' => $diskName,
+                'disk' => $recording->storage_disk ?: config('recordings.disk', 'local'),
                 'path' => $recording->storage_path,
             ]);
 
             return $fallbackUrl;
         }
 
+        $disk = Storage::disk($diskName);
         $ttlMinutes = (int) config('recordings.playback_url_ttl_minutes', 120);
         $options = [];
 

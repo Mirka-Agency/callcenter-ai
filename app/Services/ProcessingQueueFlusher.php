@@ -60,7 +60,8 @@ class ProcessingQueueFlusher
     public function syncOrphans(?int $organizationId = null): int
     {
         $query = CallProcessingJob::query()
-            ->where('status', ProcessingJobStatus::Queued);
+            ->where('status', ProcessingJobStatus::Queued)
+            ->where('queued_at', '<', now()->subMinutes(3));
 
         if ($organizationId) {
             $query->where('organization_id', $organizationId);
@@ -70,6 +71,13 @@ class ProcessingQueueFlusher
 
         foreach ($query->get() as $job) {
             if ($this->hasLaravelJobForCall($job->call_id)) {
+                continue;
+            }
+
+            if ($this->hasFailedJobForCall($job->call_id)) {
+                $this->tracker->markFailed($job, 'تحلیل در صف سیستم ناموفق بود. از دکمه «تلاش دوباره» استفاده کنید.');
+                $reconciled++;
+
                 continue;
             }
 
@@ -151,6 +159,28 @@ class ProcessingQueueFlusher
     {
         foreach (self::PROCESSING_JOB_CLASSES as $class) {
             if ($this->countLaravelJobsForCall($callId, $class) > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function hasFailedJobForCall(int $callId): bool
+    {
+        foreach (self::PROCESSING_JOB_CLASSES as $class) {
+            $escapedClass = str_replace('\\', '\\\\', $class);
+
+            $exists = DB::table('failed_jobs')
+                ->where('payload', 'like', '%'.$escapedClass.'%')
+                ->where(function ($query) use ($callId) {
+                    foreach ($this->callIdPayloadPatterns($callId) as $pattern) {
+                        $query->orWhere('payload', 'like', '%'.$pattern.'%');
+                    }
+                })
+                ->exists();
+
+            if ($exists) {
                 return true;
             }
         }

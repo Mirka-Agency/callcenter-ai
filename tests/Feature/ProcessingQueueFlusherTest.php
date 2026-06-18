@@ -127,7 +127,7 @@ class ProcessingQueueFlusherTest extends TestCase
             'status' => ProcessingJobStatus::Queued,
             'stage' => ProcessingJobStage::Queued,
             'progress_percentage' => ProcessingJobStage::Queued->progress(),
-            'queued_at' => now(),
+            'queued_at' => now()->subMinutes(5),
         ]);
 
         $reconciled = app(ProcessingQueueFlusher::class)->syncOrphans($organization->id);

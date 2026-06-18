@@ -83,11 +83,14 @@ RUN apk add --no-cache \
     && rm -rf /var/cache/apk/* /tmp/*
 
 COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+COPY docker/php/www.conf /usr/local/etc/php-fpm.d/zz-timeouts.conf
 COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisord.conf
+COPY docker/bin/queue-worker /usr/local/bin/queue-worker
+COPY docker/bin/scheduler /usr/local/bin/scheduler
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
-RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/queue-worker /usr/local/bin/scheduler
 
 WORKDIR /var/www/html
 

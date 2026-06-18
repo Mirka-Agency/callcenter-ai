@@ -28,19 +28,21 @@ if [ "$APP_ENV" = "production" ]; then
     php artisan event:cache
 fi
 
-if [ "${CONTAINER_ROLE:-web}" = "web" ] && [ "${RUN_MIGRATIONS:-true}" != "false" ]; then
+ROLE="${CONTAINER_ROLE:-web}"
+
+if [ "$ROLE" = "web" ] && [ "${RUN_MIGRATIONS:-true}" != "false" ]; then
     php artisan migrate --force --no-interaction
 fi
 
-case "${CONTAINER_ROLE:-web}" in
+case "$ROLE" in
     web)
         exec supervisord -c /etc/supervisord.conf
         ;;
     queue)
-        exec php artisan queue:work --sleep=3 --tries=3 --timeout=600
+        exec /usr/local/bin/queue-worker
         ;;
     scheduler)
-        exec php artisan schedule:work
+        exec /usr/local/bin/scheduler
         ;;
     reverb)
         exec php artisan reverb:start --host=0.0.0.0 --port="${REVERB_SERVER_PORT:-8090}"

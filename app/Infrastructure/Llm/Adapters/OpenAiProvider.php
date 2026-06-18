@@ -5,8 +5,8 @@ namespace App\Infrastructure\Llm\Adapters;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
+use App\Services\RecordingStorage;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Storage;
 
 class OpenAiProvider extends AbstractLlmProvider
 {
@@ -73,6 +73,12 @@ class OpenAiProvider extends AbstractLlmProvider
                 ]);
 
             if (! $response->successful()) {
+                $status = $response->status();
+
+                if (in_array($status, [429, 502, 503, 504], true)) {
+                    return $this->failure('OpenAI API error (HTTP '.$status.'): '.$response->body());
+                }
+
                 return $this->failure('OpenAI API error: '.$response->body());
             }
 
@@ -113,14 +119,12 @@ class OpenAiProvider extends AbstractLlmProvider
     private function resolveAudioPayload(AudioAnalysisRequestData $request): array
     {
         if ($request->storagePath) {
-            $diskName = $request->storageDisk ?: config('recordings.disk', 'local');
+            $payload = app(RecordingStorage::class)->readForAnalysis(
+                $request->storagePath,
+                $request->storageDisk,
+            );
 
-            if (Storage::disk($diskName)->exists($request->storagePath)) {
-                $content = Storage::disk($diskName)->get($request->storagePath);
-                $format = strtolower(pathinfo($request->storagePath, PATHINFO_EXTENSION)) ?: 'mp3';
-
-                return [base64_encode($content), $format];
-            }
+            return [base64_encode($payload['content']), $payload['format']];
         }
 
         if ($request->recordingUrl) {

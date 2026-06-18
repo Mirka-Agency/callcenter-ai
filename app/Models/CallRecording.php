@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Domain\Call\Enums\CallProcessingStatus;
+use App\Domain\Processing\Enums\ProcessingJobStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -56,6 +58,21 @@ class CallRecording extends Model
             ->where(function (Builder $inner) {
                 $inner->whereNotNull('storage_path')
                     ->orWhereNotNull('source_url');
+            })
+            ->whereHas('call', function (Builder $call) {
+                $call->where(function (Builder $inner) {
+                    $inner->whereNull('processing_status')
+                        ->orWhereIn('processing_status', [
+                            CallProcessingStatus::Analyzed->value,
+                            CallProcessingStatus::Failed->value,
+                        ]);
+                })->whereDoesntHave('processingJobs', function (Builder $jobs) {
+                    $jobs->whereIn('status', [
+                        ProcessingJobStatus::Uploading->value,
+                        ProcessingJobStatus::Queued->value,
+                        ProcessingJobStatus::Processing->value,
+                    ]);
+                });
             });
     }
 }

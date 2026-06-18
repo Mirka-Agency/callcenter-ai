@@ -11,9 +11,11 @@ return [
     | storage or "local" for private on-server storage. Signed playback URLs
     | are generated automatically for private disks.
     |
+    | When AWS_BUCKET is set and RECORDINGS_DISK is not provided, "s3" is used.
+    |
     */
 
-    'disk' => env('RECORDINGS_DISK', env('FILESYSTEM_DISK', 'local')),
+    'disk' => env('RECORDINGS_DISK', env('AWS_BUCKET') ? 's3' : env('FILESYSTEM_DISK', 'local')),
 
     /*
     |--------------------------------------------------------------------------
@@ -27,6 +29,10 @@ return [
     |--------------------------------------------------------------------------
     | Audio Retention Period (days)
     |--------------------------------------------------------------------------
+    |
+    | Countdown starts after AI analysis completes — not at upload time.
+    | Recordings without expires_at are never purged by the retention job.
+    |
     */
 
     'retention_days' => (int) env('RECORDINGS_RETENTION_DAYS', 10),

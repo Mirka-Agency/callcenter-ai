@@ -5,14 +5,9 @@ namespace App\Infrastructure\Recording\Repositories;
 use App\Domain\Recording\Contracts\RecordingRepositoryInterface;
 use App\Domain\Recording\DTOs\RecordingData;
 use App\Models\CallRecording;
-use App\Services\RecordingRetentionService;
 
 class EloquentRecordingRepository implements RecordingRepositoryInterface
 {
-    public function __construct(
-        private RecordingRetentionService $retention,
-    ) {}
-
     public function create(RecordingData $data): int
     {
         $uploadedAt = now();
@@ -20,7 +15,7 @@ class EloquentRecordingRepository implements RecordingRepositoryInterface
         return CallRecording::query()->create([
             'call_id' => $data->callId,
             'source_url' => $data->sourceUrl,
-            'storage_disk' => $data->storageDisk ?? 'local',
+            'storage_disk' => $data->storageDisk ?? config('recordings.disk', 'local'),
             'storage_path' => $data->storagePath,
             'mime_type' => $data->mimeType,
             'file_size_bytes' => $data->fileSizeBytes,
@@ -28,7 +23,7 @@ class EloquentRecordingRepository implements RecordingRepositoryInterface
             'channels' => $data->channels,
             'status' => $data->status,
             'uploaded_at' => $uploadedAt,
-            'expires_at' => $this->retention->expiresAt($uploadedAt),
+            'expires_at' => null,
             'is_expired' => false,
         ])->id;
     }
@@ -46,9 +41,8 @@ class EloquentRecordingRepository implements RecordingRepositoryInterface
         ];
 
         if ($data->status === 'completed' && $data->storagePath) {
-            $uploadedAt = now();
-            $attributes['uploaded_at'] = $uploadedAt;
-            $attributes['expires_at'] = $this->retention->expiresAt($uploadedAt);
+            $attributes['uploaded_at'] = now();
+            $attributes['expires_at'] = null;
             $attributes['is_expired'] = false;
         }
 

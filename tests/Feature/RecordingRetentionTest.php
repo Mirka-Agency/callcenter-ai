@@ -29,6 +29,7 @@ class RecordingRetentionTest extends TestCase
             'caller_number' => '09120000000',
             'receiver_number' => '02100000000',
             'status' => 'completed',
+            'processing_status' => 'analyzed',
         ]);
 
         $path = 'recordings/'.$call->id.'/sample.mp3';

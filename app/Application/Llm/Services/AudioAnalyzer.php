@@ -11,6 +11,7 @@ use App\Domain\Llm\DTOs\LlmConnectionConfig;
 use App\Domain\Llm\DTOs\PromptContextData;
 use App\Domain\Llm\Events\AnalysisFailed;
 use App\Domain\Llm\Events\ConversationAnalyzed;
+use App\Domain\Llm\Exceptions\LlmTransientException;
 use App\Models\Call;
 use App\Models\OrganizationUser;
 use App\Models\VoipCallLog;
@@ -88,13 +89,19 @@ class AudioAnalyzer
         $result = $provider->analyzeAudio($request);
 
         if (! $result->success || ! $result->data) {
+            $error = $result->error ?? 'Unknown analysis error';
+
             event(new AnalysisFailed(
                 organizationId: $config->organizationId,
                 callId: $callId,
-                reason: $result->error ?? 'Unknown analysis error',
+                reason: $error,
             ));
 
-            throw new \RuntimeException($result->error ?? 'Audio analysis failed.');
+            if (LlmTransientException::isTransientMessage($error)) {
+                throw LlmTransientException::fromProviderError($error);
+            }
+
+            throw new \RuntimeException($error);
         }
 
         $analysisData = $this->billing->buildAnalysisResult(

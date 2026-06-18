@@ -45,11 +45,6 @@ trait InteractsWithProcessingQueue
         $this->resetPage();
     }
 
-    public function bootInteractsWithProcessingQueue(): void
-    {
-        app(ProcessingQueueFlusher::class)->syncOrphans($this->queueOrganizationId());
-    }
-
     #[On('processing-job-updated')]
     public function onProcessingJobUpdated(): void
     {

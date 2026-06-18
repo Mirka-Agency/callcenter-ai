@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Application\Intelligence\Jobs\AnalyzeAudioJob;
 use App\Domain\Recording\Contracts\RecordingRepositoryInterface;
 use App\Models\CallProcessingJob;
+use App\Services\RecordingStorage;
 use RuntimeException;
 
 class ProcessingQueueJobService
@@ -13,6 +14,7 @@ class ProcessingQueueJobService
         private CallProcessingTracker $tracker,
         private ProcessingQueueFlusher $flusher,
         private RecordingRepositoryInterface $recordings,
+        private RecordingStorage $recordingStorage,
     ) {}
 
     public function retry(CallProcessingJob $job): CallProcessingJob
@@ -24,6 +26,8 @@ class ProcessingQueueJobService
         if ($recording?->status !== 'completed' || ! $recording->storagePath) {
             throw new RuntimeException(__('ui.processing.retry_missing_recording'));
         }
+
+        $this->recordingStorage->assertExists($recording->storagePath, $recording->storageDisk);
 
         $this->flusher->clearLaravelJobsForCall($job->call_id);
 

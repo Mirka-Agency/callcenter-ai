@@ -113,8 +113,9 @@ REVERB_HOST=localhost
 REVERB_PORT=8090
 REVERB_SCHEME=http
 
-# Optional: S3-compatible storage for call recordings
+# Optional: S3-compatible storage for call recordings (required on CapRover)
 RECORDINGS_DISK=s3
+RECORDINGS_RETENTION_DAYS=10
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 AWS_DEFAULT_REGION=
@@ -172,16 +173,16 @@ Migrations run automatically on each web container start (`php artisan migrate -
 
 ### Container roles
 
-The default `web` container runs **Nginx**, **PHP-FPM**, **queue worker**, and **scheduler** together via Supervisor (`docker/supervisord.conf`). No separate CapRover app is required for background jobs.
-
-Set `CONTAINER_ROLE` only when you need a dedicated process:
+The default `web` container runs **Nginx**, **PHP-FPM**, **queue worker**, and **scheduler** via Supervisor. Queue commands live in `docker/bin/queue-worker` and `docker/bin/scheduler` (single source of truth — used by both Supervisor and optional dedicated containers).
 
 | Role | Processes |
 |------|-----------|
-| `web` (default) | Nginx + PHP-FPM + `queue:work` + `schedule:work` |
-| `queue` | `php artisan queue:work` only (optional extra workers) |
-| `scheduler` | `php artisan schedule:work` only |
+| `web` (default) | Nginx + PHP-FPM + queue + scheduler (supervisord) |
+| `queue` | Extra `queue-worker` only (scale horizontally) |
+| `scheduler` | `scheduler` only |
 | `reverb` | `php artisan reverb:start` |
+
+Optional queue tuning env vars: `QUEUE_WORKER_SLEEP`, `QUEUE_WORKER_TRIES` (default 5), `QUEUE_WORKER_TIMEOUT` (default 600), `DB_QUEUE_RETRY_AFTER` (default 630 — must exceed job timeout).
 
 Health check: `GET /up`
 
@@ -306,8 +307,8 @@ php artisan test
 
 - Set `APP_ENV=production`, `APP_DEBUG=false`, and a strong `APP_KEY`
 - Use MySQL/PostgreSQL instead of SQLite
-- Run a dedicated queue worker and Reverb server
-- Configure S3 (or compatible) storage for `RECORDINGS_DISK` (Livewire temp uploads use the same S3 disk by default)
+- Run Reverb in a dedicated container if you use realtime updates (`CONTAINER_ROLE=reverb`)
+- Configure S3 for `RECORDINGS_DISK` — recordings are kept until AI analysis completes, then deleted after `RECORDINGS_RETENTION_DAYS`
 - If you keep local disks, mount a **persistent volume** on `/var/www/html/storage` in CapRover
 - Set up LLM provider API keys in the admin panel
 - Configure organization VoIP/CRM connections
