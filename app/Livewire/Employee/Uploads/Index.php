@@ -212,6 +212,7 @@ class Index extends Component
                 uploaderUserId: auth()->id(),
                 uploaderType: UploaderType::Employee,
                 organizationUserId: $membership->id,
+                sampleId: $sampleId,
                 absolutePath: $sample['absolute_path'],
                 displayFilename: $sample['filename'],
                 metadata: new ManualUploadMetadata(

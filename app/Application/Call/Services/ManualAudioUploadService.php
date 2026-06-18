@@ -14,6 +14,7 @@ use App\Services\AiBillingService;
 use App\Services\AudioUploadValidationService;
 use App\Services\CallProcessingTracker;
 use App\Services\RecordingStorage;
+use App\Support\SampleConversationAnalysisCache;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -95,11 +96,16 @@ class ManualAudioUploadService
         int $uploaderUserId,
         UploaderType $uploaderType,
         ?int $organizationUserId,
+        string $sampleId,
         string $absolutePath,
         string $displayFilename,
         ManualUploadMetadata $metadata,
     ): int {
-        app(AiBillingService::class)->assertCanAnalyze($organizationId);
+        $usesCachedAnalysis = SampleConversationAnalysisCache::has($sampleId);
+
+        if (! $usesCachedAnalysis) {
+            app(AiBillingService::class)->assertCanAnalyze($organizationId);
+        }
 
         $validated = $this->validator->validatePath($absolutePath, $displayFilename);
         $fileSize = filesize($absolutePath) ?: 0;
@@ -155,7 +161,11 @@ class ManualAudioUploadService
             return $callId;
         });
 
-        $this->dispatchAnalysis($callId);
+        if ($usesCachedAnalysis) {
+            app(SampleConversationAnalysisService::class)->apply($callId, $sampleId);
+        } else {
+            $this->dispatchAnalysis($callId);
+        }
 
         return $callId;
     }

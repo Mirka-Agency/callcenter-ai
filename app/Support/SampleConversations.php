@@ -30,7 +30,7 @@ class SampleConversations
     }
 
     /**
-     * @return list<array{id: string, title: string, description: string, category: string, filename: string, absolute_path: string, available: bool}>
+     * @return list<array{id: string, title: string, description: string, category: string, filename: string, absolute_path: string, available: bool, cached_analysis: bool}>
      */
     public static function all(): array
     {
@@ -41,12 +41,13 @@ class SampleConversations
                 ...$definition,
                 'absolute_path' => $absolutePath,
                 'available' => is_file($absolutePath),
+                'cached_analysis' => SampleConversationAnalysisCache::has($definition['id']),
             ];
         }, self::definitions());
     }
 
     /**
-     * @return array{id: string, title: string, description: string, category: string, filename: string, absolute_path: string, available: bool}|null
+     * @return array{id: string, title: string, description: string, category: string, filename: string, absolute_path: string, available: bool, cached_analysis: bool}|null
      */
     public static function find(string $id): ?array
     {
