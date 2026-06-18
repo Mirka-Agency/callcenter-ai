@@ -70,6 +70,8 @@
         </div>
     </section>
 
+    <x-saas.smart-call-intelligence-card :href="route('employee.uploads')" />
+
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="dashboard-stats">
         <x-saas.stat-card label="پیشرفت هفتگی" :value="$cockpit['weekly_progress'] ?: '—'" :hint="($cockpit['weekly_delta'] >= 0 ? '+' : '').$cockpit['weekly_delta'].' نسبت به هفته قبل'" />
         <x-saas.stat-card label="پیشرفت ماهانه" :value="$cockpit['monthly_progress'] ?: '—'" :hint="($cockpit['monthly_delta'] >= 0 ? '+' : '').$cockpit['monthly_delta'].' نسبت به ماه قبل'" />
