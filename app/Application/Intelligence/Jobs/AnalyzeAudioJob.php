@@ -7,6 +7,7 @@ use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Llm\Exceptions\LlmTransientException;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Domain\Processing\Enums\ProcessingLogLevel;
+use App\Domain\Recording\Exceptions\RecordingNotFoundException;
 use App\Domain\Recording\Contracts\RecordingDownloaderInterface;
 use App\Domain\Recording\Contracts\RecordingRepositoryInterface;
 use App\Domain\Recording\DTOs\RecordingData;
@@ -27,14 +28,14 @@ class AnalyzeAudioJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 5;
+    public int $tries = 3;
 
     public int $timeout = 600;
 
     /** @return list<int> */
     public function backoff(): array
     {
-        return [30, 60, 120, 300];
+        return [30, 60];
     }
 
     public function __construct(
@@ -90,7 +91,9 @@ class AnalyzeAudioJob implements ShouldQueue
                         $job,
                         ProcessingLogLevel::Warning,
                         'analysis',
-                        'خطای موقت سرویس هوش مصنوعی — تلاش مجدد ('.$this->attempts().'/'.$this->tries.')',
+                        $e instanceof RecordingNotFoundException
+                            ? 'فایل صوتی هنوز در دسترس نیست — تلاش مجدد ('.$this->attempts().'/'.$this->tries.')'
+                            : 'خطای موقت سرویس هوش مصنوعی — تلاش مجدد ('.$this->attempts().'/'.$this->tries.')',
                         ['error' => $e->getMessage()],
                     );
                 }
@@ -124,7 +127,8 @@ class AnalyzeAudioJob implements ShouldQueue
             return false;
         }
 
-        return $e instanceof LlmTransientException
+        return $e instanceof RecordingNotFoundException
+            || $e instanceof LlmTransientException
             || LlmTransientException::isTransientMessage($e->getMessage());
     }
 

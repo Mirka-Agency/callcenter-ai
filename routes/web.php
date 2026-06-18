@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Livewire\Auth\Login;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 

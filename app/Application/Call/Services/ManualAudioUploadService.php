@@ -18,7 +18,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class ManualAudioUploadService
 {
@@ -169,20 +168,13 @@ class ManualAudioUploadService
     private function storeFile(UploadedFile $file, int $callId, string $extension, string $mimeType): string
     {
         $path = $this->buildStoragePath($callId, $extension);
+        $sourcePath = $file->getRealPath();
 
-        if ($file instanceof TemporaryUploadedFile) {
-            $storedPath = $file->storeAs(dirname($path), basename($path), [
-                'disk' => $this->recordingStorage->disk(),
-                'visibility' => 'private',
-                'ContentType' => $mimeType,
-            ]);
-
-            $this->recordingStorage->assertExists($storedPath);
-
-            return $storedPath;
+        if ($sourcePath === false || ! is_readable($sourcePath)) {
+            throw new \RuntimeException('Upload file is not readable.');
         }
 
-        $this->recordingStorage->putFromLocalPath($file->getRealPath(), $path, $mimeType);
+        $this->recordingStorage->putFromLocalPath($sourcePath, $path, $mimeType);
 
         return $path;
     }

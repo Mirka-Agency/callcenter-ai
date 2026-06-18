@@ -53,7 +53,13 @@ trait InteractsWithManualAudioUpload
 
     protected function resetUploadFormFields(): void
     {
-        $this->reset(['audio', 'title', 'customerName', 'customerPhone', 'notes', 'category', 'tags', 'conversationDate', 'employeeId']);
+        $fields = ['audio', 'title', 'customerName', 'customerPhone', 'notes', 'category', 'tags', 'conversationDate'];
+
+        if (property_exists($this, 'employeeId')) {
+            $fields[] = 'employeeId';
+        }
+
+        $this->reset($fields);
         $this->selectedFileName = null;
         $this->selectedFileSize = null;
         $this->audioReady = false;

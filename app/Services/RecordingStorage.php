@@ -66,7 +66,7 @@ class RecordingStorage
 
     public function assertExists(string $path, ?string $preferredDisk = null): string
     {
-        $located = $this->locate($path, $preferredDisk);
+        $located = $this->locate($path, $preferredDisk, attempts: 3);
 
         if ($located === null) {
             throw RecordingNotFoundException::forPath($path, $this->disksToTry($preferredDisk));
@@ -106,11 +106,19 @@ class RecordingStorage
         return $this->locate($path, $preferredDisk);
     }
 
-    private function locate(string $path, ?string $preferredDisk = null): ?string
+    private function locate(string $path, ?string $preferredDisk = null, int $attempts = 1): ?string
     {
-        foreach ($this->disksToTry($preferredDisk) as $disk) {
-            if (Storage::disk($disk)->exists($path)) {
-                return $disk;
+        $disks = $this->disksToTry($preferredDisk);
+
+        for ($attempt = 0; $attempt < $attempts; $attempt++) {
+            foreach ($disks as $disk) {
+                if (Storage::disk($disk)->exists($path)) {
+                    return $disk;
+                }
+            }
+
+            if ($attempt < $attempts - 1) {
+                usleep(500_000);
             }
         }
 
