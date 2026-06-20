@@ -66,6 +66,7 @@ return [
     'fields' => [
         'name' => 'نام',
         'email' => 'ایمیل',
+        'phone' => 'شماره موبایل',
         'email_address' => 'آدرس ایمیل',
         'password' => 'رمز عبور',
         'role' => 'نقش',
@@ -338,6 +339,9 @@ return [
         'delete_all_demo_data' => 'حذف همه داده‌های دمو',
         'delete_all_demo_organizations' => 'حذف همه سازمان‌های دمو',
         'add_demo_user' => 'افزودن کاربر دمو دیگر',
+        'add_single_demo_person' => 'افزودن دمو برای یک نفر',
+        'import_demo_csv' => 'وارد کردن دمو از CSV',
+        'create_demo_for_user' => 'ایجاد دمو برای این کاربر',
         'retry_job' => 'تلاش مجدد',
         'retry_all_failed_jobs' => 'تلاش مجدد همه',
         'flush_failed_jobs' => 'پاک‌سازی ناموفق‌ها',
@@ -346,6 +350,23 @@ return [
     'demo_users' => [
         'added_success' => 'کاربر دمو اضافه شد',
         'added_body' => ':name — :email — رمز عبور: :password',
+    ],
+
+    'demo_import' => [
+        'single_success' => 'دمو با موفقیت ایجاد شد',
+        'single_body' => ':name — :email — موبایل: :phone — رمز عبور: :password',
+        'csv_file_label' => 'فایل CSV',
+        'csv_format_hint' => 'هر ردیف: شماره موبایل، نام، ایمیل، رمز عبور',
+        'csv_success' => 'وارد کردن CSV کامل شد',
+        'csv_summary' => ':succeeded ردیف موفق — :failed ردیف ناموفق',
+        'csv_partial_failure' => 'برخی ردیف‌ها وارد نشدند',
+        'failed' => 'خطا در ایجاد دمو',
+        'file_not_found' => 'فایل یافت نشد',
+        'create_for_user_heading' => 'ایجاد دمو برای کاربر',
+        'create_for_user_description' => 'یک سازمان دمو با داده‌های نمونه برای «:name» ایجاد می‌شود. داده‌های تحلیل در پس‌زمینه تولید می‌شوند.',
+        'create_for_user_body' => 'دمو برای «:name» در صف ایجاد قرار گرفت.',
+        'user_has_real_org' => 'این کاربر یک سازمان واقعی (غیر دمو) دارد. ابتدا آن را حذف کنید.',
+        'analytics_queued' => 'داده‌های تحلیل در صف پردازش قرار گرفتند.',
     ],
 
     'demo_credentials' => [

@@ -7,9 +7,9 @@
 
     <form wire:submit="authenticate" class="saas-card mt-6 space-y-5">
         <div>
-            <label class="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">ایمیل</label>
-            <input wire:model="email" type="email" class="saas-input" autocomplete="email" required>
-            @error('email') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+            <label class="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">ایمیل یا شماره موبایل</label>
+            <input wire:model="identifier" type="text" class="saas-input" autocomplete="username" required>
+            @error('identifier') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
         </div>
         <div>
             <label class="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">رمز عبور</label>

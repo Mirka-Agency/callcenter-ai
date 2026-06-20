@@ -13,7 +13,6 @@ use App\Models\OrganizationUser;
 use App\Models\OrganizationVoipConnection;
 use App\Models\User;
 use App\Models\WalletTransaction;
-use App\Support\Seeding\DemoCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -81,15 +80,7 @@ class DemoOrganizationCleanupService
 
     private function assertDeletable(Organization $organization): void
     {
-        $organization->loadMissing('employer');
-
         if (! $organization->is_demo) {
-            throw DemoCleanupException::notDemoOrganization();
-        }
-
-        $employerEmail = $organization->employer?->email;
-
-        if (! is_string($employerEmail) || ! DemoCatalog::isDemoUserEmail($employerEmail)) {
             throw DemoCleanupException::notDemoOrganization();
         }
     }
@@ -145,10 +136,6 @@ class DemoOrganizationCleanupService
                 return $ids;
             })
             ->unique()
-            ->filter(fn (int $userId): bool => User::query()
-                ->whereKey($userId)
-                ->where(fn (Builder $query) => $query->where('email', 'like', '%@'.DemoCatalog::EMAIL_DOMAIN))
-                ->exists())
             ->values();
     }
 
@@ -160,10 +147,6 @@ class DemoOrganizationCleanupService
         User::query()
             ->whereIn('id', $userIds)
             ->each(function (User $user): void {
-                if (! DemoCatalog::isDemoUserEmail($user->email)) {
-                    return;
-                }
-
                 if ($user->organizations()->exists() || $user->employeeOrganizations()->exists()) {
                     return;
                 }

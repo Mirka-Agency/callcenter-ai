@@ -15,6 +15,7 @@ class UserForm
         return $schema
             ->components([
                 TextInput::make('name')
+                    ->label(__('filament.fields.name'))
                     ->required()
                     ->maxLength(255),
                 TextInput::make('email')
@@ -23,12 +24,18 @@ class UserForm
                     ->required()
                     ->maxLength(255)
                     ->unique(ignoreRecord: true),
+                TextInput::make('phone')
+                    ->label(__('filament.fields.phone'))
+                    ->maxLength(20)
+                    ->unique(ignoreRecord: true)
+                    ->nullable(),
                 Select::make('role')
                     ->options(UserRole::options())
                     ->required()
                     ->native(false),
                 DateTimePicker::make('email_verified_at'),
                 TextInput::make('password')
+                    ->label(__('filament.fields.password'))
                     ->password()
                     ->revealable()
                     ->required(fn (string $operation): bool => $operation === 'create')
