@@ -3,6 +3,7 @@
 namespace App\Application\Call\Services;
 
 use App\Application\Intelligence\Jobs\AnalyzeAudioJob;
+use App\Application\Intelligence\Jobs\StoreSampleRecordingJob;
 use App\Domain\Call\Contracts\CallRepositoryInterface;
 use App\Domain\Call\DTOs\ManualUploadMetadata;
 use App\Domain\Call\DTOs\UnifiedCallData;
@@ -110,6 +111,13 @@ class ManualAudioUploadService
         $validated = $this->validator->validatePath($absolutePath, $displayFilename);
         $fileSize = filesize($absolutePath) ?: 0;
 
+        if ($usesCachedAnalysis) {
+            return $this->uploadFromSampleWithCachedAnalysis(
+                $organizationId, $uploaderUserId, $uploaderType, $organizationUserId,
+                $sampleId, $absolutePath, $displayFilename, $metadata, $validated, $fileSize,
+            );
+        }
+
         $callId = DB::transaction(function () use (
             $organizationId,
             $uploaderUserId,
@@ -161,11 +169,79 @@ class ManualAudioUploadService
             return $callId;
         });
 
-        if ($usesCachedAnalysis) {
-            app(SampleConversationAnalysisService::class)->apply($callId, $sampleId);
-        } else {
-            $this->dispatchAnalysis($callId);
-        }
+        $this->dispatchAnalysis($callId);
+
+        return $callId;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function uploadFromSampleWithCachedAnalysis(
+        int $organizationId,
+        int $uploaderUserId,
+        UploaderType $uploaderType,
+        ?int $organizationUserId,
+        string $sampleId,
+        string $absolutePath,
+        string $displayFilename,
+        ManualUploadMetadata $metadata,
+        array $validated,
+        int $fileSize,
+    ): int {
+        $recordingId = 0;
+        $storagePath = '';
+
+        $callId = DB::transaction(function () use (
+            $organizationId,
+            $uploaderUserId,
+            $uploaderType,
+            $organizationUserId,
+            $displayFilename,
+            $metadata,
+            $validated,
+            $fileSize,
+            &$recordingId,
+            &$storagePath,
+        ) {
+            $callId = $this->calls->upsert(UnifiedCallData::forManualUpload(
+                organizationId: $organizationId,
+                organizationUserId: $organizationUserId,
+                uploaderId: $uploaderUserId,
+                uploaderType: $uploaderType,
+                metadata: $metadata,
+                durationSeconds: $validated['duration_seconds'],
+            ));
+
+            $call = Call::query()->findOrFail($callId);
+            $processingJob = $this->tracker->startUpload($call, $displayFilename, $uploaderUserId);
+
+            Log::info('Queue job created from sample conversation', [
+                'call_id' => $callId,
+                'job_uuid' => $processingJob->job_uuid,
+                'file_name' => $processingJob->file_name,
+            ]);
+
+            $storagePath = $this->buildStoragePath($callId, $validated['extension']);
+
+            $recordingId = $this->recordings->create(new RecordingData(
+                callId: $callId,
+                storageDisk: $this->recordingStorage->disk(),
+                storagePath: $storagePath,
+                mimeType: $validated['mime_type'],
+                fileSizeBytes: $fileSize,
+                durationSeconds: $validated['duration_seconds'],
+                status: 'uploading',
+            ));
+
+            $this->tracker->markUploaded($processingJob);
+
+            return $callId;
+        });
+
+        app(SampleConversationAnalysisService::class)->apply($callId, $sampleId);
+
+        StoreSampleRecordingJob::dispatch($callId, $recordingId, $absolutePath, $storagePath, $validated['mime_type']);
 
         return $callId;
     }
