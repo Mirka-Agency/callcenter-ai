@@ -24,15 +24,17 @@ class IncomingCallController extends Controller
         ]);
 
         $organization = Organization::query()->findOrFail($validated['organization_id']);
-        $secret = $request->header('X-Voip-Webhook-Secret') ?? $request->header('X-Api-Secret');
+        $token = $request->header('X-Voip-Webhook-Token')
+            ?? $request->header('X-Voip-Webhook-Secret')
+            ?? $request->header('X-Api-Secret');
 
-        if ($secret) {
+        if ($token) {
             $valid = $organization->voipConnections()
                 ->where('is_active', true)
-                ->get()
-                ->contains(fn ($conn) => ($conn->settings['webhook_secret'] ?? null) === $secret);
+                ->where('webhook_token', $token)
+                ->exists();
 
-            if (! $valid && $secret !== config('app.key')) {
+            if (! $valid && $token !== config('app.key')) {
                 return response()->json(['message' => 'Unauthorized'], 401);
             }
         }

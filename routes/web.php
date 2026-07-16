@@ -36,6 +36,7 @@ Route::post('/impersonation/stop', [\App\Http\Controllers\ImpersonationControlle
     ->middleware('auth')
     ->name('impersonation.stop');
 
-Route::post('/webhooks/voip/{connection}', \App\Http\Controllers\VoipWebhookController::class)
+Route::post('/webhooks/voip/{token}', \App\Http\Controllers\VoipWebhookController::class)
+    ->where('token', '[A-Za-z0-9]{48}')
     ->name('webhooks.voip');
 

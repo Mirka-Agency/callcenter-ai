@@ -1,7 +1,9 @@
 <?php
 
+use App\Infrastructure\Voip\Adapters\CustomVoipAdapter;
 use App\Infrastructure\Voip\Adapters\NovatelVoipAdapter;
 use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
+use App\Infrastructure\Voip\Adapters\SimotelVoipAdapter;
 
 return [
 
@@ -13,6 +15,8 @@ return [
 
     'adapters' => [
         'novatel' => env('VOIP_ADAPTER_NOVATEL', NovatelVoipAdapter::class),
+        'simotel' => env('VOIP_ADAPTER_SIMOTEL', SimotelVoipAdapter::class),
+        'custom' => env('VOIP_ADAPTER_CUSTOM', CustomVoipAdapter::class),
     ],
 
     'default_polling_interval_seconds' => (int) env('VOIP_DEFAULT_POLLING_INTERVAL', 30),

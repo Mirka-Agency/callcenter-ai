@@ -6,7 +6,6 @@ use App\Domain\Crm\DTOs\CrmCredentials;
 use App\Domain\Crm\Enums\CrmLogStatus;
 use App\Domain\Crm\Enums\CrmOperation;
 use App\Domain\Voip\DTOs\VoipCredentials;
-use App\Domain\Voip\Enums\VoipIngestionMode;
 use App\Domain\Voip\Enums\VoipLogStatus;
 use App\Domain\Voip\Enums\VoipOperation;
 use App\Enums\IntegrationSetupStatus;
@@ -125,17 +124,7 @@ class OrganizationIntegrationStatusService
     private function voipIngestionConfigured(OrganizationVoipConnection $connection): bool
     {
         $provider = $connection->provider;
-        if (! $provider) {
-            return false;
-        }
 
-        $mode = VoipIngestionMode::tryFrom($connection->ingestion_mode ?? VoipIngestionMode::Webhook->value)
-            ?? VoipIngestionMode::Webhook;
-
-        $webhookReady = ! $mode->usesWebhook() || $provider->supports_webhook;
-        $pollingReady = ! $mode->usesPolling()
-            || ($connection->polling_enabled && $provider->supports_polling);
-
-        return $webhookReady && $pollingReady;
+        return $provider !== null && (bool) $provider->supports_webhook;
     }
 }

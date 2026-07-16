@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Domain\Voip\Contracts\VoipAdapterInterface;
 use App\Domain\Voip\Enums\VoipProviderCode;
-use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
+use App\Infrastructure\Voip\Adapters\CustomVoipAdapter;
 use App\Infrastructure\Voip\Adapters\NovatelVoipAdapter;
+use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
+use App\Infrastructure\Voip\Adapters\SimotelVoipAdapter;
 use App\Infrastructure\Voip\VoipAdapterFactory;
 use App\Infrastructure\Voip\VoipAdapterRegistry;
 use App\Models\VoipProvider;
@@ -58,5 +60,19 @@ class VoipAdapterFactoryTest extends TestCase
         $adapter = app(VoipAdapterRegistry::class)->resolve(VoipProviderCode::Novatel);
 
         $this->assertInstanceOf(NovatelVoipAdapter::class, $adapter);
+    }
+
+    public function test_registry_resolves_simotel_adapter_from_config(): void
+    {
+        $adapter = app(VoipAdapterRegistry::class)->resolve(VoipProviderCode::Simotel);
+
+        $this->assertInstanceOf(SimotelVoipAdapter::class, $adapter);
+    }
+
+    public function test_registry_resolves_custom_adapter_from_config(): void
+    {
+        $adapter = app(VoipAdapterRegistry::class)->resolve(VoipProviderCode::Custom);
+
+        $this->assertInstanceOf(CustomVoipAdapter::class, $adapter);
     }
 }

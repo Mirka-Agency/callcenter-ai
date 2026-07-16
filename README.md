@@ -240,7 +240,7 @@ routes/
 - `/workspace/customers` — Assigned customers
 
 ### Webhooks & API
-- `POST /webhooks/voip/{connection}` — VoIP event webhook
+- `POST /webhooks/voip/{token}` — VoIP event webhook (per-connection secret token)
 - `POST /api/voip/incoming-call` — Incoming call API
 
 ---

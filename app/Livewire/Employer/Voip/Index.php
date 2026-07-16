@@ -13,6 +13,18 @@ use Livewire\Component;
 #[Title('VoIP')]
 class Index extends Component
 {
+    public function regenerateWebhookToken(int $connectionId): void
+    {
+        $connection = EmployerContext::organization()
+            ->voipConnections()
+            ->whereKey($connectionId)
+            ->firstOrFail();
+
+        $connection->regenerateWebhookToken();
+
+        session()->flash('status', __('ui.voip.webhook_token_regenerated'));
+    }
+
     public function render()
     {
         $organization = EmployerContext::organization();

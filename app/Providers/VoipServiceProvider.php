@@ -5,7 +5,6 @@ namespace App\Providers;
 use App\Application\Voip\Services\VoipConnectionResolver;
 use App\Application\Voip\Services\VoipEventDeduplicator;
 use App\Application\Voip\Services\VoipEventIngestionService;
-use App\Application\Voip\Services\VoipPollingService;
 use App\Application\Voip\Services\VoipWebhookDispatcher;
 use App\Application\Voip\VoipManager;
 use App\Domain\Voip\Contracts\VoipCallLogRepositoryInterface;
@@ -27,7 +26,6 @@ class VoipServiceProvider extends ServiceProvider
         $this->app->singleton(VoipWebhookDispatcher::class);
         $this->app->singleton(VoipEventDeduplicator::class);
         $this->app->singleton(VoipEventIngestionService::class);
-        $this->app->singleton(VoipPollingService::class);
 
         $this->app->bind(VoipConnectionRepositoryInterface::class, EloquentVoipConnectionRepository::class);
         $this->app->bind(VoipLogRepositoryInterface::class, EloquentVoipLogRepository::class);

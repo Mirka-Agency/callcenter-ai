@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Application\Call\Services\CallEmployeeResolver;
 use App\Application\Call\Services\CallIngestionService;
 use App\Application\Call\Services\ManualAudioUploadService;
 use App\Application\Crm\Services\CrmIntelligenceSyncService;
@@ -17,8 +16,8 @@ use App\Domain\Voip\Events\CallStarted;
 use App\Domain\Voip\Events\RecordingCreated;
 use App\Infrastructure\Call\Repositories\EloquentCallRepository;
 use App\Infrastructure\Performance\Repositories\EloquentEmployeePerformanceRepository;
-use App\Infrastructure\Recording\HttpRecordingDownloader;
 use App\Infrastructure\Recording\Repositories\EloquentRecordingRepository;
+use App\Infrastructure\Recording\VoipAwareRecordingDownloader;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
@@ -28,7 +27,7 @@ class IntelligenceServiceProvider extends ServiceProvider
     {
         $this->app->bind(CallRepositoryInterface::class, EloquentCallRepository::class);
         $this->app->bind(RecordingRepositoryInterface::class, EloquentRecordingRepository::class);
-        $this->app->bind(RecordingDownloaderInterface::class, HttpRecordingDownloader::class);
+        $this->app->bind(RecordingDownloaderInterface::class, VoipAwareRecordingDownloader::class);
         $this->app->bind(EmployeePerformanceRepositoryInterface::class, EloquentEmployeePerformanceRepository::class);
 
         $this->app->singleton(CallIngestionService::class);

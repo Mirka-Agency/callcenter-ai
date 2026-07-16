@@ -2,16 +2,20 @@
 
 namespace App\Models;
 
+use Database\Factories\OrganizationVoipConnectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 #[Fillable([
     'organization_id',
     'voip_provider_id',
     'name',
+    'webhook_token',
     'credentials',
     'settings',
     'is_default',
@@ -23,7 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class OrganizationVoipConnection extends Model
 {
-    /** @use HasFactory<\Database\Factories\OrganizationVoipConnectionFactory> */
+    /** @use HasFactory<OrganizationVoipConnectionFactory> */
     use HasFactory;
 
     protected function casts(): array
@@ -41,6 +45,12 @@ class OrganizationVoipConnection extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (OrganizationVoipConnection $connection): void {
+            if (blank($connection->webhook_token)) {
+                $connection->webhook_token = static::generateWebhookToken();
+            }
+        });
+
         static::saved(function (OrganizationVoipConnection $connection): void {
             if ($connection->is_default) {
                 static::query()
@@ -74,5 +84,27 @@ class OrganizationVoipConnection extends Model
     public function syncLogs(): HasMany
     {
         return $this->hasMany(VoipSyncLog::class);
+    }
+
+    protected function inboundWebhookUrl(): Attribute
+    {
+        return Attribute::get(fn (): string => route('webhooks.voip', ['token' => $this->webhook_token]));
+    }
+
+    public static function generateWebhookToken(): string
+    {
+        do {
+            $token = Str::random(48);
+        } while (static::query()->where('webhook_token', $token)->exists());
+
+        return $token;
+    }
+
+    public function regenerateWebhookToken(): string
+    {
+        $this->webhook_token = static::generateWebhookToken();
+        $this->save();
+
+        return $this->webhook_token;
     }
 }

@@ -29,6 +29,12 @@ class OrganizationVoipConnectionsTable
                     ->label(__('filament.fields.voip_provider'))
                     ->badge()
                     ->sortable(),
+                TextColumn::make('inbound_webhook_url')
+                    ->label(__('filament.fields.voip_inbound_webhook_url'))
+                    ->copyable()
+                    ->limit(48)
+                    ->tooltip(fn ($record) => $record->inbound_webhook_url)
+                    ->toggleable(),
                 TextColumn::make('call_logs_count')
                     ->counts('callLogs')
                     ->label(__('filament.fields.calls'))

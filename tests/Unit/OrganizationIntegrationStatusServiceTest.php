@@ -8,6 +8,7 @@ use App\Domain\Voip\Enums\VoipLogStatus;
 use App\Domain\Voip\Enums\VoipOperation;
 use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Enums\IntegrationSetupStatus;
+use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
 use App\Models\CrmProvider;
 use App\Models\Organization;
 use App\Models\OrganizationCrmConnection;
@@ -99,14 +100,13 @@ class OrganizationIntegrationStatusServiceTest extends TestCase
         );
     }
 
-    public function test_voip_is_incomplete_when_polling_mode_is_not_enabled(): void
+    public function test_voip_is_incomplete_when_provider_does_not_support_webhook(): void
     {
         $organization = Organization::factory()->create();
-        $provider = $this->createVoipProvider();
-        $connection = $this->createVoipConnection($organization, $provider, [
-            'ingestion_mode' => 'polling',
-            'polling_enabled' => false,
+        $provider = $this->createVoipProvider([
+            'supports_webhook' => false,
         ]);
+        $connection = $this->createVoipConnection($organization, $provider);
 
         $connection->syncLogs()->create([
             'operation' => VoipOperation::TestConnection,
@@ -124,10 +124,7 @@ class OrganizationIntegrationStatusServiceTest extends TestCase
     {
         $organization = Organization::factory()->create();
         $provider = $this->createVoipProvider();
-        $connection = $this->createVoipConnection($organization, $provider, [
-            'ingestion_mode' => 'webhook',
-            'polling_enabled' => false,
-        ]);
+        $connection = $this->createVoipConnection($organization, $provider);
 
         $connection->syncLogs()->create([
             'operation' => VoipOperation::TestConnection,
@@ -185,17 +182,18 @@ class OrganizationIntegrationStatusServiceTest extends TestCase
         ], $readiness->toArray());
     }
 
-    private function createVoipProvider(): VoipProvider
+    /** @param array<string, mixed> $overrides */
+    private function createVoipProvider(array $overrides = []): VoipProvider
     {
-        return VoipProvider::query()->create([
+        return VoipProvider::query()->create(array_merge([
             'name' => 'Novatel',
             'code' => VoipProviderCode::Novatel->value,
-            'adapter_class' => \App\Infrastructure\Voip\Adapters\NullVoipAdapter::class,
+            'adapter_class' => NullVoipAdapter::class,
             'supports_webhook' => true,
-            'supports_polling' => true,
+            'supports_polling' => false,
             'polling_interval_seconds' => 30,
             'is_active' => true,
-        ]);
+        ], $overrides));
     }
 
     /** @param array<string, mixed> $overrides */

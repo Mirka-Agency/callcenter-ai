@@ -9,4 +9,3 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('recordings:purge-expired')->daily();
-Schedule::job(new \App\Application\Voip\Jobs\PollVoipConnectionsJob)->everyMinute();

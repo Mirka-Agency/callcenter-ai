@@ -2,11 +2,18 @@
 
 namespace App\Filament\Resources\OrganizationVoipConnections\Schemas;
 
+use App\Domain\Voip\Enums\VoipProviderCode;
+use App\Infrastructure\Voip\Adapters\CustomVoipAdapter;
+use App\Models\OrganizationVoipConnection;
+use App\Models\VoipProvider;
 use Filament\Forms\Components\KeyValue;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 class OrganizationVoipConnectionForm
@@ -29,7 +36,20 @@ class OrganizationVoipConnectionForm
                             ->searchable()
                             ->preload()
                             ->required()
-                            ->native(false),
+                            ->native(false)
+                            ->live()
+                            ->afterStateUpdated(function (?string $state, Set $set): void {
+                                if (! $state) {
+                                    return;
+                                }
+
+                                $provider = VoipProvider::query()->find($state);
+                                $defaultUrl = $provider?->config['default_api_url'] ?? null;
+
+                                if (is_string($defaultUrl) && $defaultUrl !== '') {
+                                    $set('credentials.api_url', $defaultUrl);
+                                }
+                            }),
                         TextInput::make('name')
                             ->required()
                             ->maxLength(255),
@@ -45,34 +65,55 @@ class OrganizationVoipConnectionForm
                         TextInput::make('credentials.api_url')
                             ->label(__('filament.fields.api_url'))
                             ->url()
-                            ->required()
-                            ->default('https://api.navatel.ir/v1'),
+                            ->required(fn (Get $get, ?OrganizationVoipConnection $record): bool => ! self::isCustomProvider($get('voip_provider_id'), $record))
+                            ->helperText(fn (Get $get, ?OrganizationVoipConnection $record): string => self::isCustomProvider($get('voip_provider_id'), $record)
+                                ? __('filament.misc.voip_custom_api_url_helper')
+                                : __('filament.misc.voip_api_url_helper')),
                         TextInput::make('credentials.api_key')
                             ->label(__('filament.fields.api_key'))
                             ->password()
-                            ->revealable(),
+                            ->revealable()
+                            ->visible(fn (Get $get, ?OrganizationVoipConnection $record): bool => ! self::isCustomProvider($get('voip_provider_id'), $record)),
                         TextInput::make('credentials.api_token')
                             ->label(__('filament.fields.api_token'))
                             ->password()
-                            ->revealable(),
+                            ->revealable()
+                            ->visible(fn (Get $get, ?OrganizationVoipConnection $record): bool => ! self::isCustomProvider($get('voip_provider_id'), $record)),
                         TextInput::make('credentials.username')
-                            ->label(__('filament.fields.username')),
+                            ->label(__('filament.fields.username'))
+                            ->visible(fn (Get $get, ?OrganizationVoipConnection $record): bool => ! self::isCustomProvider($get('voip_provider_id'), $record)),
                         TextInput::make('credentials.password')
                             ->label(__('filament.fields.password'))
                             ->password()
-                            ->revealable(),
+                            ->revealable()
+                            ->visible(fn (Get $get, ?OrganizationVoipConnection $record): bool => ! self::isCustomProvider($get('voip_provider_id'), $record)),
                     ])
-                    ->columns(2),
+                    ->columns(2)
+                    ->visible(fn (Get $get, ?OrganizationVoipConnection $record): bool => ! self::isCustomProvider($get('voip_provider_id'), $record)),
                 Section::make(__('filament.sections.settings'))
                     ->schema([
-                        TextInput::make('settings.webhook_url')
-                            ->label(__('filament.fields.webhook_url'))
-                            ->url()
-                            ->helperText(__('filament.misc.voip_webhook_helper')),
-                        TextInput::make('settings.webhook_secret')
-                            ->label(__('filament.fields.webhook_secret'))
-                            ->password()
-                            ->revealable(),
+                        Placeholder::make('inbound_webhook_url_pending')
+                            ->label(__('filament.fields.voip_inbound_webhook_url'))
+                            ->content(__('filament.misc.voip_inbound_webhook_pending'))
+                            ->visible(fn (?OrganizationVoipConnection $record): bool => $record === null),
+                        Placeholder::make('inbound_webhook_url')
+                            ->label(__('filament.fields.voip_inbound_webhook_url'))
+                            ->content(fn (?OrganizationVoipConnection $record): string => $record?->inbound_webhook_url ?? '')
+                            ->copyable()
+                            ->helperText(__('filament.misc.voip_inbound_webhook_helper'))
+                            ->visible(fn (?OrganizationVoipConnection $record): bool => $record !== null),
+                        Placeholder::make('custom_webhook_payload')
+                            ->label(__('filament.fields.voip_custom_webhook_payload'))
+                            ->content(fn (): string => json_encode(CustomVoipAdapter::sampleWebhookPayload(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))
+                            ->copyable()
+                            ->helperText(__('filament.misc.voip_custom_webhook_payload_helper'))
+                            ->visible(fn (Get $get, ?OrganizationVoipConnection $record): bool => self::isCustomProvider($get('voip_provider_id'), $record)),
+                        KeyValue::make('settings.webhook_field_mapping')
+                            ->label(__('filament.fields.webhook_field_mapping'))
+                            ->keyLabel(__('filament.fields.internal_field'))
+                            ->valueLabel(__('filament.fields.payload_path'))
+                            ->helperText(__('filament.misc.voip_webhook_field_mapping_helper'))
+                            ->visible(fn (Get $get, ?OrganizationVoipConnection $record): bool => self::isCustomProvider($get('voip_provider_id'), $record)),
                         KeyValue::make('settings.extension_mapping')
                             ->label(__('filament.fields.extension_mapping'))
                             ->keyLabel(__('filament.fields.extension'))
@@ -86,9 +127,33 @@ class OrganizationVoipConnectionForm
                             ->persianNumeric(0)
                             ->default(30)
                             ->minValue(5)
-                            ->maxValue(120),
+                            ->maxValue(120)
+                            ->visible(fn (Get $get, ?OrganizationVoipConnection $record): bool => ! self::isCustomProvider($get('voip_provider_id'), $record)),
                     ])
-                    ->columns(2),
+                    ->columns(1),
             ]);
+    }
+
+    private static function isCustomProvider(mixed $providerId, ?OrganizationVoipConnection $record): bool
+    {
+        if ($record?->relationLoaded('provider') && $record->provider) {
+            return $record->provider->code === VoipProviderCode::Custom->value;
+        }
+
+        if ($record && ! $record->relationLoaded('provider')) {
+            $record->loadMissing('provider');
+
+            if ($record->provider?->code === VoipProviderCode::Custom->value) {
+                return true;
+            }
+        }
+
+        if (! $providerId) {
+            return false;
+        }
+
+        return VoipProvider::query()
+            ->whereKey($providerId)
+            ->value('code') === VoipProviderCode::Custom->value;
     }
 }

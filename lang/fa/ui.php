@@ -37,6 +37,25 @@ return [
         'insufficient_transaction' => 'موجودی برای این عملیات کافی نیست.',
     ],
 
+    'voip' => [
+        'webhook_guide_title' => 'راهنمای وب‌هوک VoIP',
+        'webhook_guide_body' => 'آدرس زیر را در پنل ارائه‌دهنده VoIP (مثلاً سیموتل) برای رویداد CDR پس از پایان تماس تنظیم کنید. این آدرس شامل کد امنیتی یکتا است — آن را محرمانه نگه دارید.',
+        'webhook_method' => 'روش ارسال: POST — بدنه JSON',
+        'webhook_secret_hint' => 'آدرس وب‌هوک شامل کد امنیتی است؛ آن را در اختیار دیگران قرار ندهید.',
+        'webhook_regenerate_button' => 'تغییر کد امنیتی وب‌هوک',
+        'webhook_regenerate_confirm' => 'کد امنیتی وب‌هوک تغییر می‌کند و آدرس قبلی دیگر کار نمی‌کند. آدرس جدید را در پنل VoIP به‌روزرسانی کنید. ادامه می‌دهید؟',
+        'webhook_regenerating' => 'در حال تغییر…',
+        'webhook_token_regenerated' => 'کد امنیتی وب‌هوک تغییر کرد. آدرس جدید را در پنل ارائه‌دهنده VoIP وارد کنید.',
+        'webhook_url_label' => 'آدرس وب‌هوک',
+        'webhook_copy' => 'کپی',
+        'webhook_copied' => 'کپی شد',
+        'connection_id' => 'شناسه اتصال',
+        'incoming_call_title' => 'تماس ورودی لحظه‌ای (اختیاری)',
+        'incoming_call_body' => 'برای پاپ‌آپ فوری کارشناس، تماس‌های ورودی را نیز به این آدرس ارسال کنید:',
+        'custom_payload_title' => 'نمونه JSON برای ارائه‌دهنده سفارشی',
+        'custom_payload_hint' => 'POST با بدنه JSON — فیلدهای phone، recording_url و سایر موارد پشتیبانی می‌شوند.',
+    ],
+
     'empty' => [
         'chart_trend' => [
             'title' => 'هنوز روندی شکل نگرفته',

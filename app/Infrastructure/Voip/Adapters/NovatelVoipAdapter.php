@@ -2,20 +2,17 @@
 
 namespace App\Infrastructure\Voip\Adapters;
 
-use App\Domain\Voip\Contracts\VoipPollableAdapterInterface;
 use App\Domain\Voip\DTOs\ExtensionData;
 use App\Domain\Voip\DTOs\MakeCallData;
 use App\Domain\Voip\DTOs\NormalizedWebhookEvent;
 use App\Domain\Voip\Enums\CallDirection;
 use App\Domain\Voip\Enums\CallStatus;
 use App\Domain\Voip\Enums\VoipProviderCode;
-use App\Domain\Voip\Enums\VoipEventSource;
 use App\Domain\Voip\Enums\VoipWebhookEventType;
 use App\Domain\Voip\ValueObjects\VoipOperationResult;
 use App\Infrastructure\Voip\Clients\NovatelApiClient;
-use DateTimeInterface;
 
-class NovatelVoipAdapter extends AbstractVoipAdapter implements VoipPollableAdapterInterface
+class NovatelVoipAdapter extends AbstractVoipAdapter
 {
     private ?NovatelApiClient $client = null;
 
@@ -165,52 +162,6 @@ class NovatelVoipAdapter extends AbstractVoipAdapter implements VoipPollableAdap
     public function normalizeWebhook(array $payload): NormalizedWebhookEvent
     {
         return $this->normalizeProviderPayload($payload);
-    }
-
-    public function pollCallEvents(?DateTimeInterface $since = null): array
-    {
-        $query = [];
-
-        if ($since) {
-            $query['since'] = $since->format(DateTimeInterface::ATOM);
-        }
-
-        $response = $this->client()->get('calls/recent', $query);
-
-        if ($response->failed()) {
-            $fallback = $this->client()->get('calls/active');
-
-            if ($fallback->failed()) {
-                return [];
-            }
-
-            $records = $fallback->json('data') ?? $fallback->json('calls') ?? $fallback->json() ?? [];
-
-            return $this->normalizePollRecords(is_array($records) ? $records : []);
-        }
-
-        $records = $response->json('data') ?? $response->json('calls') ?? $response->json() ?? [];
-
-        return $this->normalizePollRecords(is_array($records) ? $records : []);
-    }
-
-    /** @param list<array<string, mixed>> $records
-     * @return list<NormalizedWebhookEvent>
-     */
-    private function normalizePollRecords(array $records): array
-    {
-        $events = [];
-
-        foreach ($records as $record) {
-            if (! is_array($record)) {
-                continue;
-            }
-
-            $events[] = $this->normalizeProviderPayload($record)
-                ->withSource(VoipEventSource::Polling, $this->getProviderCode()->value);
-        }
-
-        return $events;
     }
 
     private function normalizeProviderPayload(array $payload): NormalizedWebhookEvent
