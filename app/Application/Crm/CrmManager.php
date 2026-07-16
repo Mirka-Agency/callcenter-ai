@@ -119,6 +119,22 @@ class CrmManager
         return $result;
     }
 
+    public function listPipelines(): CrmOperationResult
+    {
+        return $this->execute(
+            CrmOperation::ListPipelines,
+            fn (CrmAdapterInterface $adapter) => $adapter->listPipelines(),
+        );
+    }
+
+    public function listUsers(): CrmOperationResult
+    {
+        return $this->execute(
+            CrmOperation::ListUsers,
+            fn (CrmAdapterInterface $adapter) => $adapter->listUsers(),
+        );
+    }
+
     public function syncCallIntelligence(CallIntelligenceSyncData $data): CrmOperationResult
     {
         return $this->execute(

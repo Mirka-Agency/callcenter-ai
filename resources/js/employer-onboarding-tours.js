@@ -362,6 +362,11 @@ export const employerPageTours = {
                 title: 'اتصالات',
                 content: 'وضعیت اتصال هر ارائه‌دهنده CRM و فعال بودن جستجوی مخاطب.',
             },
+            {
+                selector: '[data-tour="crm-settings"]',
+                title: 'تنظیمات معامله',
+                content: 'کاریز، مرحله کاریز و مالک معامله (اختیاری) را برای ایجاد معامله در دیدار تنظیم کنید.',
+            },
         ],
     },
     'employer.voip.index': {

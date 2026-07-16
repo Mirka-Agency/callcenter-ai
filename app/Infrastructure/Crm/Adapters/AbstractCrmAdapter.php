@@ -45,6 +45,16 @@ abstract class AbstractCrmAdapter implements CrmAdapterInterface
         return CrmOperationResult::failure(error: $message, data: $data);
     }
 
+    public function listPipelines(): CrmOperationResult
+    {
+        return CrmOperationResult::failure('Listing pipelines is not supported by this CRM provider.');
+    }
+
+    public function listUsers(): CrmOperationResult
+    {
+        return CrmOperationResult::failure('Listing users is not supported by this CRM provider.');
+    }
+
     public function syncCallIntelligence(CallIntelligenceSyncData $data): CrmOperationResult
     {
         $results = [];
@@ -97,11 +107,39 @@ abstract class AbstractCrmAdapter implements CrmAdapterInterface
             'sales_priority' => $leadScore,
         ];
 
+        $dealExternalId = null;
+        $settings = $this->config->settings;
+
+        if ($settings->hasDealDefaults()) {
+            $dealTitle = match (true) {
+                $customerPerson !== '' => "[{$priorityLabel}] {$customerPerson}",
+                $customerCompany !== '' => "[{$priorityLabel}] {$customerCompany}",
+                filled($data->customerPhone) => "[{$priorityLabel}] {$data->customerPhone}",
+                default => "[{$priorityLabel}] هوش تماس #{$data->analysisId}",
+            };
+
+            $dealResult = $this->createLead(new LeadData(
+                title: $dealTitle,
+                firstName: $customerPerson !== '' ? $customerPerson : null,
+                phone: $data->customerPhone,
+                company: $customerCompany !== '' ? $customerCompany : null,
+                description: $baseDescription,
+                source: 'call_intelligence',
+                pipelineStageId: $settings->pipelineStageId,
+                ownerId: $settings->dealOwnerId,
+                metadata: $metadata,
+            ));
+
+            $results[] = $dealResult->success ? 'deal_created' : 'deal_failed';
+            $dealExternalId = $dealResult->externalId;
+        }
+
         foreach ($data->nextActions as $action) {
             $task = new TaskData(
                 title: "[{$priorityLabel}] پیگیری: {$action}",
                 description: $baseDescription,
                 dueAt: $dueAt,
+                relatedExternalId: $dealExternalId,
                 metadata: $metadata,
             );
 
@@ -109,7 +147,7 @@ abstract class AbstractCrmAdapter implements CrmAdapterInterface
             $results[] = $result->success ? 'task_created' : 'task_failed';
         }
 
-        if ($data->nextActions === []) {
+        if ($data->nextActions === [] && $dealExternalId === null) {
             $task = new TaskData(
                 title: "[{$priorityLabel}] خلاصه هوش تماس",
                 description: $baseDescription,
@@ -117,15 +155,18 @@ abstract class AbstractCrmAdapter implements CrmAdapterInterface
                 metadata: $metadata,
             );
             $this->createTask($task);
+            $results[] = 'task_created';
         }
 
         return CrmOperationResult::success(
+            externalId: $dealExternalId,
             data: [
                 'actions' => $results,
                 'analysis_id' => $data->analysisId,
                 'lead_score' => $leadScore,
                 'lead_level' => $leadLevel,
                 'concerns_count' => count($data->concerns ?? []),
+                'deal_id' => $dealExternalId,
             ],
             message: 'Call intelligence synced to CRM.',
         );

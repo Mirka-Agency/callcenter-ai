@@ -31,5 +31,9 @@ interface CrmAdapterInterface
 
     public function sync(SyncData $sync): CrmOperationResult;
 
+    public function listPipelines(): CrmOperationResult;
+
+    public function listUsers(): CrmOperationResult;
+
     public function syncCallIntelligence(CallIntelligenceSyncData $data): CrmOperationResult;
 }

@@ -35,7 +35,8 @@ class OrganizationCrmConnectionForm
                         Toggle::make('is_default')
                             ->label(__('filament.fields.default_connection')),
                         Toggle::make('is_active')
-                            ->label(__('filament.fields.active'))
+                            ->label(__('filament.fields.crm_enabled_for_org'))
+                            ->helperText(__('filament.misc.crm_enable_admin_only_helper'))
                             ->default(true),
                     ])
                     ->columns(2),
@@ -78,6 +79,23 @@ class OrganizationCrmConnectionForm
                             ->default(30)
                             ->minValue(5)
                             ->maxValue(120),
+                    ])
+                    ->columns(2),
+                Section::make(__('filament.sections.didar_deal_defaults'))
+                    ->description(__('filament.misc.crm_deal_defaults_description'))
+                    ->schema([
+                        TextInput::make('settings.pipeline_id')
+                            ->label(__('filament.fields.pipeline_id'))
+                            ->helperText(__('filament.misc.crm_pipeline_id_helper'))
+                            ->maxLength(100),
+                        TextInput::make('settings.pipeline_stage_id')
+                            ->label(__('filament.fields.pipeline_stage_id'))
+                            ->helperText(__('filament.misc.crm_pipeline_stage_id_helper'))
+                            ->maxLength(100),
+                        TextInput::make('settings.deal_owner_id')
+                            ->label(__('filament.fields.deal_owner_id'))
+                            ->helperText(__('filament.misc.crm_deal_owner_id_helper'))
+                            ->maxLength(100),
                     ])
                     ->columns(2),
             ]);

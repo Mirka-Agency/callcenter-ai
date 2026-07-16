@@ -33,7 +33,7 @@ class CrmConnectionsRelationManager extends RelationManager
                     ->label(__('filament.fields.default'))
                     ->boolean(),
                 IconColumn::make('is_active')
-                    ->label(__('filament.fields.active'))
+                    ->label(__('filament.fields.crm_enabled_for_org'))
                     ->boolean(),
             ])
             ->headerActions([

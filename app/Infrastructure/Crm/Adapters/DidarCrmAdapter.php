@@ -3,6 +3,8 @@
 namespace App\Infrastructure\Crm\Adapters;
 
 use App\Domain\Crm\DTOs\ContactData;
+use App\Domain\Crm\DTOs\CrmPipelineOption;
+use App\Domain\Crm\DTOs\CrmUserOption;
 use App\Domain\Crm\DTOs\LeadData;
 use App\Domain\Crm\DTOs\SyncData;
 use App\Domain\Crm\DTOs\TaskData;
@@ -12,6 +14,10 @@ use App\Infrastructure\Crm\Clients\DidarApiClient;
 
 class DidarCrmAdapter extends AbstractCrmAdapter
 {
+    private const DEAL_PIPELINES_ENDPOINT = 'pipeline/list/0';
+
+    private const USERS_ENDPOINT = 'User/List';
+
     private ?DidarApiClient $client = null;
 
     public function getProviderCode(): CrmProviderCode
@@ -54,7 +60,7 @@ class DidarCrmAdapter extends AbstractCrmAdapter
     public function updateLead(string $externalId, LeadData $lead): CrmOperationResult
     {
         $payload = $this->mapLeadPayload($lead);
-        $payload['Id'] = $externalId;
+        $payload['Deal']['Id'] = $externalId;
 
         $response = $this->client()->post('deal/save', $payload);
 
@@ -115,12 +121,18 @@ class DidarCrmAdapter extends AbstractCrmAdapter
 
     public function createTask(TaskData $task): CrmOperationResult
     {
-        $response = $this->client()->post('activity/save', [
+        $activity = array_filter([
             'Title' => $task->title,
             'Description' => $task->description,
             'DueDate' => $task->dueAt,
             'RelatedId' => $task->relatedExternalId,
+            'DealId' => $task->relatedExternalId,
             'Assignee' => $task->assignee,
+        ], fn ($value) => $value !== null && $value !== '');
+
+        $response = $this->client()->post('activity/save', [
+            'Activity' => $activity,
+            'SetDone' => false,
         ]);
 
         if ($response->failed()) {
@@ -163,6 +175,90 @@ class DidarCrmAdapter extends AbstractCrmAdapter
         );
     }
 
+    public function listPipelines(): CrmOperationResult
+    {
+        $response = $this->client()->post(self::DEAL_PIPELINES_ENDPOINT);
+
+        if ($response->failed()) {
+            return $this->parseHttpFailure(
+                message: $response->json('Message') ?? $response->json('Error') ?? $response->body(),
+                data: $response->json(),
+            );
+        }
+
+        $body = $response->json() ?? [];
+        $rawList = $body['Response']['List'] ?? $body['Response'] ?? [];
+
+        if (! is_array($rawList)) {
+            return CrmOperationResult::failure('Unexpected pipeline response from Didar CRM.', data: $body);
+        }
+
+        if (isset($rawList['Id']) || isset($rawList['Title'])) {
+            $rawList = [$rawList];
+        }
+
+        $pipelines = [];
+        foreach ($rawList as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $pipeline = CrmPipelineOption::fromArray($item);
+            if ($pipeline->id === '') {
+                continue;
+            }
+
+            $pipelines[] = $pipeline->toArray();
+        }
+
+        return CrmOperationResult::success(
+            data: ['pipelines' => $pipelines],
+            message: 'Pipelines loaded from Didar CRM.',
+        );
+    }
+
+    public function listUsers(): CrmOperationResult
+    {
+        $response = $this->client()->post(self::USERS_ENDPOINT);
+
+        if ($response->failed()) {
+            return $this->parseHttpFailure(
+                message: $response->json('Message') ?? $response->json('Error') ?? $response->body(),
+                data: $response->json(),
+            );
+        }
+
+        $body = $response->json() ?? [];
+        $rawList = $body['Response']['List'] ?? $body['Response'] ?? [];
+
+        if (! is_array($rawList)) {
+            return CrmOperationResult::failure('Unexpected user response from Didar CRM.', data: $body);
+        }
+
+        if (isset($rawList['Id']) || isset($rawList['UserId'])) {
+            $rawList = [$rawList];
+        }
+
+        $users = [];
+        foreach ($rawList as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $user = CrmUserOption::fromArray($item);
+            if ($user->id === '') {
+                continue;
+            }
+
+            $users[] = $user->toArray();
+        }
+
+        return CrmOperationResult::success(
+            data: ['users' => $users],
+            message: 'Users loaded from Didar CRM.',
+        );
+    }
+
     private function client(): DidarApiClient
     {
         return $this->client ??= new DidarApiClient(
@@ -173,7 +269,12 @@ class DidarCrmAdapter extends AbstractCrmAdapter
 
     private function mapLeadPayload(LeadData $lead): array
     {
-        return array_filter([
+        $lead = $lead->withDealDefaults(
+            pipelineStageId: $this->config->settings->pipelineStageId,
+            ownerId: $this->config->settings->dealOwnerId,
+        );
+
+        $deal = array_filter([
             'Title' => $lead->title,
             'FirstName' => $lead->firstName,
             'LastName' => $lead->lastName,
@@ -182,8 +283,13 @@ class DidarCrmAdapter extends AbstractCrmAdapter
             'CompanyName' => $lead->company,
             'Description' => $lead->description,
             'Source' => $lead->source,
+            'ContactId' => $lead->contactId,
+            'PipelineStageId' => $lead->pipelineStageId,
+            'OwnerId' => $lead->ownerId,
             'Fields' => $lead->customFields ?: null,
         ], fn ($value) => $value !== null && $value !== '');
+
+        return ['Deal' => $deal];
     }
 
     private function mapContactPayload(ContactData $contact): array

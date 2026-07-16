@@ -13,6 +13,9 @@ readonly class LeadData
         public ?string $company = null,
         public ?string $description = null,
         public ?string $source = null,
+        public ?string $pipelineStageId = null,
+        public ?string $ownerId = null,
+        public ?string $contactId = null,
         public array $customFields = [],
         public array $metadata = [],
     ) {}
@@ -28,6 +31,9 @@ readonly class LeadData
             company: $data['company'] ?? null,
             description: $data['description'] ?? null,
             source: $data['source'] ?? null,
+            pipelineStageId: $data['pipeline_stage_id'] ?? $data['pipelineStageId'] ?? null,
+            ownerId: $data['owner_id'] ?? $data['ownerId'] ?? null,
+            contactId: $data['contact_id'] ?? $data['contactId'] ?? null,
             customFields: $data['custom_fields'] ?? $data['customFields'] ?? [],
             metadata: $data['metadata'] ?? [],
         );
@@ -44,8 +50,30 @@ readonly class LeadData
             'company' => $this->company,
             'description' => $this->description,
             'source' => $this->source,
+            'pipeline_stage_id' => $this->pipelineStageId,
+            'owner_id' => $this->ownerId,
+            'contact_id' => $this->contactId,
             'custom_fields' => $this->customFields ?: null,
             'metadata' => $this->metadata ?: null,
         ], fn ($value) => $value !== null && $value !== '');
+    }
+
+    public function withDealDefaults(?string $pipelineStageId, ?string $ownerId): self
+    {
+        return new self(
+            title: $this->title,
+            firstName: $this->firstName,
+            lastName: $this->lastName,
+            email: $this->email,
+            phone: $this->phone,
+            company: $this->company,
+            description: $this->description,
+            source: $this->source,
+            pipelineStageId: $this->pipelineStageId ?? $pipelineStageId,
+            ownerId: $this->ownerId ?? $ownerId,
+            contactId: $this->contactId,
+            customFields: $this->customFields,
+            metadata: $this->metadata,
+        );
     }
 }

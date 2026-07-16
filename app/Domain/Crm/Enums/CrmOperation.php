@@ -11,6 +11,8 @@ enum CrmOperation: string
     case CreateContact = 'create_contact';
     case CreateTask = 'create_task';
     case SyncData = 'sync_data';
+    case ListPipelines = 'list_pipelines';
+    case ListUsers = 'list_users';
     case SyncCallIntelligence = 'sync_call_intelligence';
 
     public function label(): string
@@ -23,6 +25,8 @@ enum CrmOperation: string
             self::CreateContact => 'ایجاد مخاطب',
             self::CreateTask => 'ایجاد وظیفه',
             self::SyncData => 'همگام‌سازی داده',
+            self::ListPipelines => 'فهرست کاریزها',
+            self::ListUsers => 'فهرست کاربران CRM',
             self::SyncCallIntelligence => 'همگام‌سازی هوش تماس',
         };
     }

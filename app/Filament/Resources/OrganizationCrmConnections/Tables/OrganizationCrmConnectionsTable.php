@@ -34,7 +34,7 @@ class OrganizationCrmConnectionsTable
                     ->boolean()
                     ->sortable(),
                 IconColumn::make('is_active')
-                    ->label(__('filament.fields.active'))
+                    ->label(__('filament.fields.crm_enabled_for_org'))
                     ->boolean()
                     ->sortable(),
                 TextColumn::make('updated_at')
