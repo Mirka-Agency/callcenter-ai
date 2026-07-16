@@ -28,6 +28,11 @@ class EmployeesRelationManager extends RelationManager
                     ->label(__('filament.fields.email_address'))
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('last_login_at')
+                    ->label(__('filament.fields.last_login_at'))
+                    ->jalaliDateTime()
+                    ->sortable()
+                    ->placeholder(__('filament.fields.never_logged_in')),
                 TextColumn::make('created_at')
                     ->label(__('filament.fields.joined_at'))
                     ->jalaliDateTime()

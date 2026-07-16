@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use App\Enums\UserRole;
+use App\Models\User;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
@@ -33,6 +35,12 @@ class UserForm
                     ->options(UserRole::options())
                     ->required()
                     ->native(false),
+                Placeholder::make('last_login_at')
+                    ->label(__('filament.fields.last_login_at'))
+                    ->content(fn (?User $record): string => $record?->last_login_at
+                        ? \App\Support\JalaliDate::format($record->last_login_at, \App\Support\JalaliDate::DATETIME)
+                        : __('filament.fields.never_logged_in'))
+                    ->visible(fn (?User $record): bool => $record !== null),
                 DateTimePicker::make('email_verified_at'),
                 TextInput::make('password')
                     ->label(__('filament.fields.password'))

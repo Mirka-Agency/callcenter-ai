@@ -37,6 +37,11 @@ class OrganizationsTable
                     ->label(__('filament.fields.employer_email'))
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('employer.last_login_at')
+                    ->label(__('filament.fields.employer_last_login_at'))
+                    ->jalaliDateTime()
+                    ->sortable()
+                    ->placeholder(__('filament.fields.never_logged_in')),
                 TextColumn::make('employees_count')
                     ->counts('employees')
                     ->label(__('filament.fields.employees'))

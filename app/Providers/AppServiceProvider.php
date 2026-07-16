@@ -3,7 +3,10 @@
 namespace App\Providers;
 
 use App\Filament\Support\FluentWidgetConfiguration;
+use App\Listeners\RecordUserLastLogin;
 use Filament\Widgets\WidgetConfiguration;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -16,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Event::listen(Login::class, RecordUserLastLogin::class);
+
         // CapRover terminates TLS at the proxy; force https URLs in production to avoid mixed content.
         if (config('app.env') === 'production') {
             if ($rootUrl = config('app.url')) {

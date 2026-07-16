@@ -51,6 +51,11 @@ class UsersTable
                     ->listWithLineBreaks()
                     ->placeholder(__('filament.misc.em_dash'))
                     ->url(fn (Organization $state): string => OrganizationResource::getUrl('edit', ['record' => $state])),
+                TextColumn::make('last_login_at')
+                    ->label(__('filament.fields.last_login_at'))
+                    ->jalaliDateTime()
+                    ->sortable()
+                    ->placeholder(__('filament.fields.never_logged_in')),
                 TextColumn::make('email_verified_at')
                     ->label(__('filament.fields.verified'))
                     ->jalaliDateTime()
