@@ -92,16 +92,44 @@ class OrganizationVoipConnectionForm
                     ->visible(fn (Get $get, ?OrganizationVoipConnection $record): bool => ! self::isCustomProvider($get('voip_provider_id'), $record)),
                 Section::make(__('filament.sections.settings'))
                     ->schema([
-                        Placeholder::make('inbound_webhook_url_pending')
-                            ->label(__('filament.fields.voip_inbound_webhook_url'))
-                            ->content(__('filament.misc.voip_inbound_webhook_pending'))
-                            ->visible(fn (?OrganizationVoipConnection $record): bool => $record === null),
+                        TextInput::make('webhook_token')
+                            ->label(__('filament.fields.voip_webhook_token'))
+                            ->maxLength(64)
+                            ->regex('/^[A-Za-z0-9]{48}$/')
+                            ->unique(ignoreRecord: true)
+                            ->required(fn (?OrganizationVoipConnection $record): bool => $record !== null)
+                            ->live(onBlur: true)
+                            ->dehydrateStateUsing(function (?string $state, ?OrganizationVoipConnection $record): ?string {
+                                $normalized = OrganizationVoipConnection::normalizeWebhookTokenInput($state);
+
+                                if ($normalized === null && $record !== null) {
+                                    return $record->webhook_token;
+                                }
+
+                                return $normalized;
+                            })
+                            ->helperText(__('filament.misc.voip_webhook_token_helper'))
+                            ->validationMessages([
+                                'unique' => __('filament.validation.voip_webhook_token_unique'),
+                                'regex' => __('filament.validation.voip_webhook_token_format'),
+                            ]),
                         Placeholder::make('inbound_webhook_url')
                             ->label(__('filament.fields.voip_inbound_webhook_url'))
-                            ->content(fn (?OrganizationVoipConnection $record): string => $record?->inbound_webhook_url ?? '')
-                            ->copyable()
-                            ->helperText(__('filament.misc.voip_inbound_webhook_helper'))
-                            ->visible(fn (?OrganizationVoipConnection $record): bool => $record !== null),
+                            ->content(function (Get $get, ?OrganizationVoipConnection $record): string {
+                                $token = OrganizationVoipConnection::normalizeWebhookTokenInput($get('webhook_token'))
+                                    ?? $record?->webhook_token;
+
+                                if (blank($token)) {
+                                    return __('filament.misc.voip_inbound_webhook_pending');
+                                }
+
+                                return route('webhooks.voip', ['token' => $token]);
+                            })
+                            ->copyable(fn (Get $get, ?OrganizationVoipConnection $record): bool => filled(
+                                OrganizationVoipConnection::normalizeWebhookTokenInput($get('webhook_token'))
+                                    ?? $record?->webhook_token
+                            ))
+                            ->helperText(__('filament.misc.voip_inbound_webhook_helper')),
                         Placeholder::make('custom_webhook_payload')
                             ->label(__('filament.fields.voip_custom_webhook_payload'))
                             ->content(fn (): string => json_encode(CustomVoipAdapter::sampleWebhookPayload(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))

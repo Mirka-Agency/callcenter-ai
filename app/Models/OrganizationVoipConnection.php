@@ -91,6 +91,25 @@ class OrganizationVoipConnection extends Model
         return Attribute::get(fn (): string => route('webhooks.voip', ['token' => $this->webhook_token]));
     }
 
+    public static function normalizeWebhookTokenInput(?string $input): ?string
+    {
+        if (blank($input)) {
+            return null;
+        }
+
+        $input = trim($input);
+
+        if (str_contains($input, '/webhooks/voip/')) {
+            $path = parse_url($input, PHP_URL_PATH);
+
+            if (is_string($path) && preg_match('#/webhooks/voip/([A-Za-z0-9]+)$#', $path, $matches) === 1) {
+                return $matches[1];
+            }
+        }
+
+        return $input;
+    }
+
     public static function generateWebhookToken(): string
     {
         do {

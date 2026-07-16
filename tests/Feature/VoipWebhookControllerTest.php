@@ -36,6 +36,52 @@ class VoipWebhookControllerTest extends TestCase
         });
     }
 
+    public function test_webhook_accepts_get_request_with_query_params(): void
+    {
+        Bus::fake([ProcessVoipWebhookJob::class]);
+
+        $connection = $this->createConnection();
+
+        $response = $this->get(route('webhooks.voip', [
+            'token' => $connection->webhook_token,
+            'event_name' => 'cdr',
+            'unique_id' => 'sim-456',
+        ]));
+
+        $response->assertAccepted()
+            ->assertJson(['message' => 'Webhook accepted']);
+
+        Bus::assertDispatched(ProcessVoipWebhookJob::class, function (ProcessVoipWebhookJob $job) use ($connection): bool {
+            return $job->connectionId === $connection->id
+                && $job->payload['unique_id'] === 'sim-456';
+        });
+    }
+
+    public function test_webhook_token_must_be_unique_at_database_level(): void
+    {
+        $existing = $this->createConnection();
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+
+        OrganizationVoipConnection::query()->create([
+            'organization_id' => Organization::factory()->create()->id,
+            'voip_provider_id' => $existing->voip_provider_id,
+            'name' => 'Duplicate token',
+            'webhook_token' => $existing->webhook_token,
+            'credentials' => [],
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_normalize_webhook_token_input_extracts_token_from_full_url(): void
+    {
+        $token = str_repeat('a', 48);
+        $url = route('webhooks.voip', ['token' => $token]);
+
+        $this->assertSame($token, OrganizationVoipConnection::normalizeWebhookTokenInput($url));
+        $this->assertSame($token, OrganizationVoipConnection::normalizeWebhookTokenInput($token));
+    }
+
     public function test_webhook_rejects_unknown_token(): void
     {
         Bus::fake([ProcessVoipWebhookJob::class]);
