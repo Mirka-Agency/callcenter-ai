@@ -42,11 +42,15 @@ class VoipProviderForm
                 TextInput::make('name')
                     ->required()
                     ->maxLength(255),
-                TextInput::make('code')
+                Select::make('code')
                     ->required()
                     ->unique(ignoreRecord: true)
-                    ->maxLength(255)
-                    ->helperText(__('filament.misc.provider_code_novatel')),
+                    ->options(collect(VoipProviderCode::cases())->mapWithKeys(
+                        fn (VoipProviderCode $code): array => [$code->value => "{$code->label()} ({$code->value})"],
+                    )->all())
+                    ->native(false)
+                    ->searchable()
+                    ->helperText(__('filament.misc.voip_provider_code_helper')),
                 Select::make('adapter_class')
                     ->label(__('filament.fields.provider_adapter'))
                     ->options($adapterOptions)

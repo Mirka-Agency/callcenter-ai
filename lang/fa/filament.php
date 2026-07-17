@@ -579,6 +579,7 @@ return [
         'default_model_helper' => 'ابتدا مدل‌ها را در مدل‌ها و قیمت‌گذاری ایجاد کنید، سپس پیش‌فرض را اینجا تعیین کنید.',
         'provider_code_didar' => 'کد ارائه‌دهنده: didar',
         'provider_code_novatel' => 'کد ارائه‌دهنده: novatel',
+        'voip_provider_code_helper' => 'باید یکی از مقادیر مجاز باشد: novatel، simotel، custom. نام نمایشی می‌تواند دلخواه باشد (مثلاً Astel).',
         'internal_key_crm_helper' => 'کلید داخلی، مثلاً extension، crm_user_id',
         'internal_key_voip_helper' => 'کلید داخلی، مثلاً extension، internal_user_id',
         'crm_settings_description' => 'اتصالات CRM فعال، شناسه تماس‌گیرنده را از شماره تلفن resolve می‌کنند و هوش مشتری در تماس‌های ورودی را فعال می‌کنند.',
