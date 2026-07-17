@@ -17,12 +17,18 @@ use Illuminate\Validation\ValidationException;
 
 class EmployeeIntegrationMetaService
 {
+    /** @var list<class-string<Model>> */
+    private const ALLOWED_CONNECTION_TYPES = [
+        OrganizationCrmConnection::class,
+        OrganizationVoipConnection::class,
+    ];
+
     public static function connectionReference(Model $connection): string
     {
         return $connection::class.':'.$connection->getKey();
     }
 
-    public static function resolveConnection(?string $reference): ?Model
+    public static function resolveConnection(?string $reference, ?int $organizationId = null): ?Model
     {
         if (! $reference || ! str_contains($reference, ':')) {
             return null;
@@ -30,11 +36,17 @@ class EmployeeIntegrationMetaService
 
         [$type, $id] = explode(':', $reference, 2);
 
-        if (! class_exists($type)) {
+        if (! in_array($type, self::ALLOWED_CONNECTION_TYPES, true) || ! class_exists($type)) {
             return null;
         }
 
-        return $type::query()->with('provider.metaDefinitions')->find($id);
+        $query = $type::query()->with('provider.metaDefinitions');
+
+        if ($organizationId !== null) {
+            $query->where('organization_id', $organizationId);
+        }
+
+        return $query->find($id);
     }
 
     public static function providerForConnection(Model $connection): CrmProvider|VoipProvider|null
@@ -90,14 +102,20 @@ class EmployeeIntegrationMetaService
     }
 
     /** @param array<int, array{connection: string, meta?: array<string, string|null>}> $assignments */
-    public static function validateAssignments(array $assignments): void
+    public static function validateAssignments(array $assignments, int $organizationId): void
     {
         $errors = [];
 
         foreach ($assignments as $index => $assignment) {
-            $connection = self::resolveConnection($assignment['connection'] ?? null);
+            $connection = self::resolveConnection($assignment['connection'] ?? null, $organizationId);
+
+            if (! filled($assignment['connection'] ?? null)) {
+                continue;
+            }
 
             if (! $connection) {
+                $errors["integration_assignments.{$index}.connection"] = 'اتصال انتخاب‌شده معتبر نیست.';
+
                 continue;
             }
 
@@ -109,7 +127,7 @@ class EmployeeIntegrationMetaService
                 }
 
                 if (blank($meta[$definition->key] ?? null)) {
-                    $errors["integration_assignments.{$index}.meta.{$definition->key}"] = "The {$definition->name} field is required.";
+                    $errors["integration_assignments.{$index}.meta.{$definition->key}"] = "فیلد {$definition->name} الزامی است.";
                 }
             }
         }
@@ -120,14 +138,16 @@ class EmployeeIntegrationMetaService
     }
 
     /** @param array<int, array{connection: string, meta?: array<string, string|null>}> $assignments */
-    public static function syncForEmployee(OrganizationUser $employee, array $assignments): void
+    public static function syncForEmployee(OrganizationUser $employee, array $assignments, ?int $organizationId = null): void
     {
-        self::validateAssignments($assignments);
+        $organizationId ??= $employee->organization_id;
+
+        self::validateAssignments($assignments, $organizationId);
 
         $employee->integrationMeta()->delete();
 
         foreach ($assignments as $assignment) {
-            $connection = self::resolveConnection($assignment['connection'] ?? null);
+            $connection = self::resolveConnection($assignment['connection'] ?? null, $organizationId);
 
             if (! $connection) {
                 continue;
@@ -187,7 +207,27 @@ class EmployeeIntegrationMetaService
             ])
             ->all();
 
-        // Use plain arrays: Eloquent Collection::merge() expects models and calls getKey().
         return $crm + $voip;
+    }
+
+    /** @return list<array{key: string, name: string, required: bool, type: string, placeholder: ?string}> */
+    public static function metaFieldDefinitionsForReference(?string $reference, ?int $organizationId = null): array
+    {
+        $connection = self::resolveConnection($reference, $organizationId);
+
+        if (! $connection) {
+            return [];
+        }
+
+        return self::definitionsForConnection($connection)
+            ->map(fn (IntegrationMetaDefinition $definition) => [
+                'key' => $definition->key,
+                'name' => $definition->name,
+                'required' => $definition->is_required,
+                'type' => $definition->field_type->value,
+                'placeholder' => $definition->placeholder,
+            ])
+            ->values()
+            ->all();
     }
 }

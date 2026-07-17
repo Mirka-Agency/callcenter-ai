@@ -1,7 +1,14 @@
 <div class="space-y-8">
     <div data-tour="crm-header">
-        <h1 class="text-3xl font-semibold tracking-tight">یکپارچه‌سازی CRM</h1>
-        <p class="mt-2 text-zinc-500">کاریز، مرحله کاریز و مالک معامله پیش‌فرض را تنظیم کنید تا معاملات دیدار از روی تحلیل تماس ساخته شوند.</p>
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-semibold tracking-tight">یکپارچه‌سازی CRM</h1>
+                <p class="mt-2 text-zinc-500">کاریز، مرحله کاریز و مالک معامله پیش‌فرض را تنظیم کنید تا معاملات دیدار از روی تحلیل تماس ساخته شوند.</p>
+            </div>
+            @if (\App\Services\EmployerIntegrationGate::allowsFullManagement())
+                <a href="{{ route('employer.crm.connections.index') }}" class="saas-btn-primary">مدیریت اتصالات CRM</a>
+            @endif
+        </div>
     </div>
 
     @unless ($isComplete)

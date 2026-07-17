@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Employer\ReportExportController;
+use App\Livewire\Employer\Crm\Connections\Create;
+use App\Livewire\Employer\Crm\Connections\Edit;
 use App\Livewire\Employer\Crm\Index as CrmIndex;
 use App\Livewire\Employer\Customers\Companies\Create as CustomerCompaniesCreate;
 use App\Livewire\Employer\Customers\Companies\Edit as CustomerCompaniesEdit;
@@ -14,13 +16,15 @@ use App\Livewire\Employer\Dashboard\Overview as EmployerDashboard;
 use App\Livewire\Employer\Employees\Create as EmployeeCreate;
 use App\Livewire\Employer\Employees\Edit as EmployeeEdit;
 use App\Livewire\Employer\Employees\Index as EmployeesIndex;
-use App\Livewire\Employer\ManualAnalyses\Index as ManualAnalysesIndex;
-use App\Livewire\Employer\ManualAnalyses\Show as ManualAnalysesShow;
-use App\Livewire\Employer\Profile\Edit as ProfileEdit;
 use App\Livewire\Employer\Intelligence\Index as IntelligenceIndex;
 use App\Livewire\Employer\Intelligence\Performance as IntelligencePerformance;
 use App\Livewire\Employer\Intelligence\PerformanceShow as IntelligencePerformanceShow;
 use App\Livewire\Employer\Intelligence\Show as IntelligenceShow;
+use App\Livewire\Employer\ManualAnalyses\Index as ManualAnalysesIndex;
+use App\Livewire\Employer\ManualAnalyses\Show as ManualAnalysesShow;
+use App\Livewire\Employer\ProcessingQueue\Index;
+use App\Livewire\Employer\ProcessingQueue\Show;
+use App\Livewire\Employer\Profile\Edit as ProfileEdit;
 use App\Livewire\Employer\Reports\Index as ReportsIndex;
 use App\Livewire\Employer\Voip\Index as VoipIndex;
 use App\Livewire\Employer\Wallet\Index as WalletIndex;
@@ -58,11 +62,16 @@ Route::middleware(['auth', 'employer'])->group(function () {
     });
 
     Route::prefix('processing-queue')->name('processing-queue.')->group(function () {
-        Route::get('/', \App\Livewire\Employer\ProcessingQueue\Index::class)->name('index');
-        Route::get('/{job}', \App\Livewire\Employer\ProcessingQueue\Show::class)->name('show');
+        Route::get('/', Index::class)->name('index');
+        Route::get('/{job}', Show::class)->name('show');
     });
 
     Route::get('/crm', CrmIndex::class)->name('crm.index');
+    Route::prefix('crm/connections')->name('crm.connections.')->group(function () {
+        Route::get('/', App\Livewire\Employer\Crm\Connections\Index::class)->name('index');
+        Route::get('/create', Create::class)->name('create');
+        Route::get('/{connection}/edit', Edit::class)->name('edit');
+    });
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', CustomersIndex::class)->name('index');
         Route::get('/companies', CustomerCompaniesIndex::class)->name('companies.index');
@@ -74,6 +83,11 @@ Route::middleware(['auth', 'employer'])->group(function () {
         Route::get('/{customer}', CustomersShow::class)->name('show');
     });
     Route::get('/voip', VoipIndex::class)->name('voip.index');
+    Route::prefix('voip/connections')->name('voip.connections.')->group(function () {
+        Route::get('/', App\Livewire\Employer\Voip\Connections\Index::class)->name('index');
+        Route::get('/create', App\Livewire\Employer\Voip\Connections\Create::class)->name('create');
+        Route::get('/{connection}/edit', App\Livewire\Employer\Voip\Connections\Edit::class)->name('edit');
+    });
     Route::get('/reports/export/{format}', [ReportExportController::class, 'reports'])
         ->name('reports.export')
         ->whereIn('format', ['csv', 'xlsx', 'pdf']);

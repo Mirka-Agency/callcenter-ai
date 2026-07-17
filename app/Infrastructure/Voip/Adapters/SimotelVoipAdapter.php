@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Voip\Adapters;
 
+use App\Contracts\ProvidesEmployeeIntegrationMeta;
 use App\Domain\Voip\DTOs\ExtensionData;
 use App\Domain\Voip\DTOs\MakeCallData;
 use App\Domain\Voip\DTOs\NormalizedWebhookEvent;
@@ -13,13 +14,28 @@ use App\Domain\Voip\ValueObjects\VoipOperationResult;
 use App\Infrastructure\Voip\Clients\SimotelApiClient;
 use Carbon\Carbon;
 
-class SimotelVoipAdapter extends AbstractVoipAdapter
+class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployeeIntegrationMeta
 {
     public const RECORDING_URL_PREFIX = 'simotel://';
 
     private const UNSUPPORTED = 'Operation is not supported by the Simotel VoIP adapter.';
 
     private ?SimotelApiClient $client = null;
+
+    public static function employeeIntegrationMetaDefinitions(): array
+    {
+        return [
+            [
+                'key' => 'extension',
+                'name' => 'شماره داخلی',
+                'field_type' => 'text',
+                'is_required' => true,
+                'placeholder' => '101',
+                'help_text' => 'شماره داخلی این کارشناس در سیموتل/Astel؛ مانند 101 یا 553.',
+                'sort_order' => 1,
+            ],
+        ];
+    }
 
     public function getProviderCode(): VoipProviderCode
     {

@@ -69,6 +69,9 @@
             <input wire:model="is_active" type="checkbox" class="rounded border-zinc-300">
             کارشناس فعال
         </label>
+
+        @include('livewire.employer.employees.partials.integration-assignments')
+
         <button type="submit" class="saas-btn-primary" wire:loading.attr="disabled">ذخیره کارشناس</button>
     </form>
 </div>

@@ -16,8 +16,16 @@ class OrganizationFactory extends Factory
         return [
             'title' => fake()->company(),
             'disabled' => false,
+            'employer_can_manage_integrations' => false,
             'user_id' => User::factory()->employer(),
         ];
+    }
+
+    public function withIntegrationSelfService(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'employer_can_manage_integrations' => true,
+        ]);
     }
 
     public function disabled(): static

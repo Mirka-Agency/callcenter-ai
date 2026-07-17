@@ -3,17 +3,20 @@
 namespace App\Models;
 
 use App\Services\WalletService;
+use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['title', 'disabled', 'user_id', 'is_demo'])]
+#[Fillable(['title', 'disabled', 'employer_can_manage_integrations', 'user_id', 'is_demo'])]
 class Organization extends Model
 {
-    /** @use HasFactory<\Database\Factories\OrganizationFactory> */
+    /** @use HasFactory<OrganizationFactory> */
     use HasFactory;
 
     /**
@@ -25,6 +28,7 @@ class Organization extends Model
     {
         return [
             'disabled' => 'boolean',
+            'employer_can_manage_integrations' => 'boolean',
             'is_demo' => 'boolean',
         ];
     }
@@ -34,8 +38,13 @@ class Organization extends Model
         return (bool) $this->is_demo;
     }
 
-    /** @param \Illuminate\Database\Eloquent\Builder<static> $query */
-    public function scopeDemo(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    public function employerCanManageIntegrations(): bool
+    {
+        return (bool) $this->employer_can_manage_integrations;
+    }
+
+    /** @param Builder<static> $query */
+    public function scopeDemo(Builder $query): Builder
     {
         return $query->where('is_demo', true);
     }
@@ -100,7 +109,7 @@ class Organization extends Model
         return $this->hasMany(AiUsageDailySnapshot::class);
     }
 
-    public function wallet(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public function wallet(): HasOne
     {
         return $this->hasOne(OrganizationWallet::class);
     }

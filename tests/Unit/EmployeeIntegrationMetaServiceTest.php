@@ -59,5 +59,19 @@ class EmployeeIntegrationMetaServiceTest extends TestCase
         $this->assertArrayHasKey($voipKey, $options);
         $this->assertStringContainsString('CRM: Didar', $options[$crmKey]);
         $this->assertStringContainsString('VoIP: Simotel', $options[$voipKey]);
+
+        $this->assertDatabaseHas('integration_meta_definitions', [
+            'provider_type' => VoipProvider::class,
+            'provider_id' => $voipProvider->id,
+            'key' => 'extension',
+            'is_required' => true,
+        ]);
+
+        $this->assertDatabaseHas('integration_meta_definitions', [
+            'provider_type' => CrmProvider::class,
+            'provider_id' => $crmProvider->id,
+            'key' => 'crm_user_id',
+            'is_required' => true,
+        ]);
     }
 }

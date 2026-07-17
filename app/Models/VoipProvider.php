@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\IntegrationMetaDefinitionSynchronizer;
+use Database\Factories\VoipProviderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 #[Fillable(['name', 'code', 'adapter_class', 'supports_webhook', 'supports_polling', 'polling_interval_seconds', 'is_active', 'config'])]
 class VoipProvider extends Model
 {
-    /** @use HasFactory<\Database\Factories\VoipProviderFactory> */
+    /** @use HasFactory<VoipProviderFactory> */
     use HasFactory;
 
     protected function casts(): array
@@ -23,6 +25,13 @@ class VoipProvider extends Model
             'polling_interval_seconds' => 'integer',
             'config' => 'array',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(function (VoipProvider $provider): void {
+            app(IntegrationMetaDefinitionSynchronizer::class)->syncVoipProvider($provider);
+        });
     }
 
     public function connections(): HasMany

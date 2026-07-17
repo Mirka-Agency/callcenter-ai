@@ -2,8 +2,7 @@
 
 namespace App\Filament\Resources\OrganizationCrmConnections\Pages;
 
-use App\Application\Crm\CrmManager;
-use App\Application\Crm\Jobs\SyncCrmDataJob;
+use App\Application\Crm\Services\CrmConnectionLifecycleService;
 use App\Filament\Resources\OrganizationCrmConnections\OrganizationCrmConnectionResource;
 use App\Models\OrganizationCrmConnection;
 use Filament\Actions\Action;
@@ -25,9 +24,8 @@ class EditOrganizationCrmConnection extends EditRecord
                 ->color('info')
                 ->action(function (OrganizationCrmConnection $record): void {
                     try {
-                        $result = CrmManager::forOrganization($record->organization_id)
-                            ->connection($record->id)
-                            ->testConnection();
+                        $result = app(CrmConnectionLifecycleService::class)
+                            ->test($record);
 
                         if ($result->success) {
                             Notification::make()
@@ -58,11 +56,8 @@ class EditOrganizationCrmConnection extends EditRecord
                 ->color('warning')
                 ->requiresConfirmation()
                 ->action(function (OrganizationCrmConnection $record): void {
-                    SyncCrmDataJob::dispatch(
-                        organizationId: $record->organization_id,
-                        connectionId: $record->id,
-                        syncData: ['entity' => 'all'],
-                    );
+                    app(CrmConnectionLifecycleService::class)
+                        ->queueSync($record);
 
                     Notification::make()
                         ->title(__('filament.notifications.sync_queued'))

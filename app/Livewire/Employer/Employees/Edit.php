@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Employer\Employees;
 
+use App\Livewire\Employer\Concerns\ManagesEmployeeIntegrations;
 use App\Livewire\Employer\Employees\Concerns\ManagesEmployeeAvatar;
 use App\Models\OrganizationUser;
 use App\Services\EmployerContext;
@@ -16,6 +17,7 @@ use Livewire\WithFileUploads;
 class Edit extends Component
 {
     use ManagesEmployeeAvatar;
+    use ManagesEmployeeIntegrations;
     use WithFileUploads;
 
     public OrganizationUser $employee;
@@ -48,6 +50,8 @@ class Edit extends Component
         $this->position = $employee->position;
         $this->department = $employee->department;
         $this->is_active = $employee->is_active;
+
+        $this->hydrateEmployeeIntegrationsFromMembership($employee);
     }
 
     public function save(): void
@@ -84,6 +88,8 @@ class Edit extends Component
         if ($this->employee->user) {
             $this->persistAvatar($this->employee->user);
         }
+
+        $this->persistEmployeeIntegrations($this->employee->fresh());
 
         OrganizationActivityLogger::log(
             organizationId: $this->employee->organization_id,

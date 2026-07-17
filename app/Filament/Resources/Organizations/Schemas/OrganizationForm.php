@@ -20,6 +20,10 @@ class OrganizationForm
                     ->maxLength(255),
                 Toggle::make('disabled')
                     ->label(__('filament.fields.disabled')),
+                Toggle::make('employer_can_manage_integrations')
+                    ->label(__('filament.fields.employer_can_manage_integrations'))
+                    ->helperText(__('filament.misc.employer_can_manage_integrations_helper'))
+                    ->default(false),
                 Select::make('user_id')
                     ->label(__('filament.fields.employer'))
                     ->relationship(

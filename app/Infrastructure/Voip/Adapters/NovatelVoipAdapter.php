@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Voip\Adapters;
 
+use App\Contracts\ProvidesEmployeeIntegrationMeta;
 use App\Domain\Voip\DTOs\ExtensionData;
 use App\Domain\Voip\DTOs\MakeCallData;
 use App\Domain\Voip\DTOs\NormalizedWebhookEvent;
@@ -12,9 +13,44 @@ use App\Domain\Voip\Enums\VoipWebhookEventType;
 use App\Domain\Voip\ValueObjects\VoipOperationResult;
 use App\Infrastructure\Voip\Clients\NovatelApiClient;
 
-class NovatelVoipAdapter extends AbstractVoipAdapter
+class NovatelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployeeIntegrationMeta
 {
     private ?NovatelApiClient $client = null;
+
+    public static function employeeIntegrationMetaDefinitions(): array
+    {
+        return [
+            [
+                'key' => 'extension',
+                'name' => 'شماره داخلی',
+                'field_type' => 'text',
+                'is_required' => true,
+                'placeholder' => '101',
+                'sort_order' => 1,
+            ],
+            [
+                'key' => 'internal_user_id',
+                'name' => 'شناسه کاربر داخلی',
+                'field_type' => 'text',
+                'is_required' => false,
+                'sort_order' => 2,
+            ],
+            [
+                'key' => 'phone_number',
+                'name' => 'شماره تلفن',
+                'field_type' => 'tel',
+                'is_required' => false,
+                'sort_order' => 3,
+            ],
+            [
+                'key' => 'agent_code',
+                'name' => 'کد کارشناس',
+                'field_type' => 'text',
+                'is_required' => false,
+                'sort_order' => 4,
+            ],
+        ];
+    }
 
     public function getProviderCode(): VoipProviderCode
     {

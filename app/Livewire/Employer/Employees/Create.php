@@ -3,6 +3,7 @@
 namespace App\Livewire\Employer\Employees;
 
 use App\Enums\UserRole;
+use App\Livewire\Employer\Concerns\ManagesEmployeeIntegrations;
 use App\Livewire\Employer\Employees\Concerns\ManagesEmployeeAvatar;
 use App\Models\OrganizationUser;
 use App\Models\User;
@@ -18,7 +19,13 @@ use Livewire\WithFileUploads;
 class Create extends Component
 {
     use ManagesEmployeeAvatar;
+    use ManagesEmployeeIntegrations;
     use WithFileUploads;
+
+    public function mount(): void
+    {
+        $this->bootEmployeeIntegrations();
+    }
 
     public string $first_name = '';
 
@@ -69,6 +76,13 @@ class Create extends Component
             'department' => $data['department'],
             'is_active' => $data['is_active'],
         ]);
+
+        $membership = OrganizationUser::query()
+            ->where('organization_id', $organizationId)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        $this->persistEmployeeIntegrations($membership);
 
         $this->persistAvatar($user);
 

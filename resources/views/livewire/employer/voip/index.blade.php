@@ -1,7 +1,14 @@
 <div class="space-y-8">
     <div data-tour="voip-header">
-        <h1 class="text-3xl font-semibold tracking-tight">VoIP</h1>
-        <p class="mt-2 text-zinc-500">سیستم تلفن خود را متصل کنید تا تماس‌های ورودی و شناسه تماس‌گیرنده در فضای کاری کارشناس نمایش داده شود.</p>
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-semibold tracking-tight">VoIP</h1>
+                <p class="mt-2 text-zinc-500">سیستم تلفن خود را متصل کنید تا تماس‌های ورودی و شناسه تماس‌گیرنده در فضای کاری کارشناس نمایش داده شود.</p>
+            </div>
+            @if (\App\Services\EmployerIntegrationGate::allowsFullManagement())
+                <a href="{{ route('employer.voip.connections.index') }}" class="saas-btn-primary">مدیریت اتصالات VoIP</a>
+            @endif
+        </div>
     </div>
 
     @unless ($isComplete)

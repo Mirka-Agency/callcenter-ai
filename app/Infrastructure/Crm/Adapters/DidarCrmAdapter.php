@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Crm\Adapters;
 
+use App\Contracts\ProvidesEmployeeIntegrationMeta;
 use App\Domain\Crm\DTOs\ContactData;
 use App\Domain\Crm\DTOs\CrmPipelineOption;
 use App\Domain\Crm\DTOs\CrmUserOption;
@@ -12,13 +13,54 @@ use App\Domain\Crm\Enums\CrmProviderCode;
 use App\Domain\Crm\ValueObjects\CrmOperationResult;
 use App\Infrastructure\Crm\Clients\DidarApiClient;
 
-class DidarCrmAdapter extends AbstractCrmAdapter
+class DidarCrmAdapter extends AbstractCrmAdapter implements ProvidesEmployeeIntegrationMeta
 {
     private const DEAL_PIPELINES_ENDPOINT = 'pipeline/list/0';
 
     private const USERS_ENDPOINT = 'User/List';
 
     private ?DidarApiClient $client = null;
+
+    public static function employeeIntegrationMetaDefinitions(): array
+    {
+        return [
+            [
+                'key' => 'crm_user_id',
+                'name' => 'شناسه کاربر CRM',
+                'field_type' => 'text',
+                'is_required' => true,
+                'sort_order' => 1,
+            ],
+            [
+                'key' => 'mobile',
+                'name' => 'شماره موبایل',
+                'field_type' => 'tel',
+                'is_required' => false,
+                'sort_order' => 2,
+            ],
+            [
+                'key' => 'email',
+                'name' => 'ایمیل',
+                'field_type' => 'email',
+                'is_required' => false,
+                'sort_order' => 3,
+            ],
+            [
+                'key' => 'external_contact_id',
+                'name' => 'شناسه مخاطب خارجی',
+                'field_type' => 'text',
+                'is_required' => false,
+                'sort_order' => 4,
+            ],
+            [
+                'key' => 'username',
+                'name' => 'نام کاربری',
+                'field_type' => 'text',
+                'is_required' => false,
+                'sort_order' => 5,
+            ],
+        ];
+    }
 
     public function getProviderCode(): CrmProviderCode
     {

@@ -3,6 +3,7 @@
 namespace App\Filament\Schemas;
 
 use App\Services\EmployeeIntegrationMetaService;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Group;
@@ -28,7 +29,19 @@ class EmployeeIntegrationAssignmentSection
                             ->distinct()
                             ->native(false),
                         Group::make()
-                            ->schema(fn (Get $get): array => EmployeeIntegrationMetaService::formFieldsForConnection($get('connection')))
+                            ->schema(function (Get $get): array {
+                                $fields = EmployeeIntegrationMetaService::formFieldsForConnection($get('connection'));
+
+                                if ($fields !== []) {
+                                    return $fields;
+                                }
+
+                                return [
+                                    Placeholder::make('missing_meta_definitions')
+                                        ->label('فیلد تخصیص تعریف نشده')
+                                        ->content('برای Provider این اتصال هیچ فیلد متایی تعریف نشده است. ابتدا در بخش ارائه‌دهندگان، فیلدی مانند extension بسازید.'),
+                                ];
+                            })
                             ->visible(fn (Get $get): bool => filled($get('connection'))),
                     ])
                     ->columns(1)

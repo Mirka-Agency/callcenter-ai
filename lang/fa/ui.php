@@ -37,6 +37,17 @@ return [
         'insufficient_transaction' => 'موجودی برای این عملیات کافی نیست.',
     ],
 
+    'integrations' => [
+        'crm_created' => 'اتصال CRM ایجاد شد.',
+        'crm_saved' => 'اتصال CRM ذخیره شد.',
+        'crm_deleted' => 'اتصال CRM حذف شد.',
+        'crm_sync_queued' => 'همگام‌سازی CRM به صف اضافه شد.',
+        'voip_created' => 'اتصال VoIP ایجاد شد.',
+        'voip_saved' => 'اتصال VoIP ذخیره شد.',
+        'voip_deleted' => 'اتصال VoIP حذف شد.',
+        'voip_sync_queued' => 'همگام‌سازی داخلی‌ها به صف اضافه شد.',
+    ],
+
     'voip' => [
         'webhook_guide_title' => 'راهنمای وب‌هوک VoIP',
         'webhook_guide_body' => 'آدرس زیر را در پنل ارائه‌دهنده VoIP (مثلاً سیموتل) برای رویداد CDR پس از پایان تماس تنظیم کنید. این آدرس شامل کد امنیتی یکتا است — آن را محرمانه نگه دارید.',

@@ -2,8 +2,7 @@
 
 namespace App\Filament\Resources\OrganizationVoipConnections\Pages;
 
-use App\Application\Voip\Jobs\SyncVoipExtensionsJob;
-use App\Application\Voip\VoipManager;
+use App\Application\Voip\Services\VoipConnectionLifecycleService;
 use App\Filament\Resources\OrganizationVoipConnections\OrganizationVoipConnectionResource;
 use App\Models\OrganizationVoipConnection;
 use Filament\Actions\Action;
@@ -25,9 +24,8 @@ class EditOrganizationVoipConnection extends EditRecord
                 ->color('info')
                 ->action(function (OrganizationVoipConnection $record): void {
                     try {
-                        $result = VoipManager::forOrganization($record->organization_id)
-                            ->connection($record->id)
-                            ->testConnection();
+                        $result = app(VoipConnectionLifecycleService::class)
+                            ->test($record);
 
                         if ($result->success) {
                             Notification::make()
@@ -56,7 +54,8 @@ class EditOrganizationVoipConnection extends EditRecord
                 ->color('warning')
                 ->requiresConfirmation()
                 ->action(function (OrganizationVoipConnection $record): void {
-                    SyncVoipExtensionsJob::dispatch($record->organization_id, $record->id);
+                    app(VoipConnectionLifecycleService::class)
+                        ->queueSyncExtensions($record);
 
                     Notification::make()
                         ->title(__('filament.notifications.sync_queued'))
