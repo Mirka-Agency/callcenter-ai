@@ -174,7 +174,8 @@ class EmployeeIntegrationMetaService
             ->get()
             ->mapWithKeys(fn (OrganizationCrmConnection $connection) => [
                 self::connectionReference($connection) => 'CRM: '.$connection->provider->name.' · '.$connection->name,
-            ]);
+            ])
+            ->all();
 
         $voip = OrganizationVoipConnection::query()
             ->where('organization_id', $organizationId)
@@ -183,8 +184,10 @@ class EmployeeIntegrationMetaService
             ->get()
             ->mapWithKeys(fn (OrganizationVoipConnection $connection) => [
                 self::connectionReference($connection) => 'VoIP: '.$connection->provider->name.' · '.$connection->name,
-            ]);
+            ])
+            ->all();
 
-        return $crm->merge($voip)->all();
+        // Use plain arrays: Eloquent Collection::merge() expects models and calls getKey().
+        return $crm + $voip;
     }
 }
