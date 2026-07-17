@@ -37,6 +37,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\TrustCapRoverTlsTermination::class,
         ]);
 
+        // External VoIP providers POST CDR events without a CSRF cookie.
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/voip/*',
+        ]);
+
         $middleware->alias([
             'employer' => \App\Http\Middleware\EnsureEmployer::class,
             'employee' => \App\Http\Middleware\EnsureEmployee::class,

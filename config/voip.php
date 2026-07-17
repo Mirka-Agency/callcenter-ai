@@ -25,6 +25,7 @@ return [
 
     'max_polling_interval_seconds' => (int) env('VOIP_MAX_POLLING_INTERVAL', 60),
 
-    'queue' => env('VOIP_QUEUE', env('QUEUE_CONNECTION', 'database')),
+    // Queue *name* (e.g. default), not the QUEUE_CONNECTION driver (database/redis).
+    'queue' => env('VOIP_QUEUE', 'default'),
 
 ];
