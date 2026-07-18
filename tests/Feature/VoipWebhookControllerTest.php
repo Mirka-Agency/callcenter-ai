@@ -140,7 +140,10 @@ class VoipWebhookControllerTest extends TestCase
             '/webhooks/voip/'.$connection->webhook_token,
             $connection->inbound_webhook_url,
         );
-        $this->assertStringNotContainsString((string) $connection->id, $connection->inbound_webhook_url);
+        $this->assertDoesNotMatchRegularExpression(
+            '#/webhooks/voip/'.preg_quote((string) $connection->id, '#').'(/|$)#',
+            $connection->inbound_webhook_url,
+        );
     }
 
     private function createConnection(): OrganizationVoipConnection

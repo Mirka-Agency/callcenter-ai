@@ -73,14 +73,17 @@ class OrganizationVoipConnectionForm
                             ->label(__('filament.fields.api_key'))
                             ->password()
                             ->revealable()
+                            ->helperText(__('filament.misc.voip_simotel_api_key_helper'))
                             ->visible(fn (Get $get, ?OrganizationVoipConnection $record): bool => ! self::isCustomProvider($get('voip_provider_id'), $record)),
                         TextInput::make('credentials.api_token')
                             ->label(__('filament.fields.api_token'))
                             ->password()
                             ->revealable()
+                            ->helperText(__('filament.misc.voip_simotel_api_token_helper'))
                             ->visible(fn (Get $get, ?OrganizationVoipConnection $record): bool => ! self::isCustomProvider($get('voip_provider_id'), $record)),
                         TextInput::make('credentials.username')
                             ->label(__('filament.fields.username'))
+                            ->helperText(__('filament.misc.voip_simotel_basic_auth_helper'))
                             ->visible(fn (Get $get, ?OrganizationVoipConnection $record): bool => ! self::isCustomProvider($get('voip_provider_id'), $record)),
                         TextInput::make('credentials.password')
                             ->label(__('filament.fields.password'))
@@ -142,10 +145,16 @@ class OrganizationVoipConnectionForm
                             ->valueLabel(__('filament.fields.payload_path'))
                             ->helperText(__('filament.misc.voip_webhook_field_mapping_helper'))
                             ->visible(fn (Get $get, ?OrganizationVoipConnection $record): bool => self::isCustomProvider($get('voip_provider_id'), $record)),
+                        TextInput::make('settings.extra.context')
+                            ->label(__('filament.fields.simotel_context'))
+                            ->maxLength(255)
+                            ->helperText(__('filament.misc.voip_simotel_context_helper'))
+                            ->visible(fn (Get $get, ?OrganizationVoipConnection $record): bool => ! self::isCustomProvider($get('voip_provider_id'), $record)),
                         KeyValue::make('settings.extension_mapping')
                             ->label(__('filament.fields.extension_mapping'))
                             ->keyLabel(__('filament.fields.extension'))
-                            ->valueLabel(__('filament.fields.mapped_value')),
+                            ->valueLabel(__('filament.fields.mapped_value'))
+                            ->helperText(__('filament.misc.voip_extension_mapping_helper')),
                         KeyValue::make('settings.recording_settings')
                             ->label(__('filament.fields.recording_settings'))
                             ->keyLabel(__('filament.fields.key'))

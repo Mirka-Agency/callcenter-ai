@@ -26,6 +26,7 @@ class VoipEventIngestionService
         VoipConnectionConfig $config,
         NormalizedWebhookEvent $event,
         ?array $rawPayload = null,
+        bool $forceReplay = false,
     ): VoipOperationResult {
         $existing = $event->callId
             ? VoipCallLog::query()
@@ -34,7 +35,7 @@ class VoipEventIngestionService
                 ->first()
             : null;
 
-        if ($this->deduplicator->isDuplicate($event, $existing)) {
+        if (! $forceReplay && $this->deduplicator->isDuplicate($event, $existing)) {
             $this->logIngestion(
                 config: $config,
                 event: $event,

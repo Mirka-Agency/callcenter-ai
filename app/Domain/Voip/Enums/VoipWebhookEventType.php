@@ -10,6 +10,7 @@ enum VoipWebhookEventType: string
     case CallMissed = 'call.missed';
     case RecordingCreated = 'recording.created';
     case ExtensionCreated = 'extension.created';
+    case AgentStateChanged = 'agent.state_changed';
     case Unknown = 'unknown';
 
     public function label(): string
@@ -21,6 +22,7 @@ enum VoipWebhookEventType: string
             self::CallMissed => 'تماس از دست‌رفته',
             self::RecordingCreated => 'ضبط ایجاد شد',
             self::ExtensionCreated => 'داخلی ایجاد شد',
+            self::AgentStateChanged => 'تغییر وضعیت کارشناس',
             self::Unknown => 'نامشخص',
         };
     }

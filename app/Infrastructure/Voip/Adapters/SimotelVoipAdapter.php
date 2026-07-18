@@ -12,6 +12,7 @@ use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Domain\Voip\Enums\VoipWebhookEventType;
 use App\Domain\Voip\ValueObjects\VoipOperationResult;
 use App\Infrastructure\Voip\Clients\SimotelApiClient;
+use App\Infrastructure\Voip\Services\SimotelAgentExtensionCache;
 use Carbon\Carbon;
 
 class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployeeIntegrationMeta
@@ -20,7 +21,11 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
 
     private const UNSUPPORTED = 'Operation is not supported by the Simotel VoIP adapter.';
 
+    private const DID_DIGIT_THRESHOLD = 8;
+
     private ?SimotelApiClient $client = null;
+
+    private ?SimotelAgentExtensionCache $agentCache = null;
 
     public static function employeeIntegrationMetaDefinitions(): array
     {
@@ -31,7 +36,7 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
                 'field_type' => 'text',
                 'is_required' => true,
                 'placeholder' => '101',
-                'help_text' => 'شماره داخلی این کارشناس در سیموتل/Astel؛ مانند 101 یا 553.',
+                'help_text' => 'داخلی واقعی سیموتل (مثل 101). برای کارشناس فقط تلفن فیزیکی، همان شماره فیزیکی یا مقدار نگاشت داخلی را ثبت کنید — نه DID کل سازمان مگر مالک آن خط باشد.',
                 'sort_order' => 1,
             ],
         ];
@@ -87,7 +92,54 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
 
     public function getCallDetails(string $callId): VoipOperationResult
     {
-        return VoipOperationResult::failure(self::UNSUPPORTED);
+        $info = $this->client()->post('reports/quick/info', [
+            'cuid' => $callId,
+        ]);
+
+        if ($info->successful() && $this->responseHasCallRows($info->json())) {
+            return VoipOperationResult::success(
+                externalId: $callId,
+                data: $this->normalizeCallDetailsPayload($info->json() ?? []),
+                message: 'Call details retrieved from Simotel quick/info.',
+            );
+        }
+
+        $search = $this->client()->post('reports/quick/search', [
+            'conditions' => [
+                'from' => '',
+                'to' => '',
+                'cuid' => $callId,
+            ],
+            'pagination' => [
+                'start' => 0,
+                'count' => 20,
+                'sorting' => (object) [],
+            ],
+            'alike' => 'true',
+        ]);
+
+        if ($search->failed()) {
+            return $this->parseHttpFailure(
+                message: $search->json('message') ?? $search->json('error') ?? $search->body(),
+                data: $search->json(),
+            );
+        }
+
+        if (! $this->responseHasCallRows($search->json())) {
+            return VoipOperationResult::failure(
+                error: $info->json('message') ?? 'Call details not found in Simotel.',
+                data: [
+                    'quick_info' => $info->json(),
+                    'quick_search' => $search->json(),
+                ],
+            );
+        }
+
+        return VoipOperationResult::success(
+            externalId: $callId,
+            data: $this->normalizeCallDetailsPayload($search->json() ?? []),
+            message: 'Call details retrieved from Simotel quick/search.',
+        );
     }
 
     public function getCallRecording(string $callId): VoipOperationResult
@@ -134,14 +186,47 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
 
     public function normalizeWebhook(array $payload): NormalizedWebhookEvent
     {
-        $eventName = strtolower((string) ($payload['event_name'] ?? $payload['event'] ?? ''));
+        $eventName = strtolower(trim((string) ($payload['event_name'] ?? $payload['event'] ?? '')));
+        $eventName = preg_replace('/\s+/', ' ', $eventName) ?? $eventName;
 
         if ($eventName === 'cdr') {
             return $this->normalizeCdr($payload);
         }
 
+        if ($eventName === 'new state') {
+            return $this->normalizeNewState($payload);
+        }
+
         return new NormalizedWebhookEvent(
             type: VoipWebhookEventType::Unknown,
+            rawPayload: $payload,
+            provider: $this->getProviderCode()->value,
+        );
+    }
+
+    private function normalizeNewState(array $payload): NormalizedWebhookEvent
+    {
+        $callId = $this->extractCallId($payload);
+        $exten = isset($payload['exten']) ? trim((string) $payload['exten']) : '';
+        $state = strtolower(trim((string) ($payload['state'] ?? '')));
+        $direction = $this->mapNewStateDirection((string) ($payload['direction'] ?? ''));
+
+        if ($state === 'inuse' && $callId !== null && $exten !== '') {
+            $this->agentCache()->store($this->config->connectionId, $callId, $exten);
+        }
+
+        return new NormalizedWebhookEvent(
+            type: VoipWebhookEventType::AgentStateChanged,
+            callId: $callId,
+            direction: $direction,
+            sourceNumber: isset($payload['participant']) ? (string) $payload['participant'] : null,
+            destinationNumber: $exten !== '' ? $exten : null,
+            status: match ($state) {
+                'inuse' => CallStatus::Answered,
+                'ringing' => CallStatus::Ringing,
+                default => null,
+            },
+            extension: $exten !== '' ? $exten : null,
             rawPayload: $payload,
             provider: $this->getProviderCode()->value,
         );
@@ -157,7 +242,7 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
 
         [$type, $status] = $this->mapDisposition($disposition, $recordingUrl !== null);
 
-        $callId = (string) ($payload['unique_id'] ?? $payload['cuid'] ?? $payload['uniqueid'] ?? '');
+        $callId = $this->extractCallId($payload);
         $direction = $this->mapDirection((string) ($payload['type'] ?? ''));
         $duration = isset($payload['duration'])
             ? (int) $payload['duration']
@@ -172,11 +257,19 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
 
         $src = isset($payload['src']) ? (string) $payload['src'] : null;
         $dst = isset($payload['dst']) ? (string) $payload['dst'] : null;
-        $extension = $direction === CallDirection::Inbound ? $dst : $src;
+        $did = isset($payload['did']) ? (string) $payload['did'] : null;
+
+        $extension = $this->resolveAgentExtension(
+            direction: $direction,
+            src: $src,
+            dst: $dst,
+            did: $did,
+            callId: $callId,
+        );
 
         return new NormalizedWebhookEvent(
             type: $type,
-            callId: $callId !== '' ? $callId : null,
+            callId: $callId,
             direction: $direction,
             sourceNumber: $src,
             destinationNumber: $dst,
@@ -189,6 +282,147 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
             rawPayload: $payload,
             provider: $this->getProviderCode()->value,
         );
+    }
+
+    private function resolveAgentExtension(
+        ?CallDirection $direction,
+        ?string $src,
+        ?string $dst,
+        ?string $did,
+        ?string $callId,
+    ): ?string {
+        $candidate = $direction === CallDirection::Inbound ? $dst : $src;
+
+        if ($callId !== null) {
+            $cached = $this->agentCache()->get($this->config->connectionId, $callId);
+            if ($cached !== null) {
+                $candidate = $cached;
+            } elseif ($this->looksLikeDid($candidate, $did)) {
+                $fromApi = $this->resolveExtensionFromApi($callId, $did);
+                if ($fromApi !== null) {
+                    $candidate = $fromApi;
+                    $this->agentCache()->store($this->config->connectionId, $callId, $fromApi);
+                }
+            }
+        }
+
+        $mapped = $this->applyExtensionMapping($candidate, $dst, $did, $src);
+        if ($mapped !== null) {
+            return $mapped;
+        }
+
+        return $candidate !== null && $candidate !== '' ? $candidate : null;
+    }
+
+    private function resolveExtensionFromApi(string $callId, ?string $did): ?string
+    {
+        $result = $this->getCallDetails($callId);
+
+        if (! $result->success) {
+            return null;
+        }
+
+        foreach ($this->extractCallRows($result->data) as $row) {
+            $rowDst = isset($row['dst']) ? (string) $row['dst'] : null;
+            if ($rowDst === null || $rowDst === '') {
+                continue;
+            }
+
+            if (! $this->looksLikeDid($rowDst, $did)) {
+                return $rowDst;
+            }
+        }
+
+        return null;
+    }
+
+    /** @param  array<string, mixed>  $payload */
+    private function normalizeCallDetailsPayload(array $payload): array
+    {
+        return [
+            'rows' => $this->extractCallRows($payload),
+            'raw' => $payload,
+        ];
+    }
+
+    /** @param  array<string, mixed>|null  $payload
+     * @return list<array<string, mixed>>
+     */
+    private function extractCallRows(?array $payload): array
+    {
+        if ($payload === null) {
+            return [];
+        }
+
+        $data = $payload['data'] ?? null;
+
+        if (is_array($data) && array_is_list($data)) {
+            return array_values(array_filter($data, 'is_array'));
+        }
+
+        if (is_array($data) && isset($data['data']) && is_array($data['data'])) {
+            return array_values(array_filter($data['data'], 'is_array'));
+        }
+
+        if (isset($payload['rows']) && is_array($payload['rows'])) {
+            return array_values(array_filter($payload['rows'], 'is_array'));
+        }
+
+        return [];
+    }
+
+    /** @param  array<string, mixed>|null  $payload */
+    private function responseHasCallRows(?array $payload): bool
+    {
+        return $this->extractCallRows($payload) !== [];
+    }
+
+    private function applyExtensionMapping(?string ...$keys): ?string
+    {
+        $mapping = $this->config->settings->extensionMapping;
+
+        if ($mapping === []) {
+            return null;
+        }
+
+        foreach ($keys as $key) {
+            if ($key === null || $key === '') {
+                continue;
+            }
+
+            if (isset($mapping[$key]) && is_scalar($mapping[$key]) && (string) $mapping[$key] !== '') {
+                return (string) $mapping[$key];
+            }
+        }
+
+        return null;
+    }
+
+    private function looksLikeDid(?string $number, ?string $did = null): bool
+    {
+        if ($number === null || $number === '') {
+            return false;
+        }
+
+        if ($did !== null && $did !== '' && $number === $did) {
+            return true;
+        }
+
+        $digits = preg_replace('/\D+/', '', $number) ?? '';
+
+        return strlen($digits) >= self::DID_DIGIT_THRESHOLD;
+    }
+
+    /** @param  array<string, mixed>  $payload */
+    private function extractCallId(array $payload): ?string
+    {
+        foreach (['cuid', 'unique_id', 'uniqueid'] as $key) {
+            if (! empty($payload[$key])) {
+                return (string) $payload[$key];
+            }
+        }
+
+        return null;
     }
 
     /** @return array{0: VoipWebhookEventType, 1: CallStatus} */
@@ -214,6 +448,15 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
             'outgoing', 'outbound' => CallDirection::Outbound,
             'local', 'feature', 'no defined', '' => CallDirection::Inbound,
             default => CallDirection::tryFrom(strtolower($type)),
+        };
+    }
+
+    private function mapNewStateDirection(string $direction): ?CallDirection
+    {
+        return match (strtolower(trim($direction))) {
+            'in', 'incoming', 'inbound' => CallDirection::Inbound,
+            'out', 'outgoing', 'outbound' => CallDirection::Outbound,
+            default => null,
         };
     }
 
@@ -245,5 +488,10 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
             credentials: $this->config->credentials,
             settings: $this->config->settings,
         );
+    }
+
+    private function agentCache(): SimotelAgentExtensionCache
+    {
+        return $this->agentCache ??= app(SimotelAgentExtensionCache::class);
     }
 }

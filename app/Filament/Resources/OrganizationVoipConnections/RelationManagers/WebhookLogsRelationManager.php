@@ -2,10 +2,13 @@
 
 namespace App\Filament\Resources\OrganizationVoipConnections\RelationManagers;
 
+use App\Application\Voip\Jobs\ProcessVoipWebhookJob;
 use App\Domain\Voip\Enums\VoipLogStatus;
+use App\Domain\Voip\Enums\VoipWebhookEventType;
 use App\Models\VoipWebhookLog;
 use App\Support\WebhookPayloadPresenter;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -28,6 +31,15 @@ class WebhookLogsRelationManager extends RelationManager
                 TextColumn::make('event_type')
                     ->label(__('filament.fields.event'))
                     ->badge()
+                    ->formatStateUsing(function (?string $state): string {
+                        if ($state === null || $state === '') {
+                            return __('filament.misc.em_dash');
+                        }
+
+                        $type = VoipWebhookEventType::tryFrom($state);
+
+                        return $type?->label() ?? $state;
+                    })
                     ->placeholder(__('filament.misc.em_dash')),
                 TextColumn::make('status')
                     ->badge()
@@ -51,10 +63,43 @@ class WebhookLogsRelationManager extends RelationManager
                     ->modalHeading(__('filament.sections.webhook_payload'))
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel(__('filament.actions.close'))
-                    ->modalContent(fn (VoipWebhookLog $record): View => view(
-                        'filament.components.webhook-payload',
-                        ['payload' => app(WebhookPayloadPresenter::class)->format($record->payload)],
-                    )),
+                    ->modalContent(function (VoipWebhookLog $record): View {
+                        $presenter = app(WebhookPayloadPresenter::class);
+
+                        return view('filament.components.webhook-payload', [
+                            'payload' => $presenter->format($record->payload),
+                            'highlights' => $presenter->highlights($record->payload),
+                        ]);
+                    }),
+                Action::make('replay')
+                    ->label(__('filament.actions.replay_webhook'))
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalDescription(__('filament.misc.webhook_replay_description'))
+                    ->action(function (VoipWebhookLog $record): void {
+                        $payload = $record->payload;
+
+                        if (! is_array($payload) || $payload === []) {
+                            Notification::make()
+                                ->title(__('filament.misc.webhook_replay_empty'))
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        ProcessVoipWebhookJob::dispatch(
+                            $record->organization_voip_connection_id,
+                            $payload,
+                            forceReplay: true,
+                        );
+
+                        Notification::make()
+                            ->title(__('filament.misc.webhook_replay_success'))
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->defaultSort('created_at', 'desc')
             ->paginated([10, 25, 50]);

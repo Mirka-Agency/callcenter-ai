@@ -39,6 +39,15 @@ class VoipWebhookDispatcher
             return null;
         }
 
+        if ($event->type === VoipWebhookEventType::AgentStateChanged) {
+            return null;
+        }
+
+        $rawPayload = $event->rawPayload;
+        if ($event->extension !== null && $event->extension !== '') {
+            $rawPayload['resolved_extension'] = $event->extension;
+        }
+
         return new CallLogData(
             organizationId: $organizationId,
             connectionId: $connectionId,
@@ -52,7 +61,7 @@ class VoipWebhookDispatcher
             endedAt: $event->endedAt,
             duration: $event->duration,
             recordingUrl: $event->recordingUrl,
-            rawPayload: $event->rawPayload,
+            rawPayload: $rawPayload,
         );
     }
 

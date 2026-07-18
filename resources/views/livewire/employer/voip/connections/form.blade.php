@@ -31,11 +31,13 @@
                 <div class="grid gap-4 md:grid-cols-2">
                     <div class="md:col-span-2">
                         <label class="mb-1 block text-sm font-medium">آدرس API</label>
-                        <input wire:model="api_url" class="saas-input">
+                        <input wire:model="api_url" class="saas-input" placeholder="http://c53.hostedastel.ir/API/v4">
+                        <p class="mt-1 text-xs text-zinc-500">برای سیموتل/Astel معمولاً آدرس سرور به‌همراه /API/v4 است.</p>
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">کلید API</label>
-                        <input wire:model="api_key" type="password" class="saas-input" placeholder="{{ $connection ? 'خالی = بدون تغییر' : '' }}">
+                        <input wire:model="api_key" type="password" class="saas-input" placeholder="{{ $connection ? 'خالی = بدون تغییر' : 'X-APIKEY از Astel' }}">
+                        <p class="mt-1 text-xs text-zinc-500">همان X-APIKEY؛ یکی از کلید یا توکن کافی است.</p>
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">توکن API</label>
@@ -43,7 +45,7 @@
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">نام کاربری</label>
-                        <input wire:model="username" class="saas-input">
+                        <input wire:model="username" class="saas-input" placeholder="اختیاری — فقط اگر Basic Auth داده شده">
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">رمز عبور</label>
@@ -52,6 +54,11 @@
                     <div>
                         <label class="mb-1 block text-sm font-medium">Timeout (ثانیه)</label>
                         <input wire:model="timeout" type="number" class="saas-input">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="mb-1 block text-sm font-medium">کانتکس سیموتل / Astel</label>
+                        <input wire:model="simotel_context" class="saas-input font-mono text-sm" placeholder="مثلاً c2191093492" dir="ltr">
+                        <p class="mt-1 text-xs text-zinc-500">شناسه tenant برای ردیابی؛ در درخواست API ارسال نمی‌شود.</p>
                     </div>
                 </div>
             </div>
@@ -81,7 +88,8 @@
 
             <div>
                 <label class="mb-1 block text-sm font-medium">نگاشت داخلی (JSON)</label>
-                <textarea wire:model="extension_mapping_json" rows="4" class="saas-input font-mono text-xs" dir="ltr"></textarea>
+                <textarea wire:model="extension_mapping_json" rows="4" class="saas-input font-mono text-xs" dir="ltr" placeholder='{"982191093492":"101"}'></textarea>
+                <p class="mt-1 text-xs text-zinc-500">کلید: DID یا شماره فیزیکی؛ مقدار: داخلی کارشناس (مثلاً 982191093492 → 101).</p>
             </div>
             <div>
                 <label class="mb-1 block text-sm font-medium">تنظیمات ضبط (JSON)</label>

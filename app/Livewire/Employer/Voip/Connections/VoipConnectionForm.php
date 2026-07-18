@@ -39,6 +39,8 @@ abstract class VoipConnectionForm extends Component
 
     public string $recording_settings_json = '{}';
 
+    public string $simotel_context = '';
+
     #[Computed]
     public function isCustomProvider(): bool
     {
@@ -69,6 +71,9 @@ abstract class VoipConnectionForm extends Component
             'webhook_field_mapping' => $this->decodeJsonObject($data['webhook_field_mapping_json']),
             'extension_mapping' => $this->decodeJsonObject($data['extension_mapping_json']),
             'recording_settings' => $this->decodeJsonObject($data['recording_settings_json']),
+            'extra' => array_filter([
+                'context' => trim($data['simotel_context'] ?? '') ?: null,
+            ]),
         ];
 
         return [
@@ -103,6 +108,7 @@ abstract class VoipConnectionForm extends Component
             'username' => ['nullable', 'string'],
             'password' => ['nullable', 'string'],
             'timeout' => ['integer', 'min:5', 'max:120'],
+            'simotel_context' => ['nullable', 'string', 'max:255'],
             'webhook_field_mapping_json' => ['nullable', 'string'],
             'extension_mapping_json' => ['nullable', 'string'],
             'recording_settings_json' => ['nullable', 'string'],

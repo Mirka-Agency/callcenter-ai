@@ -109,6 +109,53 @@ class VoipEventIngestionTest extends TestCase
         Event::assertNotDispatched(CallEnded::class);
     }
 
+    public function test_force_replay_bypasses_duplicate_filter(): void
+    {
+        Event::fake([CallEnded::class]);
+
+        $organization = Organization::factory()->create();
+        $connection = $this->createConnection($organization->id);
+
+        VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => 'novatel',
+            'external_call_id' => 'call-replay',
+            'direction' => CallDirection::Inbound,
+            'source_number' => '09120000000',
+            'destination_number' => '02100000000',
+            'status' => CallStatus::Completed,
+            'ended_at' => now(),
+            'recording_url' => 'https://example.com/rec.mp3',
+        ]);
+
+        $config = new VoipConnectionConfig(
+            connectionId: $connection->id,
+            organizationId: $organization->id,
+            providerCode: VoipProviderCode::Novatel,
+            name: 'Primary',
+            credentials: new VoipCredentials(apiUrl: 'https://example.com', apiKey: 'test'),
+            settings: new VoipSettings,
+            isActive: true,
+        );
+
+        $event = new NormalizedWebhookEvent(
+            type: VoipWebhookEventType::CallEnded,
+            callId: 'call-replay',
+            direction: CallDirection::Inbound,
+            sourceNumber: '09120000000',
+            destinationNumber: '02100000000',
+            status: CallStatus::Completed,
+            recordingUrl: 'https://example.com/rec.mp3',
+            source: VoipEventSource::Webhook,
+        );
+
+        $result = app(VoipEventIngestionService::class)->ingest($config, $event, forceReplay: true);
+
+        $this->assertFalse($result->data['duplicate'] ?? false);
+        Event::assertDispatched(CallEnded::class);
+    }
+
     public function test_webhook_job_queues_unified_ingestion_job(): void
     {
         Queue::fake();

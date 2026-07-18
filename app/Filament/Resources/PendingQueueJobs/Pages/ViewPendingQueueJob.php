@@ -4,8 +4,10 @@ namespace App\Filament\Resources\PendingQueueJobs\Pages;
 
 use App\Filament\Resources\PendingQueueJobs\PendingQueueJobResource;
 use App\Models\PendingQueueJob;
+use Filament\Actions\Action;
 use Filament\Infolists\Components\KeyValueEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -13,6 +15,27 @@ use Filament\Schemas\Schema;
 class ViewPendingQueueJob extends ViewRecord
 {
     protected static string $resource = PendingQueueJobResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('delete')
+                ->label(__('filament.actions.delete'))
+                ->icon('heroicon-o-trash')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->action(function (PendingQueueJob $record): void {
+                    $record->delete();
+
+                    Notification::make()
+                        ->title(__('filament.notifications.pending_queue_job_deleted'))
+                        ->success()
+                        ->send();
+
+                    $this->redirect(PendingQueueJobResource::getUrl('index'));
+                }),
+        ];
+    }
 
     public function infolist(Schema $schema): Schema
     {

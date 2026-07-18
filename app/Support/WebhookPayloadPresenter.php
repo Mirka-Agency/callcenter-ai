@@ -58,6 +58,57 @@ class WebhookPayloadPresenter
             ."\n".self::TRUNCATED;
     }
 
+    /**
+     * @param  array<string, mixed>|null  $payload
+     * @return array<string, string>
+     */
+    public function highlights(?array $payload): array
+    {
+        if ($payload === null || $payload === []) {
+            return [];
+        }
+
+        $keys = [
+            'event_name',
+            'event',
+            'src',
+            'dst',
+            'did',
+            'exten',
+            'cuid',
+            'unique_id',
+            'uniqueid',
+            'disposition',
+            'state',
+            'type',
+            'direction',
+            'participant',
+            'resolved_extension',
+            'billsec',
+            'duration',
+        ];
+
+        $highlights = [];
+
+        foreach ($keys as $key) {
+            if (! array_key_exists($key, $payload)) {
+                continue;
+            }
+
+            $value = $payload[$key];
+
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            if (is_scalar($value)) {
+                $highlights[$key] = (string) $value;
+            }
+        }
+
+        return $highlights;
+    }
+
     private function redact(mixed $value, int $depth = 0): mixed
     {
         if ($depth >= self::MAX_DEPTH) {

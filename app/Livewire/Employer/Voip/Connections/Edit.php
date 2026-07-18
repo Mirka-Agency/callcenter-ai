@@ -34,6 +34,7 @@ class Edit extends VoipConnectionForm
         $this->username = (string) ($credentials['username'] ?? '');
         $this->password = '';
         $this->timeout = (int) ($settings['timeout'] ?? 30);
+        $this->simotel_context = (string) ($settings['extra']['context'] ?? '');
         $this->webhook_field_mapping_json = $this->encodeJsonObject($settings['webhook_field_mapping'] ?? []);
         $this->extension_mapping_json = $this->encodeJsonObject($settings['extension_mapping'] ?? []);
         $this->recording_settings_json = $this->encodeJsonObject($settings['recording_settings'] ?? []);

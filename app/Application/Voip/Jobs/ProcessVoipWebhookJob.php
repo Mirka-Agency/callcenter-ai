@@ -17,6 +17,7 @@ class ProcessVoipWebhookJob implements ShouldQueue
     public function __construct(
         public int $connectionId,
         public array $payload,
+        public bool $forceReplay = false,
     ) {
         $this->onQueue((string) config('voip.queue', 'default'));
     }
@@ -29,6 +30,10 @@ class ProcessVoipWebhookJob implements ShouldQueue
             ->normalizeWebhook($this->payload)
             ->withSource(VoipEventSource::Webhook, $config->providerCode->value);
 
-        ProcessVoipIngestionJob::dispatch($this->connectionId, $normalized->toArray());
+        ProcessVoipIngestionJob::dispatch(
+            $this->connectionId,
+            $normalized->toArray(),
+            $this->forceReplay,
+        );
     }
 }
