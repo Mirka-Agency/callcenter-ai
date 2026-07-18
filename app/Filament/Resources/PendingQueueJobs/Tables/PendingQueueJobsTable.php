@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\PendingQueueJobs\Tables;
 
 use App\Models\PendingQueueJob;
-use Filament\Actions\Action;
-use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
@@ -13,7 +13,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 
 class PendingQueueJobsTable
 {
@@ -62,37 +61,17 @@ class PendingQueueJobsTable
             ])
             ->recordActions([
                 ViewAction::make(),
-                Action::make('delete')
+                DeleteAction::make()
                     ->label(__('filament.actions.delete'))
-                    ->icon('heroicon-o-trash')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->action(function (PendingQueueJob $record): void {
-                        $record->delete();
-
-                        Notification::make()
-                            ->title(__('filament.notifications.pending_queue_job_deleted'))
-                            ->success()
-                            ->send();
-                    }),
+                    ->successNotificationTitle(__('filament.notifications.pending_queue_job_deleted')),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    BulkAction::make('delete')
+                    DeleteBulkAction::make()
                         ->label(__('filament.actions.delete'))
-                        ->icon('heroicon-o-trash')
-                        ->color('danger')
-                        ->requiresConfirmation()
-                        ->deselectRecordsAfterCompletion()
-                        ->action(function (Collection $records): void {
-                            $count = $records->count();
-                            $records->each->delete();
-
-                            Notification::make()
-                                ->title(__('filament.notifications.pending_queue_jobs_deleted', ['count' => $count]))
-                                ->success()
-                                ->send();
-                        }),
+                        ->successNotificationTitle(fn (int $count): string => __('filament.notifications.pending_queue_jobs_deleted', [
+                            'count' => $count,
+                        ])),
                 ]),
             ])
             ->defaultSort('created_at', 'desc')

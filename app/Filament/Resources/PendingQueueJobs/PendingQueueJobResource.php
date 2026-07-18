@@ -79,4 +79,19 @@ class PendingQueueJobResource extends Resource
     {
         return false;
     }
+
+    public static function canEdit($record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return static::canAccess();
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return static::canAccess();
+    }
 }
