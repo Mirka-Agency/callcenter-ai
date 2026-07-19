@@ -20,6 +20,9 @@ class SimotelApiClient
         return $this->request()->post($this->buildUrl($endpoint), $payload);
     }
 
+    /**
+     * @see https://simotel.com/wiki/fa/developers/simotelapi/v4/report/audio_download/
+     */
     public function downloadAudio(string $file): Response
     {
         return $this->request()
@@ -50,9 +53,19 @@ class SimotelApiClient
 
     private function buildUrl(string $endpoint): string
     {
-        $baseUrl = rtrim($this->credentials->apiUrl, '/');
+        $baseUrl = rtrim($this->normalizeBaseUrl($this->credentials->apiUrl), '/');
         $endpoint = ltrim($endpoint, '/');
 
         return "{$baseUrl}/{$endpoint}";
+    }
+
+    /**
+     * Docs show /API/v4; hosted Astel responds on /api/v4.
+     */
+    private function normalizeBaseUrl(string $apiUrl): string
+    {
+        $normalized = preg_replace('#/API/v(\d+)$#i', '/api/v$1', rtrim($apiUrl, '/'));
+
+        return is_string($normalized) ? $normalized : rtrim($apiUrl, '/');
     }
 }

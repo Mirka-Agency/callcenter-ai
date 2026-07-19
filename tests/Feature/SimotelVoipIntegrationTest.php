@@ -67,7 +67,7 @@ class SimotelVoipIntegrationTest extends TestCase
         Storage::fake(config('recordings.disk', 'local'));
 
         Http::fake([
-            'http://simotel.test/API/v4/reports/audio/download' => Http::response('fake-mp3-bytes', 200, [
+            'http://simotel.test/api/v4/reports/audio/download' => Http::response('fake-mp3-bytes', 200, [
                 'Content-Type' => 'audio/mpeg',
             ]),
         ]);
@@ -114,7 +114,7 @@ class SimotelVoipIntegrationTest extends TestCase
         Storage::disk(config('recordings.disk', 'local'))->assertExists($result->storagePath);
 
         Http::assertSent(function ($request) {
-            return $request->url() === 'http://simotel.test/API/v4/reports/audio/download'
+            return $request->url() === 'http://simotel.test/api/v4/reports/audio/download'
                 && $request->method() === 'POST'
                 && $request['file'] === '20210116_1610778618.378.mp3'
                 && $request->hasHeader('X-APIKEY', 'test-api-key');

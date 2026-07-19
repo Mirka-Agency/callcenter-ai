@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\OrganizationVoipConnections\RelationManagers;
 
 use App\Application\Voip\Jobs\ProcessVoipWebhookJob;
+use App\Application\Voip\Services\VoipWebhookCallDetailsService;
 use App\Domain\Voip\Enums\VoipLogStatus;
 use App\Domain\Voip\Enums\VoipWebhookEventType;
 use App\Models\VoipWebhookLog;
@@ -69,6 +70,24 @@ class WebhookLogsRelationManager extends RelationManager
                         return view('filament.components.webhook-payload', [
                             'payload' => $presenter->format($record->payload),
                             'highlights' => $presenter->highlights($record->payload),
+                        ]);
+                    }),
+                Action::make('viewCallDetails')
+                    ->label(__('filament.actions.view_call_details'))
+                    ->icon('heroicon-o-magnifying-glass-circle')
+                    ->color('info')
+                    ->modalHeading(__('filament.sections.webhook_call_details'))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel(__('filament.actions.close'))
+                    ->modalContent(function (VoipWebhookLog $record): View {
+                        $details = app(VoipWebhookCallDetailsService::class)->forWebhookLog($record);
+
+                        return view('filament.components.webhook-call-details', [
+                            'callId' => $details['call_id'],
+                            'highlights' => $details['highlights'],
+                            'localCallLog' => $details['local_call_log'],
+                            'api' => $details['api'],
+                            'diagnosis' => $details['diagnosis'],
                         ]);
                     }),
                 Action::make('replay')

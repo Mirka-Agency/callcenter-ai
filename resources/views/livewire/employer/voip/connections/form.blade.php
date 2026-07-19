@@ -31,8 +31,8 @@
                 <div class="grid gap-4 md:grid-cols-2">
                     <div class="md:col-span-2">
                         <label class="mb-1 block text-sm font-medium">آدرس API</label>
-                        <input wire:model="api_url" class="saas-input" placeholder="http://c53.hostedastel.ir/API/v4">
-                        <p class="mt-1 text-xs text-zinc-500">برای سیموتل/Astel معمولاً آدرس سرور به‌همراه /API/v4 است.</p>
+                        <input wire:model="api_url" class="saas-input" placeholder="http://c53.hostedastel.ir/api/v4">
+                        <p class="mt-1 text-xs text-zinc-500">برای سیموتل/Astel معمولاً آدرس سرور به‌همراه /api/v4 است (حروف کوچک).</p>
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">کلید API</label>

@@ -17,6 +17,7 @@ use App\Models\VoipWebhookLog;
 use App\Support\WebhookPayloadPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class SimotelAgentResolutionTest extends TestCase
@@ -56,6 +57,13 @@ class SimotelAgentResolutionTest extends TestCase
 
     public function test_cdr_after_new_state_stores_resolved_extension(): void
     {
+        Http::fake([
+            'http://simotel.test/api/v4/reports/quick/*' => Http::response([
+                'success' => 1,
+                'data' => ['data' => []],
+            ], 200),
+        ]);
+
         $connection = $this->createSimotelConnection();
         $config = VoipConnectionConfig::fromModel($connection->load('provider'));
         $adapter = new SimotelVoipAdapter;
@@ -142,6 +150,54 @@ class SimotelAgentResolutionTest extends TestCase
                 && $job->payload === $payload
                 && $job->forceReplay === true;
         });
+    }
+
+    public function test_webhook_call_details_service_diagnoses_did_only_cdr(): void
+    {
+        Http::fake([
+            'http://simotel.test/api/v4/reports/quick/search' => Http::response([
+                'success' => -2,
+                'message' => 'Access denied: /reports/quick/search',
+                'data' => '',
+            ], 403),
+            'http://simotel.test/api/v4/reports/quick/info' => Http::response([
+                'success' => -2,
+                'message' => 'Access denied: /reports/quick/info',
+                'data' => '',
+            ], 403),
+        ]);
+
+        $connection = $this->createSimotelConnection();
+        $payload = [
+            'event_name' => 'Cdr',
+            'src' => '09198202502',
+            'dst' => '982191093492',
+            'type' => 'incoming',
+            'disposition' => 'ANSWERED',
+            'duration' => 213,
+            'billsec' => 106,
+            'cuid' => '1784375548.939408',
+            'unique_id' => '1784375548.939408',
+            'did' => '982191093492',
+        ];
+
+        $log = VoipWebhookLog::query()->create([
+            'organization_voip_connection_id' => $connection->id,
+            'event_type' => VoipWebhookEventType::CallEnded->value,
+            'status' => VoipLogStatus::Success,
+            'payload' => $payload,
+            'message' => 'webhook_received',
+        ]);
+
+        $details = app(\App\Application\Voip\Services\VoipWebhookCallDetailsService::class)->forWebhookLog($log);
+
+        $this->assertSame('1784375548.939408', $details['call_id']);
+        $this->assertFalse($details['api']['success']);
+        $this->assertStringContainsString('Access denied', (string) $details['api']['error']);
+        $this->assertNotEmpty($details['diagnosis']);
+        $this->assertTrue(collect($details['diagnosis'])->contains(
+            fn (string $note) => str_contains($note, 'DID') || str_contains($note, 'record') || str_contains($note, 'API'),
+        ));
     }
 
     private function createSimotelConnection(): OrganizationVoipConnection

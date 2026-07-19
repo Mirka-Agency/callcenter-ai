@@ -113,6 +113,13 @@ class SimotelVoipAdapterTest extends TestCase
 
     public function test_new_state_in_use_caches_exten_and_cdr_reads_it(): void
     {
+        Http::fake([
+            'http://simotel.test/api/v4/reports/quick/*' => Http::response([
+                'success' => 1,
+                'data' => ['data' => []],
+            ], 200),
+        ]);
+
         $adapter = $this->adapter(connectionId: 7);
 
         $stateEvent = $adapter->normalizeWebhook([
@@ -146,17 +153,20 @@ class SimotelVoipAdapterTest extends TestCase
         $this->assertSame('991', $cdrEvent->extension);
     }
 
-    public function test_cdr_with_did_enriches_extension_from_quick_info(): void
+    public function test_cdr_with_did_enriches_extension_from_quick_search(): void
     {
         Http::fake([
-            'http://simotel.test/API/v4/reports/quick/info' => Http::response([
+            'http://simotel.test/api/v4/reports/quick/search' => Http::response([
                 'success' => 1,
                 'data' => [
-                    [
-                        'cuid' => '1784375548.939408',
-                        'src' => '09198202502',
-                        'dst' => '564',
-                        'disposition' => 'ANSWERED',
+                    'data' => [
+                        [
+                            'cuid' => '1784375548.939408',
+                            'src' => '09198202502',
+                            'dst' => '564',
+                            'disposition' => 'ANSWERED',
+                            'record' => '20260718_1784375548.939408.mp3',
+                        ],
                     ],
                 ],
             ], 200),
@@ -175,27 +185,29 @@ class SimotelVoipAdapterTest extends TestCase
 
         $this->assertSame('564', $event->extension);
         $this->assertSame('982191093492', $event->destinationNumber);
+        $this->assertSame('simotel://20260718_1784375548.939408.mp3', $event->recordingUrl);
 
-        Http::assertSent(fn ($request) => $request->url() === 'http://simotel.test/API/v4/reports/quick/info'
-            && $request['cuid'] === '1784375548.939408');
+        Http::assertSent(fn ($request) => $request->url() === 'http://simotel.test/api/v4/reports/quick/search'
+            && ($request['conditions']['cuid'] ?? null) === '1784375548.939408'
+            && ! array_key_exists('date_range', $request->data()));
     }
 
-    public function test_cdr_falls_back_to_quick_search_when_quick_info_empty(): void
+    public function test_cdr_falls_back_to_quick_info_when_quick_search_empty(): void
     {
         Http::fake([
-            'http://simotel.test/API/v4/reports/quick/info' => Http::response([
-                'success' => 1,
-                'data' => [],
-            ], 200),
-            'http://simotel.test/API/v4/reports/quick/search' => Http::response([
+            'http://simotel.test/api/v4/reports/quick/search' => Http::response([
                 'success' => 1,
                 'data' => [
-                    'data' => [
-                        [
-                            'cuid' => '1784375548.939408',
-                            'src' => '09198202502',
-                            'dst' => '777',
-                        ],
+                    'data' => [],
+                ],
+            ], 200),
+            'http://simotel.test/api/v4/reports/quick/info' => Http::response([
+                'success' => 1,
+                'data' => [
+                    [
+                        'cuid' => '1784375548.939408',
+                        'src' => '09198202502',
+                        'dst' => '777',
                     ],
                 ],
             ], 200),
@@ -212,6 +224,23 @@ class SimotelVoipAdapterTest extends TestCase
         ]);
 
         $this->assertSame('777', $event->extension);
+    }
+
+    public function test_get_call_recording_posts_file_to_audio_download(): void
+    {
+        Http::fake([
+            'http://simotel.test/api/v4/reports/audio/download' => Http::response('fake-mp3-bytes', 200, [
+                'Content-Type' => 'audio/mpeg',
+            ]),
+        ]);
+
+        $result = $this->adapter()->getCallRecording('simotel://20210116_1610778618.378.mp3');
+
+        $this->assertTrue($result->success);
+        $this->assertSame('fake-mp3-bytes', $result->data['body'] ?? null);
+
+        Http::assertSent(fn ($request) => $request->url() === 'http://simotel.test/api/v4/reports/audio/download'
+            && $request['file'] === '20210116_1610778618.378.mp3');
     }
 
     public function test_extension_mapping_maps_did_to_agent_extension(): void

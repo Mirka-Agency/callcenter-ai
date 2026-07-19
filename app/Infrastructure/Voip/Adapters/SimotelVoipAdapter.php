@@ -27,6 +27,9 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
 
     private ?SimotelAgentExtensionCache $agentCache = null;
 
+    /** @var array<string, VoipOperationResult> */
+    private array $callDetailsCache = [];
+
     public static function employeeIntegrationMetaDefinitions(): array
     {
         return [
@@ -49,7 +52,8 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
 
     public function testConnection(): VoipOperationResult
     {
-        $response = $this->client()->post('reports/CDR', [
+        // Prefer quick/search (official report API) over legacy reports/CDR.
+        $response = $this->client()->post('reports/quick/search', [
             'conditions' => [
                 'from' => '',
                 'to' => '',
@@ -67,7 +71,7 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
             'alike' => 'true',
         ]);
 
-        if ($response->failed()) {
+        if ($response->failed() || $this->isSimotelFailurePayload($response->json())) {
             return $this->parseHttpFailure(
                 message: $response->json('message') ?? $response->json('error') ?? $response->body(),
                 data: $response->json(),
@@ -90,20 +94,19 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
         return VoipOperationResult::failure(self::UNSUPPORTED);
     }
 
+    /**
+     * Resolve call details via official Quick Search by cuid, then Quick Info.
+     *
+     * @see https://simotel.com/wiki/fa/developers/simotelapi/v4/report/quick_search/
+     */
     public function getCallDetails(string $callId): VoipOperationResult
     {
-        $info = $this->client()->post('reports/quick/info', [
-            'cuid' => $callId,
-        ]);
+        return $this->callDetailsCache[$callId] ??= $this->fetchCallDetails($callId);
+    }
 
-        if ($info->successful() && $this->responseHasCallRows($info->json())) {
-            return VoipOperationResult::success(
-                externalId: $callId,
-                data: $this->normalizeCallDetailsPayload($info->json() ?? []),
-                message: 'Call details retrieved from Simotel quick/info.',
-            );
-        }
-
+    private function fetchCallDetails(string $callId): VoipOperationResult
+    {
+        // Docs: for call lookup by cuid, omit date_range and only pass cuid.
         $search = $this->client()->post('reports/quick/search', [
             'conditions' => [
                 'from' => '',
@@ -118,47 +121,87 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
             'alike' => 'true',
         ]);
 
-        if ($search->failed()) {
-            return $this->parseHttpFailure(
-                message: $search->json('message') ?? $search->json('error') ?? $search->body(),
-                data: $search->json(),
+        if ($search->successful()
+            && ! $this->isSimotelFailurePayload($search->json())
+            && $this->responseHasCallRows($search->json())) {
+            return VoipOperationResult::success(
+                externalId: $callId,
+                data: $this->normalizeCallDetailsPayload($search->json() ?? []),
+                message: 'Call details retrieved from Simotel quick/search.',
             );
         }
 
-        if (! $this->responseHasCallRows($search->json())) {
-            return VoipOperationResult::failure(
-                error: $info->json('message') ?? 'Call details not found in Simotel.',
-                data: [
-                    'quick_info' => $info->json(),
-                    'quick_search' => $search->json(),
-                ],
+        $info = $this->client()->post('reports/quick/info', [
+            'cuid' => $callId,
+        ]);
+
+        if ($info->successful()
+            && ! $this->isSimotelFailurePayload($info->json())
+            && $this->responseHasCallRows($info->json())) {
+            return VoipOperationResult::success(
+                externalId: $callId,
+                data: $this->normalizeCallDetailsPayload($info->json() ?? []),
+                message: 'Call details retrieved from Simotel quick/info.',
             );
         }
 
-        return VoipOperationResult::success(
-            externalId: $callId,
-            data: $this->normalizeCallDetailsPayload($search->json() ?? []),
-            message: 'Call details retrieved from Simotel quick/search.',
+        return VoipOperationResult::failure(
+            error: $search->json('message')
+                ?? $info->json('message')
+                ?? 'Call details not found in Simotel.',
+            data: [
+                'quick_search' => $search->json(),
+                'quick_info' => $info->json(),
+            ],
         );
     }
 
+    /**
+     * @see https://simotel.com/wiki/fa/developers/simotelapi/v4/report/audio_download/
+     */
     public function getCallRecording(string $callId): VoipOperationResult
     {
         $file = $this->recordingFilenameFromIdentifier($callId);
+
+        if ($file === '' || ! $this->looksLikeRecordingFilename($file)) {
+            $resolved = $this->resolveRecordingFilenameFromApi($callId);
+            if ($resolved !== null) {
+                $file = $resolved;
+            }
+        }
+
         $response = $this->client()->downloadAudio($file);
 
-        if ($response->failed()) {
+        if ($response->failed() || $this->isSimotelFailurePayload($response->json())) {
             return $this->parseHttpFailure(
-                message: $response->json('message') ?? $response->json('error') ?? $response->body(),
-                data: $response->json(),
+                message: $response->json('message')
+                    ?? $response->json('error')
+                    ?? (is_string($response->json('message')) ? $response->json('message') : null)
+                    ?? 'Simotel audio download failed.',
+                data: $response->json() ?? ['body_preview' => mb_substr($response->body(), 0, 200)],
+            );
+        }
+
+        $body = $response->body();
+        $contentType = (string) ($response->header('Content-Type') ?? '');
+
+        if ($body === '' || $this->looksLikeJsonErrorBody($body, $contentType)) {
+            return VoipOperationResult::failure(
+                error: 'Simotel audio download returned an empty or non-audio response.',
+                data: [
+                    'content_type' => $contentType,
+                    'body_preview' => mb_substr($body, 0, 200),
+                ],
             );
         }
 
         return VoipOperationResult::success(
             externalId: $file,
             data: [
-                'body' => $response->body(),
-                'mime_type' => $response->header('Content-Type') ?? 'audio/mpeg',
+                'body' => $body,
+                'mime_type' => str_contains(strtolower($contentType), 'audio')
+                    ? $contentType
+                    : 'audio/mpeg',
             ],
             message: 'Call recording retrieved from Simotel.',
         );
@@ -235,14 +278,11 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
     private function normalizeCdr(array $payload): NormalizedWebhookEvent
     {
         $disposition = strtolower(str_replace(['_', '-'], ' ', (string) ($payload['disposition'] ?? '')));
-        $record = $payload['record'] ?? null;
-        $recordingUrl = is_string($record) && $record !== ''
-            ? self::RECORDING_URL_PREFIX.$record
-            : null;
+        $callId = $this->extractCallId($payload);
+        $recordingUrl = $this->resolveRecordingUrl($payload, $callId);
 
         [$type, $status] = $this->mapDisposition($disposition, $recordingUrl !== null);
 
-        $callId = $this->extractCallId($payload);
         $direction = $this->mapDirection((string) ($payload['type'] ?? ''));
         $duration = isset($payload['duration'])
             ? (int) $payload['duration']
@@ -282,6 +322,58 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
             rawPayload: $payload,
             provider: $this->getProviderCode()->value,
         );
+    }
+
+    /**
+     * CDR `record` is the official audio filename.
+     * If missing, try Quick Search by cuid.
+     *
+     * @see https://simotel.com/wiki/fa/developers/simotelwebhooks/events/cdr/
+     * @see https://simotel.com/wiki/fa/developers/simotelapi/v4/report/audio_download/
+     */
+    private function resolveRecordingUrl(array $payload, ?string $callId): ?string
+    {
+        $record = $payload['record'] ?? null;
+        if (is_string($record) && trim($record) !== '') {
+            return self::RECORDING_URL_PREFIX.trim($record);
+        }
+
+        if ($callId === null) {
+            return null;
+        }
+
+        $disposition = strtolower(str_replace(['_', '-'], ' ', (string) ($payload['disposition'] ?? '')));
+        if (str_contains($disposition, 'no answer') || str_contains($disposition, 'noanswered') || str_contains($disposition, 'busy')) {
+            return null;
+        }
+
+        if (! str_contains($disposition, 'answer')) {
+            return null;
+        }
+
+        $fromApi = $this->resolveRecordingFilenameFromApi($callId);
+
+        return $fromApi !== null ? self::RECORDING_URL_PREFIX.$fromApi : null;
+    }
+
+    private function resolveRecordingFilenameFromApi(string $callId): ?string
+    {
+        $result = $this->getCallDetails($callId);
+
+        if (! $result->success) {
+            return null;
+        }
+
+        foreach ($this->extractCallRows($result->data) as $row) {
+            foreach (['record', 'recording', 'file', 'audio'] as $key) {
+                $value = $row[$key] ?? null;
+                if (is_string($value) && $this->looksLikeRecordingFilename($value)) {
+                    return trim($value);
+                }
+            }
+        }
+
+        return null;
     }
 
     private function resolveAgentExtension(
@@ -480,6 +572,43 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
         }
 
         return $identifier;
+    }
+
+    private function looksLikeRecordingFilename(string $value): bool
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return false;
+        }
+
+        return (bool) preg_match('/\.(mp3|wav|ogg|gsm|sln|ulaw|alaw)$/i', $value);
+    }
+
+    /** @param  array<string, mixed>|null  $payload */
+    private function isSimotelFailurePayload(?array $payload): bool
+    {
+        if ($payload === null || ! array_key_exists('success', $payload)) {
+            return false;
+        }
+
+        $success = $payload['success'];
+
+        return $success === false
+            || $success === 0
+            || $success === '0'
+            || (is_numeric($success) && (int) $success < 1);
+    }
+
+    private function looksLikeJsonErrorBody(string $body, string $contentType): bool
+    {
+        if (str_contains(strtolower($contentType), 'json')) {
+            return true;
+        }
+
+        $trimmed = ltrim($body);
+
+        return str_starts_with($trimmed, '{') || str_starts_with($trimmed, '[');
     }
 
     private function client(): SimotelApiClient
