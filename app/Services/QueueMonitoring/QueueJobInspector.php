@@ -66,6 +66,11 @@ class QueueJobInspector
             }
 
             $property->setAccessible(true);
+
+            if (! $property->isInitialized($job)) {
+                continue;
+            }
+
             $value = $property->getValue($job);
 
             if ($value instanceof \BackedEnum) {

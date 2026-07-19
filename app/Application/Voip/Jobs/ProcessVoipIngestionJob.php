@@ -15,12 +15,15 @@ class ProcessVoipIngestionJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public bool $forceReplay = false;
+
     /** @param array<string, mixed> $normalizedEvent */
     public function __construct(
         public int $connectionId,
         public array $normalizedEvent,
-        public bool $forceReplay = false,
+        bool $forceReplay = false,
     ) {
+        $this->forceReplay = $forceReplay;
         $this->onQueue((string) config('voip.queue', 'default'));
     }
 

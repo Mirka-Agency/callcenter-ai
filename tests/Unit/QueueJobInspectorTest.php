@@ -46,4 +46,28 @@ class QueueJobInspectorTest extends TestCase
         $this->assertNull($inspection->callId());
         $this->assertSame(__('filament.misc.unknown_job'), $inspection->shortLabel());
     }
+
+    public function test_inspect_tolerates_legacy_jobs_missing_newer_properties(): void
+    {
+        $reflection = new \ReflectionClass(\App\Application\Voip\Jobs\ProcessVoipWebhookJob::class);
+        $legacyJob = $reflection->newInstanceWithoutConstructor();
+        $reflection->getProperty('connectionId')->setValue($legacyJob, 1);
+        $reflection->getProperty('payload')->setValue($legacyJob, ['event_name' => 'Cdr']);
+
+        $payload = json_encode([
+            'uuid' => (string) Str::uuid(),
+            'displayName' => \App\Application\Voip\Jobs\ProcessVoipWebhookJob::class,
+            'job' => 'Illuminate\\Queue\\CallQueuedHandler@call',
+            'data' => [
+                'commandName' => \App\Application\Voip\Jobs\ProcessVoipWebhookJob::class,
+                'command' => serialize($legacyJob),
+            ],
+        ]);
+
+        $inspection = app(QueueJobInspector::class)->inspect($payload);
+
+        $this->assertSame('ProcessVoipWebhookJob', $inspection->jobClass);
+        $this->assertSame(1, $inspection->properties['connectionId'] ?? null);
+        $this->assertSame(['event_name' => 'Cdr'], $inspection->properties['payload'] ?? null);
+    }
 }

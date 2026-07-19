@@ -14,11 +14,14 @@ class ProcessVoipWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public bool $forceReplay = false;
+
     public function __construct(
         public int $connectionId,
         public array $payload,
-        public bool $forceReplay = false,
+        bool $forceReplay = false,
     ) {
+        $this->forceReplay = $forceReplay;
         $this->onQueue((string) config('voip.queue', 'default'));
     }
 
