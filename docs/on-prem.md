@@ -176,7 +176,9 @@ nano .env   # یا vim
 
 | متغیر | چه بگذارید |
 |--------|------------|
-| `APP_URL` | `http://10.0.0.50:8000` — **IP واقعی LAN همین سرور اپ** (نه `localhost` اگر Asterisk جای دیگری است) |
+| `APP_URL` | `http://10.0.0.50:8000` — **IP واقعی LAN همین سرور اپ** (نه `localhost` اگر Asterisk جای دیگری است). با `http://` بگذارید مگر TLS واقعی دارید |
+| `FORCE_HTTPS` | برای LAN بدون TLS: `false` |
+| `SESSION_SECURE_COOKIE` | برای LAN بدون TLS: `false` (وگرنه لاگین «منقضی / expired» می‌شود) |
 | `APP_KEY` | فعلاً خالی بگذارید؛ بعد از بالا آمدن کانتینر generate می‌کنیم |
 | `DB_PASSWORD` | یک رمز قوی برای PostgreSQL |
 | `ONPREM_ADMIN_EMAIL` | ایمیل ورود شما به `/admin` |
@@ -190,6 +192,9 @@ nano .env   # یا vim
 
 ```env
 APP_URL=http://10.0.0.50:8000
+
+FORCE_HTTPS=false
+SESSION_SECURE_COOKIE=false
 
 DB_PASSWORD=Db!StrongPass-ChangeMe
 
@@ -418,6 +423,29 @@ docker compose -f docker-compose.onprem.yml down -v
 # در .env: DB_CONNECTION=pgsql و DB_HOST=postgres
 docker compose -f docker-compose.onprem.yml up -d --build
 ```
+
+### لاگین «expired / صفحه منقضی شده» یا فونت بد روی HTTP
+
+علت رایج: اپ فکر می‌کند HTTPS است (مخصوص cloud/CapRover) ولی مرورگر با `http://` باز شده → کوکی سشن ست نمی‌شود → CSRF fail.
+
+در `.env` سرور:
+
+```env
+APP_URL=http://IP-LAN:8000
+FORCE_HTTPS=false
+SESSION_SECURE_COOKIE=false
+```
+
+بعد:
+
+```bash
+docker compose -f docker-compose.onprem.yml up -d --build
+docker compose -f docker-compose.onprem.yml exec app php artisan config:clear
+```
+
+مرورگر: یک‌بار کوکی‌های همان سایت را پاک کنید و دوباره لاگین کنید.
+
+فونت Vazirmatn از بیلد داخل پروژه لود می‌شود (دیگر به Google Fonts وابسته نیست).
 
 ### مدل عملیاتی با مشتری
 

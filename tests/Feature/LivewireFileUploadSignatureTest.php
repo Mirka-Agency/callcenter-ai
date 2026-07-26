@@ -10,9 +10,9 @@ use Tests\TestCase;
 
 class LivewireFileUploadSignatureTest extends TestCase
 {
-    public function test_tls_termination_middleware_marks_production_requests_secure(): void
+    public function test_tls_termination_middleware_marks_secure_when_force_https(): void
     {
-        $this->app->detectEnvironment(fn () => 'production');
+        config(['app.force_https' => true]);
 
         $request = Request::create('/app', 'GET');
         $this->assertFalse($request->isSecure());
@@ -20,6 +20,17 @@ class LivewireFileUploadSignatureTest extends TestCase
         (new TrustCapRoverTlsTermination)->handle($request, fn (Request $request) => response('ok'));
 
         $this->assertTrue($request->isSecure());
+    }
+
+    public function test_tls_termination_middleware_skips_when_force_https_disabled(): void
+    {
+        config(['app.force_https' => false]);
+
+        $request = Request::create('/app', 'GET');
+
+        (new TrustCapRoverTlsTermination)->handle($request, fn (Request $request) => response('ok'));
+
+        $this->assertFalse($request->isSecure());
     }
 
     public function test_production_middleware_allows_signed_upload_without_proxy_headers(): void
@@ -30,6 +41,7 @@ class LivewireFileUploadSignatureTest extends TestCase
         config([
             'app.env' => 'production',
             'app.url' => 'https://call-center.example.test',
+            'app.force_https' => true,
         ]);
 
         URL::forceRootUrl('https://call-center.example.test');

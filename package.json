@@ -15,6 +15,7 @@
     },
     "dependencies": {
         "@calidy/dayjs-calendarsystems": "^2.1.1",
+        "@fontsource/vazirmatn": "^5.3.0",
         "chart.js": "^4.5.1",
         "dayjs": "^1.11.21",
         "laravel-echo": "^2.3.7",

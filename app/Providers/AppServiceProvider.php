@@ -21,8 +21,9 @@ class AppServiceProvider extends ServiceProvider
     {
         Event::listen(Login::class, RecordUserLastLogin::class);
 
-        // CapRover terminates TLS at the proxy; force https URLs in production to avoid mixed content.
-        if (config('app.env') === 'production') {
+        // CapRover/cloud: APP_URL is https://… — force https URLs.
+        // On-prem LAN HTTP: APP_URL is http://… — do not force https (breaks cookies/CSRF).
+        if (config('app.force_https')) {
             if ($rootUrl = config('app.url')) {
                 URL::forceRootUrl($rootUrl);
             }

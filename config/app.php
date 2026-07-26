@@ -69,6 +69,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Force HTTPS URLs
+    |--------------------------------------------------------------------------
+    |
+    | CapRover/cloud terminates TLS at the proxy and uses https:// APP_URL.
+    | On-prem LAN installs often use plain http:// — leave this false so
+    | cookies, CSRF, and asset URLs work without HTTPS.
+    | Defaults to true when APP_URL starts with https://.
+    |
+    */
+
+    'force_https' => env('FORCE_HTTPS') !== null
+        ? filter_var(env('FORCE_HTTPS'), FILTER_VALIDATE_BOOLEAN)
+        : str_starts_with((string) env('APP_URL', 'http://localhost'), 'https://'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
