@@ -396,6 +396,33 @@ docker compose -f docker-compose.onprem.yml ps
 docker compose -f docker-compose.onprem.yml logs -f app
 ```
 
+### خطای «Table already exists» موقع migrate
+
+معمولاً یعنی migrate یک‌بار نیمه‌کاره مانده (جدول ساخته شده، ولی در جدول `migrations` ثبت نشده) و با restart دوباره همان migration اجرا شده.
+
+اگر نصب هنوز تازه است و دادهٔ مهمی ندارید (ساده‌ترین راه):
+
+```bash
+cd /opt/callcenter
+docker compose -f docker-compose.onprem.yml down -v   # حجم MySQL و storage پاک می‌شود
+docker compose -f docker-compose.onprem.yml up -d --build
+# بعد دوباره key:generate و OnPremSeeder
+```
+
+اگر نمی‌خواهید volume را پاک کنید:
+
+```bash
+# رمز DB را از .env بردارید
+docker compose -f docker-compose.onprem.yml exec mysql \
+  mysql -u callcenter -p"$DB_PASSWORD" callcenter -e \
+  "DROP TABLE IF EXISTS employee_integration_meta, integration_meta_definitions;"
+
+docker compose -f docker-compose.onprem.yml restart app
+docker compose -f docker-compose.onprem.yml logs -f app
+```
+
+روی نسخه‌های جدیدتر، migrationها نسبت به restart نیمه‌کاره مقاوم شده‌اند (`IdempotentSchema`); کد را آپدیت کنید و `up -d --build` بزنید. اگر هنوز روی نسخهٔ قدیمی هستید، یکی از دو راه بالا را بزنید.
+
 ### مدل عملیاتی با مشتری
 
 - نصب و تنظیمات اولیه را **با هم** انجام می‌دهید؛ ادمین پلتفرم نزد شما می‌ماند

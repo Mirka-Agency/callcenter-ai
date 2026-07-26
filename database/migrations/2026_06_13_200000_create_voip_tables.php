@@ -1,5 +1,6 @@
 <?php
 
+use Database\Support\IdempotentSchema;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -8,7 +9,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('voip_providers', function (Blueprint $table) {
+        IdempotentSchema::create('voip_providers', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('code')->unique();
@@ -18,7 +19,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('organization_voip_connections', function (Blueprint $table) {
+        IdempotentSchema::create('organization_voip_connections', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('voip_provider_id')->constrained()->cascadeOnDelete();
@@ -32,7 +33,7 @@ return new class extends Migration
             $table->unique(['organization_id', 'name']);
         });
 
-        Schema::create('voip_call_logs', function (Blueprint $table) {
+        IdempotentSchema::create('voip_call_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('organization_voip_connection_id')->constrained()->cascadeOnDelete();
@@ -52,7 +53,7 @@ return new class extends Migration
             $table->unique(['organization_voip_connection_id', 'external_call_id'], 'voip_call_logs_connection_call_unique');
         });
 
-        Schema::create('voip_webhook_logs', function (Blueprint $table) {
+        IdempotentSchema::create('voip_webhook_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_voip_connection_id')->constrained()->cascadeOnDelete();
             $table->string('event_type')->nullable();
@@ -62,7 +63,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('voip_sync_logs', function (Blueprint $table) {
+        IdempotentSchema::create('voip_sync_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_voip_connection_id')->constrained()->cascadeOnDelete();
             $table->string('operation');

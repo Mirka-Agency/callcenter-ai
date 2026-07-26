@@ -21,14 +21,18 @@ return new class extends Migration
 
     private function changeCredentialsColumnToText(string $table): void
     {
+        if ($this->credentialsColumnType($table) === 'text') {
+            return;
+        }
+
         if (DB::getDriverName() === 'pgsql') {
             DB::statement("ALTER TABLE {$table} ALTER COLUMN credentials TYPE text USING credentials::text");
 
             return;
         }
 
-        Schema::table($table, function (Blueprint $table): void {
-            $table->text('credentials')->change();
+        Schema::table($table, function (Blueprint $blueprint): void {
+            $blueprint->text('credentials')->change();
         });
     }
 
@@ -40,8 +44,37 @@ return new class extends Migration
             return;
         }
 
-        Schema::table($table, function (Blueprint $table): void {
-            $table->json('credentials')->change();
+        Schema::table($table, function (Blueprint $blueprint): void {
+            $blueprint->json('credentials')->change();
         });
+    }
+
+    private function credentialsColumnType(string $table): ?string
+    {
+        if (! Schema::hasColumn($table, 'credentials')) {
+            return null;
+        }
+
+        if (DB::getDriverName() === 'mysql') {
+            $row = DB::selectOne(
+                'select DATA_TYPE as data_type from information_schema.columns
+                 where table_schema = database() and table_name = ? and column_name = ?',
+                [$table, 'credentials'],
+            );
+
+            return isset($row->data_type) ? strtolower((string) $row->data_type) : null;
+        }
+
+        if (DB::getDriverName() === 'pgsql') {
+            $row = DB::selectOne(
+                'select data_type from information_schema.columns
+                 where table_schema = current_schema() and table_name = ? and column_name = ?',
+                [$table, 'credentials'],
+            );
+
+            return isset($row->data_type) ? strtolower((string) $row->data_type) : null;
+        }
+
+        return null;
     }
 };

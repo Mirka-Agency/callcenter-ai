@@ -1,5 +1,6 @@
 <?php
 
+use Database\Support\IdempotentSchema;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -8,7 +9,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('crm_providers', function (Blueprint $table) {
+        IdempotentSchema::create('crm_providers', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('code')->unique();
@@ -17,7 +18,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('organization_crm_connections', function (Blueprint $table) {
+        IdempotentSchema::create('organization_crm_connections', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('crm_provider_id')->constrained()->cascadeOnDelete();
@@ -31,7 +32,7 @@ return new class extends Migration
             $table->unique(['organization_id', 'name']);
         });
 
-        Schema::create('crm_connection_logs', function (Blueprint $table) {
+        IdempotentSchema::create('crm_connection_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_crm_connection_id')->constrained()->cascadeOnDelete();
             $table->string('operation');
@@ -42,7 +43,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('crm_sync_logs', function (Blueprint $table) {
+        IdempotentSchema::create('crm_sync_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_crm_connection_id')->constrained()->cascadeOnDelete();
             $table->string('operation');

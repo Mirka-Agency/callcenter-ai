@@ -1,5 +1,6 @@
 <?php
 
+use Database\Support\IdempotentSchema;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -8,7 +9,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('call_processing_jobs', function (Blueprint $table) {
+        IdempotentSchema::create('call_processing_jobs', function (Blueprint $table) {
             $table->id();
             $table->uuid('job_uuid')->unique();
             $table->foreignId('call_id')->constrained()->cascadeOnDelete();
@@ -34,7 +35,7 @@ return new class extends Migration
             $table->index(['call_id']);
         });
 
-        Schema::create('call_processing_logs', function (Blueprint $table) {
+        IdempotentSchema::create('call_processing_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('call_processing_job_id')->constrained()->cascadeOnDelete();
             $table->foreignId('call_id')->constrained()->cascadeOnDelete();

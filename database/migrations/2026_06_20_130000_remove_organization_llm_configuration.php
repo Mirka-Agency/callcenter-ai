@@ -1,5 +1,6 @@
 <?php
 
+use Database\Support\IdempotentSchema;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -26,7 +27,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::create('organization_llm_connections', function (Blueprint $table) {
+        IdempotentSchema::create('organization_llm_connections', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('llm_provider_id')->constrained('llm_providers')->cascadeOnDelete();
@@ -40,7 +41,7 @@ return new class extends Migration
             $table->unique(['organization_id', 'name']);
         });
 
-        Schema::create('organization_ai_settings', function (Blueprint $table) {
+        IdempotentSchema::create('organization_ai_settings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->unique()->constrained()->cascadeOnDelete();
             $table->foreignId('llm_provider_id')->nullable()->constrained('llm_providers')->nullOnDelete();
@@ -50,18 +51,22 @@ return new class extends Migration
         });
 
         Schema::table('conversation_analyses', function (Blueprint $table) {
-            $table->foreignId('organization_llm_connection_id')
-                ->nullable()
-                ->after('organization_id')
-                ->constrained('organization_llm_connections')
-                ->nullOnDelete();
+            if (! Schema::hasColumn('conversation_analyses', 'organization_llm_connection_id')) {
+                $table->foreignId('organization_llm_connection_id')
+                    ->nullable()
+                    ->after('organization_id')
+                    ->constrained('organization_llm_connections')
+                    ->nullOnDelete();
+            }
         });
 
         Schema::table('llm_analysis_logs', function (Blueprint $table) {
-            $table->foreignId('organization_llm_connection_id')
-                ->nullable()
-                ->constrained('organization_llm_connections')
-                ->cascadeOnDelete();
+            if (! Schema::hasColumn('llm_analysis_logs', 'organization_llm_connection_id')) {
+                $table->foreignId('organization_llm_connection_id')
+                    ->nullable()
+                    ->constrained('organization_llm_connections')
+                    ->cascadeOnDelete();
+            }
         });
     }
 };

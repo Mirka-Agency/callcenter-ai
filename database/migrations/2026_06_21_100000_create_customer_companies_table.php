@@ -2,6 +2,7 @@
 
 use App\Models\Customer;
 use App\Models\CustomerCompany;
+use Database\Support\IdempotentSchema;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +12,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('customer_companies', function (Blueprint $table) {
+        IdempotentSchema::create('customer_companies', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->string('name');
@@ -37,11 +38,13 @@ return new class extends Migration
         });
 
         Schema::table('customers', function (Blueprint $table) {
-            $table->foreignId('customer_company_id')
-                ->nullable()
-                ->after('organization_id')
-                ->constrained('customer_companies')
-                ->nullOnDelete();
+            if (! Schema::hasColumn('customers', 'customer_company_id')) {
+                $table->foreignId('customer_company_id')
+                    ->nullable()
+                    ->after('organization_id')
+                    ->constrained('customer_companies')
+                    ->nullOnDelete();
+            }
         });
 
         $this->backfillCompaniesFromCustomers();
@@ -49,9 +52,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('customers', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('customer_company_id');
-        });
+        IdempotentSchema::dropConstrainedForeignIdIfExists('customers', 'customer_company_id');
 
         Schema::dropIfExists('customer_companies');
     }
@@ -62,6 +63,7 @@ return new class extends Migration
             ->select('id', 'organization_id', 'company_name')
             ->whereNotNull('company_name')
             ->where('company_name', '!=', '')
+            ->whereNull('customer_company_id')
             ->orderBy('id')
             ->get();
 
@@ -77,7 +79,12 @@ return new class extends Migration
             $key = $row->organization_id.'|'.$normalized;
 
             if (! isset($companyIdsByKey[$key])) {
-                $companyIdsByKey[$key] = DB::table('customer_companies')->insertGetId([
+                $existingId = DB::table('customer_companies')
+                    ->where('organization_id', $row->organization_id)
+                    ->where('normalized_name', $normalized)
+                    ->value('id');
+
+                $companyIdsByKey[$key] = $existingId ?? DB::table('customer_companies')->insertGetId([
                     'organization_id' => $row->organization_id,
                     'name' => trim((string) $row->company_name),
                     'normalized_name' => $normalized,

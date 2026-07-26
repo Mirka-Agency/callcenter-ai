@@ -1,5 +1,6 @@
 <?php
 
+use Database\Support\IdempotentSchema;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -8,7 +9,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('transcription_providers', function (Blueprint $table) {
+        IdempotentSchema::create('transcription_providers', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('code')->unique();
@@ -17,7 +18,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('organization_transcription_connections', function (Blueprint $table) {
+        IdempotentSchema::create('organization_transcription_connections', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('transcription_provider_id')->constrained()->cascadeOnDelete();
@@ -30,7 +31,7 @@ return new class extends Migration
             $table->unique(['organization_id', 'name']);
         });
 
-        Schema::create('calls', function (Blueprint $table) {
+        IdempotentSchema::create('calls', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('organization_user_id')->nullable()->constrained('organization_user')->nullOnDelete();
@@ -53,7 +54,7 @@ return new class extends Migration
             $table->index(['organization_id', 'started_at']);
         });
 
-        Schema::create('call_recordings', function (Blueprint $table) {
+        IdempotentSchema::create('call_recordings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('call_id')->constrained()->cascadeOnDelete();
             $table->string('source_url')->nullable();
@@ -69,7 +70,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('pipeline_executions', function (Blueprint $table) {
+        IdempotentSchema::create('pipeline_executions', function (Blueprint $table) {
             $table->id();
             $table->uuid('pipeline_id')->unique();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
@@ -86,7 +87,7 @@ return new class extends Migration
             $table->index(['organization_id', 'status']);
         });
 
-        Schema::create('pipeline_stage_logs', function (Blueprint $table) {
+        IdempotentSchema::create('pipeline_stage_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('pipeline_execution_id')->constrained()->cascadeOnDelete();
             $table->string('stage');
@@ -101,23 +102,45 @@ return new class extends Migration
         });
 
         Schema::table('call_transcripts', function (Blueprint $table) {
-            $table->foreignId('call_id')->nullable()->after('organization_id')->constrained()->nullOnDelete();
-            $table->string('transcription_provider')->nullable()->after('language');
-            $table->string('model_name')->nullable()->after('transcription_provider');
-            $table->json('speakers_json')->nullable()->after('content');
-            $table->json('confidence_scores_json')->nullable()->after('speakers_json');
-            $table->unsignedInteger('processing_duration_ms')->nullable()->after('confidence_scores_json');
+            if (! Schema::hasColumn('call_transcripts', 'call_id')) {
+                $table->foreignId('call_id')->nullable()->after('organization_id')->constrained()->nullOnDelete();
+            }
+            if (! Schema::hasColumn('call_transcripts', 'transcription_provider')) {
+                $table->string('transcription_provider')->nullable()->after('language');
+            }
+            if (! Schema::hasColumn('call_transcripts', 'model_name')) {
+                $table->string('model_name')->nullable()->after('transcription_provider');
+            }
+            if (! Schema::hasColumn('call_transcripts', 'speakers_json')) {
+                $table->json('speakers_json')->nullable()->after('content');
+            }
+            if (! Schema::hasColumn('call_transcripts', 'confidence_scores_json')) {
+                $table->json('confidence_scores_json')->nullable()->after('speakers_json');
+            }
+            if (! Schema::hasColumn('call_transcripts', 'processing_duration_ms')) {
+                $table->unsignedInteger('processing_duration_ms')->nullable()->after('confidence_scores_json');
+            }
         });
 
         Schema::table('conversation_analyses', function (Blueprint $table) {
-            $table->foreignId('call_id')->nullable()->after('organization_id')->constrained()->nullOnDelete();
-            $table->foreignId('pipeline_execution_id')->nullable()->after('call_transcript_id')->constrained()->nullOnDelete();
-            $table->json('performance_dimensions_json')->nullable()->after('next_actions_json');
-            $table->json('customer_insights_json')->nullable()->after('performance_dimensions_json');
-            $table->json('operational_insights_json')->nullable()->after('customer_insights_json');
+            if (! Schema::hasColumn('conversation_analyses', 'call_id')) {
+                $table->foreignId('call_id')->nullable()->after('organization_id')->constrained()->nullOnDelete();
+            }
+            if (! Schema::hasColumn('conversation_analyses', 'pipeline_execution_id')) {
+                $table->foreignId('pipeline_execution_id')->nullable()->after('call_transcript_id')->constrained()->nullOnDelete();
+            }
+            if (! Schema::hasColumn('conversation_analyses', 'performance_dimensions_json')) {
+                $table->json('performance_dimensions_json')->nullable()->after('next_actions_json');
+            }
+            if (! Schema::hasColumn('conversation_analyses', 'customer_insights_json')) {
+                $table->json('customer_insights_json')->nullable()->after('performance_dimensions_json');
+            }
+            if (! Schema::hasColumn('conversation_analyses', 'operational_insights_json')) {
+                $table->json('operational_insights_json')->nullable()->after('customer_insights_json');
+            }
         });
 
-        Schema::create('employee_performance_snapshots', function (Blueprint $table) {
+        IdempotentSchema::create('employee_performance_snapshots', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('organization_user_id')->constrained('organization_user')->cascadeOnDelete();
@@ -134,7 +157,7 @@ return new class extends Migration
             $table->unique(['organization_user_id', 'period', 'period_start'], 'employee_perf_period_unique');
         });
 
-        Schema::create('crm_pipeline_syncs', function (Blueprint $table) {
+        IdempotentSchema::create('crm_pipeline_syncs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('pipeline_execution_id')->constrained()->cascadeOnDelete();
@@ -155,16 +178,24 @@ return new class extends Migration
         Schema::dropIfExists('crm_pipeline_syncs');
         Schema::dropIfExists('employee_performance_snapshots');
 
-        Schema::table('conversation_analyses', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('pipeline_execution_id');
-            $table->dropConstrainedForeignId('call_id');
-            $table->dropColumn(['performance_dimensions_json', 'customer_insights_json', 'operational_insights_json']);
-        });
+        IdempotentSchema::dropConstrainedForeignIdIfExists('conversation_analyses', 'pipeline_execution_id');
+        IdempotentSchema::dropConstrainedForeignIdIfExists('conversation_analyses', 'call_id');
+        IdempotentSchema::dropColumnsIfExist(
+            'conversation_analyses',
+            'performance_dimensions_json',
+            'customer_insights_json',
+            'operational_insights_json',
+        );
 
-        Schema::table('call_transcripts', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('call_id');
-            $table->dropColumn(['transcription_provider', 'model_name', 'speakers_json', 'confidence_scores_json', 'processing_duration_ms']);
-        });
+        IdempotentSchema::dropConstrainedForeignIdIfExists('call_transcripts', 'call_id');
+        IdempotentSchema::dropColumnsIfExist(
+            'call_transcripts',
+            'transcription_provider',
+            'model_name',
+            'speakers_json',
+            'confidence_scores_json',
+            'processing_duration_ms',
+        );
 
         Schema::dropIfExists('pipeline_stage_logs');
         Schema::dropIfExists('pipeline_executions');

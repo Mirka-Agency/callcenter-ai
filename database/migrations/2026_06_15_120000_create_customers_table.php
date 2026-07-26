@@ -1,5 +1,6 @@
 <?php
 
+use Database\Support\IdempotentSchema;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -8,7 +9,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('customers', function (Blueprint $table) {
+        IdempotentSchema::create('customers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->string('normalized_phone');
@@ -35,15 +36,15 @@ return new class extends Migration
         });
 
         Schema::table('calls', function (Blueprint $table) {
-            $table->foreignId('customer_id')->nullable()->after('organization_id')->constrained()->nullOnDelete();
+            if (! Schema::hasColumn('calls', 'customer_id')) {
+                $table->foreignId('customer_id')->nullable()->after('organization_id')->constrained()->nullOnDelete();
+            }
         });
     }
 
     public function down(): void
     {
-        Schema::table('calls', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('customer_id');
-        });
+        IdempotentSchema::dropConstrainedForeignIdIfExists('calls', 'customer_id');
 
         Schema::dropIfExists('customers');
     }

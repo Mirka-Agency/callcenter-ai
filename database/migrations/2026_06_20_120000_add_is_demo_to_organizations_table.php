@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\Seeding\DemoCatalog;
+use Database\Support\IdempotentSchema;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -11,8 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('organizations', function (Blueprint $table) {
-            $table->boolean('is_demo')->default(false)->after('disabled');
-            $table->index('is_demo');
+            if (! Schema::hasColumn('organizations', 'is_demo')) {
+                $table->boolean('is_demo')->default(false)->after('disabled');
+            }
+            if (! Schema::hasIndex('organizations', ['is_demo'])) {
+                $table->index('is_demo');
+            }
         });
 
         DB::table('organizations')
@@ -26,9 +31,11 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('organizations', function (Blueprint $table) {
-            $table->dropIndex(['is_demo']);
-            $table->dropColumn('is_demo');
-        });
+        if (Schema::hasIndex('organizations', ['is_demo'])) {
+            Schema::table('organizations', function (Blueprint $table) {
+                $table->dropIndex(['is_demo']);
+            });
+        }
+        IdempotentSchema::dropColumnsIfExist('organizations', 'is_demo');
     }
 };

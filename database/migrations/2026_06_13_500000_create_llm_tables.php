@@ -1,5 +1,6 @@
 <?php
 
+use Database\Support\IdempotentSchema;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -8,7 +9,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('llm_providers', function (Blueprint $table) {
+        IdempotentSchema::create('llm_providers', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('code')->unique();
@@ -17,7 +18,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('organization_llm_connections', function (Blueprint $table) {
+        IdempotentSchema::create('organization_llm_connections', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('llm_provider_id')->constrained()->cascadeOnDelete();
@@ -31,7 +32,7 @@ return new class extends Migration
             $table->unique(['organization_id', 'name']);
         });
 
-        Schema::create('llm_prompt_versions', function (Blueprint $table) {
+        IdempotentSchema::create('llm_prompt_versions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('llm_provider_id')->nullable()->constrained()->nullOnDelete();
             $table->string('version')->unique();
@@ -42,7 +43,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('call_transcripts', function (Blueprint $table) {
+        IdempotentSchema::create('call_transcripts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('voip_call_log_id')->nullable()->constrained('voip_call_logs')->nullOnDelete();
@@ -59,7 +60,7 @@ return new class extends Migration
             $table->index(['organization_id', 'status']);
         });
 
-        Schema::create('conversation_analyses', function (Blueprint $table) {
+        IdempotentSchema::create('conversation_analyses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('organization_user_id')->nullable()->constrained('organization_user')->nullOnDelete();
@@ -90,7 +91,7 @@ return new class extends Migration
             $table->index(['organization_id', 'sentiment']);
         });
 
-        Schema::create('llm_analysis_logs', function (Blueprint $table) {
+        IdempotentSchema::create('llm_analysis_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_llm_connection_id')->constrained()->cascadeOnDelete();
             $table->string('operation');
