@@ -37,6 +37,13 @@ class SimotelVoipAdapterTest extends TestCase
         ?CallDirection $expectedDirection,
         ?string $expectedRecordingUrl,
     ): void {
+        Http::fake([
+            'http://simotel.test/api/v4/reports/quick/*' => Http::response([
+                'success' => 1,
+                'data' => ['data' => []],
+            ], 200),
+        ]);
+
         $adapter = $this->adapter();
 
         $event = $adapter->normalizeWebhook($payload);
@@ -101,7 +108,51 @@ class SimotelVoipAdapterTest extends TestCase
                 CallDirection::Outbound,
                 null,
             ],
+            'noanswer_compact' => [
+                [
+                    'event_name' => 'Cdr',
+                    'src' => '09120000000',
+                    'dst' => '982191093492',
+                    'type' => 'incoming',
+                    'disposition' => 'NOANSWER',
+                    'unique_id' => '1610778618.378',
+                ],
+                VoipWebhookEventType::CallMissed,
+                CallStatus::Missed,
+                CallDirection::Inbound,
+                null,
+            ],
         ];
+    }
+
+    public function test_incoming_call_webhook_maps_to_call_started(): void
+    {
+        $event = $this->adapter()->normalizeWebhook([
+            'event_name' => 'IncomingCall',
+            'number' => '09112322758',
+            'unique_id' => '1784985537.26183',
+            'cuid' => '1784985537.26183',
+            'entry_point' => '982191093492',
+        ]);
+
+        $this->assertSame(VoipWebhookEventType::CallStarted, $event->type);
+        $this->assertSame(CallStatus::Ringing, $event->status);
+        $this->assertSame(CallDirection::Inbound, $event->direction);
+        $this->assertSame('1784985537.26183', $event->callId);
+        $this->assertSame('09112322758', $event->sourceNumber);
+        $this->assertSame('982191093492', $event->destinationNumber);
+    }
+
+    public function test_incoming_call_with_space_in_event_name_is_recognized(): void
+    {
+        $event = $this->adapter()->normalizeWebhook([
+            'event_name' => 'Incoming Call',
+            'number' => '09120000000',
+            'cuid' => '1.2',
+            'entry_point' => 'E1',
+        ]);
+
+        $this->assertSame(VoipWebhookEventType::CallStarted, $event->type);
     }
 
     public function test_unknown_event_returns_unknown_type(): void

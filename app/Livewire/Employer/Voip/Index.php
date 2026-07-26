@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Employer\Voip;
 
+use App\Domain\Voip\Enums\CallStatus;
 use App\Enums\IntegrationSetupStatus;
 use App\Models\VoipCallLog;
 use App\Services\EmployerContext;
@@ -44,6 +45,12 @@ class Index extends Component
                 : 0,
             'monthCalls' => $isComplete
                 ? VoipCallLog::query()->where('organization_id', $organizationId)->whereMonth('started_at', now()->month)->count()
+                : 0,
+            'missedCalls' => $isComplete
+                ? VoipCallLog::query()
+                    ->where('organization_id', $organizationId)
+                    ->where('status', CallStatus::Missed)
+                    ->count()
                 : 0,
             'recentCalls' => $isComplete
                 ? VoipCallLog::query()->where('organization_id', $organizationId)->latest('started_at')->limit(10)->get()

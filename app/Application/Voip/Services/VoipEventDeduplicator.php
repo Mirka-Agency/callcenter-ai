@@ -17,12 +17,26 @@ class VoipEventDeduplicator
 
         return match ($event->type) {
             VoipWebhookEventType::CallStarted => $existing->started_at !== null
-                && $existing->status === CallStatus::Ringing,
-            VoipWebhookEventType::CallAnswered => $existing->status === CallStatus::Answered,
+                || in_array($existing->status, [
+                    CallStatus::Ringing,
+                    CallStatus::Answered,
+                    CallStatus::Completed,
+                    CallStatus::Missed,
+                    CallStatus::Busy,
+                    CallStatus::Failed,
+                    CallStatus::Cancelled,
+                ], true),
+            VoipWebhookEventType::CallAnswered => $existing->status === CallStatus::Answered
+                || $existing->status === CallStatus::Completed,
             VoipWebhookEventType::CallEnded => $existing->ended_at !== null
                 && $existing->status === CallStatus::Completed
                 && ($event->recordingUrl === null || $existing->recording_url === $event->recordingUrl),
-            VoipWebhookEventType::CallMissed => $existing->status === CallStatus::Missed,
+            VoipWebhookEventType::CallMissed => in_array($existing->status, [
+                CallStatus::Missed,
+                CallStatus::Busy,
+                CallStatus::Failed,
+                CallStatus::Cancelled,
+            ], true),
             VoipWebhookEventType::RecordingCreated => $existing->recording_url !== null
                 && ($event->recordingUrl === null || $existing->recording_url === $event->recordingUrl),
             default => false,

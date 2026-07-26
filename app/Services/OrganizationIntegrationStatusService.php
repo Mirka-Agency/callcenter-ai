@@ -95,8 +95,20 @@ class OrganizationIntegrationStatusService
             return false;
         }
 
-        return $connection->syncLogs()
+        // Verified API test, or live webhook traffic proving the endpoint is wired.
+        return $this->voipConnectionVerified($connection);
+    }
+
+    private function voipConnectionVerified(OrganizationVoipConnection $connection): bool
+    {
+        if ($connection->syncLogs()
             ->where('operation', VoipOperation::TestConnection)
+            ->where('status', VoipLogStatus::Success)
+            ->exists()) {
+            return true;
+        }
+
+        return $connection->webhookLogs()
             ->where('status', VoipLogStatus::Success)
             ->exists();
     }

@@ -39,6 +39,31 @@ class IncomingCallService
             }
         }
 
+        // Simotel often sends IncomingCall twice: once with cuid, once without.
+        // Collapse same-number rings within the popup window.
+        if ($callerNumber !== '') {
+            $existingByNumber = IncomingCallSession::query()
+                ->where('organization_id', $organizationId)
+                ->where('caller_number', $callerNumber)
+                ->where('status', IncomingCallStatus::Ringing)
+                ->where('ring_started_at', '>=', now()->subMinutes(5))
+                ->latest('id')
+                ->first();
+
+            if ($existingByNumber) {
+                if ($externalCallId && blank($existingByNumber->external_call_id)) {
+                    $existingByNumber->update([
+                        'external_call_id' => $externalCallId,
+                        'voip_call_log_id' => $payload['voip_call_log_id'] ?? $existingByNumber->voip_call_log_id,
+                        'organization_voip_connection_id' => $payload['organization_voip_connection_id']
+                            ?? $existingByNumber->organization_voip_connection_id,
+                    ]);
+                }
+
+                return $existingByNumber->fresh() ?? $existingByNumber;
+            }
+        }
+
         $context = $this->contextBuilder->build($organizationId, $customerPhone, $customerName);
 
         $session = IncomingCallSession::query()->create([

@@ -34,9 +34,10 @@
             </p>
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-3" data-tour="voip-stats">
+        <div class="grid gap-4 sm:grid-cols-4" data-tour="voip-stats">
             <x-saas.stat-card label="تماس‌های امروز" :value="$todayCalls" />
             <x-saas.stat-card label="این ماه" :value="$monthCalls" />
+            <x-saas.stat-card label="از دست‌رفته" :value="$missedCalls" />
             <x-saas.stat-card label="اتصالات" :value="$connections->where('is_active', true)->count()" />
         </div>
 
@@ -93,17 +94,32 @@
             <h2 class="text-lg font-semibold">تماس‌های اخیر</h2>
             <p class="mt-1 text-sm text-zinc-500">شناسه تماس‌گیرنده در ستون «از» برای تماس‌های ورودی نمایش داده می‌شود.</p>
             <table class="saas-table mt-4">
-                <thead><tr><th>جهت</th><th>شناسه تماس‌گیرنده (از)</th><th>به</th><th>شروع</th></tr></thead>
+                <thead><tr><th>جهت</th><th>شناسه تماس‌گیرنده (از)</th><th>به</th><th>وضعیت</th><th>شروع</th></tr></thead>
                 <tbody>
                     @forelse ($recentCalls as $call)
                         <tr>
                             <td>{{ $call->direction?->label() ?? '—' }}</td>
                             <td>{{ $call->source_number ?: '—' }}</td>
                             <td>{{ $call->destination_number }}</td>
+                            <td>
+                                @if ($call->status)
+                                    <span @class([
+                                        'inline-flex rounded-md px-2 py-0.5 text-xs font-medium',
+                                        'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300' => $call->status->value === 'missed' || $call->status->value === 'busy' || $call->status->value === 'failed',
+                                        'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' => $call->status->value === 'completed' || $call->status->value === 'answered',
+                                        'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' => $call->status->value === 'ringing' || $call->status->value === 'initiated',
+                                        'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300' => ! in_array($call->status->value, ['missed', 'busy', 'failed', 'completed', 'answered', 'ringing', 'initiated'], true),
+                                    ])>
+                                        {{ $call->status->label() }}
+                                    </span>
+                                @else
+                                    —
+                                @endif
+                            </td>
                             <td>{{ shamsi($call->started_at, 'datetime') }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="text-center text-zinc-500">هنوز تماسی از طریق VoIP ثبت نشده — پس از اتصال، تماس‌های ورودی اینجا دیده می‌شوند.</td></tr>
+                        <tr><td colspan="5" class="text-center text-zinc-500">هنوز تماسی از طریق VoIP ثبت نشده — پس از اتصال، تماس‌های ورودی اینجا دیده می‌شوند.</td></tr>
                     @endforelse
                 </tbody>
             </table>

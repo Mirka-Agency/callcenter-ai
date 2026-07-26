@@ -231,6 +231,7 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
     {
         $eventName = strtolower(trim((string) ($payload['event_name'] ?? $payload['event'] ?? '')));
         $eventName = preg_replace('/\s+/', ' ', $eventName) ?? $eventName;
+        $eventNameCompact = str_replace(' ', '', $eventName);
 
         if ($eventName === 'cdr') {
             return $this->normalizeCdr($payload);
@@ -240,8 +241,36 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
             return $this->normalizeNewState($payload);
         }
 
+        // Docs: IncomingCall / Incoming Call — caller number + entry_point + cuid/unique_id.
+        // @see https://simotel.com/wiki/en/developers/simotelwebhooks/events/incoming_call/
+        if ($eventNameCompact === 'incomingcall') {
+            return $this->normalizeIncomingCall($payload);
+        }
+
         return new NormalizedWebhookEvent(
             type: VoipWebhookEventType::Unknown,
+            rawPayload: $payload,
+            provider: $this->getProviderCode()->value,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function normalizeIncomingCall(array $payload): NormalizedWebhookEvent
+    {
+        $callId = $this->extractCallId($payload);
+        $number = isset($payload['number']) ? trim((string) $payload['number']) : '';
+        $entryPoint = isset($payload['entry_point']) ? trim((string) $payload['entry_point']) : '';
+
+        return new NormalizedWebhookEvent(
+            type: VoipWebhookEventType::CallStarted,
+            callId: $callId,
+            direction: CallDirection::Inbound,
+            sourceNumber: $number !== '' ? $number : null,
+            destinationNumber: $entryPoint !== '' ? $entryPoint : null,
+            status: CallStatus::Ringing,
+            startedAt: now()->toDateTimeString(),
             rawPayload: $payload,
             provider: $this->getProviderCode()->value,
         );
@@ -343,7 +372,9 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
         }
 
         $disposition = strtolower(str_replace(['_', '-'], ' ', (string) ($payload['disposition'] ?? '')));
-        if (str_contains($disposition, 'no answer') || str_contains($disposition, 'noanswered') || str_contains($disposition, 'busy')) {
+        if (str_contains($disposition, 'no answer')
+            || str_contains($disposition, 'noanswer')
+            || str_contains($disposition, 'busy')) {
             return null;
         }
 
@@ -520,10 +551,15 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
     /** @return array{0: VoipWebhookEventType, 1: CallStatus} */
     private function mapDisposition(string $disposition, bool $hasRecording): array
     {
+        // Normalize first so NOANSWER / no_answer / "NO ANSWER" share one path.
+        // Important: check "noanswer" before "answer" — otherwise NOANSWER matches answer.
         return match (true) {
             str_contains($disposition, 'no answer'),
-            str_contains($disposition, 'noanswered') => [VoipWebhookEventType::CallMissed, CallStatus::Missed],
+            str_contains($disposition, 'noanswer') => [VoipWebhookEventType::CallMissed, CallStatus::Missed],
             str_contains($disposition, 'busy') => [VoipWebhookEventType::CallMissed, CallStatus::Busy],
+            str_contains($disposition, 'failed'),
+            str_contains($disposition, 'congestion'),
+            str_contains($disposition, 'cancel') => [VoipWebhookEventType::CallMissed, CallStatus::Failed],
             str_contains($disposition, 'answer') => [
                 VoipWebhookEventType::CallEnded,
                 CallStatus::Completed,
@@ -531,6 +567,45 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
             $hasRecording => [VoipWebhookEventType::CallEnded, CallStatus::Completed],
             default => [VoipWebhookEventType::CallEnded, CallStatus::Completed],
         };
+    }
+
+    /**
+     * Map a Quick Search / CDR row into a terminal webhook event.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    public function normalizeOutcomeFromCallRow(string $callId, array $row): NormalizedWebhookEvent
+    {
+        $disposition = strtolower(str_replace(['_', '-'], ' ', (string) ($row['disposition'] ?? '')));
+        $record = $row['record'] ?? $row['recording'] ?? $row['file'] ?? $row['audio'] ?? null;
+        $recordingUrl = is_string($record) && trim($record) !== ''
+            ? self::RECORDING_URL_PREFIX.trim($record)
+            : null;
+
+        [$type, $status] = $this->mapDisposition($disposition, $recordingUrl !== null);
+
+        // Still ringing in API with no terminal disposition → treat as missed after resolve delay.
+        if ($disposition === '' && $recordingUrl === null) {
+            $type = VoipWebhookEventType::CallMissed;
+            $status = CallStatus::Missed;
+        }
+
+        return new NormalizedWebhookEvent(
+            type: $type,
+            callId: $callId,
+            direction: $this->mapDirection((string) ($row['type'] ?? 'incoming')),
+            sourceNumber: isset($row['src']) ? (string) $row['src'] : null,
+            destinationNumber: isset($row['dst']) ? (string) $row['dst'] : (isset($row['did']) ? (string) $row['did'] : null),
+            status: $status,
+            recordingUrl: $recordingUrl,
+            startedAt: $this->normalizeTimestamp($row['starttime'] ?? $row['start'] ?? $row['start_time'] ?? null),
+            endedAt: $this->normalizeTimestamp($row['endtime'] ?? $row['end'] ?? $row['end_time'] ?? null),
+            duration: isset($row['duration'])
+                ? (int) $row['duration']
+                : (isset($row['billsec']) ? (int) $row['billsec'] : null),
+            rawPayload: $row,
+            provider: $this->getProviderCode()->value,
+        );
     }
 
     private function mapDirection(string $type): ?CallDirection

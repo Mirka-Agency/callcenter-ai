@@ -138,6 +138,25 @@ class OrganizationIntegrationStatusServiceTest extends TestCase
         );
     }
 
+    public function test_voip_is_complete_when_webhook_traffic_proves_wiring(): void
+    {
+        $organization = Organization::factory()->create();
+        $provider = $this->createVoipProvider();
+        $connection = $this->createVoipConnection($organization, $provider);
+
+        $connection->webhookLogs()->create([
+            'event_type' => 'call.ended',
+            'status' => VoipLogStatus::Success,
+            'message' => 'webhook_received',
+            'payload' => ['event_name' => 'Cdr'],
+        ]);
+
+        $this->assertSame(
+            IntegrationSetupStatus::Complete,
+            $this->service->voipStatus($organization),
+        );
+    }
+
     public function test_system_ready_when_both_integrations_are_complete(): void
     {
         $organization = Organization::factory()->create();
