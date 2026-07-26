@@ -259,9 +259,13 @@ docker compose -f docker-compose.onprem.yml --profile realtime up -d
 
 ## ۶. بوت‌استرپ یک سازمان (ساخت ادمین + کارفرما)
 
-**فقط یک‌بار** بعد از اینکه `.env` رمزها را درست نوشته‌اید:
+**فقط `key:generate` کاربر نمی‌سازد.** بعد از اینکه `.env` رمزها را درست نوشته‌اید:
 
 ```bash
+# اگر .env را بعد از up اول ویرایش کردید، حتماً recreate تا ONPREM_* داخل کانتینر بیاید:
+docker compose -f docker-compose.onprem.yml up -d --force-recreate app
+
+docker compose -f docker-compose.onprem.yml exec app php artisan config:clear
 docker compose -f docker-compose.onprem.yml exec app php artisan db:seed --class=OnPremSeeder --force
 ```
 
@@ -275,13 +279,24 @@ docker compose -f docker-compose.onprem.yml exec app php artisan db:seed --class
 
 ورود آزمایشی:
 
-1. `http://IP:8000/admin` → ایمیل و رمز `ONPREM_ADMIN_*`
-2. `http://IP:8000/app` → ایمیل و رمز `ONPREM_EMPLOYER_*`
+| نقش | آدرس | اعتبار |
+|-----|------|--------|
+| ادمین شما | `/admin` | `ONPREM_ADMIN_EMAIL` + `ONPREM_ADMIN_PASSWORD` |
+| کارفرما | `/login` → `/app` | `ONPREM_EMPLOYER_EMAIL` + `ONPREM_EMPLOYER_PASSWORD` |
 
-اگر رمز را اشتباه گذاشته‌اید:
+اگر Filament می‌گوید «مشخصات واردشده با اطلاعات ما سازگار نیست»:
 
-- یا در `.env` درست کنید و دوباره همان seeder را بزنید (`updateOrCreate` رمز را عوض می‌کند)،
-- یا از پنل ادمین (اگر هنوز با رمز قبلی وارد می‌شوید) کاربر را ویرایش کنید.
+```bash
+# لیست ایمیل‌های موجود
+docker compose -f docker-compose.onprem.yml exec app php artisan tinker --execute="echo App\Models\User::query()->pluck('email')->join(PHP_EOL);"
+
+# seed دوباره با رمز فعلی .env
+docker compose -f docker-compose.onprem.yml up -d --force-recreate app
+docker compose -f docker-compose.onprem.yml exec app php artisan config:clear
+docker compose -f docker-compose.onprem.yml exec app php artisan db:seed --class=OnPremSeeder --force
+```
+
+با ایمیل/رمز **دقیقاً همان** `ONPREM_ADMIN_*` داخل `.env` وارد `/admin` شوید (نه لزوماً `admin@example.com` مگر همان را نوشته باشید).
 
 ---
 

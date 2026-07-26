@@ -10,11 +10,14 @@ use App\Models\PlatformAiSettings;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use RuntimeException;
 
 /**
  * Bootstrap a single-employer on-prem install (no demo multi-org data).
+ *
+ * Reads ONPREM_* from the live environment first so a stale config:cache
+ * cannot seed the wrong password. Passwords are stored plain here and hashed
+ * by the User model cast (do not Hash::make twice).
  *
  * @see docs/on-prem.md
  */
@@ -24,10 +27,10 @@ class OnPremSeeder extends Seeder
     {
         $this->call(PlatformFoundationSeeder::class);
 
-        $adminEmail = $this->nonEmptyString(config('onprem.admin_email'), 'onprem.admin_email');
-        $adminPassword = $this->nonEmptyString(config('onprem.admin_password'), 'onprem.admin_password');
-        $employerEmail = $this->nonEmptyString(config('onprem.employer_email'), 'onprem.employer_email');
-        $employerPassword = $this->nonEmptyString(config('onprem.employer_password'), 'onprem.employer_password');
+        $adminEmail = $this->setting('ONPREM_ADMIN_EMAIL', 'onprem.admin_email', 'admin@example.com');
+        $adminPassword = $this->setting('ONPREM_ADMIN_PASSWORD', 'onprem.admin_password', 'password');
+        $employerEmail = $this->setting('ONPREM_EMPLOYER_EMAIL', 'onprem.employer_email', 'employer@example.com');
+        $employerPassword = $this->setting('ONPREM_EMPLOYER_PASSWORD', 'onprem.employer_password', 'password');
 
         if ($adminEmail === $employerEmail) {
             throw new RuntimeException('ONPREM_ADMIN_EMAIL and ONPREM_EMPLOYER_EMAIL must differ.');
@@ -36,8 +39,8 @@ class OnPremSeeder extends Seeder
         User::query()->updateOrCreate(
             ['email' => $adminEmail],
             [
-                'name' => (string) config('onprem.admin_name', 'Super Admin'),
-                'password' => Hash::make($adminPassword),
+                'name' => $this->setting('ONPREM_ADMIN_NAME', 'onprem.admin_name', 'Super Admin'),
+                'password' => $adminPassword,
                 'role' => UserRole::SuperAdmin,
                 'email_verified_at' => now(),
             ],
@@ -46,8 +49,8 @@ class OnPremSeeder extends Seeder
         $employer = User::query()->updateOrCreate(
             ['email' => $employerEmail],
             [
-                'name' => (string) config('onprem.employer_name', 'مدیر سازمان'),
-                'password' => Hash::make($employerPassword),
+                'name' => $this->setting('ONPREM_EMPLOYER_NAME', 'onprem.employer_name', 'مدیر سازمان'),
+                'password' => $employerPassword,
                 'role' => UserRole::Employer,
                 'email_verified_at' => now(),
             ],
@@ -56,10 +59,15 @@ class OnPremSeeder extends Seeder
         $organization = Organization::query()->updateOrCreate(
             ['user_id' => $employer->id],
             [
-                'title' => (string) config('onprem.org_title', 'سازمان محلی'),
+                'title' => $this->setting('ONPREM_ORG_TITLE', 'onprem.org_title', 'سازمان محلی'),
                 'disabled' => false,
                 'is_demo' => false,
-                'employer_can_manage_integrations' => (bool) config('onprem.employer_can_manage_integrations', true),
+                'employer_can_manage_integrations' => filter_var(
+                    $_ENV['ONPREM_EMPLOYER_CAN_MANAGE_INTEGRATIONS']
+                        ?? getenv('ONPREM_EMPLOYER_CAN_MANAGE_INTEGRATIONS')
+                        ?: config('onprem.employer_can_manage_integrations', true),
+                    FILTER_VALIDATE_BOOLEAN,
+                ),
             ],
         );
 
@@ -68,13 +76,17 @@ class OnPremSeeder extends Seeder
         $this->command?->info('On-prem bootstrap complete.');
         $this->command?->info("Admin:    {$adminEmail} → /admin");
         $this->command?->info("Employer: {$employerEmail} → /app");
-        $this->command?->warn('Change default passwords if you used example values.');
+        $this->command?->warn('Use the exact ONPREM_* email/password from the container env (recreate app after editing .env).');
     }
 
     private function seedWallet(Organization $organization): void
     {
         $currency = PlatformAiSettings::currencyCode();
-        $balance = (float) config('onprem.wallet_balance', 100_000_000);
+        $balance = (float) (
+            $_ENV['ONPREM_WALLET_BALANCE']
+                ?? getenv('ONPREM_WALLET_BALANCE')
+                ?: config('onprem.wallet_balance', 100_000_000)
+        );
 
         $wallet = OrganizationWallet::query()->firstOrCreate(
             ['organization_id' => $organization->id],
@@ -106,12 +118,19 @@ class OnPremSeeder extends Seeder
         );
     }
 
-    private function nonEmptyString(mixed $value, string $configKey): string
+    private function setting(string $envKey, string $configKey, string $default): string
     {
-        if (! is_string($value) || trim($value) === '') {
-            throw new RuntimeException("Missing required config: {$configKey}");
+        $fromEnv = $_ENV[$envKey] ?? getenv($envKey);
+        if (is_string($fromEnv) && trim($fromEnv) !== '' && $fromEnv !== false) {
+            return trim($fromEnv);
         }
 
-        return trim($value);
+        $fromConfig = config($configKey, $default);
+
+        if (! is_string($fromConfig) || trim($fromConfig) === '') {
+            throw new RuntimeException("Missing required setting: {$envKey} / {$configKey}");
+        }
+
+        return trim($fromConfig);
     }
 }
