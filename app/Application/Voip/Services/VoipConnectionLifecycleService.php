@@ -4,6 +4,7 @@ namespace App\Application\Voip\Services;
 
 use App\Application\Voip\Jobs\SyncVoipExtensionsJob;
 use App\Application\Voip\VoipManager;
+use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Domain\Voip\ValueObjects\VoipOperationResult;
 use App\Models\EmployeeIntegrationMeta;
 use App\Models\OrganizationVoipConnection;
@@ -16,7 +17,7 @@ class VoipConnectionLifecycleService
     {
         $token = OrganizationVoipConnection::normalizeWebhookTokenInput($data['webhook_token'] ?? null);
 
-        return OrganizationVoipConnection::query()->create([
+        $connection = OrganizationVoipConnection::query()->create([
             'organization_id' => $organizationId,
             'voip_provider_id' => $data['voip_provider_id'],
             'name' => $data['name'],
@@ -26,6 +27,15 @@ class VoipConnectionLifecycleService
             'is_default' => (bool) ($data['is_default'] ?? false),
             'is_active' => (bool) ($data['is_active'] ?? true),
         ]);
+
+        $connection->loadMissing('provider');
+
+        // Custom / Asterisk is webhook-only; mark ready so employers see setup guides immediately.
+        if ($connection->provider?->code === VoipProviderCode::Custom->value) {
+            $this->test($connection);
+        }
+
+        return $connection->fresh(['provider']);
     }
 
     /** @param  array<string, mixed>  $data */

@@ -8,6 +8,7 @@ use App\Domain\Crm\Enums\CrmOperation;
 use App\Domain\Voip\DTOs\VoipCredentials;
 use App\Domain\Voip\Enums\VoipLogStatus;
 use App\Domain\Voip\Enums\VoipOperation;
+use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Enums\IntegrationSetupStatus;
 use App\Models\Organization;
 use App\Models\OrganizationCrmConnection;
@@ -86,16 +87,24 @@ class OrganizationIntegrationStatusService
             return false;
         }
 
-        $credentials = VoipCredentials::fromArray($connection->credentials ?? []);
-        if (blank($credentials->apiUrl) || blank($credentials->authToken())) {
-            return false;
+        $isWebhookOnly = $provider->code === VoipProviderCode::Custom->value;
+
+        if (! $isWebhookOnly) {
+            $credentials = VoipCredentials::fromArray($connection->credentials ?? []);
+            if (blank($credentials->apiUrl) || blank($credentials->authToken())) {
+                return false;
+            }
         }
 
         if (! $this->voipIngestionConfigured($connection)) {
             return false;
         }
 
-        // Verified API test, or live webhook traffic proving the endpoint is wired.
+        if ($isWebhookOnly && blank($connection->webhook_token)) {
+            return false;
+        }
+
+        // Verified API/webhook test, or live webhook traffic proving the endpoint is wired.
         return $this->voipConnectionVerified($connection);
     }
 

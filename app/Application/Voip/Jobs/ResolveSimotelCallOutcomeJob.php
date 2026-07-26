@@ -5,6 +5,7 @@ namespace App\Application\Voip\Jobs;
 use App\Application\Voip\Services\VoipConnectionResolver;
 use App\Application\Voip\Services\VoipEventIngestionService;
 use App\Domain\Voip\DTOs\NormalizedWebhookEvent;
+use App\Domain\Voip\DTOs\VoipConnectionConfig;
 use App\Domain\Voip\Enums\CallDirection;
 use App\Domain\Voip\Enums\CallStatus;
 use App\Domain\Voip\Enums\VoipEventSource;
@@ -20,8 +21,8 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
 /**
- * After IncomingCall, Simotel may never send a CDR (common for unanswered).
- * Resolve final disposition via Quick Search by cuid.
+ * After IncomingCall, wait then resolve disposition via Quick Search.
+ * If API returns Access denied, leave ringing and wait for CDR webhook — never false-miss.
  *
  * @see https://simotel.com/wiki/fa/developers/simotelapi/v4/report/quick_search/
  */
@@ -29,12 +30,13 @@ class ResolveSimotelCallOutcomeJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
+    public int $tries = 5;
 
     public function __construct(
         public int $organizationId,
         public int $connectionId,
         public string $callId,
+        public bool $force = false,
     ) {
         $this->onQueue((string) config('voip.queue', 'default'));
     }
@@ -48,7 +50,11 @@ class ResolveSimotelCallOutcomeJob implements ShouldQueue
             ->where('external_call_id', $this->callId)
             ->first();
 
-        if (! $callLog || $this->isTerminalStatus($callLog->status)) {
+        if (! $callLog) {
+            return;
+        }
+
+        if ($this->isTerminalStatus($callLog->status) && ! $this->shouldForceRecheck($callLog)) {
             return;
         }
 
@@ -58,7 +64,32 @@ class ResolveSimotelCallOutcomeJob implements ShouldQueue
             return;
         }
 
-        $details = $adapter->getCallDetails($this->callId);
+        $details = $adapter->getCallDetailsWithContext($this->callId, [
+            'started_at' => $callLog->started_at,
+            'source_number' => $callLog->source_number,
+        ]);
+
+        // API key lacks reports/quick permission — do NOT mark missed.
+        // Final disposition must come from the CDR webhook (or after permissions are fixed).
+        if ($adapter->isAccessDeniedResult($details)) {
+            $payload = is_array($callLog->raw_payload) ? $callLog->raw_payload : [];
+            $callLog->update([
+                'raw_payload' => array_merge($payload, [
+                    'outcome_error' => 'simotel_api_access_denied',
+                    'outcome_message' => $details->error,
+                    'outcome_checked_at' => now()->toIso8601String(),
+                ]),
+            ]);
+
+            Log::warning('simotel_call_outcome_access_denied', [
+                'connection_id' => $this->connectionId,
+                'call_id' => $this->callId,
+                'message' => $details->error,
+            ]);
+
+            return;
+        }
+
         $rows = is_array($details->data['rows'] ?? null) ? $details->data['rows'] : [];
 
         if ($details->success && $rows !== []) {
@@ -67,6 +98,13 @@ class ResolveSimotelCallOutcomeJob implements ShouldQueue
             $event = $adapter->normalizeOutcomeFromCallRow($this->callId, $row)
                 ->withSource(VoipEventSource::Polling, VoipProviderCode::Simotel->value);
 
+            if ($event->type === VoipWebhookEventType::CallStarted
+                || $event->status === CallStatus::Ringing) {
+                $this->retryOrMiss($ingestion, $config, $callLog, 'incomplete_row');
+
+                return;
+            }
+
             $ingestion->ingest($config, $event, $row, forceReplay: true);
 
             Log::info('simotel_call_outcome_resolved', [
@@ -74,12 +112,70 @@ class ResolveSimotelCallOutcomeJob implements ShouldQueue
                 'call_id' => $this->callId,
                 'event_type' => $event->type->value,
                 'status' => $event->status?->value,
+                'attempt' => $this->attempts(),
             ]);
 
             return;
         }
 
-        // No CDR / Quick Search row after the grace period → missed.
+        $this->retryOrMiss(
+            $ingestion,
+            $config,
+            $callLog,
+            $details->success ? 'empty_rows' : 'api_failed',
+            $details->data,
+        );
+    }
+
+    private function shouldForceRecheck(VoipCallLog $callLog): bool
+    {
+        if (! $this->force) {
+            return false;
+        }
+
+        if ($callLog->status !== CallStatus::Missed) {
+            return false;
+        }
+
+        $resolvedBy = data_get($callLog->raw_payload, 'resolved_by');
+
+        return $resolvedBy === 'simotel_outcome_timeout' || $resolvedBy === null;
+    }
+
+    private function retryOrMiss(
+        VoipEventIngestionService $ingestion,
+        VoipConnectionConfig $config,
+        VoipCallLog $callLog,
+        string $reason,
+        mixed $apiData = null,
+    ): void {
+        $retrySeconds = max(30, (int) config('voip.simotel_outcome_retry_seconds', 60));
+
+        if ($this->attempts() < $this->tries) {
+            Log::info('simotel_call_outcome_retry', [
+                'connection_id' => $this->connectionId,
+                'call_id' => $this->callId,
+                'reason' => $reason,
+                'attempt' => $this->attempts(),
+                'retry_in' => $retrySeconds,
+            ]);
+
+            $this->release($retrySeconds);
+
+            return;
+        }
+
+        if ($this->force && $callLog->status === CallStatus::Missed) {
+            Log::info('simotel_call_outcome_recheck_unchanged', [
+                'connection_id' => $this->connectionId,
+                'call_id' => $this->callId,
+                'reason' => $reason,
+            ]);
+
+            return;
+        }
+
+        // Still no API row and no CDR webhook after retries → missed.
         $event = new NormalizedWebhookEvent(
             type: VoipWebhookEventType::CallMissed,
             callId: $this->callId,
@@ -91,7 +187,8 @@ class ResolveSimotelCallOutcomeJob implements ShouldQueue
             endedAt: now()->toDateTimeString(),
             rawPayload: [
                 'resolved_by' => 'simotel_outcome_timeout',
-                'quick_search' => $details->data,
+                'reason' => $reason,
+                'quick_search' => $apiData,
             ],
             source: VoipEventSource::Polling,
             provider: VoipProviderCode::Simotel->value,
@@ -102,7 +199,8 @@ class ResolveSimotelCallOutcomeJob implements ShouldQueue
         Log::info('simotel_call_outcome_marked_missed', [
             'connection_id' => $this->connectionId,
             'call_id' => $this->callId,
-            'reason' => $details->success ? 'empty_rows' : 'api_failed',
+            'reason' => $reason,
+            'attempts' => $this->attempts(),
         ]);
     }
 

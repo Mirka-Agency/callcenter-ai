@@ -18,7 +18,7 @@ class ScheduleSimotelCallOutcomeResolution
             return;
         }
 
-        $delaySeconds = max(30, (int) config('voip.simotel_outcome_resolve_delay_seconds', 120));
+        $delaySeconds = max(30, (int) config('voip.simotel_outcome_resolve_delay_seconds', 90));
 
         ResolveSimotelCallOutcomeJob::dispatch(
             $event->organizationId,

@@ -46,7 +46,7 @@
                 <div class="saas-card space-y-3">
                     <div>
                         <h3 class="font-semibold">{{ $connection->name }}</h3>
-                        <p class="text-sm text-zinc-500">{{ $connection->provider->name }}</p>
+                        <p class="text-sm text-zinc-500">{{ \App\Domain\Voip\Enums\VoipProviderCode::tryFrom($connection->provider->code)?->label() ?? $connection->provider->name }}</p>
                     </div>
 
                     <x-saas.webhook-url :url="$connection->inbound_webhook_url" />
@@ -67,13 +67,9 @@
                     </button>
 
                     @if ($connection->provider->code === 'custom')
-                        <details class="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-700 dark:bg-zinc-900/50">
-                            <summary class="cursor-pointer font-medium text-zinc-700 dark:text-zinc-200">
-                                {{ __('ui.voip.custom_payload_title') }}
-                            </summary>
-                            <p class="mt-2 text-zinc-500">{{ __('ui.voip.custom_payload_hint') }}</p>
-                            <pre class="mt-2 overflow-x-auto rounded bg-white p-2 font-mono text-[11px] text-zinc-700 dark:bg-zinc-950 dark:text-zinc-200" dir="ltr">{{ json_encode(\App\Infrastructure\Voip\Adapters\CustomVoipAdapter::sampleWebhookPayload(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
-                        </details>
+                        @include('livewire.employer.voip.partials.asterisk-guide', [
+                            'webhookUrl' => $connection->inbound_webhook_url,
+                        ])
                     @endif
                 </div>
             @endforeach
@@ -92,7 +88,9 @@
 
         <div class="saas-card">
             <h2 class="text-lg font-semibold">تماس‌های اخیر</h2>
-            <p class="mt-1 text-sm text-zinc-500">شناسه تماس‌گیرنده در ستون «از» برای تماس‌های ورودی نمایش داده می‌شود.</p>
+            <p class="mt-1 text-sm text-zinc-500">
+                {{ $recentCallsHint }}
+            </p>
             <table class="saas-table mt-4">
                 <thead><tr><th>جهت</th><th>شناسه تماس‌گیرنده (از)</th><th>به</th><th>وضعیت</th><th>شروع</th></tr></thead>
                 <tbody>

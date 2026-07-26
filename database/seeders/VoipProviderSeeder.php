@@ -59,7 +59,7 @@ class VoipProviderSeeder extends Seeder
         VoipProvider::query()->updateOrCreate(
             ['code' => VoipProviderCode::Custom->value],
             [
-                'name' => 'Custom',
+                'name' => 'سفارشی / Asterisk',
                 'adapter_class' => CustomVoipAdapter::class,
                 'supports_webhook' => true,
                 'supports_polling' => false,

@@ -36,10 +36,21 @@ class Index extends Component
             ? $organization->voipConnections()->with('provider')->get()
             : collect();
 
+        $providerCodes = $connections->pluck('provider.code')->filter()->unique()->values();
+        $hasCustom = $providerCodes->contains('custom');
+        $hasSimotelFamily = $providerCodes->contains(fn (string $code): bool => in_array($code, ['simotel', 'novatel'], true));
+
+        $recentCallsHint = match (true) {
+            $hasCustom && $hasSimotelFamily => __('ui.voip.recent_calls_hint_mixed'),
+            $hasCustom => __('ui.voip.recent_calls_hint_custom'),
+            default => __('ui.voip.recent_calls_hint_simotel'),
+        };
+
         return view('livewire.employer.voip.index', [
             'connections' => $connections,
             'integrationReadiness' => $readiness->toArray(),
             'isComplete' => $isComplete,
+            'recentCallsHint' => $recentCallsHint,
             'todayCalls' => $isComplete
                 ? VoipCallLog::query()->where('organization_id', $organizationId)->whereDate('started_at', today())->count()
                 : 0,

@@ -201,6 +201,72 @@ class OrganizationIntegrationStatusServiceTest extends TestCase
         ], $readiness->toArray());
     }
 
+    public function test_voip_custom_is_complete_without_api_credentials_when_verified(): void
+    {
+        $organization = Organization::factory()->create();
+        $provider = $this->createVoipProvider([
+            'name' => 'سفارشی / Asterisk',
+            'code' => VoipProviderCode::Custom->value,
+        ]);
+        $connection = $this->createVoipConnection($organization, $provider, [
+            'credentials' => [],
+            'webhook_token' => str_repeat('a', 48),
+        ]);
+
+        $connection->syncLogs()->create([
+            'operation' => VoipOperation::TestConnection,
+            'status' => VoipLogStatus::Success,
+            'message' => 'OK',
+        ]);
+
+        $this->assertTrue($this->service->isVoipConnectionComplete($connection));
+        $this->assertSame(
+            IntegrationSetupStatus::Complete,
+            $this->service->voipStatus($organization),
+        );
+    }
+
+    public function test_voip_custom_is_incomplete_without_webhook_token(): void
+    {
+        $organization = Organization::factory()->create();
+        $provider = $this->createVoipProvider([
+            'name' => 'سفارشی / Asterisk',
+            'code' => VoipProviderCode::Custom->value,
+        ]);
+        $connection = $this->createVoipConnection($organization, $provider, [
+            'credentials' => [],
+            'webhook_token' => '',
+        ]);
+
+        // Bypass model boot regenerating blank tokens for this assertion.
+        $connection->forceFill(['webhook_token' => ''])->saveQuietly();
+
+        $connection->syncLogs()->create([
+            'operation' => VoipOperation::TestConnection,
+            'status' => VoipLogStatus::Success,
+            'message' => 'OK',
+        ]);
+
+        $this->assertFalse($this->service->isVoipConnectionComplete($connection->fresh(['provider'])));
+    }
+
+    public function test_voip_api_provider_still_requires_credentials(): void
+    {
+        $organization = Organization::factory()->create();
+        $provider = $this->createVoipProvider();
+        $connection = $this->createVoipConnection($organization, $provider, [
+            'credentials' => [],
+        ]);
+
+        $connection->syncLogs()->create([
+            'operation' => VoipOperation::TestConnection,
+            'status' => VoipLogStatus::Success,
+            'message' => 'OK',
+        ]);
+
+        $this->assertFalse($this->service->isVoipConnectionComplete($connection->fresh(['provider'])));
+    }
+
     /** @param array<string, mixed> $overrides */
     private function createVoipProvider(array $overrides = []): VoipProvider
     {

@@ -28,7 +28,10 @@ return [
     // Queue *name* (e.g. default), not the QUEUE_CONNECTION driver (database/redis).
     'queue' => env('VOIP_QUEUE', 'default'),
 
-    // After IncomingCall, wait before Quick Search fallback for answered/missed.
-    'simotel_outcome_resolve_delay_seconds' => (int) env('VOIP_SIMOTEL_OUTCOME_DELAY', 120),
+    // After IncomingCall, wait before Quick Search for answered/missed (~1–2 min).
+    'simotel_outcome_resolve_delay_seconds' => (int) env('VOIP_SIMOTEL_OUTCOME_DELAY', 90),
+
+    // Retry Quick Search when CDR is not indexed yet.
+    'simotel_outcome_retry_seconds' => (int) env('VOIP_SIMOTEL_OUTCOME_RETRY', 60),
 
 ];

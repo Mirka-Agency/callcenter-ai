@@ -20,7 +20,7 @@
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h3 class="font-semibold">{{ $connection->name }}</h3>
-                        <p class="text-sm text-zinc-500">{{ $connection->provider->name }}</p>
+                        <p class="text-sm text-zinc-500">{{ \App\Domain\Voip\Enums\VoipProviderCode::tryFrom($connection->provider->code)?->label() ?? $connection->provider->name }}</p>
                         <div class="mt-2 flex flex-wrap gap-2 text-xs">
                             @if ($connection->is_default)
                                 <span class="saas-badge">پیش‌فرض</span>

@@ -119,6 +119,23 @@ class CustomVoipAdapterTest extends TestCase
         ];
     }
 
+    public function test_sample_curl_and_dialplan_include_webhook_url(): void
+    {
+        $url = 'https://app.example.com/webhooks/voip/'.str_repeat('b', 48);
+
+        $curl = CustomVoipAdapter::sampleCurlCommand($url);
+        $dialplan = CustomVoipAdapter::sampleDialplan($url);
+        $shell = CustomVoipAdapter::sampleShellHelper($url);
+
+        $this->assertStringContainsString($url, $curl);
+        $this->assertStringContainsString('Content-Type: application/json', $curl);
+        $this->assertStringContainsString($url, $dialplan);
+        $this->assertStringContainsString('${UNIQUEID}', $dialplan);
+        $this->assertStringContainsString('exten => h,1', $dialplan);
+        $this->assertStringContainsString($url, $shell);
+        $this->assertStringContainsString('jq -n', $shell);
+    }
+
     private function adapter(): CustomVoipAdapter
     {
         $adapter = new CustomVoipAdapter;

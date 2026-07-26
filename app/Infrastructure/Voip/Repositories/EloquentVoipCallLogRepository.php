@@ -26,10 +26,20 @@ class EloquentVoipCallLogRepository implements VoipCallLogRepositoryInterface
             }
 
             // Prefer richer terminal statuses over ringing when merging.
-            if (isset($attributes['status'], $existing->status)
-                && $existing->status?->value === 'completed'
-                && in_array($attributes['status'], ['ringing', 'initiated'], true)) {
-                unset($attributes['status']);
+            // Never let a later miss timeout overwrite a completed/answered CDR.
+            if (isset($attributes['status'], $existing->status)) {
+                $existingStatus = $existing->status?->value;
+                $incomingStatus = $attributes['status'];
+
+                if (in_array($existingStatus, ['completed', 'answered'], true)
+                    && in_array($incomingStatus, ['ringing', 'initiated', 'missed'], true)) {
+                    unset($attributes['status']);
+                }
+
+                if ($existingStatus === 'completed'
+                    && in_array($incomingStatus, ['ringing', 'initiated'], true)) {
+                    unset($attributes['status']);
+                }
             }
 
             $existing->update($attributes);

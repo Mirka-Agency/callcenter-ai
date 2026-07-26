@@ -16,3 +16,5 @@ Artisan::command('integrations:sync-meta-definitions', function () {
 })->purpose('Sync employee integration fields declared by provider adapters');
 
 Schedule::command('recordings:purge-expired')->daily();
+Schedule::command('voip:resolve-outcomes --older-than=90 --limit=50')->everyMinute();
+Schedule::command('voip:resolve-outcomes --fix-missed --older-than=0 --limit=30')->everyFiveMinutes();

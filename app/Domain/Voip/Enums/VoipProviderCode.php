@@ -13,7 +13,7 @@ enum VoipProviderCode: string
         return match ($this) {
             self::Novatel => 'Navatel',
             self::Simotel => 'Simotel',
-            self::Custom => 'سفارشی',
+            self::Custom => 'سفارشی / Asterisk',
         };
     }
 

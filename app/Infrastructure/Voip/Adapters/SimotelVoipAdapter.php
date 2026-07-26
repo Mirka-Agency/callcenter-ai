@@ -71,16 +71,28 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
             'alike' => 'true',
         ]);
 
-        if ($response->failed() || $this->isSimotelFailurePayload($response->json())) {
+        $json = $response->json();
+
+        if ($this->isAccessDeniedPayload(is_array($json) ? $json : null)) {
+            return VoipOperationResult::failure(
+                error: 'Simotel API key is valid but Access denied for reports/quick/search. '
+                    .'In Simotel: enable permission reports/quick for this API user, and set username/password (Basic Auth) if required.',
+                data: array_merge(is_array($json) ? $json : [], ['denied' => true, 'permission' => 'reports/quick']),
+            );
+        }
+
+        if ($response->failed() || $this->isSimotelFailurePayload($json)) {
             return $this->parseHttpFailure(
-                message: $response->json('message') ?? $response->json('error') ?? $response->body(),
-                data: $response->json(),
+                message: is_array($json)
+                    ? (string) ($json['message'] ?? $json['error'] ?? $response->body())
+                    : $response->body(),
+                data: is_array($json) ? $json : null,
             );
         }
 
         return VoipOperationResult::success(
             message: 'Simotel VoIP connection successful.',
-            data: $response->json() ?? [],
+            data: is_array($json) ? $json : [],
         );
     }
 
@@ -96,6 +108,7 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
 
     /**
      * Resolve call details via official Quick Search by cuid, then Quick Info.
+     * Optionally widen with date_range / caller when cuid-only returns empty (common for delayed CDR index).
      *
      * @see https://simotel.com/wiki/fa/developers/simotelapi/v4/report/quick_search/
      */
@@ -104,9 +117,21 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
         return $this->callDetailsCache[$callId] ??= $this->fetchCallDetails($callId);
     }
 
-    private function fetchCallDetails(string $callId): VoipOperationResult
+    /**
+     * @param  array{started_at?: ?\DateTimeInterface|string|null, source_number?: ?string}  $context
+     */
+    public function getCallDetailsWithContext(string $callId, array $context = []): VoipOperationResult
+    {
+        $cacheKey = $callId.'|'.md5((string) json_encode($context));
+
+        return $this->callDetailsCache[$cacheKey] ??= $this->fetchCallDetails($callId, $context);
+    }
+
+    /** @param  array{started_at?: mixed, source_number?: ?string}  $context */
+    private function fetchCallDetails(string $callId, array $context = []): VoipOperationResult
     {
         // Docs: for call lookup by cuid, omit date_range and only pass cuid.
+        // Docs also use X-APIKEY + Basic Auth together.
         $search = $this->client()->post('reports/quick/search', [
             'conditions' => [
                 'from' => '',
@@ -121,14 +146,103 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
             'alike' => 'true',
         ]);
 
+        $searchJson = $search->json();
+        if ($this->isAccessDeniedPayload(is_array($searchJson) ? $searchJson : null)) {
+            return VoipOperationResult::failure(
+                error: (string) ($searchJson['message'] ?? 'Access denied: /reports/quick/search'),
+                data: [
+                    'denied' => true,
+                    'permission' => 'reports/quick',
+                    'quick_search' => $searchJson,
+                ],
+            );
+        }
+
         if ($search->successful()
-            && ! $this->isSimotelFailurePayload($search->json())
-            && $this->responseHasCallRows($search->json())) {
+            && ! $this->isSimotelFailurePayload(is_array($searchJson) ? $searchJson : null)
+            && $this->responseHasCallRows(is_array($searchJson) ? $searchJson : null)) {
             return VoipOperationResult::success(
                 externalId: $callId,
-                data: $this->normalizeCallDetailsPayload($search->json() ?? []),
+                data: $this->normalizeCallDetailsPayload($searchJson ?? []),
                 message: 'Call details retrieved from Simotel quick/search.',
             );
+        }
+
+        $around = $this->normalizeTimestamp($context['started_at'] ?? null);
+        if ($around !== null) {
+            try {
+                $center = Carbon::parse($around);
+                $ranged = $this->client()->post('reports/quick/search', [
+                    'conditions' => [
+                        'from' => '',
+                        'to' => '',
+                        'cuid' => $callId,
+                    ],
+                    'date_range' => [
+                        'from' => $center->copy()->subHours(6)->format('Y-m-d H:i'),
+                        'to' => $center->copy()->addHours(6)->format('Y-m-d H:i'),
+                    ],
+                    'pagination' => [
+                        'start' => 0,
+                        'count' => 20,
+                        'sorting' => (object) [],
+                    ],
+                    'alike' => 'true',
+                ]);
+
+                if ($ranged->successful()
+                    && ! $this->isSimotelFailurePayload($ranged->json())
+                    && $this->responseHasCallRows($ranged->json())) {
+                    return VoipOperationResult::success(
+                        externalId: $callId,
+                        data: $this->normalizeCallDetailsPayload($ranged->json() ?? []),
+                        message: 'Call details retrieved from Simotel quick/search (date_range).',
+                    );
+                }
+            } catch (\Throwable) {
+                // fall through
+            }
+        }
+
+        $sourceNumber = isset($context['source_number']) ? trim((string) $context['source_number']) : '';
+        if ($sourceNumber !== '' && $around !== null) {
+            try {
+                $center = Carbon::parse($around);
+                $byNumber = $this->client()->post('reports/quick/search', [
+                    'conditions' => [
+                        'from' => $sourceNumber,
+                        'to' => '',
+                        'cuid' => '',
+                    ],
+                    'date_range' => [
+                        'from' => $center->copy()->subMinutes(30)->format('Y-m-d H:i'),
+                        'to' => $center->copy()->addMinutes(30)->format('Y-m-d H:i'),
+                    ],
+                    'pagination' => [
+                        'start' => 0,
+                        'count' => 50,
+                        'sorting' => (object) [],
+                    ],
+                    'alike' => 'true',
+                ]);
+
+                if ($byNumber->successful()
+                    && ! $this->isSimotelFailurePayload($byNumber->json())
+                    && $this->responseHasCallRows($byNumber->json())) {
+                    $rows = $this->extractCallRows($byNumber->json());
+                    $matched = $this->pickRowMatchingCallIdOrNumber($rows, $callId, $sourceNumber);
+
+                    if ($matched !== null) {
+                        return VoipOperationResult::success(
+                            externalId: $callId,
+                            data: ['rows' => [$matched], 'raw' => $byNumber->json()],
+                            message: 'Call details retrieved from Simotel quick/search (caller+time).',
+                        );
+                    }
+                }
+            } catch (\Throwable) {
+                // fall through
+            }
         }
 
         $info = $this->client()->post('reports/quick/info', [
@@ -154,6 +268,30 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
                 'quick_info' => $info->json(),
             ],
         );
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     * @return array<string, mixed>|null
+     */
+    private function pickRowMatchingCallIdOrNumber(array $rows, string $callId, string $sourceNumber): ?array
+    {
+        foreach ($rows as $row) {
+            foreach (['cuid', 'unique_id', 'uniqueid'] as $key) {
+                if (! empty($row[$key]) && (string) $row[$key] === $callId) {
+                    return $row;
+                }
+            }
+        }
+
+        foreach ($rows as $row) {
+            $src = isset($row['src']) ? (string) $row['src'] : '';
+            if ($src !== '' && $src === $sourceNumber) {
+                return $row;
+            }
+        }
+
+        return $rows[0] ?? null;
     }
 
     /**
@@ -582,12 +720,23 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
             ? self::RECORDING_URL_PREFIX.trim($record)
             : null;
 
-        [$type, $status] = $this->mapDisposition($disposition, $recordingUrl !== null);
+        $billsec = isset($row['billsec']) ? (int) $row['billsec'] : null;
+        $duration = isset($row['duration'])
+            ? (int) $row['duration']
+            : $billsec;
 
-        // Still ringing in API with no terminal disposition → treat as missed after resolve delay.
-        if ($disposition === '' && $recordingUrl === null) {
-            $type = VoipWebhookEventType::CallMissed;
-            $status = CallStatus::Missed;
+        // Talk time > 0 means the call was answered even if disposition is oddly empty.
+        if ($disposition === '' && ($billsec ?? 0) > 0) {
+            $disposition = 'answered';
+        }
+
+        [$type, $status] = $this->mapDisposition($disposition, $recordingUrl !== null || ($billsec ?? 0) > 0);
+
+        // Empty disposition + no talk time: leave unresolved for the job to retry / later miss.
+        // Do NOT force Missed here — that falsely rejected answered calls when API rows lagged.
+        if ($disposition === '' && $recordingUrl === null && ($billsec ?? 0) <= 0) {
+            $type = VoipWebhookEventType::CallStarted;
+            $status = CallStatus::Ringing;
         }
 
         return new NormalizedWebhookEvent(
@@ -600,9 +749,7 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
             recordingUrl: $recordingUrl,
             startedAt: $this->normalizeTimestamp($row['starttime'] ?? $row['start'] ?? $row['start_time'] ?? null),
             endedAt: $this->normalizeTimestamp($row['endtime'] ?? $row['end'] ?? $row['end_time'] ?? null),
-            duration: isset($row['duration'])
-                ? (int) $row['duration']
-                : (isset($row['billsec']) ? (int) $row['billsec'] : null),
+            duration: $duration,
             rawPayload: $row,
             provider: $this->getProviderCode()->value,
         );
@@ -673,6 +820,35 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
             || $success === 0
             || $success === '0'
             || (is_numeric($success) && (int) $success < 1);
+    }
+
+    /** @param  array<string, mixed>|null  $payload */
+    public function isAccessDeniedPayload(?array $payload): bool
+    {
+        if ($payload === null) {
+            return false;
+        }
+
+        $message = strtolower((string) ($payload['message'] ?? $payload['error'] ?? ''));
+
+        if ($message !== '' && (str_contains($message, 'access denied') || str_contains($message, 'ip is not permitted'))) {
+            return true;
+        }
+
+        return ($payload['denied'] ?? false) === true;
+    }
+
+    public function isAccessDeniedResult(VoipOperationResult $result): bool
+    {
+        if ($result->success) {
+            return false;
+        }
+
+        if (($result->data['denied'] ?? false) === true) {
+            return true;
+        }
+
+        return $this->isAccessDeniedPayload($result->data);
     }
 
     private function looksLikeJsonErrorBody(string $body, string $contentType): bool

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Application\Voip\Jobs\ResolveSimotelCallOutcomeJob;
+use App\Application\Voip\Services\VoipConnectionResolver;
 use App\Application\Voip\Services\VoipEventIngestionService;
 use App\Domain\Voip\DTOs\VoipConnectionConfig;
 use App\Domain\Voip\DTOs\VoipCredentials;
@@ -99,7 +100,7 @@ class SimotelIncomingCallOutcomeTest extends TestCase
             $connection->id,
             '1784985537.26183',
         ))->handle(
-            app(\App\Application\Voip\Services\VoipConnectionResolver::class),
+            app(VoipConnectionResolver::class),
             app(VoipEventIngestionService::class),
         );
 
@@ -109,6 +110,144 @@ class SimotelIncomingCallOutcomeTest extends TestCase
         ]);
 
         Event::assertDispatched(CallMissed::class);
+    }
+
+    public function test_resolve_job_marks_completed_when_simotel_says_answered(): void
+    {
+        Event::fake();
+
+        $organization = Organization::factory()->create();
+        $connection = $this->createSimotelConnection($organization->id);
+
+        VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => 'simotel',
+            'external_call_id' => 'answered-1',
+            'direction' => CallDirection::Inbound,
+            'source_number' => '09123186934',
+            'destination_number' => '982191093492',
+            'status' => CallStatus::Ringing,
+            'started_at' => now()->subMinutes(3),
+        ]);
+
+        Http::fake([
+            'http://simotel.test/api/v4/reports/quick/*' => Http::response([
+                'success' => 1,
+                'data' => [
+                    'data' => [[
+                        'cuid' => 'answered-1',
+                        'src' => '09123186934',
+                        'dst' => '09982220025',
+                        'type' => 'incoming',
+                        'disposition' => 'ANSWERED',
+                        'billsec' => 115,
+                        'duration' => 155,
+                        'record' => '20260726_answered-1.mp3',
+                    ]],
+                ],
+            ], 200),
+        ]);
+
+        (new ResolveSimotelCallOutcomeJob(
+            $organization->id,
+            $connection->id,
+            'answered-1',
+        ))->handle(
+            app(VoipConnectionResolver::class),
+            app(VoipEventIngestionService::class),
+        );
+
+        $this->assertDatabaseHas('voip_call_logs', [
+            'external_call_id' => 'answered-1',
+            'status' => CallStatus::Completed->value,
+            'recording_url' => 'simotel://20260726_answered-1.mp3',
+        ]);
+    }
+
+    public function test_resolve_job_leaves_ringing_when_api_access_denied(): void
+    {
+        $organization = Organization::factory()->create();
+        $connection = $this->createSimotelConnection($organization->id);
+
+        VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => 'simotel',
+            'external_call_id' => 'denied-1',
+            'direction' => CallDirection::Inbound,
+            'source_number' => '09120000000',
+            'destination_number' => '982191093492',
+            'status' => CallStatus::Ringing,
+            'started_at' => now()->subMinutes(3),
+        ]);
+
+        Http::fake([
+            'http://simotel.test/api/v4/reports/quick/*' => Http::response([
+                'success' => -2,
+                'message' => 'Access denied: /reports/quick/search',
+                'data' => '',
+            ], 403),
+        ]);
+
+        (new ResolveSimotelCallOutcomeJob(
+            $organization->id,
+            $connection->id,
+            'denied-1',
+        ))->handle(
+            app(VoipConnectionResolver::class),
+            app(VoipEventIngestionService::class),
+        );
+
+        $log = VoipCallLog::query()->where('external_call_id', 'denied-1')->first();
+        $this->assertSame(CallStatus::Ringing, $log?->status);
+        $this->assertSame('simotel_api_access_denied', data_get($log?->raw_payload, 'outcome_error'));
+    }
+
+    public function test_resolve_job_does_not_false_miss_when_api_empty_on_first_attempt(): void
+    {
+        $organization = Organization::factory()->create();
+        $connection = $this->createSimotelConnection($organization->id);
+
+        VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => 'simotel',
+            'external_call_id' => 'retry-1',
+            'direction' => CallDirection::Inbound,
+            'source_number' => '09120000000',
+            'destination_number' => '982191093492',
+            'status' => CallStatus::Ringing,
+            'started_at' => now()->subMinutes(2),
+        ]);
+
+        Http::fake([
+            'http://simotel.test/api/v4/reports/quick/*' => Http::response([
+                'success' => 1,
+                'data' => ['data' => []],
+            ], 200),
+        ]);
+
+        $job = new ResolveSimotelCallOutcomeJob(
+            $organization->id,
+            $connection->id,
+            'retry-1',
+        );
+
+        // Simulate first attempt: release() throws when not on a real queue worker.
+        try {
+            $job->handle(
+                app(VoipConnectionResolver::class),
+                app(VoipEventIngestionService::class),
+            );
+        } catch (\Throwable) {
+            // InteractsWithQueue::release may throw outside a worker; status must stay ringing.
+        }
+
+        $this->assertDatabaseHas('voip_call_logs', [
+            'external_call_id' => 'retry-1',
+            'status' => CallStatus::Ringing->value,
+        ]);
     }
 
     private function createSimotelConnection(int $organizationId): OrganizationVoipConnection

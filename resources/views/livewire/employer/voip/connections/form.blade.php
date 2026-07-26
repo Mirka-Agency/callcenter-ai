@@ -12,9 +12,14 @@
                 <label class="mb-1 block text-sm font-medium">ارائه‌دهنده</label>
                 <select wire:model.live="voip_provider_id" class="saas-input" required>
                     @foreach ($providers as $provider)
-                        <option value="{{ $provider->id }}">{{ $provider->name }}</option>
+                        <option value="{{ $provider->id }}">
+                            {{ \App\Domain\Voip\Enums\VoipProviderCode::tryFrom($provider->code)?->label() ?? $provider->name }}
+                        </option>
                     @endforeach
                 </select>
+                @if ($this->isCustomProvider)
+                    <p class="mt-1 text-xs text-zinc-500">{{ __('ui.voip.custom_provider_hint') }}</p>
+                @endif
             </div>
             <div class="md:col-span-2">
                 <label class="mb-1 block text-sm font-medium">نام اتصال</label>
@@ -44,8 +49,9 @@
                         <input wire:model="api_token" type="password" class="saas-input" placeholder="{{ $connection ? 'خالی = بدون تغییر' : '' }}">
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium">نام کاربری</label>
-                        <input wire:model="username" class="saas-input" placeholder="اختیاری — فقط اگر Basic Auth داده شده">
+                        <label class="mb-1 block text-sm font-medium">نام کاربری API (Basic Auth)</label>
+                        <input wire:model="username" class="saas-input" placeholder="طبق مستندات سیموتل همراه با API Key">
+                        <p class="mt-1 text-xs text-zinc-500">سیموتل معمولاً X-APIKEY + Basic Auth را با هم می‌خواهد. بدون دسترسی reports/quick وضعیت تماس از API خوانده نمی‌شود.</p>
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">رمز عبور</label>
@@ -61,6 +67,12 @@
                         <p class="mt-1 text-xs text-zinc-500">شناسه tenant برای ردیابی؛ در درخواست API ارسال نمی‌شود.</p>
                     </div>
                 </div>
+            </div>
+        @else
+            <div class="border-t border-zinc-200 pt-6 dark:border-zinc-800">
+                @include('livewire.employer.voip.partials.asterisk-guide', [
+                    'webhookUrl' => $connection?->inbound_webhook_url,
+                ])
             </div>
         @endunless
 
