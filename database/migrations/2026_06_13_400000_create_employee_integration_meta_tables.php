@@ -24,7 +24,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('sort_order')->default(0);
             $table->timestamps();
 
-            $table->unique(['provider_type', 'provider_id', 'key']);
+            $table->unique(['provider_type', 'provider_id', 'key'], 'imd_provider_key_unique');
         });
 
         IdempotentSchema::create('employee_integration_meta', function (Blueprint $table) {

@@ -35,17 +35,17 @@ return new class extends Migration
                 $table->timestamp('last_polled_at')->nullable()->after('polling_interval_seconds');
             }
 
-            if (! Schema::hasIndex('organization_voip_connections', ['polling_enabled', 'last_polled_at'])) {
-                $table->index(['polling_enabled', 'last_polled_at']);
+            if (! Schema::hasIndex('organization_voip_connections', 'ovc_polling_last_polled_idx')) {
+                $table->index(['polling_enabled', 'last_polled_at'], 'ovc_polling_last_polled_idx');
             }
         });
     }
 
     public function down(): void
     {
-        if (Schema::hasIndex('organization_voip_connections', ['polling_enabled', 'last_polled_at'])) {
+        if (Schema::hasIndex('organization_voip_connections', 'ovc_polling_last_polled_idx')) {
             Schema::table('organization_voip_connections', function (Blueprint $table) {
-                $table->dropIndex(['polling_enabled', 'last_polled_at']);
+                $table->dropIndex('ovc_polling_last_polled_idx');
             });
         }
         IdempotentSchema::dropColumnsIfExist(

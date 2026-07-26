@@ -21,14 +21,19 @@ return new class extends Migration
         IdempotentSchema::create('organization_transcription_connections', function (Blueprint $table) {
             $table->id();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('transcription_provider_id')->constrained()->cascadeOnDelete();
+            // Short FK name: MySQL limits identifiers to 64 chars (default Laravel name is 72).
+            $table->foreignId('transcription_provider_id');
+            $table->foreign('transcription_provider_id', 'otc_transcription_provider_fk')
+                ->references('id')
+                ->on('transcription_providers')
+                ->cascadeOnDelete();
             $table->string('name');
             $table->json('credentials');
             $table->json('settings')->nullable();
             $table->boolean('is_default')->default(false);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-            $table->unique(['organization_id', 'name']);
+            $table->unique(['organization_id', 'name'], 'otc_org_name_unique');
         });
 
         IdempotentSchema::create('calls', function (Blueprint $table) {

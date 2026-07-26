@@ -66,7 +66,7 @@ ONPREM_EMPLOYER_PASSWORD=رمز-کارفرما
 - [ ] Linux (Ubuntu 22.04/24.04 پیشنهاد می‌شود)
 - [ ] حداقل ~2 CPU، 4GB RAM، 40GB دیسک (بیشتر اگر ضبط صدا زیاد است)
 - [ ] IP ثابت در LAN
-- [ ] خروجی اینترنت برای: نصب Docker + pull ایمیج MySQL + API هوش مصنوعی
+- [ ] خروجی اینترنت برای: نصب Docker + pull ایمیج PostgreSQL + API هوش مصنوعی
 - [ ] دسترسی SSH با sudo
 
 ---
@@ -178,7 +178,7 @@ nano .env   # یا vim
 |--------|------------|
 | `APP_URL` | `http://10.0.0.50:8000` — **IP واقعی LAN همین سرور اپ** (نه `localhost` اگر Asterisk جای دیگری است) |
 | `APP_KEY` | فعلاً خالی بگذارید؛ بعد از بالا آمدن کانتینر generate می‌کنیم |
-| `DB_PASSWORD` | یک رمز قوی برای MySQL |
+| `DB_PASSWORD` | یک رمز قوی برای PostgreSQL |
 | `ONPREM_ADMIN_EMAIL` | ایمیل ورود شما به `/admin` |
 | `ONPREM_ADMIN_PASSWORD` | **رمز ادمین شما** (خودتان انتخاب کنید) |
 | `ONPREM_EMPLOYER_EMAIL` | ایمیل کارفرما برای `/app` |
@@ -367,9 +367,9 @@ curl -sS -o /dev/null -w "%{http_code}\n" "http://10.0.0.20/api/v4"
 
 ```bash
 cd /opt/callcenter
-# دیتابیس
-docker compose -f docker-compose.onprem.yml exec -T mysql \
-  mysqldump -u callcenter -p"$DB_PASSWORD" callcenter > backup-$(date +%F).sql
+# دیتابیس (PostgreSQL — مثل cloud)
+docker compose -f docker-compose.onprem.yml exec -T postgres \
+  pg_dump -U "$DB_USERNAME" "$DB_DATABASE" > backup-$(date +%F).sql
 
 # volume ذخیره (ضبط‌ها داخل Docker volume است)
 docker run --rm -v callcenter_onprem_storage:/data -v "$(pwd)":/backup alpine \
@@ -387,7 +387,7 @@ cd /opt/callcenter
 docker compose -f docker-compose.onprem.yml up -d --build
 ```
 
-`.env` و volumeهای MySQL/storage را پاک نکنید.
+`.env` و volumeهای PostgreSQL/storage را پاک نکنید.
 
 ### لاگ و وضعیت
 
@@ -404,24 +404,20 @@ docker compose -f docker-compose.onprem.yml logs -f app
 
 ```bash
 cd /opt/callcenter
-docker compose -f docker-compose.onprem.yml down -v   # حجم MySQL و storage پاک می‌شود
+docker compose -f docker-compose.onprem.yml down -v   # حجم PostgreSQL و storage پاک می‌شود
 docker compose -f docker-compose.onprem.yml up -d --build
 # بعد دوباره key:generate و OnPremSeeder
 ```
 
-اگر نمی‌خواهید volume را پاک کنید:
+اگر نمی‌خواهید volume را پاک کنید و هنوز روی MySQL قدیمی گیر کرده‌اید: به نسخهٔ جدید (PostgreSQL + FK کوتاه) مهاجرت کنید با `down -v`؛ نصب تازه on-prem از این به بعد Postgres است.
+
+اگر خطای «Identifier name … is too long» دیدید: نسخهٔ کد را آپدیت کنید (نام FK کوتاه شده)، سپس:
 
 ```bash
-# رمز DB را از .env بردارید
-docker compose -f docker-compose.onprem.yml exec mysql \
-  mysql -u callcenter -p"$DB_PASSWORD" callcenter -e \
-  "DROP TABLE IF EXISTS employee_integration_meta, integration_meta_definitions;"
-
-docker compose -f docker-compose.onprem.yml restart app
-docker compose -f docker-compose.onprem.yml logs -f app
+docker compose -f docker-compose.onprem.yml down -v
+# در .env: DB_CONNECTION=pgsql و DB_HOST=postgres
+docker compose -f docker-compose.onprem.yml up -d --build
 ```
-
-روی نسخه‌های جدیدتر، migrationها نسبت به restart نیمه‌کاره مقاوم شده‌اند (`IdempotentSchema`); کد را آپدیت کنید و `up -d --build` بزنید. اگر هنوز روی نسخهٔ قدیمی هستید، یکی از دو راه بالا را بزنید.
 
 ### مدل عملیاتی با مشتری
 
