@@ -1,0 +1,85 @@
+# Single-employer on-prem stack (LAN). See docs/on-prem.md
+#
+#   cp .env.onprem.example .env
+#   # set APP_KEY and passwords, then:
+#   docker compose -f docker-compose.onprem.yml up -d --build
+#   docker compose -f docker-compose.onprem.yml exec app php artisan db:seed --class=OnPremSeeder --force
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-callcenter}
+      MYSQL_USER: ${DB_USERNAME:-callcenter}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-${DB_PASSWORD}}
+    volumes:
+      - onprem_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks:
+      - onprem
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CONTAINER_ROLE: web
+      RUN_MIGRATIONS: "true"
+      DB_HOST: mysql
+      DB_CONNECTION: mysql
+      RECORDINGS_DISK: local
+      FILESYSTEM_DISK: local
+      QUEUE_CONNECTION: database
+      CACHE_STORE: database
+      LOG_CHANNEL: stderr
+    ports:
+      - "${ONPREM_HTTP_PORT:-8000}:8000"
+    volumes:
+      - onprem_storage:/var/www/html/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - onprem
+
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    profiles: ["realtime"]
+    env_file:
+      - .env
+    environment:
+      CONTAINER_ROLE: reverb
+      RUN_MIGRATIONS: "false"
+      DB_HOST: mysql
+      DB_CONNECTION: mysql
+      LOG_CHANNEL: stderr
+    ports:
+      - "${REVERB_SERVER_PORT:-8090}:8090"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      app:
+        condition: service_started
+    networks:
+      - onprem
+
+volumes:
+  onprem_mysql_data:
+  onprem_storage:
+
+networks:
+  onprem:
+    driver: bridge

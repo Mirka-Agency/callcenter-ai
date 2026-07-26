@@ -316,6 +316,31 @@ php artisan test
 
 ---
 
+## On-prem (single employer on a local LAN)
+
+For customers who host the full stack on their own server (Asterisk/Simotel may stay on a separate internal IP), use the managed single-organization install — no product fork required.
+
+See **[docs/on-prem.md](docs/on-prem.md)** for the Persian install checklist, VoIP networking checks, and ops model.
+
+```bash
+# On your laptop — package for a bare customer server (optional zip path):
+./scripts/package-onprem.sh
+
+# On the server (after unzip or git clone) — full steps in docs/on-prem.md:
+cp .env.onprem.example .env
+# set APP_URL (LAN IP), DB_PASSWORD, and ONPREM_ADMIN_PASSWORD / ONPREM_EMPLOYER_PASSWORD
+docker compose -f docker-compose.onprem.yml up -d --build
+docker compose -f docker-compose.onprem.yml exec app php artisan key:generate --force
+docker compose -f docker-compose.onprem.yml exec app php artisan db:seed --class=OnPremSeeder --force
+# Login /admin with ONPREM_ADMIN_EMAIL + ONPREM_ADMIN_PASSWORD
+```
+
+Optional realtime: `docker compose -f docker-compose.onprem.yml --profile realtime up -d`
+
+**Admin password:** there is no built-in secret. You choose it in `.env` as `ONPREM_ADMIN_PASSWORD` before running `OnPremSeeder`; that becomes the `/admin` login.
+
+---
+
 ## License
 
 MIT
