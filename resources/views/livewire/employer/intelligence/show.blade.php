@@ -7,4 +7,10 @@
     'queueUrl' => $analysis->call?->processingJob
         ? route('employer.processing-queue.show', $analysis->call->processingJob)
         : null,
+    'callLog' => $callLog ?? null,
+    'extension' => $extension ?? null,
+    'resolvedEmployeeId' => $resolvedEmployeeId ?? null,
+    'canManageIntegrations' => $canManageIntegrations ?? false,
+    'employees' => $employees ?? collect(),
+    'createEmployeeUrl' => $createEmployeeUrl ?? null,
 ])

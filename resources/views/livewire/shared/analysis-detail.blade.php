@@ -205,6 +205,15 @@
                 ])
             @endif
 
+            @include('livewire.shared.analysis-voip-call-info', [
+                'callLog' => $callLog ?? null,
+                'extension' => $extension ?? null,
+                'resolvedEmployeeId' => $resolvedEmployeeId ?? null,
+                'canManageIntegrations' => $canManageIntegrations ?? false,
+                'employees' => $employees ?? collect(),
+                'createEmployeeUrl' => $createEmployeeUrl ?? null,
+            ])
+
             @include('livewire.shared.analysis-customer-identity')
 
             @if ($analysis->customer_insights_json)
