@@ -41,7 +41,6 @@ class AsteriskAmiListener
     {
         $this->client->connect($config['host'], $config['port']);
         $this->client->login($config['username'], $config['password']);
-        $this->client->enableEvents();
 
         Log::info('ami_listener_connected', [
             'connection_id' => $connection->id,
