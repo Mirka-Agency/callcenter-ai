@@ -79,14 +79,15 @@ class OnPremSeeder extends Seeder
         $this->command?->warn('Use the exact ONPREM_* email/password from the container env (recreate app after editing .env).');
     }
 
+    /** Matches organization_wallets.balance decimal(14, 6): |value| < 10^8 */
+    private const MAX_WALLET_BALANCE = 99_999_999.999999;
+
+    private const DEFAULT_WALLET_BALANCE = 50_000_000.0;
+
     private function seedWallet(Organization $organization): void
     {
         $currency = PlatformAiSettings::currencyCode();
-        $balance = (float) (
-            $_ENV['ONPREM_WALLET_BALANCE']
-                ?? getenv('ONPREM_WALLET_BALANCE')
-                ?: config('onprem.wallet_balance', 100_000_000)
-        );
+        $balance = $this->resolveWalletBalance();
 
         $wallet = OrganizationWallet::query()->firstOrCreate(
             ['organization_id' => $organization->id],
@@ -96,7 +97,7 @@ class OnPremSeeder extends Seeder
             ],
         );
 
-        if ((float) $wallet->balance < $balance) {
+        if ((float) $wallet->balance !== $balance) {
             $wallet->update([
                 'balance' => $balance,
                 'currency' => $currency,
@@ -116,6 +117,30 @@ class OnPremSeeder extends Seeder
                 'created_at' => now(),
             ],
         );
+    }
+
+    private function resolveWalletBalance(): float
+    {
+        $raw = $_ENV['ONPREM_WALLET_BALANCE'] ?? getenv('ONPREM_WALLET_BALANCE');
+        if ($raw === false || $raw === null || (is_string($raw) && trim($raw) === '')) {
+            $raw = config('onprem.wallet_balance', self::DEFAULT_WALLET_BALANCE);
+        }
+
+        $balance = (float) $raw;
+
+        if (! is_finite($balance) || $balance < 0) {
+            $balance = self::DEFAULT_WALLET_BALANCE;
+        }
+
+        if ($balance > self::MAX_WALLET_BALANCE) {
+            $this->command?->warn(sprintf(
+                'ONPREM_WALLET_BALANCE too large for decimal(14,6); clamped to %s',
+                self::MAX_WALLET_BALANCE,
+            ));
+            $balance = self::MAX_WALLET_BALANCE;
+        }
+
+        return $balance;
     }
 
     private function setting(string $envKey, string $configKey, string $default): string

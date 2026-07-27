@@ -69,20 +69,29 @@
                     @if ($connection->provider->code === 'custom')
                         @include('livewire.employer.voip.partials.asterisk-guide', [
                             'webhookUrl' => $connection->inbound_webhook_url,
+                            'organizationId' => $connection->organization_id,
+                            'webhookToken' => $connection->webhook_token,
+                            'connectionId' => $connection->id,
+                            'incomingCallUrl' => $incomingCallEndpoint,
                         ])
                     @endif
                 </div>
             @endforeach
         </div>
 
-        <div class="saas-card">
+        <div class="saas-card space-y-3">
             <h2 class="text-lg font-semibold">{{ __('ui.voip.incoming_call_title') }}</h2>
             <p class="mt-1 text-sm text-zinc-500">{{ __('ui.voip.incoming_call_body') }}</p>
-            <p class="mt-2 break-all font-mono text-xs text-zinc-600 dark:text-zinc-300" dir="ltr">POST {{ $incomingCallEndpoint }}</p>
-            <p class="mt-2 text-xs text-zinc-500">
-                شامل <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-800">organization_id</code>،
+            <x-saas.webhook-url :url="$incomingCallEndpoint" :label="__('ui.voip.asterisk_notify_url_label')" />
+            <p class="text-xs text-zinc-500">
+                {{ __('ui.voip.asterisk_notify_intro') }}
+            </p>
+            <p class="text-xs text-zinc-500">
+                فیلدهای لازم:
+                <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-800">organization_id</code>،
                 <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-800">caller_number</code>
-                و در صورت امکان <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-800">customer_name</code>.
+                و هدر
+                <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-800">X-Voip-Webhook-Token</code>.
             </p>
         </div>
 

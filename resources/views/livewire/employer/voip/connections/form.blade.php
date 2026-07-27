@@ -72,6 +72,10 @@
             <div class="border-t border-zinc-200 pt-6 dark:border-zinc-800">
                 @include('livewire.employer.voip.partials.asterisk-guide', [
                     'webhookUrl' => $connection?->inbound_webhook_url,
+                    'organizationId' => $connection?->organization_id ?? \App\Services\EmployerContext::organizationId(),
+                    'webhookToken' => $connection?->webhook_token,
+                    'connectionId' => $connection?->id,
+                    'incomingCallUrl' => url('/api/voip/incoming-call'),
                 ])
             </div>
         @endunless

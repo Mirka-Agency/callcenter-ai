@@ -88,7 +88,7 @@ class CustomVoipAdapter extends AbstractVoipAdapter
             'from' => '09121234567',
             'to' => '101',
             'status' => 'completed',
-            'recording_url' => 'https://voip.example.com/recordings/call-123.mp3',
+            'recording_url' => 'http://10.0.0.20/recordings/call-123.wav',
             'started_at' => '2026-07-16T10:00:00+03:30',
             'ended_at' => '2026-07-16T10:05:00+03:30',
             'duration' => 300,
@@ -96,12 +96,27 @@ class CustomVoipAdapter extends AbstractVoipAdapter
         ];
     }
 
+    /** @return array{organization_id: int, caller_number: string, customer_phone: string, external_call_id: string, direction: string} */
+    public static function sampleIncomingCallPayload(int $organizationId): array
+    {
+        return [
+            'organization_id' => $organizationId,
+            'caller_number' => '09121234567',
+            'customer_phone' => '09121234567',
+            'external_call_id' => '1730000000.1',
+            'direction' => 'inbound',
+        ];
+    }
+
     public static function sampleCurlCommand(string $webhookUrl): string
     {
-        $payload = json_encode(self::sampleWebhookPayload(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $payload = json_encode(self::sampleWebhookPayload(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
 
         return <<<BASH
-curl -sS -X POST \\
+# Run this FROM the Asterisk server (must reach APP_URL on the LAN).
+# Expect HTTP 202. Then check «تماس‌های اخیر» in the employer VoIP page.
+
+curl -sS -w "\\nHTTP %{http_code}\\n" -X POST \\
   -H 'Content-Type: application/json' \\
   -d '{$payload}' \\
   '{$webhookUrl}'
@@ -113,15 +128,76 @@ BASH;
         $escapedUrl = str_replace("'", "'\\''", $webhookUrl);
 
         return <<<DIALPLAN
-; --- callcenter CDR webhook (paste into extensions.conf) ---
-; Runs on hangup (extension "h") and POSTs JSON to the callcenter webhook URL.
-; Adjust the dialplan context name to match where your inbound calls live.
+; ============================================================
+; Callcenter CDR webhook — paste into extensions.conf
+; Asterisk may be on a DIFFERENT machine than the app server.
+; The Asterisk host must reach the webhook URL over the LAN.
+; ============================================================
+; 1) Put this [callcenter-cdr] context somewhere loaded by Asterisk
+; 2) In EVERY inbound context that handles agent calls, add:
+;      same => n,Goto(callcenter-cdr,s,1)
+;    OR include the hangup handler below with "exten => h"
+; 3) dialplan reload
+; ============================================================
 
-[from-internal]
-exten => h,1,NoOp(Send CDR to callcenter)
- same => n,System(curl -sS -X POST -H 'Content-Type: application/json' -d '{"event":"call.ended","call_id":"\${UNIQUEID}","direction":"inbound","from":"\${CALLERID(num)}","to":"\${CDR(dst)}","status":"\${DIALSTATUS}","duration":\${CDR(billsec)},"extension":"\${CDR(dst)}"}' '{$escapedUrl}')
+[callcenter-cdr]
+; Preferred: dedicated hangup handler (extension "h")
+exten => h,1,NoOp(Callcenter CDR webhook)
+ same => n,Set(CC_CALL_ID=\${UNIQUEID})
+ same => n,Set(CC_FROM=\${CALLERID(num)})
+ same => n,Set(CC_TO=\${CDR(dst)})
+ same => n,Set(CC_STATUS=\${DIALSTATUS})
+ same => n,Set(CC_DURATION=\${CDR(billsec)})
+ same => n,Set(CC_RECORDING=)
+ ; If you use MixMonitor, set an HTTP URL the APP server can download, e.g.:
+ ; same => n,Set(CC_RECORDING=http://10.0.0.20/monitor/\${UNIQUEID}.wav)
+ same => n,System(curl -sS -X POST -H 'Content-Type: application/json' --max-time 5 -d '{"event":"call.ended","call_id":"\${CC_CALL_ID}","direction":"inbound","from":"\${CC_FROM}","to":"\${CC_TO}","status":"\${CC_STATUS}","duration":\${CC_DURATION},"extension":"\${CC_TO}","recording_url":"\${CC_RECORDING}"}' '{$escapedUrl}')
+ same => n,Hangup()
+
+; Example inbound queue/context — ADD "exten => h" to YOUR real context:
+; [from-trunk]
+; exten => _X.,1,NoOp(Inbound)
+;  same => n,Dial(PJSIP/101,30)
+;  same => n,Hangup()
+; exten => h,1,Goto(callcenter-cdr,h,1)
+DIALPLAN;
+    }
+
+    public static function sampleRingingDialplan(string $incomingCallUrl, int $organizationId, string $webhookToken): string
+    {
+        $escapedUrl = str_replace("'", "'\\''", $incomingCallUrl);
+        $escapedToken = str_replace("'", "'\\''", $webhookToken);
+
+        return <<<DIALPLAN
+; ============================================================
+; Live agent popup (ringing) — OPTIONAL
+; POST /api/voip/incoming-call when the call starts ringing.
+; Put this BEFORE Dial() in your inbound context.
+; ============================================================
+
+exten => _X.,1,NoOp(Notify callcenter popup)
+ same => n,System(curl -sS -X POST -H 'Content-Type: application/json' -H 'X-Voip-Webhook-Token: {$escapedToken}' --max-time 3 -d '{"organization_id":{$organizationId},"caller_number":"\${CALLERID(num)}","customer_phone":"\${CALLERID(num)}","external_call_id":"\${UNIQUEID}","direction":"inbound"}' '{$escapedUrl}')
+ same => n,Dial(PJSIP/\${EXTEN},30)
  same => n,Hangup()
 DIALPLAN;
+    }
+
+    public static function sampleIncomingCallCurl(string $incomingCallUrl, int $organizationId, string $webhookToken): string
+    {
+        $payload = json_encode(
+            self::sampleIncomingCallPayload($organizationId),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT,
+        );
+
+        return <<<BASH
+# Live popup test (from Asterisk server). Expect HTTP 202.
+
+curl -sS -w "\\nHTTP %{http_code}\\n" -X POST \\
+  -H 'Content-Type: application/json' \\
+  -H 'X-Voip-Webhook-Token: {$webhookToken}' \\
+  -d '{$payload}' \\
+  '{$incomingCallUrl}'
+BASH;
     }
 
     public static function sampleShellHelper(string $webhookUrl): string
@@ -130,9 +206,9 @@ DIALPLAN;
 
         return <<<BASH
 #!/usr/bin/env bash
-# /usr/local/bin/callcenter-cdr.sh
-# Usage from Asterisk dialplan:
-#   System(/usr/local/bin/callcenter-cdr.sh \${UNIQUEID} \${CALLERID(num)} \${CDR(dst)} \${DIALSTATUS} \${CDR(billsec)})
+# Save as /usr/local/bin/callcenter-cdr.sh && chmod +x /usr/local/bin/callcenter-cdr.sh
+# Dialplan:
+#   same => n,System(/usr/local/bin/callcenter-cdr.sh "\${UNIQUEID}" "\${CALLERID(num)}" "\${CDR(dst)}" "\${DIALSTATUS}" "\${CDR(billsec)}" "\${CC_RECORDING}")
 
 set -euo pipefail
 WEBHOOK_URL='{$escapedUrl}'
@@ -141,15 +217,17 @@ FROM="\${2:-}"
 TO="\${3:-}"
 STATUS="\${4:-}"
 DURATION="\${5:-0}"
+RECORDING="\${6:-}"
 
-curl -sS -X POST -H 'Content-Type: application/json' \\
+curl -sS -X POST -H 'Content-Type: application/json' --max-time 5 \\
   -d "\$(jq -n \\
     --arg call_id "\$CALL_ID" \\
     --arg from "\$FROM" \\
     --arg to "\$TO" \\
     --arg status "\$STATUS" \\
+    --arg recording_url "\$RECORDING" \\
     --argjson duration "\$DURATION" \\
-    '{event:"call.ended",call_id:\$call_id,direction:"inbound",from:\$from,to:\$to,status:\$status,duration:\$duration,extension:\$to}')" \\
+    '{event:"call.ended",call_id:\$call_id,direction:"inbound",from:\$from,to:\$to,status:\$status,duration:\$duration,extension:\$to,recording_url:\$recording_url}')" \\
   "\$WEBHOOK_URL"
 BASH;
     }

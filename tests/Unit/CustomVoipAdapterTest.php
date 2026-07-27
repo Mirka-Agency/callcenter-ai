@@ -126,14 +126,21 @@ class CustomVoipAdapterTest extends TestCase
         $curl = CustomVoipAdapter::sampleCurlCommand($url);
         $dialplan = CustomVoipAdapter::sampleDialplan($url);
         $shell = CustomVoipAdapter::sampleShellHelper($url);
+        $notify = CustomVoipAdapter::sampleIncomingCallCurl(url('/api/voip/incoming-call'), 9, 'token-xyz');
+        $ring = CustomVoipAdapter::sampleRingingDialplan(url('/api/voip/incoming-call'), 9, 'token-xyz');
 
         $this->assertStringContainsString($url, $curl);
         $this->assertStringContainsString('Content-Type: application/json', $curl);
         $this->assertStringContainsString($url, $dialplan);
         $this->assertStringContainsString('${UNIQUEID}', $dialplan);
         $this->assertStringContainsString('exten => h,1', $dialplan);
+        $this->assertStringContainsString('[callcenter-cdr]', $dialplan);
         $this->assertStringContainsString($url, $shell);
         $this->assertStringContainsString('jq -n', $shell);
+        $this->assertStringContainsString('organization_id', $notify);
+        $this->assertStringContainsString('X-Voip-Webhook-Token: token-xyz', $notify);
+        $this->assertStringContainsString('X-Voip-Webhook-Token: token-xyz', $ring);
+        $this->assertStringContainsString('"organization_id":9', $ring);
     }
 
     private function adapter(): CustomVoipAdapter
