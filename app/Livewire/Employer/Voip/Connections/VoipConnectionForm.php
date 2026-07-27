@@ -41,6 +41,16 @@ abstract class VoipConnectionForm extends Component
 
     public string $simotel_context = '';
 
+    public string $ingestion_mode = 'webhook';
+
+    public string $ami_host = '';
+
+    public int $ami_port = 5038;
+
+    public string $ami_username = 'callcenter-ai';
+
+    public string $ami_password = '';
+
     #[Computed]
     public function isCustomProvider(): bool
     {
@@ -51,6 +61,12 @@ abstract class VoipConnectionForm extends Component
         return VoipProvider::query()
             ->whereKey($this->voip_provider_id)
             ->value('code') === VoipProviderCode::Custom->value;
+    }
+
+    #[Computed]
+    public function amiIngestionAvailable(): bool
+    {
+        return (bool) config('voip.ami_enabled', false);
     }
 
     public function updatedVoipProviderId(): void
@@ -66,6 +82,10 @@ abstract class VoipConnectionForm extends Component
     /** @return array<string, mixed> */
     protected function buildPayload(array $data): array
     {
+        $ingestionMode = ($data['ingestion_mode'] ?? 'webhook') === 'ami' && $this->amiIngestionAvailable
+            ? 'ami'
+            : 'webhook';
+
         $settings = [
             'timeout' => $data['timeout'],
             'webhook_field_mapping' => $this->decodeJsonObject($data['webhook_field_mapping_json']),
@@ -73,7 +93,22 @@ abstract class VoipConnectionForm extends Component
             'recording_settings' => $this->decodeJsonObject($data['recording_settings_json']),
             'extra' => array_filter([
                 'context' => trim($data['simotel_context'] ?? '') ?: null,
+                'ami' => $this->isCustomProvider && $ingestionMode === 'ami' ? array_filter([
+                    'host' => trim($data['ami_host'] ?? '') ?: null,
+                    'port' => (int) ($data['ami_port'] ?? 5038),
+                ]) : null,
             ]),
+        ];
+
+        $credentials = $this->isCustomProvider ? array_filter([
+            'ami_username' => $ingestionMode === 'ami' ? trim($data['ami_username'] ?? '') ?: null : null,
+            'ami_password' => $ingestionMode === 'ami' ? ($data['ami_password'] ?: null) : null,
+        ]) : [
+            'api_url' => $data['api_url'] ?: null,
+            'api_key' => $data['api_key'] ?: null,
+            'api_token' => $data['api_token'] ?: null,
+            'username' => $data['username'] ?: null,
+            'password' => $data['password'] ?: null,
         ];
 
         return [
@@ -82,13 +117,8 @@ abstract class VoipConnectionForm extends Component
             'is_default' => $data['is_default'],
             'is_active' => $data['is_active'],
             'webhook_token' => $data['webhook_token'] ?: null,
-            'credentials' => $this->isCustomProvider ? [] : [
-                'api_url' => $data['api_url'] ?: null,
-                'api_key' => $data['api_key'] ?: null,
-                'api_token' => $data['api_token'] ?: null,
-                'username' => $data['username'] ?: null,
-                'password' => $data['password'] ?: null,
-            ],
+            'ingestion_mode' => $ingestionMode,
+            'credentials' => $credentials,
             'settings' => $settings,
         ];
     }
@@ -96,6 +126,8 @@ abstract class VoipConnectionForm extends Component
     /** @return array<string, string> */
     protected function validationRules(bool $creating): array
     {
+        $amiRequired = $this->amiIngestionAvailable && $this->isCustomProvider && $this->ingestion_mode === 'ami';
+
         return [
             'voip_provider_id' => ['required', 'exists:voip_providers,id'],
             'name' => ['required', 'string', 'max:255'],
@@ -112,6 +144,11 @@ abstract class VoipConnectionForm extends Component
             'webhook_field_mapping_json' => ['nullable', 'string'],
             'extension_mapping_json' => ['nullable', 'string'],
             'recording_settings_json' => ['nullable', 'string'],
+            'ingestion_mode' => ['nullable', 'in:webhook,ami'],
+            'ami_host' => [$amiRequired ? 'required' : 'nullable', 'string', 'max:255'],
+            'ami_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'ami_username' => [$amiRequired ? 'required' : 'nullable', 'string', 'max:255'],
+            'ami_password' => [$amiRequired && $creating ? 'required' : 'nullable', 'string'],
         ];
     }
 

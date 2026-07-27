@@ -10,6 +10,8 @@ readonly class VoipCredentials
         public ?string $apiToken = null,
         public ?string $username = null,
         public ?string $password = null,
+        public ?string $amiUsername = null,
+        public ?string $amiPassword = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -20,6 +22,8 @@ readonly class VoipCredentials
             apiToken: $data['api_token'] ?? $data['apiToken'] ?? null,
             username: $data['username'] ?? null,
             password: $data['password'] ?? null,
+            amiUsername: $data['ami_username'] ?? $data['amiUsername'] ?? null,
+            amiPassword: $data['ami_password'] ?? $data['amiPassword'] ?? null,
         );
     }
 
@@ -31,6 +35,8 @@ readonly class VoipCredentials
             'api_token' => $this->apiToken,
             'username' => $this->username,
             'password' => $this->password,
+            'ami_username' => $this->amiUsername,
+            'ami_password' => $this->amiPassword,
         ], fn ($value) => $value !== null && $value !== '');
     }
 

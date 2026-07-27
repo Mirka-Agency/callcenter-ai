@@ -26,6 +26,7 @@ class VoipConnectionLifecycleService
             'settings' => $data['settings'] ?? [],
             'is_default' => (bool) ($data['is_default'] ?? false),
             'is_active' => (bool) ($data['is_active'] ?? true),
+            'ingestion_mode' => $data['ingestion_mode'] ?? 'webhook',
         ]);
 
         $connection->loadMissing('provider');
@@ -57,6 +58,7 @@ class VoipConnectionLifecycleService
             ),
             'is_default' => (bool) ($data['is_default'] ?? $connection->is_default),
             'is_active' => (bool) ($data['is_active'] ?? $connection->is_active),
+            'ingestion_mode' => $data['ingestion_mode'] ?? $connection->ingestion_mode,
         ]);
 
         return $connection->fresh(['provider']);

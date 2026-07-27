@@ -7,6 +7,7 @@ enum VoipIngestionMode: string
     case Webhook = 'webhook';
     case Polling = 'polling';
     case Hybrid = 'hybrid';
+    case Ami = 'ami';
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum VoipIngestionMode: string
             self::Webhook => 'وب‌هوک',
             self::Polling => 'نظرسنجی',
             self::Hybrid => 'ترکیبی',
+            self::Ami => 'AMI',
         };
     }
 
@@ -25,5 +27,10 @@ enum VoipIngestionMode: string
     public function usesPolling(): bool
     {
         return in_array($this, [self::Polling, self::Hybrid], true);
+    }
+
+    public function usesAmi(): bool
+    {
+        return $this === self::Ami;
     }
 }

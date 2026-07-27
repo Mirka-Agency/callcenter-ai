@@ -48,6 +48,9 @@ case "$ROLE" in
     reverb)
         exec php artisan reverb:start --host=0.0.0.0 --port="${REVERB_SERVER_PORT:-8090}"
         ;;
+    ami)
+        exec php artisan voip:ami-listen --reconnect-delay="${AMI_RECONNECT_DELAY:-5}"
+        ;;
     *)
         exec "$@"
         ;;

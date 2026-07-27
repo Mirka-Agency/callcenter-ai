@@ -35,6 +35,11 @@ class Edit extends VoipConnectionForm
         $this->password = '';
         $this->timeout = (int) ($settings['timeout'] ?? 30);
         $this->simotel_context = (string) ($settings['extra']['context'] ?? '');
+        $this->ingestion_mode = (string) ($connection->ingestion_mode ?? 'webhook');
+        $this->ami_host = (string) ($settings['extra']['ami']['host'] ?? '');
+        $this->ami_port = (int) ($settings['extra']['ami']['port'] ?? 5038);
+        $this->ami_username = (string) ($credentials['ami_username'] ?? 'callcenter-ai');
+        $this->ami_password = '';
         $this->webhook_field_mapping_json = $this->encodeJsonObject($settings['webhook_field_mapping'] ?? []);
         $this->extension_mapping_json = $this->encodeJsonObject($settings['extension_mapping'] ?? []);
         $this->recording_settings_json = $this->encodeJsonObject($settings['recording_settings'] ?? []);

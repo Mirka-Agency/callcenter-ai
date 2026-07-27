@@ -7,6 +7,7 @@ use App\Domain\Voip\DTOs\MakeCallData;
 use App\Domain\Voip\DTOs\NormalizedWebhookEvent;
 use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Domain\Voip\ValueObjects\VoipOperationResult;
+use App\Infrastructure\Voip\Ami\AsteriskAmiClient;
 use App\Infrastructure\Voip\Support\WebhookPayloadNormalizer;
 
 class CustomVoipAdapter extends AbstractVoipAdapter
@@ -24,9 +25,42 @@ class CustomVoipAdapter extends AbstractVoipAdapter
 
     public function testConnection(): VoipOperationResult
     {
+        $ami = $this->config->settings->extra['ami'] ?? [];
+
+        if (($ami['host'] ?? '') !== '') {
+            return $this->testAmiConnection($ami);
+        }
+
         return VoipOperationResult::success(
             message: 'Custom VoIP webhook provider is ready. Send POST requests to the inbound webhook URL.',
         );
+    }
+
+    /** @param array<string, mixed> $ami */
+    private function testAmiConnection(array $ami): VoipOperationResult
+    {
+        $host = trim((string) ($ami['host'] ?? ''));
+        $port = (int) ($ami['port'] ?? 5038);
+        $username = trim((string) ($this->config->credentials->amiUsername ?? $this->config->credentials->username ?? ''));
+        $password = (string) ($this->config->credentials->amiPassword ?? $this->config->credentials->password ?? '');
+
+        if ($host === '' || $username === '' || $password === '') {
+            return VoipOperationResult::failure('AMI host, username, and password are required.');
+        }
+
+        $client = new AsteriskAmiClient;
+
+        try {
+            $client->connect($host, $port, min(10, $this->config->settings->timeout));
+            $client->login($username, $password);
+            $client->disconnect();
+
+            return VoipOperationResult::success(
+                message: "AMI login successful on {$host}:{$port} as {$username}.",
+            );
+        } catch (\Throwable $exception) {
+            return VoipOperationResult::failure('AMI connection failed: '.$exception->getMessage());
+        }
     }
 
     public function makeCall(MakeCallData $call): VoipOperationResult
@@ -197,6 +231,34 @@ curl -sS -w "\\nHTTP %{http_code}\\n" -X POST \\
   -H 'X-Voip-Webhook-Token: {$webhookToken}' \\
   -d '{$payload}' \\
   '{$incomingCallUrl}'
+BASH;
+    }
+
+    public static function sampleManagerConfig(string $amiUsername = 'callcenter-ai', string $amiPassword = 'CHANGE_ME_STRONG_PASSWORD'): string
+    {
+        return <<<CONF
+; Paste into /etc/asterisk/manager_custom.conf (Issabel / FreePBX)
+; Then ensure manager.conf includes: #include manager_custom.conf
+; Reload: asterisk -rx "manager reload"
+; Verify: asterisk -rx "manager show user {$amiUsername}"
+
+[{$amiUsername}]
+secret = {$amiPassword}
+deny=0.0.0.0/0.0.0.0
+permit=10.0.0.0/255.0.0.0
+read = system,call,log,verbose,command,agent,user,config,dtmf,reporting,cdr,dialplan
+write = none
+CONF;
+    }
+
+    public static function sampleAmiVerifyCommand(string $amiUsername = 'callcenter-ai'): string
+    {
+        return <<<BASH
+# Verify AMI user exists and permissions (run on Asterisk server):
+asterisk -rx "manager show user {$amiUsername}"
+
+# Test TCP port from app server (replace HOST):
+nc -zv HOST 5038
 BASH;
     }
 

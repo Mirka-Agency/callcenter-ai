@@ -16,6 +16,7 @@
     <div>
         <p class="font-medium text-base">{{ __('ui.voip.asterisk_guide_title') }}</p>
         <p class="mt-1 text-sky-900/90 dark:text-sky-200/90">{{ __('ui.voip.asterisk_guide_intro') }}</p>
+        <p class="mt-2 text-xs font-medium text-sky-800 dark:text-sky-200">{{ __('ui.voip.asterisk_webhook_method_note') }}</p>
         <p class="mt-2 text-xs text-sky-800 dark:text-sky-300">{{ __('ui.voip.asterisk_network_note') }}</p>
     </div>
 

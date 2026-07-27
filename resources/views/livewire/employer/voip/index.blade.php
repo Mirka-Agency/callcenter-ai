@@ -67,13 +67,22 @@
                     </button>
 
                     @if ($connection->provider->code === 'custom')
-                        @include('livewire.employer.voip.partials.asterisk-guide', [
-                            'webhookUrl' => $connection->inbound_webhook_url,
-                            'organizationId' => $connection->organization_id,
-                            'webhookToken' => $connection->webhook_token,
-                            'connectionId' => $connection->id,
-                            'incomingCallUrl' => $incomingCallEndpoint,
-                        ])
+                        @if ($connection->ingestion_mode === 'ami' && config('voip.ami_enabled'))
+                            @include('livewire.employer.voip.partials.asterisk-ami-guide', [
+                                'amiHost' => $connection->settings['extra']['ami']['host'] ?? null,
+                                'amiPort' => (int) ($connection->settings['extra']['ami']['port'] ?? 5038),
+                                'amiUsername' => $connection->credentials['ami_username'] ?? 'callcenter-ai',
+                                'connectionId' => $connection->id,
+                            ])
+                        @else
+                            @include('livewire.employer.voip.partials.asterisk-guide', [
+                                'webhookUrl' => $connection->inbound_webhook_url,
+                                'organizationId' => $connection->organization_id,
+                                'webhookToken' => $connection->webhook_token,
+                                'connectionId' => $connection->id,
+                                'incomingCallUrl' => $incomingCallEndpoint,
+                            ])
+                        @endif
                     @endif
                 </div>
             @endforeach

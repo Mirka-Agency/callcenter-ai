@@ -68,9 +68,11 @@ class VoipEventIngestionService
 
         $this->dispatcher->dispatch($config->organizationId, $config->connectionId, $event);
 
-        $logKey = $event->source === VoipEventSource::Polling
-            ? 'polling_detected_call'
-            : 'webhook_received';
+        $logKey = match ($event->source) {
+            VoipEventSource::Polling => 'polling_detected_call',
+            VoipEventSource::Ami => 'ami_event_received',
+            default => 'webhook_received',
+        };
 
         $this->logIngestion(
             config: $config,

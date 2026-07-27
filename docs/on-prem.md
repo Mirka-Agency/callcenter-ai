@@ -343,6 +343,25 @@ curl -sS -o /dev/null -w "%{http_code}\n" \
 
 راهنمای dialplan داخل UI اتصال سفارشی هم هست.
 
+### ۸.۱.۱ Asterisk AMI (Issabel + CRM مثل VoIPing)
+
+اگر CRM دیگری hangup handler خودش را دارد و dialplan قابل تغییر نیست، در UI روش **AMI** را انتخاب کنید:
+
+1. روی Asterisk: `vi /etc/asterisk/manager_custom.conf` — کاربر `callcenter-ai` با `read` و `write = none` (نمونه در UI).
+2. بررسی: `asterisk -rx "manager show user callcenter-ai"`
+3. در UI اتصال: host/port/username/password AMI را ذخیره کنید.
+4. سرویس listener را اجرا کنید:
+
+```bash
+docker compose -f docker-compose.onprem.yml up -d ami
+# یا داخل کانتینر:
+php artisan voip:ami-listen --connection=<ID>
+```
+
+ترافیک: **اپ → Asterisk:5038** (TCP). dialplan لازم نیست.
+
+> در cloud این گزینه به‌صورت پیش‌فرض غیرفعال است (`VOIP_AMI_ENABLED=false`) چون معمولاً دسترسی به پورت 5038 Asterisk مشتری وجود ندارد.
+
 ### ۸.۲ Simotel روی IP داخلی
 
 - `api_url` مثل `http://10.0.0.20/api/v4`
@@ -364,6 +383,7 @@ curl -sS -o /dev/null -w "%{http_code}\n" "http://10.0.0.20/api/v4"
 |------|------|------|
 | کارشناسان | اپ | 80 (یا `ONPREM_HTTP_PORT` / 443 با reverse proxy) |
 | Asterisk/Simotel | اپ | همان پورت وب |
+| اپ | Asterisk AMI | 5038 (فقط اگر روش AMI) |
 | اپ | Simotel | پورت API |
 | اپ | اینترنت | 443 برای LLM |
 

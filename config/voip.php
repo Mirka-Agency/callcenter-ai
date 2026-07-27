@@ -34,4 +34,9 @@ return [
     // Retry Quick Search when CDR is not indexed yet.
     'simotel_outcome_retry_seconds' => (int) env('VOIP_SIMOTEL_OUTCOME_RETRY', 60),
 
+    'ami_reconnect_delay_seconds' => (int) env('VOIP_AMI_RECONNECT_DELAY', 5),
+
+    // AMI requires outbound TCP to the customer's Asterisk (port 5038). Enable on LAN/on-prem only.
+    'ami_enabled' => filter_var(env('VOIP_AMI_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
+
 ];

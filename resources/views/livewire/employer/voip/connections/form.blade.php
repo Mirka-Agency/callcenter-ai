@@ -69,14 +69,68 @@
                 </div>
             </div>
         @else
-            <div class="border-t border-zinc-200 pt-6 dark:border-zinc-800">
-                @include('livewire.employer.voip.partials.asterisk-guide', [
-                    'webhookUrl' => $connection?->inbound_webhook_url,
-                    'organizationId' => $connection?->organization_id ?? \App\Services\EmployerContext::organizationId(),
-                    'webhookToken' => $connection?->webhook_token,
-                    'connectionId' => $connection?->id,
-                    'incomingCallUrl' => url('/api/voip/incoming-call'),
-                ])
+            <div class="border-t border-zinc-200 pt-6 dark:border-zinc-800 space-y-6">
+                @if ($this->amiIngestionAvailable)
+                    <div>
+                        <h2 class="mb-3 font-semibold">{{ __('ui.voip.ingestion_method_title') }}</h2>
+                        <div class="grid gap-3 md:grid-cols-2">
+                            <label class="flex cursor-pointer items-start gap-3 rounded-lg border p-3 {{ $ingestion_mode === 'webhook' ? 'border-sky-400 bg-sky-50 dark:border-sky-700 dark:bg-sky-950/30' : 'border-zinc-200 dark:border-zinc-800' }}">
+                                <input type="radio" wire:model.live="ingestion_mode" value="webhook" class="mt-1">
+                                <span>
+                                    <span class="block font-medium">{{ __('ui.voip.ingestion_webhook_title') }}</span>
+                                    <span class="mt-1 block text-xs text-zinc-500">{{ __('ui.voip.ingestion_webhook_hint') }}</span>
+                                </span>
+                            </label>
+                            <label class="flex cursor-pointer items-start gap-3 rounded-lg border p-3 {{ $ingestion_mode === 'ami' ? 'border-violet-400 bg-violet-50 dark:border-violet-700 dark:bg-violet-950/30' : 'border-zinc-200 dark:border-zinc-800' }}">
+                                <input type="radio" wire:model.live="ingestion_mode" value="ami" class="mt-1">
+                                <span>
+                                    <span class="block font-medium">{{ __('ui.voip.ingestion_ami_title') }}</span>
+                                    <span class="mt-1 block text-xs text-zinc-500">{{ __('ui.voip.ingestion_ami_hint') }}</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                @endif
+
+                @if ($this->amiIngestionAvailable && $ingestion_mode === 'ami')
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">{{ __('ui.voip.ami_host_label') }}</label>
+                            <input wire:model="ami_host" class="saas-input font-mono text-sm" placeholder="10.0.0.20" dir="ltr">
+                            @error('ami_host') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">{{ __('ui.voip.ami_port_label') }}</label>
+                            <input wire:model="ami_port" type="number" class="saas-input font-mono text-sm" dir="ltr">
+                            @error('ami_port') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">{{ __('ui.voip.ami_username_label') }}</label>
+                            <input wire:model="ami_username" class="saas-input font-mono text-sm" dir="ltr">
+                            @error('ami_username') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">{{ __('ui.voip.ami_password_label') }}</label>
+                            <input wire:model="ami_password" type="password" class="saas-input font-mono text-sm" placeholder="{{ $connection ? __('ui.voip.ami_password_unchanged') : '' }}" dir="ltr">
+                            @error('ami_password') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+
+                    @include('livewire.employer.voip.partials.asterisk-ami-guide', [
+                        'amiHost' => $ami_host,
+                        'amiPort' => $ami_port,
+                        'amiUsername' => $ami_username ?: 'callcenter-ai',
+                        'connectionId' => $connection?->id,
+                    ])
+                @else
+                    @include('livewire.employer.voip.partials.asterisk-guide', [
+                        'webhookUrl' => $connection?->inbound_webhook_url,
+                        'organizationId' => $connection?->organization_id ?? \App\Services\EmployerContext::organizationId(),
+                        'webhookToken' => $connection?->webhook_token,
+                        'connectionId' => $connection?->id,
+                        'incomingCallUrl' => url('/api/voip/incoming-call'),
+                    ])
+                @endif
             </div>
         @endunless
 
