@@ -8,7 +8,6 @@ use App\Livewire\Concerns\ResolvesRecordingPlayback;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
 use App\Services\EmployerContext;
-use App\Services\EmployerIntegrationGate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -46,8 +45,6 @@ class Show extends Component
 
     public function assignCallEmployee(): void
     {
-        EmployerIntegrationGate::authorizeFullManagement();
-
         if ($this->assignEmployeeId <= 0) {
             throw ValidationException::withMessages([
                 'assignEmployeeId' => __('ui.voip.unmatched_extension_employee_required'),
@@ -55,35 +52,47 @@ class Show extends Component
         }
 
         $organization = EmployerContext::organization();
+
+        $employee = OrganizationUser::query()
+            ->where('organization_id', $organization->id)
+            ->whereKey($this->assignEmployeeId)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        // Always attach this analysis (and its call) to the selected employee.
+        $this->analysis->update(['organization_user_id' => $employee->id]);
+
+        if ($this->analysis->call) {
+            $this->analysis->call->update(['organization_user_id' => $employee->id]);
+        }
+
         $callLog = $this->analysis->callLog;
+        $extension = $callLog
+            ? app(UnmatchedVoipExtensionService::class)->primaryExtension($callLog)
+            : null;
 
-        if (! $callLog) {
-            throw ValidationException::withMessages([
-                'assignEmployeeId' => 'این تحلیل به یک VoIP call log متصل نیست.',
-            ]);
+        // If we can resolve an extension, also map it for future calls and backfill.
+        if ($callLog && $extension) {
+            app(UnmatchedVoipExtensionService::class)->assignExtensionToEmployee(
+                organization: $organization,
+                extension: $extension,
+                connectionId: (int) $callLog->organization_voip_connection_id,
+                organizationUserId: $employee->id,
+            );
         }
 
-        $extension = app(UnmatchedVoipExtensionService::class)->primaryExtension($callLog);
-
-        if (! $extension) {
-            throw ValidationException::withMessages([
-                'assignEmployeeId' => 'داخلی قابل استخراج نیست.',
-            ]);
-        }
-
-        app(UnmatchedVoipExtensionService::class)->assignExtensionToEmployee(
-            organization: $organization,
-            extension: $extension,
-            connectionId: (int) $callLog->organization_voip_connection_id,
-            organizationUserId: $this->assignEmployeeId,
-        );
-
-        $this->analysis->refresh()->load(['employee.user', 'callLog.connection', 'call.recording', 'call.processingJob', 'crmSyncs.crmConnection.provider']);
+        $this->analysis->refresh()->load([
+            'employee.user',
+            'callLog.connection',
+            'call.recording',
+            'call.processingJob',
+            'crmSyncs.crmConnection.provider',
+        ]);
         $this->assignEmployeeId = 0;
 
-        session()->flash('status', __('ui.voip.unmatched_extension_assigned', [
-            'count' => 1,
-        ]));
+        session()->flash('status', $extension
+            ? __('ui.voip.unmatched_extension_assigned', ['count' => 1])
+            : __('ui.voip.analysis_employee_assigned'));
     }
 
     public function render()
@@ -100,15 +109,13 @@ class Show extends Component
             'callLog' => $callLog,
             'extension' => $extension,
             'resolvedEmployeeId' => $resolvedEmployeeId,
-            'canManageIntegrations' => EmployerIntegrationGate::allowsFullManagement($organization),
-            'employees' => $callLog
-                ? OrganizationUser::query()
-                    ->where('organization_id', $organization->id)
-                    ->where('is_active', true)
-                    ->orderBy('first_name')
-                    ->orderBy('last_name')
-                    ->get()
-                : collect(),
+            'canAssignEmployee' => true,
+            'employees' => OrganizationUser::query()
+                ->where('organization_id', $organization->id)
+                ->where('is_active', true)
+                ->orderBy('first_name')
+                ->orderBy('last_name')
+                ->get(),
             'createEmployeeUrl' => route('employer.employees.create'),
         ]);
     }

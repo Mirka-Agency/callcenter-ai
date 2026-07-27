@@ -10,7 +10,7 @@
     'callLog' => $callLog ?? null,
     'extension' => $extension ?? null,
     'resolvedEmployeeId' => $resolvedEmployeeId ?? null,
-    'canManageIntegrations' => $canManageIntegrations ?? false,
+    'canAssignEmployee' => $canAssignEmployee ?? false,
     'employees' => $employees ?? collect(),
     'createEmployeeUrl' => $createEmployeeUrl ?? null,
 ])

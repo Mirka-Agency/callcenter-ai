@@ -43,13 +43,13 @@ class Edit extends Component
         abort_unless($employee->organization_id === EmployerContext::organizationId(), 404);
 
         $this->employee = $employee;
-        $this->first_name = $employee->first_name;
-        $this->last_name = $employee->last_name;
+        $this->first_name = (string) ($employee->first_name ?? '');
+        $this->last_name = (string) ($employee->last_name ?? '');
         $this->email = $employee->user?->email ?? '';
         $this->mobile = $employee->mobile;
         $this->position = $employee->position;
         $this->department = $employee->department;
-        $this->is_active = $employee->is_active;
+        $this->is_active = (bool) $employee->is_active;
 
         $this->hydrateEmployeeIntegrationsFromMembership($employee);
     }

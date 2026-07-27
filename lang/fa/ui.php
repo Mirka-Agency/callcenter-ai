@@ -114,6 +114,7 @@ return [
         'unmatched_assign_button' => 'اختصاص و اتصال تماس‌ها',
         'unmatched_assigning' => 'در حال اختصاص…',
         'unmatched_extension_assigned' => 'داخلی ذخیره شد و :count تماس به‌روزرسانی شد.',
+        'analysis_employee_assigned' => 'کارشناس به این تماس و تحلیل متصل شد.',
         'unmatched_extension_conflict' => 'این داخلی قبلاً به کارشناس دیگری در همین اتصال اختصاص داده شده است.',
         'unmatched_extension_employee_required' => 'یک کارشناس انتخاب کنید.',
         'recent_calls_extension_column' => 'داخلی',

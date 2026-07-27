@@ -27,6 +27,7 @@
             };
         </script>
     @endif
+    <link rel="stylesheet" href="{{ asset('css/vazirmatn.css') }}">
     @vite(['resources/css/saas.css', 'resources/js/saas.js'])
     @livewireStyles
     <script>
@@ -37,7 +38,7 @@
     </script>
 </head>
 <body
-    class="saas-shell"
+    class="saas-shell font-sans"
     @keydown.escape.window="$store.layout.closeSidebar()"
 >
     <script>

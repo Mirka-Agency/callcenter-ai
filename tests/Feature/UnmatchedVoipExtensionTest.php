@@ -3,13 +3,17 @@
 namespace Tests\Feature;
 
 use App\Application\Call\Services\UnmatchedVoipExtensionService;
+use App\Domain\Call\Enums\ConversationSource;
+use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Domain\Voip\Enums\VoipLogStatus;
 use App\Domain\Voip\Enums\VoipOperation;
 use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Enums\UserRole;
 use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
+use App\Livewire\Employer\Intelligence\Show as IntelligenceShow;
 use App\Livewire\Employer\Voip\Index;
 use App\Models\Call;
+use App\Models\ConversationAnalysis;
 use App\Models\EmployeeIntegrationMeta;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
@@ -171,6 +175,128 @@ class UnmatchedVoipExtensionTest extends TestCase
         $this->assertDatabaseHas('calls', [
             'voip_call_log_id' => $log->id,
             'organization_user_id' => $employee->id,
+        ]);
+    }
+
+    public function test_assign_extension_also_updates_conversation_analyses(): void
+    {
+        [$organization, $connection, , $employee] = $this->setupOrganization();
+
+        $log = VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'call-analysis-1',
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '101',
+            'status' => 'completed',
+            'started_at' => now()->subDay(),
+            'raw_payload' => ['resolved_extension' => '101'],
+        ]);
+
+        $call = Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'voip_call_log_id' => $log->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'call-analysis-1',
+            'direction' => 'inbound',
+            'caller_number' => '09120000000',
+            'receiver_number' => '101',
+            'status' => 'completed',
+            'organization_user_id' => null,
+        ]);
+
+        $analysis = ConversationAnalysis::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => null,
+            'call_id' => $call->id,
+            'voip_call_log_id' => $log->id,
+            'source' => ConversationSource::Voip,
+            'llm_provider' => 'openai',
+            'model_name' => 'gpt-4o-mini',
+            'score' => 80,
+            'summary' => 'test',
+            'sentiment' => AnalysisSentiment::Neutral,
+            'strengths_json' => [],
+            'weaknesses_json' => [],
+            'next_actions_json' => [],
+            'analyzed_at' => now(),
+        ]);
+
+        app(UnmatchedVoipExtensionService::class)->assignExtensionToEmployee(
+            organization: $organization,
+            extension: '101',
+            connectionId: $connection->id,
+            organizationUserId: $employee->id,
+        );
+
+        $this->assertSame($employee->id, $analysis->fresh()->organization_user_id);
+        $this->assertSame($employee->id, $call->fresh()->organization_user_id);
+    }
+
+    public function test_intelligence_show_assigns_employee_without_integration_gate(): void
+    {
+        [$organization, $connection, $employer, $employee] = $this->setupOrganization(selfService: false);
+
+        $log = VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'call-show-1',
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '101',
+            'status' => 'completed',
+            'started_at' => now()->subDay(),
+            'raw_payload' => ['resolved_extension' => '101'],
+        ]);
+
+        $call = Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'voip_call_log_id' => $log->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'call-show-1',
+            'direction' => 'inbound',
+            'caller_number' => '09120000000',
+            'receiver_number' => '101',
+            'status' => 'completed',
+            'organization_user_id' => null,
+        ]);
+
+        $analysis = ConversationAnalysis::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => null,
+            'call_id' => $call->id,
+            'voip_call_log_id' => $log->id,
+            'source' => ConversationSource::Voip,
+            'llm_provider' => 'openai',
+            'model_name' => 'gpt-4o-mini',
+            'score' => 80,
+            'summary' => 'test',
+            'sentiment' => AnalysisSentiment::Neutral,
+            'strengths_json' => [],
+            'weaknesses_json' => [],
+            'next_actions_json' => [],
+            'cost' => 0,
+            'total_tokens' => 0,
+            'analyzed_at' => now(),
+        ]);
+
+        $this->actingAs($employer);
+
+        Livewire::test(IntelligenceShow::class, ['analysis' => $analysis])
+            ->set('assignEmployeeId', $employee->id)
+            ->call('assignCallEmployee')
+            ->assertHasNoErrors();
+
+        $this->assertSame($employee->id, $analysis->fresh()->organization_user_id);
+        $this->assertSame($employee->id, $call->fresh()->organization_user_id);
+        $this->assertDatabaseHas('employee_integration_meta', [
+            'organization_user_id' => $employee->id,
+            'value' => '101',
         ]);
     }
 

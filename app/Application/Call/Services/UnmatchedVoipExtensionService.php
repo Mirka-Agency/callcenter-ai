@@ -5,6 +5,7 @@ namespace App\Application\Call\Services;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\OrganizationVoipConnection;
+use App\Models\ConversationAnalysis;
 use App\Models\VoipCallLog;
 use App\Services\EmployeeIntegrationMetaService;
 use Illuminate\Support\Carbon;
@@ -106,7 +107,13 @@ class UnmatchedVoipExtensionService
 
         EmployeeIntegrationMetaService::assignVoipExtension($employee, $connection, $extension);
 
-        return $this->backfillCalls($organization, $extension, $connectionId, $days);
+        return $this->backfillCalls(
+            organization: $organization,
+            extension: $extension,
+            connectionId: $connectionId,
+            days: $days,
+            organizationUserId: $organizationUserId,
+        );
     }
 
     public function backfillCalls(
@@ -114,6 +121,7 @@ class UnmatchedVoipExtensionService
         string $extension,
         int $connectionId,
         int $days = 14,
+        ?int $organizationUserId = null,
     ): int {
         $logs = VoipCallLog::query()
             ->where('organization_id', $organization->id)
@@ -128,7 +136,20 @@ class UnmatchedVoipExtensionService
                 continue;
             }
 
-            $this->ingestion->ingestFromVoipLog($log);
+            $callId = $this->ingestion->ingestFromVoipLog($log);
+            $employeeId = $organizationUserId
+                ?? $this->resolver->resolveFromCallLog($log);
+
+            if ($employeeId !== null) {
+                ConversationAnalysis::query()
+                    ->where('organization_id', $organization->id)
+                    ->where(function ($query) use ($log, $callId): void {
+                        $query->where('voip_call_log_id', $log->id)
+                            ->orWhere('call_id', $callId);
+                    })
+                    ->update(['organization_user_id' => $employeeId]);
+            }
+
             $count++;
         }
 

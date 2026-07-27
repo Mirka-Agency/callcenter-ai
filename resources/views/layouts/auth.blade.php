@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name') }} — ورود</title>
+    <link rel="stylesheet" href="{{ asset('css/vazirmatn.css') }}">
     @vite(['resources/css/saas.css', 'resources/js/saas.js'])
     @livewireStyles
     <script>
@@ -14,7 +15,7 @@
         })();
     </script>
 </head>
-<body class="saas-shell flex min-h-screen items-center justify-center px-4">
+<body class="saas-shell flex min-h-screen items-center justify-center px-4 font-sans">
     <div class="w-full max-w-md">
         {{ $slot }}
     </div>

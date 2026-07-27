@@ -21,6 +21,12 @@
         </a>
     @endif
 
+    @if (session('status'))
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100">
+            {{ session('status') }}
+        </div>
+    @endif
+
     <section class="saas-hero">
         <div class="flex flex-col gap-6 p-6 lg:flex-row lg:items-start lg:justify-between lg:p-8">
             <div class="min-w-0 flex-1">
@@ -209,7 +215,7 @@
                 'callLog' => $callLog ?? null,
                 'extension' => $extension ?? null,
                 'resolvedEmployeeId' => $resolvedEmployeeId ?? null,
-                'canManageIntegrations' => $canManageIntegrations ?? false,
+                'canAssignEmployee' => $canAssignEmployee ?? false,
                 'employees' => $employees ?? collect(),
                 'createEmployeeUrl' => $createEmployeeUrl ?? null,
             ])
@@ -266,7 +272,7 @@
                         @include('livewire.shared.analysis-ai-infrastructure', ['analysis' => $analysis])
                         <div class="flex items-start justify-between gap-3 border-t border-zinc-200/80 pt-3 dark:border-zinc-800">
                             <dt class="text-zinc-500">هزینه تحلیل</dt>
-                            <dd class="text-end font-medium">{{ \App\Models\PlatformAiSettings::formatMoney($analysis->cost) }}</dd>
+                            <dd class="text-end font-medium">{{ \App\Models\PlatformAiSettings::formatMoney($analysis->cost ?? 0) }}</dd>
                         </div>
                         <div class="flex items-start justify-between gap-3">
                             <dt class="text-zinc-500">توکن‌ها</dt>

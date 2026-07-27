@@ -29,8 +29,8 @@ ONPREM_EMPLOYER_PASSWORD=رمز-کارفرما
 
 | ورود | آدرس | ایمیل | رمز |
 |------|------|--------|-----|
-| ادمین شما | `http://IP-سرور:8000/admin` | مقدار `ONPREM_ADMIN_EMAIL` | مقدار `ONPREM_ADMIN_PASSWORD` |
-| کارفرما | `http://IP-سرور:8000/app` | مقدار `ONPREM_EMPLOYER_EMAIL` | مقدار `ONPREM_EMPLOYER_PASSWORD` |
+| ادمین شما | `http://IP-سرور/admin` | مقدار `ONPREM_ADMIN_EMAIL` | مقدار `ONPREM_ADMIN_PASSWORD` |
+| کارفرما | `http://IP-سرور/app` | مقدار `ONPREM_EMPLOYER_EMAIL` | مقدار `ONPREM_EMPLOYER_PASSWORD` |
 
 اگر seeder را با مقادیر مثال (`change-me-admin-password`) زده باشید، همان‌ها رمز ورود هستند — **قبل از تحویل عوضشان کنید** (یا `.env` را درست کنید و دوباره seed بزنید / از ادمین رمز را reset کنید).
 
@@ -146,15 +146,17 @@ docker --version
 docker compose version
 ```
 
-فایروال (اگر ufw روشن است) — پورت وب اپ را باز کنید (پیش‌فرض compose: `8000`):
+فایروال (اگر ufw روشن است) — پورت وب اپ را باز کنید (پیش‌فرض compose: `80`):
 
 ```bash
 sudo ufw allow OpenSSH
-sudo ufw allow 8000/tcp
+sudo ufw allow 80/tcp
 # اگر realtime می‌خواهید:
 # sudo ufw allow 8090/tcp
 sudo ufw enable
 ```
+
+اگر قبلاً روی `:8000` بودید و می‌خواهید به پورت ۸۰ بروید، در `.env` بگذارید `APP_URL=http://IP-LAN` و `ONPREM_HTTP_PORT=80`، بعد `docker compose -f docker-compose.onprem.yml up -d` و `php artisan config:clear`. آدرس وب‌هوک Asterisk را بدون `:8000` دوباره از UI کپی کنید. داخل کانتینر از قبل nginx هست؛ Docker فقط `80→8000` را map می‌کند و reverse proxy جدا روی هاست لازم نیست مگر TLS بخواهید.
 
 IP سرور را یادداشت کنید:
 
@@ -176,7 +178,7 @@ nano .env   # یا vim
 
 | متغیر | چه بگذارید |
 |--------|------------|
-| `APP_URL` | `http://10.0.0.50:8000` — **IP واقعی LAN همین سرور اپ** (نه `localhost` اگر Asterisk جای دیگری است). با `http://` بگذارید مگر TLS واقعی دارید |
+| `APP_URL` | `http://10.0.0.50` — **IP واقعی LAN همین سرور اپ** (نه `localhost` اگر Asterisk جای دیگری است). پورت پیش‌فرض `80` است؛ اگر پورت دیگری گذاشتید در URL هم بیاورید |
 | `FORCE_HTTPS` | برای LAN بدون TLS: `false` |
 | `SESSION_SECURE_COOKIE` | برای LAN بدون TLS: `false` (وگرنه لاگین «منقضی / expired» می‌شود) |
 | `APP_KEY` | فعلاً خالی بگذارید؛ بعد از بالا آمدن کانتینر generate می‌کنیم |
@@ -191,7 +193,8 @@ nano .env   # یا vim
 نمونهٔ حداقلی برای بخش کاربران:
 
 ```env
-APP_URL=http://10.0.0.50:8000
+APP_URL=http://10.0.0.50
+ONPREM_HTTP_PORT=80
 
 FORCE_HTTPS=false
 SESSION_SECURE_COOKIE=false
@@ -241,13 +244,13 @@ docker compose -f docker-compose.onprem.yml exec app php artisan key:generate --
 چک سلامت:
 
 ```bash
-curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/up
+curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1/up
 # انتظار: 200
 ```
 
 از یک سیستم در LAN:
 
-مرورگر → `http://10.0.0.50:8000` (IP خودتان)
+مرورگر → `http://10.0.0.50` (IP خودتان)
 
 اختیاری — realtime (Reverb):
 
@@ -315,7 +318,7 @@ docker compose -f docker-compose.onprem.yml exec app php artisan db:seed --class
 ## ۸. شبکه و VoIP (Asterisk جدا از اپ)
 
 ```text
-[کارشناسان مرورگر] ──► [سرور اپ :8000]
+[کارشناسان مرورگر] ──► [سرور اپ :80]
 [Asterisk/Simotel IP جدا] ──POST webhook──► [اپ /webhooks/voip/{token}]
 [اپ] ──فقط اگر Simotel──► [api_url داخلی]
 [اپ] ──تحلیل AI──► [اینترنت]
@@ -331,7 +334,7 @@ docker compose -f docker-compose.onprem.yml exec app php artisan db:seed --class
 
 ```bash
 curl -sS -o /dev/null -w "%{http_code}\n" \
-  -X POST "http://10.0.0.50:8000/webhooks/voip/<TOKEN>" \
+  -X POST "http://10.0.0.50/webhooks/voip/<TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"event":"cdr","unique_id":"test-1","caller":"09120000000","callee":"1001","status":"answered","duration":10}'
 ```
@@ -359,7 +362,7 @@ curl -sS -o /dev/null -w "%{http_code}\n" "http://10.0.0.20/api/v4"
 
 | مبدأ | مقصد | پورت |
 |------|------|------|
-| کارشناسان | اپ | 8000 (یا 80/443 اگر reverse proxy گذاشتید) |
+| کارشناسان | اپ | 80 (یا `ONPREM_HTTP_PORT` / 443 با reverse proxy) |
 | Asterisk/Simotel | اپ | همان پورت وب |
 | اپ | Simotel | پورت API |
 | اپ | اینترنت | 443 برای LLM |
@@ -446,7 +449,7 @@ docker compose -f docker-compose.onprem.yml up -d --build
 در `.env` سرور:
 
 ```env
-APP_URL=http://IP-LAN:8000
+APP_URL=http://IP-LAN
 FORCE_HTTPS=false
 SESSION_SECURE_COOKIE=false
 ```
@@ -460,7 +463,9 @@ docker compose -f docker-compose.onprem.yml exec app php artisan config:clear
 
 مرورگر: یک‌بار کوکی‌های همان سایت را پاک کنید و دوباره لاگین کنید.
 
-فونت Vazirmatn از بیلد داخل پروژه لود می‌شود (دیگر به Google Fonts وابسته نیست).
+فونت Vazirmatn به‌صورت محلی از `/css/vazirmatn.css` و `/fonts/vazirmatn/` لود می‌شود (لاگین و پنل ادمین Filament؛ بدون Google/Bunny CDN).
+
+اگر بعد از آپدیت هنوز فونت سیستم دیده می‌شود، یک‌بار هارد رفرش کنید و مطمئن شوید فایل‌های `public/fonts/vazirmatn` داخل ایمیج/zip هستند.
 
 ### مدل عملیاتی با مشتری
 
