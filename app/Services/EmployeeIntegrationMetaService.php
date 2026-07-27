@@ -137,6 +137,45 @@ class EmployeeIntegrationMetaService
         }
     }
 
+    public static function assignVoipExtension(
+        OrganizationUser $employee,
+        OrganizationVoipConnection $connection,
+        string $extension,
+    ): void {
+        if ((int) $connection->organization_id !== (int) $employee->organization_id) {
+            throw ValidationException::withMessages([
+                'extension' => 'اتصال VoIP انتخاب‌شده معتبر نیست.',
+            ]);
+        }
+
+        $existingEmployeeId = EmployeeIntegrationMeta::query()
+            ->where('integratable_type', OrganizationVoipConnection::class)
+            ->where('integratable_id', $connection->id)
+            ->where('key', 'extension')
+            ->where('value', $extension)
+            ->where('organization_user_id', '!=', $employee->id)
+            ->whereHas('employee', fn ($query) => $query->where('organization_id', $employee->organization_id))
+            ->value('organization_user_id');
+
+        if ($existingEmployeeId !== null) {
+            throw ValidationException::withMessages([
+                'extension' => __('ui.voip.unmatched_extension_conflict'),
+            ]);
+        }
+
+        EmployeeIntegrationMeta::query()->updateOrCreate(
+            [
+                'organization_user_id' => $employee->id,
+                'integratable_type' => OrganizationVoipConnection::class,
+                'integratable_id' => $connection->id,
+                'key' => 'extension',
+            ],
+            [
+                'value' => $extension,
+            ],
+        );
+    }
+
     /** @param array<int, array{connection: string, meta?: array<string, string|null>}> $assignments */
     public static function syncForEmployee(OrganizationUser $employee, array $assignments, ?int $organizationId = null): void
     {

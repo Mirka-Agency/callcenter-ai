@@ -37,7 +37,7 @@ class CallEmployeeResolver
     }
 
     /** @return list<string> */
-    private function extensionCandidates(VoipCallLog $log): array
+    public function extensionCandidates(VoipCallLog $log): array
     {
         $payload = is_array($log->raw_payload) ? $log->raw_payload : [];
         $candidates = [];

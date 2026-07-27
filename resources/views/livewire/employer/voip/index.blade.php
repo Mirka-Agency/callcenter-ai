@@ -95,19 +95,100 @@
             </p>
         </div>
 
+        <div class="saas-card space-y-4">
+            <div>
+                <h2 class="text-lg font-semibold">{{ __('ui.voip.unmatched_extensions_title') }}</h2>
+                <p class="mt-1 text-sm text-zinc-500">{{ __('ui.voip.unmatched_extensions_hint') }}</p>
+            </div>
+
+            @if ($unmatchedExtensions === [])
+                <p class="text-sm text-zinc-500">{{ __('ui.voip.unmatched_extensions_empty') }}</p>
+            @else
+                <table class="saas-table">
+                    <thead>
+                        <tr>
+                            <th>{{ __('ui.voip.unmatched_extension_column') }}</th>
+                            <th>{{ __('ui.voip.unmatched_connection_column') }}</th>
+                            <th>{{ __('ui.voip.unmatched_call_count_column') }}</th>
+                            <th>{{ __('ui.voip.unmatched_last_call_column') }}</th>
+                            <th>{{ __('ui.voip.unmatched_employee_column') }}</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($unmatchedExtensions as $row)
+                            @php($selectionKey = $row['extension'].'__'.$row['connection_id'])
+                            <tr wire:key="unmatched-{{ $selectionKey }}">
+                                <td><code class="rounded bg-zinc-100 px-1.5 py-0.5 text-sm dark:bg-zinc-800">{{ $row['extension'] }}</code></td>
+                                <td>{{ $row['connection_name'] }}</td>
+                                <td>{{ $row['call_count'] }}</td>
+                                <td>{{ $row['last_call_at'] ? shamsi($row['last_call_at'], 'datetime') : '—' }}</td>
+                                <td>
+                                    @if ($canManageIntegrations)
+                                        <select
+                                            wire:model="unmatchedSelections.{{ $selectionKey }}"
+                                            class="saas-input w-full min-w-[10rem]"
+                                        >
+                                            <option value="">{{ __('ui.voip.recent_calls_select_employee') }}</option>
+                                            @foreach ($employees as $employee)
+                                                <option value="{{ $employee->id }}">{{ $employee->full_name }}</option>
+                                            @endforeach
+                                        </select>
+                                    @else
+                                        <span class="text-sm text-zinc-500">—</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if ($canManageIntegrations)
+                                        <button
+                                            type="button"
+                                            wire:click="assignUnmatchedExtension('{{ $row['extension'] }}', {{ $row['connection_id'] }})"
+                                            wire:loading.attr="disabled"
+                                            wire:target="assignUnmatchedExtension('{{ $row['extension'] }}', {{ $row['connection_id'] }})"
+                                            class="saas-btn-secondary whitespace-nowrap text-sm"
+                                        >
+                                            <span wire:loading.remove wire:target="assignUnmatchedExtension('{{ $row['extension'] }}', {{ $row['connection_id'] }})">
+                                                {{ __('ui.voip.unmatched_assign_button') }}
+                                            </span>
+                                            <span wire:loading wire:target="assignUnmatchedExtension('{{ $row['extension'] }}', {{ $row['connection_id'] }})">
+                                                {{ __('ui.voip.unmatched_assigning') }}
+                                            </span>
+                                        </button>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+        </div>
+
         <div class="saas-card">
             <h2 class="text-lg font-semibold">تماس‌های اخیر</h2>
             <p class="mt-1 text-sm text-zinc-500">
                 {{ $recentCallsHint }}
             </p>
             <table class="saas-table mt-4">
-                <thead><tr><th>جهت</th><th>شناسه تماس‌گیرنده (از)</th><th>به</th><th>وضعیت</th><th>شروع</th></tr></thead>
+                <thead><tr><th>جهت</th><th>شناسه تماس‌گیرنده (از)</th><th>به</th><th>{{ __('ui.voip.recent_calls_extension_column') }}</th><th>وضعیت</th><th>شروع</th></tr></thead>
                 <tbody>
-                    @forelse ($recentCalls as $call)
+                    @forelse ($recentCallRows as $row)
+                        @php($call = $row['log'])
                         <tr>
                             <td>{{ $call->direction?->label() ?? '—' }}</td>
                             <td>{{ $call->source_number ?: '—' }}</td>
                             <td>{{ $call->destination_number }}</td>
+                            <td>
+                                @if ($row['extension'])
+                                    <code class="rounded bg-zinc-100 px-1.5 py-0.5 text-xs dark:bg-zinc-800">{{ $row['extension'] }}</code>
+                                @else
+                                    —
+                                @endif
+                                @if ($row['extension'] && ! $row['employee_id'])
+                                    <span class="ms-1 inline-flex rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                                        {{ __('ui.voip.recent_calls_no_employee_badge') }}
+                                    </span>
+                                @endif
+                            </td>
                             <td>
                                 @if ($call->status)
                                     <span @class([
@@ -126,7 +207,7 @@
                             <td>{{ shamsi($call->started_at, 'datetime') }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="text-center text-zinc-500">هنوز تماسی از طریق VoIP ثبت نشده — پس از اتصال، تماس‌های ورودی اینجا دیده می‌شوند.</td></tr>
+                        <tr><td colspan="6" class="text-center text-zinc-500">هنوز تماسی از طریق VoIP ثبت نشده — پس از اتصال، تماس‌های ورودی اینجا دیده می‌شوند.</td></tr>
                     @endforelse
                 </tbody>
             </table>
