@@ -22,16 +22,14 @@ use App\Models\VoipProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class SimotelIncomingCallOutcomeTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_incoming_call_creates_ringing_log_and_schedules_outcome_job(): void
+    public function test_incoming_call_creates_ringing_log(): void
     {
-        Queue::fake();
         Event::fake([CallStarted::class]);
 
         $organization = Organization::factory()->create();

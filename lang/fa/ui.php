@@ -100,7 +100,7 @@ return [
         'asterisk_notify_dialplan_title' => 'dialplan اعلان زنگ (قبل از Dial)',
         'asterisk_notify_dialplan_hint' => 'قبل از Dial() قرار دهید. PJSIP/\${EXTEN} را با کانال واقعی خودتان عوض کنید.',
         'asterisk_save_first' => 'پس از ذخیره اتصال، آدرس وب‌هوک واقعی و همه دستورهای قابل‌کپی اینجا نمایش داده می‌شوند.',
-        'recent_calls_hint_simotel' => 'شناسه تماس‌گیرنده در ستون «از» نمایش داده می‌شود. وضعیت نهایی از وب‌هوک CDR سیموتل (ANSWERED / NO ANSWER) می‌آید؛ در صورت فعال بودن دسترسی API reports/quick هم پس از ۱–۲ دقیقه تکمیل می‌شود.',
+        'recent_calls_hint_simotel' => 'شناسه تماس‌گیرنده در ستون «از» نمایش داده می‌شود. وضعیت نهایی تماس از وب‌هوک CDR سیموتل (مثل ANSWERED / NO ANSWER) به‌روزرسانی می‌شود.',
         'recent_calls_hint_custom' => 'شناسه تماس‌گیرنده در ستون «از» نمایش داده می‌شود. وضعیت و مدت تماس از JSON وب‌هوکی می‌آید که Asterisk (یا سیستم تلفن شما) پس از پایان تماس ارسال می‌کند.',
         'recent_calls_hint_mixed' => 'شناسه تماس‌گیرنده در ستون «از» نمایش داده می‌شود. وضعیت تماس از وب‌هوک CDR (سیموتل یا Asterisk/سفارشی) می‌آید.',
         'unmatched_extensions_title' => 'داخلی‌های بدون کارشناس',

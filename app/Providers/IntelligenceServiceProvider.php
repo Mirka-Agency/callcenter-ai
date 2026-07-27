@@ -7,7 +7,6 @@ use App\Application\Call\Services\ManualAudioUploadService;
 use App\Application\Crm\Services\CrmIntelligenceSyncService;
 use App\Application\Intelligence\Listeners\BroadcastIncomingCall;
 use App\Application\Intelligence\Listeners\FinalizeVoipCallSession;
-use App\Application\Intelligence\Listeners\ScheduleSimotelCallOutcomeResolution;
 use App\Application\Intelligence\Listeners\StartCallIntelligenceAnalysis;
 use App\Domain\Call\Contracts\CallRepositoryInterface;
 use App\Domain\Performance\Contracts\EmployeePerformanceRepositoryInterface;
@@ -43,7 +42,6 @@ class IntelligenceServiceProvider extends ServiceProvider
         $listener = StartCallIntelligenceAnalysis::class;
 
         Event::listen(CallStarted::class, BroadcastIncomingCall::class);
-        Event::listen(CallStarted::class, ScheduleSimotelCallOutcomeResolution::class);
         Event::listen(CallEnded::class, [$listener, 'handleVoipEvent']);
         Event::listen(CallEnded::class, [FinalizeVoipCallSession::class, 'handle']);
         Event::listen(CallMissed::class, [FinalizeVoipCallSession::class, 'handle']);
