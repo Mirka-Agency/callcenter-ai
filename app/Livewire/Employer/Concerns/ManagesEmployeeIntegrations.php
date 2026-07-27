@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Employer\Concerns;
 
+use App\Models\OrganizationCrmConnection;
 use App\Models\OrganizationUser;
+use App\Models\OrganizationVoipConnection;
 use App\Services\EmployeeIntegrationMetaService;
 use App\Services\EmployerContext;
 use App\Services\EmployerIntegrationGate;
@@ -14,10 +16,6 @@ trait ManagesEmployeeIntegrations
 
     protected function bootEmployeeIntegrations(): void
     {
-        if (! EmployerIntegrationGate::allowsFullManagement()) {
-            return;
-        }
-
         if ($this->integration_assignments === []) {
             $this->integration_assignments[] = [
                 'connection' => '',
@@ -28,11 +26,22 @@ trait ManagesEmployeeIntegrations
 
     protected function hydrateEmployeeIntegrationsFromMembership(?OrganizationUser $employee): void
     {
-        if (! EmployerIntegrationGate::allowsFullManagement() || ! $employee) {
+        if (! $employee) {
+            $this->bootEmployeeIntegrations();
+
             return;
         }
 
-        $this->integration_assignments = EmployeeIntegrationMetaService::assignmentsFromEmployee($employee);
+        $assignments = EmployeeIntegrationMetaService::assignmentsFromEmployee($employee);
+
+        if (! EmployerIntegrationGate::allowsFullManagement()) {
+            $assignments = array_values(array_filter(
+                $assignments,
+                fn (array $assignment): bool => $this->isVoipAssignment($assignment),
+            ));
+        }
+
+        $this->integration_assignments = $assignments;
 
         if ($this->integration_assignments === []) {
             $this->bootEmployeeIntegrations();
@@ -41,21 +50,39 @@ trait ManagesEmployeeIntegrations
 
     protected function persistEmployeeIntegrations(OrganizationUser $employee): void
     {
-        if (! EmployerIntegrationGate::allowsFullManagement()) {
+        $organizationId = $employee->organization_id;
+
+        if (EmployerIntegrationGate::allowsFullManagement()) {
+            EmployeeIntegrationMetaService::syncForEmployee(
+                employee: $employee,
+                assignments: $this->integration_assignments,
+                organizationId: $organizationId,
+            );
+
             return;
         }
 
+        // Without full management, employers may only edit VoIP extension mapping.
+        // Preserve any existing CRM meta so sync does not wipe it.
+        $existing = EmployeeIntegrationMetaService::assignmentsFromEmployee($employee);
+        $crmAssignments = array_values(array_filter(
+            $existing,
+            fn (array $assignment): bool => $this->isCrmAssignment($assignment),
+        ));
+        $voipAssignments = array_values(array_filter(
+            $this->integration_assignments,
+            fn (array $assignment): bool => filled($assignment['connection'] ?? null) && $this->isVoipAssignment($assignment),
+        ));
+
         EmployeeIntegrationMetaService::syncForEmployee(
             employee: $employee,
-            assignments: $this->integration_assignments,
-            organizationId: $employee->organization_id,
+            assignments: array_merge($crmAssignments, $voipAssignments),
+            organizationId: $organizationId,
         );
     }
 
     public function addIntegrationAssignment(): void
     {
-        EmployerIntegrationGate::authorizeFullManagement();
-
         $this->integration_assignments[] = [
             'connection' => '',
             'meta' => [],
@@ -64,8 +91,6 @@ trait ManagesEmployeeIntegrations
 
     public function removeIntegrationAssignment(int $index): void
     {
-        EmployerIntegrationGate::authorizeFullManagement();
-
         unset($this->integration_assignments[$index]);
         $this->integration_assignments = array_values($this->integration_assignments);
     }
@@ -73,8 +98,18 @@ trait ManagesEmployeeIntegrations
     /** @return array<string, string> */
     public function integrationConnectionOptions(): array
     {
-        return EmployeeIntegrationMetaService::connectionOptionsForOrganization(
+        $options = EmployeeIntegrationMetaService::connectionOptionsForOrganization(
             EmployerContext::organizationId(),
+        );
+
+        if (EmployerIntegrationGate::allowsFullManagement()) {
+            return $options;
+        }
+
+        return array_filter(
+            $options,
+            fn (string $label, string $reference): bool => str_starts_with($reference, OrganizationVoipConnection::class.':'),
+            ARRAY_FILTER_USE_BOTH,
         );
     }
 
@@ -87,5 +122,22 @@ trait ManagesEmployeeIntegrations
             is_string($connection) ? $connection : null,
             EmployerContext::organizationId(),
         );
+    }
+
+    public function canManageFullIntegrations(): bool
+    {
+        return EmployerIntegrationGate::allowsFullManagement();
+    }
+
+    /** @param array{connection?: string} $assignment */
+    private function isVoipAssignment(array $assignment): bool
+    {
+        return str_starts_with((string) ($assignment['connection'] ?? ''), OrganizationVoipConnection::class.':');
+    }
+
+    /** @param array{connection?: string} $assignment */
+    private function isCrmAssignment(array $assignment): bool
+    {
+        return str_starts_with((string) ($assignment['connection'] ?? ''), OrganizationCrmConnection::class.':');
     }
 }

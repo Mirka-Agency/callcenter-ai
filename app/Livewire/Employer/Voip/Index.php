@@ -36,8 +36,6 @@ class Index extends Component
 
     public function assignUnmatchedExtension(string $extension, int $connectionId): void
     {
-        EmployerIntegrationGate::authorizeFullManagement();
-
         $organization = EmployerContext::organization();
         $selectionKey = $extension.'__'.$connectionId;
         $organizationUserId = (int) ($this->unmatchedSelections[$selectionKey] ?? 0);

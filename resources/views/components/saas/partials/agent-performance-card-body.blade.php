@@ -46,8 +46,8 @@
 
     <dl class="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:grid-cols-4">
         <div>
-            <dt class="text-[11px] text-zinc-500">تماس‌ها</dt>
-            <dd class="text-sm font-semibold tabular-nums">{{ $agent['total_calls'] ?? 0 }}</dd>
+            <dt class="text-[11px] text-zinc-500">تحلیل‌شده</dt>
+            <dd class="text-sm font-semibold tabular-nums">{{ $agent['total_analyzed'] ?? 0 }}</dd>
         </div>
         <div>
             <dt class="text-[11px] text-zinc-500">نرخ پاسخ</dt>
@@ -65,11 +65,14 @@
         </div>
     </dl>
 
-    @if (filled($agent['average_duration_label'] ?? null))
+    @if (filled($agent['average_duration_label'] ?? null) || (($agent['total_calls'] ?? 0) > ($agent['total_analyzed'] ?? 0)))
         <p class="text-xs text-zinc-500">
-            میانگین مدت مکالمه: <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ $agent['average_duration_label'] }}</span>
-            @if (($agent['total_analyzed'] ?? 0) > 0)
-                · {{ $agent['total_analyzed'] }} تحلیل
+            @if (filled($agent['average_duration_label'] ?? null))
+                میانگین مدت مکالمه: <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ $agent['average_duration_label'] }}</span>
+            @endif
+            @if (($agent['total_calls'] ?? 0) > ($agent['total_analyzed'] ?? 0))
+                @if (filled($agent['average_duration_label'] ?? null)) · @endif
+                {{ $agent['total_calls'] }} تماس VoIP ثبت‌شده
             @endif
         </p>
     @endif

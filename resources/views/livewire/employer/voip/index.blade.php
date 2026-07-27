@@ -124,37 +124,31 @@
                                 <td>{{ $row['call_count'] }}</td>
                                 <td>{{ $row['last_call_at'] ? shamsi($row['last_call_at'], 'datetime') : '—' }}</td>
                                 <td>
-                                    @if ($canManageIntegrations)
-                                        <select
-                                            wire:model="unmatchedSelections.{{ $selectionKey }}"
-                                            class="saas-input w-full min-w-[10rem]"
-                                        >
-                                            <option value="">{{ __('ui.voip.recent_calls_select_employee') }}</option>
-                                            @foreach ($employees as $employee)
-                                                <option value="{{ $employee->id }}">{{ $employee->full_name }}</option>
-                                            @endforeach
-                                        </select>
-                                    @else
-                                        <span class="text-sm text-zinc-500">—</span>
-                                    @endif
+                                    <select
+                                        wire:model="unmatchedSelections.{{ $selectionKey }}"
+                                        class="saas-input w-full min-w-[10rem]"
+                                    >
+                                        <option value="">{{ __('ui.voip.recent_calls_select_employee') }}</option>
+                                        @foreach ($employees as $employee)
+                                            <option value="{{ $employee->id }}">{{ $employee->full_name }}</option>
+                                        @endforeach
+                                    </select>
                                 </td>
                                 <td>
-                                    @if ($canManageIntegrations)
-                                        <button
-                                            type="button"
-                                            wire:click="assignUnmatchedExtension('{{ $row['extension'] }}', {{ $row['connection_id'] }})"
-                                            wire:loading.attr="disabled"
-                                            wire:target="assignUnmatchedExtension('{{ $row['extension'] }}', {{ $row['connection_id'] }})"
-                                            class="saas-btn-secondary whitespace-nowrap text-sm"
-                                        >
-                                            <span wire:loading.remove wire:target="assignUnmatchedExtension('{{ $row['extension'] }}', {{ $row['connection_id'] }})">
-                                                {{ __('ui.voip.unmatched_assign_button') }}
-                                            </span>
-                                            <span wire:loading wire:target="assignUnmatchedExtension('{{ $row['extension'] }}', {{ $row['connection_id'] }})">
-                                                {{ __('ui.voip.unmatched_assigning') }}
-                                            </span>
-                                        </button>
-                                    @endif
+                                    <button
+                                        type="button"
+                                        wire:click="assignUnmatchedExtension('{{ $row['extension'] }}', {{ $row['connection_id'] }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="assignUnmatchedExtension('{{ $row['extension'] }}', {{ $row['connection_id'] }})"
+                                        class="saas-btn-secondary whitespace-nowrap text-sm"
+                                    >
+                                        <span wire:loading.remove wire:target="assignUnmatchedExtension('{{ $row['extension'] }}', {{ $row['connection_id'] }})">
+                                            {{ __('ui.voip.unmatched_assign_button') }}
+                                        </span>
+                                        <span wire:loading wire:target="assignUnmatchedExtension('{{ $row['extension'] }}', {{ $row['connection_id'] }})">
+                                            {{ __('ui.voip.unmatched_assigning') }}
+                                        </span>
+                                    </button>
                                 </td>
                             </tr>
                         @endforeach

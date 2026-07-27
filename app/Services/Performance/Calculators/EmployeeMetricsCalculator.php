@@ -30,7 +30,14 @@ class EmployeeMetricsCalculator
         )->count();
 
         $missed = $calls->where('status', 'missed')->count();
-        $durations = $calls->pluck('duration_seconds')->filter(fn ($d) => $d > 0);
+        $durationSource = $calls->filter(
+            fn (Call $call) => in_array($call->id, $analyzedCallIds, true)
+                || (in_array($call->status, ['completed', 'answered'], true) && ($call->duration_seconds ?? 0) > 0),
+        );
+        $durations = $durationSource->pluck('duration_seconds')->filter(fn ($d) => $d > 0);
+        if ($durations->isEmpty()) {
+            $durations = $calls->pluck('duration_seconds')->filter(fn ($d) => $d > 0);
+        }
         $avgDuration = $durations->isNotEmpty() ? (int) round($durations->avg()) : 0;
 
         $leadScores = $analyses

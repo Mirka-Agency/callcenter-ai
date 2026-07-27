@@ -592,7 +592,7 @@ return [
         'provider_code_didar' => 'کد ارائه‌دهنده: didar',
         'provider_code_novatel' => 'کد ارائه‌دهنده: novatel',
         'voip_provider_code_helper' => 'باید یکی از مقادیر مجاز باشد: novatel، simotel، custom. نام نمایشی می‌تواند دلخواه باشد (مثلاً Astel).',
-        'employer_can_manage_integrations_helper' => 'در صورت فعال بودن، کارفرما می‌تواند اتصال‌های CRM و VoIP سازمان خود و نگاشت آن‌ها به کارشناسان را مدیریت کند. در حالت غیرفعال، فقط تنظیمات محدود فعلی (مراحل CRM و توکن Webhook) در دسترس است.',
+        'employer_can_manage_integrations_helper' => 'در صورت فعال بودن، کارفرما می‌تواند خودِ اتصال‌های CRM و VoIP را بسازد و ویرایش کند. حتی در حالت خاموش، کارفرما می‌تواند داخلی VoIP را به کارشناسان نسبت دهد.',
         'internal_key_crm_helper' => 'کلید داخلی، مثلاً extension، crm_user_id',
         'internal_key_voip_helper' => 'کلید داخلی، مثلاً extension، internal_user_id',
         'crm_settings_description' => 'اتصالات CRM فعال، شناسه تماس‌گیرنده را از شماره تلفن resolve می‌کنند و هوش مشتری در تماس‌های ورودی را فعال می‌کنند.',

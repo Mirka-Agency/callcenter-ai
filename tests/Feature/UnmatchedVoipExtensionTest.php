@@ -110,11 +110,11 @@ class UnmatchedVoipExtensionTest extends TestCase
         );
     }
 
-    public function test_livewire_assign_unmatched_extension_requires_gate(): void
+    public function test_livewire_assign_unmatched_extension_works_when_gate_disabled(): void
     {
         [$organization, $connection, $employer, $employee] = $this->setupOrganization(selfService: false);
 
-        VoipCallLog::query()->create([
+        $log = VoipCallLog::query()->create([
             'organization_id' => $organization->id,
             'organization_voip_connection_id' => $connection->id,
             'provider_code' => VoipProviderCode::Custom->value,
@@ -127,12 +127,36 @@ class UnmatchedVoipExtensionTest extends TestCase
             'raw_payload' => ['resolved_extension' => '101'],
         ]);
 
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'voip_call_log_id' => $log->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'call-1',
+            'direction' => 'inbound',
+            'caller_number' => '09120000000',
+            'receiver_number' => '101',
+            'status' => 'completed',
+            'organization_user_id' => null,
+        ]);
+
         $this->actingAs($employer);
 
         Livewire::test(Index::class)
             ->set('unmatchedSelections.101__'.$connection->id, $employee->id)
             ->call('assignUnmatchedExtension', '101', $connection->id)
-            ->assertForbidden();
+            ->assertHasNoErrors()
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('employee_integration_meta', [
+            'organization_user_id' => $employee->id,
+            'key' => 'extension',
+            'value' => '101',
+        ]);
+        $this->assertDatabaseHas('calls', [
+            'voip_call_log_id' => $log->id,
+            'organization_user_id' => $employee->id,
+        ]);
     }
 
     public function test_livewire_assign_unmatched_extension_backfills_when_gate_enabled(): void
