@@ -131,16 +131,28 @@ class CustomVoipAdapterTest extends TestCase
 
         $this->assertStringContainsString($url, $curl);
         $this->assertStringContainsString('Content-Type: application/json', $curl);
+        $this->assertStringContainsString('"direction": "inbound"', $curl);
+        $this->assertStringContainsString('"direction": "outbound"', $curl);
         $this->assertStringContainsString($url, $dialplan);
         $this->assertStringContainsString('${UNIQUEID}', $dialplan);
         $this->assertStringContainsString('exten => h,1', $dialplan);
         $this->assertStringContainsString('[callcenter-cdr]', $dialplan);
+        $this->assertStringContainsString('CC_DIRECTION=outbound', $dialplan);
+        $this->assertStringContainsString('CC_DIRECTION=inbound', $dialplan);
+        $this->assertStringContainsString('[from-internal]', $dialplan);
         $this->assertStringContainsString($url, $shell);
         $this->assertStringContainsString('jq -n', $shell);
+        $this->assertStringContainsString('DIRECTION="${7:-inbound}"', $shell);
         $this->assertStringContainsString('organization_id', $notify);
         $this->assertStringContainsString('X-Voip-Webhook-Token: token-xyz', $notify);
         $this->assertStringContainsString('X-Voip-Webhook-Token: token-xyz', $ring);
         $this->assertStringContainsString('"organization_id":9', $ring);
+
+        $outboundPayload = CustomVoipAdapter::sampleWebhookPayload('outbound');
+        $this->assertSame('outbound', $outboundPayload['direction']);
+        $this->assertSame('101', $outboundPayload['from']);
+        $this->assertSame('101', $outboundPayload['extension']);
+        $this->assertSame('09129876543', $outboundPayload['to']);
     }
 
     private function adapter(): CustomVoipAdapter

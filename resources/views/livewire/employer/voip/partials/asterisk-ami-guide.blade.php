@@ -10,6 +10,7 @@
         <p class="font-medium text-base">{{ __('ui.voip.asterisk_ami_guide_title') }}</p>
         <p class="mt-1 text-violet-900/90 dark:text-violet-200/90">{{ __('ui.voip.asterisk_ami_guide_intro') }}</p>
         <p class="mt-2 text-xs text-violet-800 dark:text-violet-300">{{ __('ui.voip.asterisk_ami_network_note') }}</p>
+        <p class="mt-2 text-xs font-medium text-violet-800 dark:text-violet-200">{{ __('ui.voip.asterisk_ami_direction_note') }}</p>
     </div>
 
     <ol class="list-decimal list-inside space-y-1.5 text-violet-900/90 dark:text-violet-200/90">

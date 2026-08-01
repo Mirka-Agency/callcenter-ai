@@ -72,8 +72,46 @@ class AsteriskAmiCallTrackerTest extends TestCase
         $this->assertSame('1730000001.2', $payload['call_id']);
         $this->assertSame('101', $payload['from']);
         $this->assertSame('09129876543', $payload['to']);
+        $this->assertSame('101', $payload['extension']);
         $this->assertSame(120, $payload['duration']);
         $this->assertSame('outbound', $payload['direction']);
+    }
+
+    #[Test]
+    public function it_builds_outbound_payload_from_from_internal_hangup(): void
+    {
+        $this->tracker->handle([
+            'Event' => 'Newchannel',
+            'Uniqueid' => '1730000003.4',
+            'Linkedid' => '1730000003.4',
+            'CallerIDNum' => '102',
+            'Context' => 'from-internal',
+            'Exten' => '09121112233',
+        ]);
+
+        $this->tracker->handle([
+            'Event' => 'Dial',
+            'Uniqueid' => '1730000003.4',
+            'Linkedid' => '1730000003.4',
+            'DialStatus' => 'ANSWER',
+            'DestCallerIDNum' => '09121112233',
+        ]);
+
+        $payload = $this->tracker->handle([
+            'Event' => 'Hangup',
+            'Uniqueid' => '1730000003.4',
+            'Linkedid' => '1730000003.4',
+            'CallerIDNum' => '102',
+            'Cause-txt' => 'Normal Clearing',
+            'BillableSeconds' => '30',
+        ]);
+
+        $this->assertNotNull($payload);
+        $this->assertSame('outbound', $payload['direction']);
+        $this->assertSame('102', $payload['from']);
+        $this->assertSame('102', $payload['extension']);
+        $this->assertSame('09121112233', $payload['to']);
+        $this->assertSame(30, $payload['duration']);
     }
 
     #[Test]

@@ -329,19 +329,35 @@ docker compose -f docker-compose.onprem.yml exec app php artisan db:seed --class
 - نوع اتصال در ادمین/کارفرما: **سفارشی / Asterisk**
 - فقط **PBX → اپ** لازم است
 - URL وب‌هوک را از UI کپی کنید؛ باید با `APP_URL` یکی باشد (IP LAN اپ)
+- برای **ورودی و خروجی** هر دو باید hangup handler داشته باشند و `direction` درست ارسال شود
 
-چک از **ماشین Asterisk**:
+چک از **ماشین Asterisk** (ورودی):
 
 ```bash
 curl -sS -o /dev/null -w "%{http_code}\n" \
   -X POST "http://10.0.0.50/webhooks/voip/<TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"event":"cdr","unique_id":"test-1","caller":"09120000000","callee":"1001","status":"answered","duration":10}'
+  -d '{"event":"call.ended","call_id":"test-in-1","direction":"inbound","from":"09120000000","to":"1001","extension":"1001","status":"answered","duration":10}'
+```
+
+چک خروجی:
+
+```bash
+curl -sS -o /dev/null -w "%{http_code}\n" \
+  -X POST "http://10.0.0.50/webhooks/voip/<TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"event":"call.ended","call_id":"test-out-1","direction":"outbound","from":"1001","to":"09129876543","extension":"1001","status":"answered","duration":20}'
 ```
 
 انتظار معمول: `202`. اگر وصل نشد → فایروال یا IP/پورت اشتباه.
 
-راهنمای dialplan داخل UI اتصال سفارشی هم هست.
+در dialplan:
+
+- کانتکست ورودی: `Set(CC_DIRECTION=inbound)` سپس `Goto(callcenter-cdr,h,1)`
+- کانتکست خروجی (`from-internal` / dialout): `Set(CC_DIRECTION=outbound)` سپس همان Goto
+- خروجی: `from` و `extension` = داخلی کارشناس، `to` = شماره مشتری
+
+نمونه کامل dialplan داخل UI اتصال سفارشی هست.
 
 ### ۸.۱.۱ Asterisk AMI (Issabel + CRM مثل VoIPing)
 
@@ -359,6 +375,13 @@ php artisan voip:ami-listen --connection=<ID>
 ```
 
 ترافیک: **اپ → Asterisk:5038** (TCP). dialplan لازم نیست.
+
+جهت تماس از context Eventها تشخیص داده می‌شود:
+
+| Context | جهت |
+|---------|------|
+| `from-trunk`, `from-pstn`, `ext-queues` | ورودی |
+| `from-internal`, `macro-dialout`, `outbound`, `dialout` | خروجی |
 
 > در cloud این گزینه به‌صورت پیش‌فرض غیرفعال است (`VOIP_AMI_ENABLED=false`) چون معمولاً دسترسی به پورت 5038 Asterisk مشتری وجود ندارد.
 
@@ -395,8 +418,8 @@ curl -sS -o /dev/null -w "%{http_code}\n" "http://10.0.0.20/api/v4"
 - [ ] ورود ادمین شما به `/admin` OK است
 - [ ] ورود کارفرما به `/app` OK است
 - [ ] حداقل یک کارشناس وارد `/workspace` می‌شود
-- [ ] تست webhook از Asterisk موفق است
-- [ ] یک تماس آزمایشی در سیستم دیده می‌شود
+- [ ] تست webhook ورودی و خروجی از Asterisk موفق است
+- [ ] یک تماس ورودی و یک تماس خروجی آزمایشی در سیستم دیده می‌شود
 - [ ] (در صورت AI) یک تحلیل آزمایشی با LLM OK است
 - [ ] کارفرما **رمز `/admin` را ندارد**؛ فقط `/app`
 - [ ] بکاپ اول گرفته شده (بخش ۱۰)

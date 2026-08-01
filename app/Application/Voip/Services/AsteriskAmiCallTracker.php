@@ -152,10 +152,18 @@ class AsteriskAmiCallTracker
         $callId = (string) ($call['linkedid'] ?? $call['uniqueid'] ?? $event['Uniqueid'] ?? $event['UniqueID'] ?? '');
         $caller = (string) ($call['caller'] ?? $this->firstNonEmpty($event, ['CallerIDNum', 'Source', 'src']) ?? '');
         $destination = (string) ($call['destination'] ?? $call['exten'] ?? $this->firstNonEmpty($event, ['Exten', 'Destination', 'dst']) ?? '');
-        $extension = (string) ($call['extension'] ?? $this->resolveExtension($call, $event) ?? '');
+        $direction = $this->inferDirection($call, $event);
+        $extension = (string) ($call['extension'] ?? $this->resolveExtension($call, $event, $direction) ?? '');
         $duration = (int) ($call['duration'] ?? 0);
         $status = (string) ($call['disposition'] ?? $call['hangup_cause'] ?? ($call['answered'] ?? false ? 'ANSWERED' : 'NO ANSWER'));
-        $direction = $this->inferDirection($call, $event);
+
+        if ($extension === '' && $direction === 'outbound' && $this->isLikelyExtension($caller)) {
+            $extension = $caller;
+        }
+
+        if ($extension === '' && $direction === 'inbound' && $this->isLikelyExtension($destination)) {
+            $extension = $destination;
+        }
 
         return [
             'event' => 'call.ended',
@@ -228,8 +236,26 @@ class AsteriskAmiCallTracker
      * @param  array<string, mixed>  $call
      * @param  array<string, string>  $event
      */
-    private function resolveExtension(array $call, array $event): ?string
+    private function resolveExtension(array $call, array $event, ?string $direction = null): ?string
     {
+        $direction ??= $this->inferDirection($call, $event);
+
+        if ($direction === 'outbound') {
+            $outboundCandidates = [
+                $call['extension'] ?? null,
+                $call['caller'] ?? null,
+                $event['CallerIDNum'] ?? null,
+                $event['Source'] ?? null,
+                $event['src'] ?? null,
+            ];
+
+            foreach ($outboundCandidates as $candidate) {
+                if ($this->isLikelyExtension((string) $candidate)) {
+                    return (string) $candidate;
+                }
+            }
+        }
+
         $candidates = [
             $call['extension'] ?? null,
             $event['ConnectedLineNum'] ?? null,
@@ -237,6 +263,9 @@ class AsteriskAmiCallTracker
             $event['DialString'] ?? null,
             $event['DestExten'] ?? null,
             $event['Exten'] ?? null,
+            $call['destination'] ?? null,
+            $event['Destination'] ?? null,
+            $event['dst'] ?? null,
         ];
 
         foreach ($candidates as $candidate) {
@@ -257,12 +286,23 @@ class AsteriskAmiCallTracker
             return 'inbound';
         }
 
-        if (str_contains($context, 'from-internal') || str_contains($context, 'macro-dialout')) {
+        if (
+            str_contains($context, 'from-internal')
+            || str_contains($context, 'macro-dialout')
+            || str_contains($context, 'outbound')
+            || str_contains($context, 'dialout')
+            || str_contains($context, 'out-trunk')
+        ) {
             return 'outbound';
         }
 
-        $caller = (string) ($call['caller'] ?? '');
+        $caller = (string) ($call['caller'] ?? $this->firstNonEmpty($event, ['CallerIDNum', 'Source', 'src']) ?? '');
+        $destination = (string) ($call['destination'] ?? $call['exten'] ?? $this->firstNonEmpty($event, ['Exten', 'Destination', 'dst']) ?? '');
         $extension = (string) ($call['extension'] ?? '');
+
+        if ($this->isLikelyExtension($caller) && ($this->isLikelyMobile($destination) || ! $this->isLikelyExtension($destination))) {
+            return 'outbound';
+        }
 
         if ($this->isLikelyExtension($extension) && ! $this->isLikelyMobile($caller)) {
             return 'inbound';
@@ -275,7 +315,7 @@ class AsteriskAmiCallTracker
         return 'inbound';
     }
 
-  private function isLikelyExtension(string $value): bool
+    private function isLikelyExtension(string $value): bool
     {
         $value = trim($value);
 

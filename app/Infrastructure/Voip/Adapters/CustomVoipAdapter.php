@@ -32,7 +32,7 @@ class CustomVoipAdapter extends AbstractVoipAdapter
         }
 
         return VoipOperationResult::success(
-            message: 'Custom VoIP webhook provider is ready. Send POST requests to the inbound webhook URL.',
+            message: 'Custom VoIP webhook provider is ready. Send POST requests to the webhook URL for inbound and outbound CDRs.',
         );
     }
 
@@ -113,8 +113,24 @@ class CustomVoipAdapter extends AbstractVoipAdapter
     }
 
     /** @return array<string, mixed> */
-    public static function sampleWebhookPayload(): array
+    public static function sampleWebhookPayload(string $direction = 'inbound'): array
     {
+        if (strtolower($direction) === 'outbound') {
+            return [
+                'event' => 'call.ended',
+                'call_id' => 'call-456',
+                'direction' => 'outbound',
+                'from' => '101',
+                'to' => '09129876543',
+                'status' => 'completed',
+                'recording_url' => 'http://10.0.0.20/recordings/call-456.wav',
+                'started_at' => '2026-07-16T11:00:00+03:30',
+                'ended_at' => '2026-07-16T11:03:00+03:30',
+                'duration' => 180,
+                'extension' => '101',
+            ];
+        }
+
         return [
             'event' => 'call.ended',
             'call_id' => 'call-123',
@@ -144,15 +160,23 @@ class CustomVoipAdapter extends AbstractVoipAdapter
 
     public static function sampleCurlCommand(string $webhookUrl): string
     {
-        $payload = json_encode(self::sampleWebhookPayload(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        $inbound = json_encode(self::sampleWebhookPayload('inbound'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        $outbound = json_encode(self::sampleWebhookPayload('outbound'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
 
         return <<<BASH
 # Run this FROM the Asterisk server (must reach APP_URL on the LAN).
 # Expect HTTP 202. Then check «تماس‌های اخیر» in the employer VoIP page.
 
+# --- inbound test ---
 curl -sS -w "\\nHTTP %{http_code}\\n" -X POST \\
   -H 'Content-Type: application/json' \\
-  -d '{$payload}' \\
+  -d '{$inbound}' \\
+  '{$webhookUrl}'
+
+# --- outbound test ---
+curl -sS -w "\\nHTTP %{http_code}\\n" -X POST \\
+  -H 'Content-Type: application/json' \\
+  -d '{$outbound}' \\
   '{$webhookUrl}'
 BASH;
     }
@@ -163,37 +187,52 @@ BASH;
 
         return <<<DIALPLAN
 ; ============================================================
-; Callcenter CDR webhook — paste into extensions.conf
-; Asterisk may be on a DIFFERENT machine than the app server.
-; The Asterisk host must reach the webhook URL over the LAN.
+; Callcenter CDR webhook — inbound + outbound
+; Paste into extensions.conf (Asterisk may be on another host).
+; Asterisk must reach the webhook URL over the LAN.
 ; ============================================================
-; 1) Put this [callcenter-cdr] context somewhere loaded by Asterisk
-; 2) In EVERY inbound context that handles agent calls, add:
-;      same => n,Goto(callcenter-cdr,s,1)
-;    OR include the hangup handler below with "exten => h"
+; 1) Load [callcenter-cdr] below
+; 2) Wire hangup ("exten => h") from BOTH:
+;      - inbound contexts  (from-trunk / queues)  → Set(CC_DIRECTION=inbound)
+;      - outbound contexts (from-internal / dialout) → Set(CC_DIRECTION=outbound)
 ; 3) dialplan reload
 ; ============================================================
 
 [callcenter-cdr]
-; Preferred: dedicated hangup handler (extension "h")
-exten => h,1,NoOp(Callcenter CDR webhook)
+; Hangup handler — CC_DIRECTION must be set by the calling context
+exten => h,1,NoOp(Callcenter CDR webhook \${CC_DIRECTION})
+ same => n,Set(CC_DIRECTION=\${IF(\$["\${CC_DIRECTION}"=""]?inbound:\${CC_DIRECTION})})
  same => n,Set(CC_CALL_ID=\${UNIQUEID})
  same => n,Set(CC_FROM=\${CALLERID(num)})
  same => n,Set(CC_TO=\${CDR(dst)})
  same => n,Set(CC_STATUS=\${DIALSTATUS})
  same => n,Set(CC_DURATION=\${CDR(billsec)})
  same => n,Set(CC_RECORDING=)
- ; If you use MixMonitor, set an HTTP URL the APP server can download, e.g.:
+ ; MixMonitor example (URL the APP server can download):
  ; same => n,Set(CC_RECORDING=http://10.0.0.20/monitor/\${UNIQUEID}.wav)
- same => n,System(curl -sS -X POST -H 'Content-Type: application/json' --max-time 5 -d '{"event":"call.ended","call_id":"\${CC_CALL_ID}","direction":"inbound","from":"\${CC_FROM}","to":"\${CC_TO}","status":"\${CC_STATUS}","duration":\${CC_DURATION},"extension":"\${CC_TO}","recording_url":"\${CC_RECORDING}"}' '{$escapedUrl}')
+ ; Agent extension: inbound = destination, outbound = caller (agent)
+ same => n,GotoIf(\$["\${CC_DIRECTION}"="outbound"]?set_out_ext:set_in_ext)
+ same => n(set_in_ext),Set(CC_EXTENSION=\${CC_TO})
+ same => n,Goto(send)
+ same => n(set_out_ext),Set(CC_EXTENSION=\${CC_FROM})
+ same => n(send),System(curl -sS -X POST -H 'Content-Type: application/json' --max-time 5 -d '{"event":"call.ended","call_id":"\${CC_CALL_ID}","direction":"\${CC_DIRECTION}","from":"\${CC_FROM}","to":"\${CC_TO}","status":"\${CC_STATUS}","duration":\${CC_DURATION},"extension":"\${CC_EXTENSION}","recording_url":"\${CC_RECORDING}"}' '{$escapedUrl}')
  same => n,Hangup()
 
-; Example inbound queue/context — ADD "exten => h" to YOUR real context:
+; --- Example INBOUND (replace with your real trunk/queue context) ---
 ; [from-trunk]
 ; exten => _X.,1,NoOp(Inbound)
 ;  same => n,Dial(PJSIP/101,30)
 ;  same => n,Hangup()
-; exten => h,1,Goto(callcenter-cdr,h,1)
+; exten => h,1,Set(CC_DIRECTION=inbound)
+;  same => n,Goto(callcenter-cdr,h,1)
+
+; --- Example OUTBOUND (replace with your real dialout context) ---
+; [from-internal]
+; exten => _09XXXXXXXXX,1,NoOp(Outbound)
+;  same => n,Dial(PJSIP/\${EXTEN}@trunk,60)
+;  same => n,Hangup()
+; exten => h,1,Set(CC_DIRECTION=outbound)
+;  same => n,Goto(callcenter-cdr,h,1)
 DIALPLAN;
     }
 
@@ -269,8 +308,10 @@ BASH;
         return <<<BASH
 #!/usr/bin/env bash
 # Save as /usr/local/bin/callcenter-cdr.sh && chmod +x /usr/local/bin/callcenter-cdr.sh
-# Dialplan:
-#   same => n,System(/usr/local/bin/callcenter-cdr.sh "\${UNIQUEID}" "\${CALLERID(num)}" "\${CDR(dst)}" "\${DIALSTATUS}" "\${CDR(billsec)}" "\${CC_RECORDING}")
+# Dialplan (inbound):
+#   same => n,System(/usr/local/bin/callcenter-cdr.sh "\${UNIQUEID}" "\${CALLERID(num)}" "\${CDR(dst)}" "\${DIALSTATUS}" "\${CDR(billsec)}" "\${CC_RECORDING}" inbound)
+# Dialplan (outbound):
+#   same => n,System(/usr/local/bin/callcenter-cdr.sh "\${UNIQUEID}" "\${CALLERID(num)}" "\${CDR(dst)}" "\${DIALSTATUS}" "\${CDR(billsec)}" "\${CC_RECORDING}" outbound)
 
 set -euo pipefail
 WEBHOOK_URL='{$escapedUrl}'
@@ -280,6 +321,13 @@ TO="\${3:-}"
 STATUS="\${4:-}"
 DURATION="\${5:-0}"
 RECORDING="\${6:-}"
+DIRECTION="\${7:-inbound}"
+
+if [[ "\$DIRECTION" == "outbound" ]]; then
+  EXTENSION="\$FROM"
+else
+  EXTENSION="\$TO"
+fi
 
 curl -sS -X POST -H 'Content-Type: application/json' --max-time 5 \\
   -d "\$(jq -n \\
@@ -288,8 +336,10 @@ curl -sS -X POST -H 'Content-Type: application/json' --max-time 5 \\
     --arg to "\$TO" \\
     --arg status "\$STATUS" \\
     --arg recording_url "\$RECORDING" \\
+    --arg direction "\$DIRECTION" \\
+    --arg extension "\$EXTENSION" \\
     --argjson duration "\$DURATION" \\
-    '{event:"call.ended",call_id:\$call_id,direction:"inbound",from:\$from,to:\$to,status:\$status,duration:\$duration,extension:\$to,recording_url:\$recording_url}')" \\
+    '{event:"call.ended",call_id:\$call_id,direction:\$direction,from:\$from,to:\$to,status:\$status,duration:\$duration,extension:\$extension,recording_url:\$recording_url}')" \\
   "\$WEBHOOK_URL"
 BASH;
     }

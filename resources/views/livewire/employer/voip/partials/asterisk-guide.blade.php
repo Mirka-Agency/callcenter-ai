@@ -69,9 +69,16 @@
 
         <x-saas.copy-code
             :label="__('ui.voip.custom_payload_title')"
-            :code="json_encode(\App\Infrastructure\Voip\Adapters\CustomVoipAdapter::sampleWebhookPayload(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)"
+            :code="json_encode(\App\Infrastructure\Voip\Adapters\CustomVoipAdapter::sampleWebhookPayload('inbound'), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)"
         >
             <p>{{ __('ui.voip.custom_payload_hint') }}</p>
+        </x-saas.copy-code>
+
+        <x-saas.copy-code
+            :label="__('ui.voip.asterisk_outbound_payload_title')"
+            :code="json_encode(\App\Infrastructure\Voip\Adapters\CustomVoipAdapter::sampleWebhookPayload('outbound'), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)"
+        >
+            <p>{{ __('ui.voip.asterisk_outbound_payload_hint') }}</p>
         </x-saas.copy-code>
 
         <div class="rounded-lg border border-sky-200/80 bg-white/70 p-3 text-xs dark:border-sky-800 dark:bg-sky-950/60 space-y-2">
@@ -88,6 +95,7 @@
                     </thead>
                     <tbody class="text-zinc-700 dark:text-zinc-200">
                         <tr class="border-b border-sky-100 dark:border-sky-900"><td class="py-1 pr-3">call_id</td><td class="pr-3">uniqueid, uid</td><td>{{ __('ui.voip.asterisk_field_call_id') }}</td></tr>
+                        <tr class="border-b border-sky-100 dark:border-sky-900"><td class="py-1 pr-3">direction</td><td class="pr-3">call_type, call_direction</td><td>{{ __('ui.voip.asterisk_field_direction') }}</td></tr>
                         <tr class="border-b border-sky-100 dark:border-sky-900"><td class="py-1 pr-3">from</td><td class="pr-3">src, caller, phone</td><td>{{ __('ui.voip.asterisk_field_from') }}</td></tr>
                         <tr class="border-b border-sky-100 dark:border-sky-900"><td class="py-1 pr-3">to</td><td class="pr-3">dst, callee</td><td>{{ __('ui.voip.asterisk_field_to') }}</td></tr>
                         <tr class="border-b border-sky-100 dark:border-sky-900"><td class="py-1 pr-3">extension</td><td class="pr-3">agent, dst</td><td>{{ __('ui.voip.asterisk_field_extension') }}</td></tr>
