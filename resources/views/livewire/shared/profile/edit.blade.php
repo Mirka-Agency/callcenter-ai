@@ -41,6 +41,19 @@
                 <input wire:model="organization_title" class="saas-input" required>
                 @error('organization_title') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
+
+            <div>
+                <label class="mb-2 block text-sm font-medium">زمینه فعالیت / حوزه تخصص</label>
+                <textarea
+                    wire:model="organization_business_context"
+                    class="saas-input min-h-[120px]"
+                    rows="5"
+                    maxlength="5000"
+                    placeholder="مثال: کلینیک غدد درون‌ریز. خدمات: تیروئید، دیابت، هورمون. لیزر پوست/زیبایی نیست."
+                ></textarea>
+                <p class="mt-1 text-xs text-zinc-500">حوزه فعالیت، خدمات اصلی و واژگان تخصصی را بنویسید تا تحلیل تماس‌ها دقیق‌تر باشد.</p>
+                @error('organization_business_context') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+            </div>
         @else
             <div class="grid gap-5 sm:grid-cols-2">
                 <div>

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Organizations\Schemas;
 
 use App\Enums\UserRole;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
@@ -18,6 +19,12 @@ class OrganizationForm
                 TextInput::make('title')
                     ->required()
                     ->maxLength(255),
+                Textarea::make('business_context')
+                    ->label(__('filament.fields.business_context'))
+                    ->helperText(__('filament.misc.business_context_helper'))
+                    ->rows(5)
+                    ->maxLength(5000)
+                    ->columnSpanFull(),
                 Toggle::make('disabled')
                     ->label(__('filament.fields.disabled')),
                 Toggle::make('employer_can_manage_integrations')

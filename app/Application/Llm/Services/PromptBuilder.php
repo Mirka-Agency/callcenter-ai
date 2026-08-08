@@ -6,6 +6,27 @@ use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 
 class PromptBuilder
 {
+    public static function organizationDomainPolicy(): string
+    {
+        return <<<'PROMPT'
+قوانین تفسیر دامنه سازمان (الزامی در صورت وجود زمینه فعالیت):
+- When organization business context is provided in the user/context prompt, treat it as ground truth for domain, specialty, services, and vocabulary.
+- Use that context to interpret ambiguous, incomplete, or phonetically similar speech (e.g. do not invent unrelated specialties or services).
+- Prefer domain-consistent terms, product/service names, and medical or industry vocabulary from the org context over generic or out-of-domain guesses.
+- Do not substitute services or topics that contradict the organization context (for example, do not report cosmetic/skin-laser services for an endocrine clinic).
+- When building summary, intent, important_keywords, strengths, weaknesses, and customer_insights, stay aligned with the stated organization domain.
+- If business context is absent, analyze from audio and other metadata alone as usual.
+
+قوانین دامنه فعالیت سازمان:
+- اگر «زمینه فعالیت سازمان» در زمینه تماس آمده، آن را مرجع حوزه تخصص، خدمات و واژگان بدانید
+- گفتار مبهم یا شبیه از نظر آوایی را با توجه به همین زمینه تفسیر کنید؛ تخصص یا خدمات نامرتبط اختراع نکنید
+- واژه‌ها و خدمات هم‌راستا با دامنه سازمان را به حدس‌های عمومی یا خارج از حوزه ترجیح دهید
+- خدمات یا موضوعاتی که با زمینه سازمان تناقض دارند ثبت نکنید
+- در خلاصه، intent، important_keywords و بینش‌های مشتری با دامنه اعلام‌شده سازمان هم‌خوان باشید
+- اگر زمینه فعالیت خالی است، فقط بر اساس صوت و سایر فراداده‌ها تحلیل کنید
+PROMPT;
+    }
+
     public static function weaknessEvaluationPolicy(): string
     {
         return <<<'PROMPT'
@@ -210,7 +231,7 @@ PROMPT;
 PROMPT;
         }
 
-        return trim($base)."\n\n".self::persianLanguagePolicy()."\n\n".self::summaryPolicy()."\n\n".self::weaknessEvaluationPolicy()."\n\n".self::leadAnalysisPolicy()."\n\n".self::customerIdentityPolicy();
+        return trim($base)."\n\n".self::persianLanguagePolicy()."\n\n".self::summaryPolicy()."\n\n".self::organizationDomainPolicy()."\n\n".self::weaknessEvaluationPolicy()."\n\n".self::leadAnalysisPolicy()."\n\n".self::customerIdentityPolicy();
     }
 
     public function contextPrompt(AudioAnalysisRequestData $request): string
@@ -220,6 +241,12 @@ PROMPT;
 
         if ($context?->organizationName) {
             $meta[] = "سازمان: {$context->organizationName}";
+        }
+        if ($context?->organizationBusinessContext) {
+            $businessContext = trim($context->organizationBusinessContext);
+            if ($businessContext !== '') {
+                $meta[] = "زمینه فعالیت سازمان: {$businessContext}";
+            }
         }
         if ($context?->employeeName) {
             $meta[] = "کارشناس: {$context->employeeName}";

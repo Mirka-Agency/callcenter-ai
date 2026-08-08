@@ -69,6 +69,7 @@ class AudioAnalyzer
             category: $call->category,
             notes: $call->notes,
             organizationName: $call->organization?->title,
+            organizationBusinessContext: $call->organization?->business_context,
         );
 
         $recording = $call->recording;

@@ -24,6 +24,8 @@ class Edit extends Component
 
     public string $organization_title = '';
 
+    public string $organization_business_context = '';
+
     public function mount(): void
     {
         $user = auth()->user();
@@ -32,6 +34,7 @@ class Edit extends Component
         $this->name = $user->name;
         $this->email = $user->email;
         $this->organization_title = $organization->title;
+        $this->organization_business_context = $organization->business_context ?? '';
     }
 
     public function save(): void
@@ -44,6 +47,7 @@ class Edit extends Component
             'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'password' => ['nullable', 'string', 'min:8'],
             'organization_title' => ['required', 'string', 'max:255'],
+            'organization_business_context' => ['nullable', 'string', 'max:5000'],
             ...$this->avatarValidationRules(),
         ]);
 
@@ -53,7 +57,12 @@ class Edit extends Component
             ...filled($data['password'] ?? null) ? ['password' => $data['password']] : [],
         ]);
 
-        $organization->update(['title' => $data['organization_title']]);
+        $organization->update([
+            'title' => $data['organization_title'],
+            'business_context' => filled($data['organization_business_context'] ?? null)
+                ? $data['organization_business_context']
+                : null,
+        ]);
 
         $this->persistAvatar($user);
 

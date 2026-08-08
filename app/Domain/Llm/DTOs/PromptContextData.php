@@ -16,5 +16,6 @@ readonly class PromptContextData
         public ?string $category = null,
         public ?string $notes = null,
         public ?string $organizationName = null,
+        public ?string $organizationBusinessContext = null,
     ) {}
 }

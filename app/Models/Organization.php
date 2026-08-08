@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['title', 'disabled', 'employer_can_manage_integrations', 'user_id', 'is_demo'])]
+#[Fillable(['title', 'business_context', 'disabled', 'employer_can_manage_integrations', 'user_id', 'is_demo'])]
 class Organization extends Model
 {
     /** @use HasFactory<OrganizationFactory> */
