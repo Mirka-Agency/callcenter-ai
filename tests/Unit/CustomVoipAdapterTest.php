@@ -155,6 +155,15 @@ class CustomVoipAdapterTest extends TestCase
         $this->assertSame('09129876543', $outboundPayload['to']);
     }
 
+    public function test_employee_integration_meta_defines_extension_field(): void
+    {
+        $definitions = CustomVoipAdapter::employeeIntegrationMetaDefinitions();
+
+        $this->assertCount(1, $definitions);
+        $this->assertSame('extension', $definitions[0]['key']);
+        $this->assertTrue($definitions[0]['is_required']);
+    }
+
     private function adapter(): CustomVoipAdapter
     {
         $adapter = new CustomVoipAdapter;

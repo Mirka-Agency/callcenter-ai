@@ -21,6 +21,7 @@ use App\Models\OrganizationVoipConnection;
 use App\Models\User;
 use App\Models\VoipCallLog;
 use App\Models\VoipProvider;
+use App\Services\EmployeeIntegrationMetaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -321,6 +322,88 @@ class UnmatchedVoipExtensionTest extends TestCase
         $this->assertDatabaseHas('employee_integration_meta', [
             'organization_user_id' => $employee->id,
             'value' => '101',
+        ]);
+    }
+
+    public function test_sync_employee_extension_backfills_existing_calls(): void
+    {
+        [$organization, $connection, , $employee] = $this->setupOrganization();
+
+        $log = VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'call-sync-1',
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '982191093492',
+            'status' => 'completed',
+            'started_at' => now()->subDay(),
+            'raw_payload' => ['extension' => '101'],
+        ]);
+
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'voip_call_log_id' => $log->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'call-sync-1',
+            'direction' => 'inbound',
+            'caller_number' => '09120000000',
+            'receiver_number' => '982191093492',
+            'status' => 'completed',
+            'organization_user_id' => null,
+        ]);
+
+        EmployeeIntegrationMetaService::syncForEmployee($employee, [[
+            'connection' => EmployeeIntegrationMetaService::connectionReference($connection),
+            'meta' => ['extension' => '101'],
+        ]]);
+
+        $this->assertDatabaseHas('calls', [
+            'voip_call_log_id' => $log->id,
+            'organization_user_id' => $employee->id,
+        ]);
+    }
+
+    public function test_sync_employee_extension_backfills_old_unassigned_calls_beyond_two_weeks(): void
+    {
+        [$organization, $connection, , $employee] = $this->setupOrganization();
+
+        $oldLog = VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'call-old-1',
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '982191093492',
+            'status' => 'completed',
+            'started_at' => now()->subDays(45),
+            'raw_payload' => ['extension' => '101'],
+        ]);
+
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'voip_call_log_id' => $oldLog->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'call-old-1',
+            'direction' => 'inbound',
+            'caller_number' => '09120000000',
+            'receiver_number' => '982191093492',
+            'status' => 'completed',
+            'organization_user_id' => null,
+        ]);
+
+        EmployeeIntegrationMetaService::syncForEmployee($employee, [[
+            'connection' => EmployeeIntegrationMetaService::connectionReference($connection),
+            'meta' => ['extension' => '101'],
+        ]]);
+
+        $this->assertDatabaseHas('calls', [
+            'voip_call_log_id' => $oldLog->id,
+            'organization_user_id' => $employee->id,
         ]);
     }
 

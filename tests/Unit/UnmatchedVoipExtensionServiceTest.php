@@ -38,6 +38,54 @@ class UnmatchedVoipExtensionServiceTest extends TestCase
         $this->assertSame(['553', '554', '982191093492', '09120000000'], $candidates);
     }
 
+    public function test_extension_candidates_include_raw_extension_from_asterisk_payload(): void
+    {
+        $log = VoipCallLog::query()->make([
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '982191093492',
+            'raw_payload' => [
+                'extension' => '101',
+            ],
+        ]);
+
+        $candidates = app(CallEmployeeResolver::class)->extensionCandidates($log);
+
+        $this->assertSame(['101', '982191093492', '09120000000'], $candidates);
+    }
+
+    public function test_resolver_matches_employee_using_raw_extension_without_resolved_extension(): void
+    {
+        [$organization, $connection] = $this->createOrganizationWithConnection();
+        $employee = $this->createEmployee($organization);
+
+        EmployeeIntegrationMeta::query()->create([
+            'organization_user_id' => $employee->id,
+            'integratable_type' => OrganizationVoipConnection::class,
+            'integratable_id' => $connection->id,
+            'key' => 'extension',
+            'value' => '101',
+        ]);
+
+        $log = VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Simotel->value,
+            'external_call_id' => 'asterisk-1',
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '982191093492',
+            'status' => 'completed',
+            'raw_payload' => [
+                'extension' => '101',
+            ],
+        ]);
+
+        $resolved = app(CallEmployeeResolver::class)->resolveFromCallLog($log);
+
+        $this->assertSame($employee->id, $resolved);
+    }
+
     public function test_list_unmatched_aggregates_recent_logs_without_mapped_employee(): void
     {
         [$organization, $connection] = $this->createOrganizationWithConnection();

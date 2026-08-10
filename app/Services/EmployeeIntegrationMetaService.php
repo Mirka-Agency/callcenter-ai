@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Application\Call\Services\UnmatchedVoipExtensionService;
 use App\Enums\IntegrationMetaFieldType;
 use App\Models\CrmProvider;
 use App\Models\EmployeeIntegrationMeta;
 use App\Models\IntegrationMetaDefinition;
+use App\Models\Organization;
 use App\Models\OrganizationCrmConnection;
 use App\Models\OrganizationUser;
 use App\Models\OrganizationVoipConnection;
@@ -142,6 +144,14 @@ class EmployeeIntegrationMetaService
         OrganizationVoipConnection $connection,
         string $extension,
     ): void {
+        $extension = trim($extension);
+
+        if ($extension === '') {
+            throw ValidationException::withMessages([
+                'extension' => 'شماره داخلی الزامی است.',
+            ]);
+        }
+
         if ((int) $connection->organization_id !== (int) $employee->organization_id) {
             throw ValidationException::withMessages([
                 'extension' => 'اتصال VoIP انتخاب‌شده معتبر نیست.',
@@ -185,6 +195,9 @@ class EmployeeIntegrationMetaService
 
         $employee->integrationMeta()->delete();
 
+        /** @var list<array{connection: OrganizationVoipConnection, extension: string}> $voipExtensions */
+        $voipExtensions = [];
+
         foreach ($assignments as $assignment) {
             $connection = self::resolveConnection($assignment['connection'] ?? null, $organizationId);
 
@@ -197,14 +210,65 @@ class EmployeeIntegrationMetaService
                     continue;
                 }
 
+                $normalized = is_string($value) ? trim($value) : $value;
+
+                if (blank($normalized)) {
+                    continue;
+                }
+
                 EmployeeIntegrationMeta::query()->create([
                     'organization_user_id' => $employee->id,
                     'integratable_type' => $connection::class,
                     'integratable_id' => $connection->getKey(),
                     'key' => $key,
-                    'value' => $value,
+                    'value' => $normalized,
                 ]);
+
+                if (
+                    $key === 'extension'
+                    && $connection instanceof OrganizationVoipConnection
+                    && is_string($normalized)
+                ) {
+                    $voipExtensions[] = [
+                        'connection' => $connection,
+                        'extension' => $normalized,
+                    ];
+                }
             }
+        }
+
+        self::backfillVoipExtensions($employee, $organizationId, $voipExtensions);
+    }
+
+    /**
+     * @param list<array{connection: OrganizationVoipConnection, extension: string}> $voipExtensions
+     */
+    private static function backfillVoipExtensions(
+        OrganizationUser $employee,
+        int $organizationId,
+        array $voipExtensions,
+    ): void {
+        if ($voipExtensions === []) {
+            return;
+        }
+
+        $organization = Organization::query()->find($organizationId);
+
+        if (! $organization) {
+            return;
+        }
+
+        $backfill = app(UnmatchedVoipExtensionService::class);
+
+        foreach ($voipExtensions as $item) {
+            // All historical «تماس‌های بدون کارشناس» for this extension, not only recent days.
+            $backfill->backfillCalls(
+                organization: $organization,
+                extension: $item['extension'],
+                connectionId: (int) $item['connection']->id,
+                days: null,
+                organizationUserId: (int) $employee->id,
+            );
         }
     }
 

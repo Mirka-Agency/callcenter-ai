@@ -27,6 +27,12 @@ class CallEmployeeResolver
 
     public function resolveByExtension(int $organizationId, int $voipConnectionId, string $extension): ?int
     {
+        $extension = trim($extension);
+
+        if ($extension === '') {
+            return null;
+        }
+
         return EmployeeIntegrationMeta::query()
             ->where('integratable_type', OrganizationVoipConnection::class)
             ->where('integratable_id', $voipConnectionId)
@@ -44,26 +50,48 @@ class CallEmployeeResolver
 
         foreach ([
             $payload['resolved_extension'] ?? null,
+            $payload['extension'] ?? null,
+            $payload['agent_extension'] ?? null,
+            $payload['internal_number'] ?? null,
             $payload['exten'] ?? null,
             $log->direction?->value === 'inbound' ? $log->destination_number : $log->source_number,
             $log->destination_number,
             $log->source_number,
             $payload['did'] ?? null,
         ] as $value) {
-            if (is_string($value) && $value !== '') {
-                $candidates[] = $value;
+            $normalized = $this->normalizeCandidate($value);
+
+            if ($normalized !== null) {
+                $candidates[] = $normalized;
             }
         }
 
         $mapping = $this->extensionMappingFor($log);
 
         foreach ($candidates as $candidate) {
-            if (isset($mapping[$candidate]) && is_scalar($mapping[$candidate]) && (string) $mapping[$candidate] !== '') {
-                $candidates[] = (string) $mapping[$candidate];
+            if (! isset($mapping[$candidate])) {
+                continue;
+            }
+
+            $mapped = $this->normalizeCandidate($mapping[$candidate]);
+
+            if ($mapped !== null) {
+                $candidates[] = $mapped;
             }
         }
 
         return array_values(array_unique($candidates));
+    }
+
+    private function normalizeCandidate(mixed $value): ?string
+    {
+        if (! is_string($value) && ! is_numeric($value)) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        return $normalized !== '' ? $normalized : null;
     }
 
     /** @return array<string, mixed> */

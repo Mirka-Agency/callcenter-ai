@@ -2,6 +2,7 @@
 
 namespace App\Application\Call\Services;
 
+use App\Models\Call;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\OrganizationVoipConnection;
@@ -92,7 +93,7 @@ class UnmatchedVoipExtensionService
         string $extension,
         int $connectionId,
         int $organizationUserId,
-        int $days = 14,
+        ?int $days = null,
     ): int {
         $connection = OrganizationVoipConnection::query()
             ->where('organization_id', $organization->id)
@@ -116,19 +117,35 @@ class UnmatchedVoipExtensionService
         );
     }
 
+    /**
+     * Attach the employee to every matching VoIP call (and related analyses).
+     * When $days is null, all historical calls for that extension are updated.
+     */
     public function backfillCalls(
         Organization $organization,
         string $extension,
         int $connectionId,
-        int $days = 14,
+        ?int $days = null,
         ?int $organizationUserId = null,
     ): int {
-        $logs = VoipCallLog::query()
-            ->where('organization_id', $organization->id)
-            ->where('organization_voip_connection_id', $connectionId)
-            ->where('started_at', '>=', now()->subDays($days))
-            ->get();
+        $extension = trim($extension);
 
+        if ($extension === '') {
+            return 0;
+        }
+
+        $query = VoipCallLog::query()
+            ->where('organization_id', $organization->id)
+            ->where('organization_voip_connection_id', $connectionId);
+
+        if ($days !== null) {
+            $query->where(function ($builder) use ($days): void {
+                $builder->where('started_at', '>=', now()->subDays($days))
+                    ->orWhereNull('started_at');
+            });
+        }
+
+        $logs = $query->get();
         $count = 0;
 
         foreach ($logs as $log) {
@@ -141,6 +158,18 @@ class UnmatchedVoipExtensionService
                 ?? $this->resolver->resolveFromCallLog($log);
 
             if ($employeeId !== null) {
+                Call::query()
+                    ->where('organization_id', $organization->id)
+                    ->where(function ($builder) use ($log, $callId): void {
+                        $builder->where('voip_call_log_id', $log->id)
+                            ->orWhere('id', $callId);
+                    })
+                    ->where(function ($builder) use ($employeeId): void {
+                        $builder->whereNull('organization_user_id')
+                            ->orWhere('organization_user_id', '!=', $employeeId);
+                    })
+                    ->update(['organization_user_id' => $employeeId]);
+
                 ConversationAnalysis::query()
                     ->where('organization_id', $organization->id)
                     ->where(function ($query) use ($log, $callId): void {

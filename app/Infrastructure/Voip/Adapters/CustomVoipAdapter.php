@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Voip\Adapters;
 
+use App\Contracts\ProvidesEmployeeIntegrationMeta;
 use App\Domain\Voip\DTOs\ExtensionData;
 use App\Domain\Voip\DTOs\MakeCallData;
 use App\Domain\Voip\DTOs\NormalizedWebhookEvent;
@@ -10,13 +11,28 @@ use App\Domain\Voip\ValueObjects\VoipOperationResult;
 use App\Infrastructure\Voip\Ami\AsteriskAmiClient;
 use App\Infrastructure\Voip\Support\WebhookPayloadNormalizer;
 
-class CustomVoipAdapter extends AbstractVoipAdapter
+class CustomVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployeeIntegrationMeta
 {
     private const UNSUPPORTED = 'Operation is not supported by the custom VoIP adapter.';
 
     public function __construct(
         private WebhookPayloadNormalizer $normalizer = new WebhookPayloadNormalizer,
     ) {}
+
+    public static function employeeIntegrationMetaDefinitions(): array
+    {
+        return [
+            [
+                'key' => 'extension',
+                'name' => 'شماره داخلی',
+                'field_type' => 'text',
+                'is_required' => true,
+                'placeholder' => '101',
+                'help_text' => 'داخلی Asterisk کارشناس (مثل 101). باید با مقدار extension در webhook یا AMI یکسان باشد.',
+                'sort_order' => 1,
+            ],
+        ];
+    }
 
     public function getProviderCode(): VoipProviderCode
     {
