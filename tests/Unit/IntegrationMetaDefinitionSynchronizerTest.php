@@ -85,4 +85,37 @@ class IntegrationMetaDefinitionSynchronizerTest extends TestCase
             'name' => 'شماره داخلی',
         ]);
     }
+
+    public function test_employee_meta_fields_auto_create_extension_for_asterisk_provider(): void
+    {
+        $organization = \App\Models\Organization::factory()->create();
+        $provider = VoipProvider::query()->create([
+            'name' => 'سفارشی / Asterisk',
+            'code' => VoipProviderCode::Custom->value,
+            'adapter_class' => CustomVoipAdapter::class,
+            'is_active' => true,
+        ]);
+
+        IntegrationMetaDefinition::query()
+            ->where('provider_type', VoipProvider::class)
+            ->where('provider_id', $provider->id)
+            ->delete();
+
+        $connection = \App\Models\OrganizationVoipConnection::query()->create([
+            'organization_id' => $organization->id,
+            'voip_provider_id' => $provider->id,
+            'name' => 'new',
+            'credentials' => [],
+            'is_active' => true,
+        ]);
+
+        $fields = \App\Services\EmployeeIntegrationMetaService::metaFieldDefinitionsForReference(
+            \App\Services\EmployeeIntegrationMetaService::connectionReference($connection),
+            $organization->id,
+        );
+
+        $this->assertNotEmpty($fields);
+        $this->assertSame('extension', $fields[0]['key']);
+        $this->assertSame('شماره داخلی', $fields[0]['name']);
+    }
 }

@@ -64,7 +64,26 @@ class EmployeeIntegrationMetaService
             return collect();
         }
 
+        // Older Asterisk/Custom installs may lack the extension meta row until sync runs.
+        if ($provider instanceof VoipProvider) {
+            self::ensureVoipExtensionDefinition($provider);
+        }
+
         return $provider->metaDefinitions()->orderBy('sort_order')->get();
+    }
+
+    private static function ensureVoipExtensionDefinition(VoipProvider $provider): void
+    {
+        $hasExtension = $provider->metaDefinitions()
+            ->where('key', 'extension')
+            ->exists();
+
+        if ($hasExtension) {
+            return;
+        }
+
+        app(IntegrationMetaDefinitionSynchronizer::class)->syncVoipProvider($provider);
+        $provider->unsetRelation('metaDefinitions');
     }
 
     public static function formFieldsForConnection(?string $connectionReference, string $statePath = 'meta'): array
