@@ -93,6 +93,70 @@ class AnalysisListQueryTest extends TestCase
         $this->assertSame(2, $overview['top_agent_count']);
     }
 
+    public function test_assigned_employees_only_excludes_unassigned_analyses(): void
+    {
+        $organization = Organization::factory()->create();
+        $user = User::factory()->create();
+        $agent = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $user->id,
+            'first_name' => 'Ali',
+            'last_name' => 'Assigned',
+            'is_active' => true,
+        ]);
+
+        $this->seedAnalysis($organization, $agent, 'completed', 300, 90);
+        $this->seedUnassignedAnalysis($organization);
+
+        $all = app(AnalysisListQuery::class)->paginate(AnalysisListFilter::make(
+            organizationId: $organization->id,
+            preset: ReportDatePreset::Last30,
+        ));
+        $assigned = app(AnalysisListQuery::class)->paginate(AnalysisListFilter::make(
+            organizationId: $organization->id,
+            preset: ReportDatePreset::Last30,
+            assignedEmployeesOnly: true,
+        ));
+
+        $this->assertSame(2, $all->total());
+        $this->assertSame(1, $assigned->total());
+        $this->assertSame($agent->id, $assigned->first()->organization_user_id);
+    }
+
+    private function seedUnassignedAnalysis(Organization $organization): void
+    {
+        $call = Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => null,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09123333333',
+            'receiver_number' => '101',
+            'status' => 'completed',
+            'processing_status' => 'analyzed',
+            'duration_seconds' => 60,
+            'started_at' => now(),
+        ]);
+
+        ConversationAnalysis::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => null,
+            'call_id' => $call->id,
+            'source' => ConversationSource::Voip,
+            'llm_provider' => 'openai',
+            'model_name' => 'gpt-4o-mini',
+            'score' => 10,
+            'summary' => 'بدون کارشناس',
+            'sentiment' => AnalysisSentiment::Neutral,
+            'strengths_json' => [],
+            'weaknesses_json' => [],
+            'next_actions_json' => [],
+            'analyzed_at' => now(),
+        ]);
+    }
+
     private function seedAnalysis(
         Organization $organization,
         OrganizationUser $employee,

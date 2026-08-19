@@ -1,9 +1,4 @@
 @php
-    use App\Support\AgentPerformancePresenter;
-
-    $topCount = collect($agents)->where('tier', 'top')->count();
-    $attentionCount = collect($agents)->where('tier', 'attention')->count();
-
     $qualityChart = [
         'labels' => collect($qualityTrend)->pluck('label')->all(),
         'datasets' => [[
@@ -51,38 +46,17 @@
         <x-saas.stat-card label="رضایت مشتری" :value="$teamKpis['average_sentiment'] ? $teamKpis['average_sentiment'].'%' : '—'" />
     </div>
 
-    <section class="saas-section" data-tour="dashboard-agents" x-data="{ filter: 'all' }">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h2 class="saas-section-title">عملکرد کارشناسان</h2>
-                <p class="saas-section-subtitle">{{ count($agents) }} کارشناس با فعالیت در ۳۰ روز اخیر</p>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <button type="button" @click="filter = 'all'" :class="filter === 'all' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800'" class="rounded-lg px-3 py-1.5 text-sm font-medium transition">همه ({{ count($agents) }})</button>
-                <button type="button" @click="filter = 'top'" :class="filter === 'top' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30'" class="rounded-lg px-3 py-1.5 text-sm font-medium transition">برترین‌ها ({{ $topCount }})</button>
-                <button type="button" @click="filter = 'attention'" :class="filter === 'attention' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/30'" class="rounded-lg px-3 py-1.5 text-sm font-medium transition">نیازمند توجه ({{ $attentionCount }})</button>
-                <a href="{{ route('employer.intelligence.performance') }}" class="saas-btn-secondary text-sm">گزارش کامل</a>
-            </div>
-        </div>
-
-        <div class="grid gap-4 lg:grid-cols-2">
-            @forelse ($agents as $agent)
-                <div x-show="filter === 'all' || filter === '{{ $agent['tier'] }}'" x-cloak>
-                    <x-saas.agent-performance-card
-                        :agent="$agent"
-                        :href="route('employer.intelligence.performance.show', $agent['id'])"
-                    />
-                </div>
-            @empty
-                <div class="col-span-full">
-                    <x-saas.empty-state
-                        title="{{ __('ui.empty.no_team_performance.title') }}"
-                        description="{{ __('ui.empty.no_team_performance.description') }}"
-                    />
-                </div>
-            @endforelse
-        </div>
-    </section>
+    @include('livewire.employer.partials.agent-performance-cards', [
+        'title' => 'عملکرد کارشناسان',
+        'subtitle' => $agentCardFeed['counts']['all'].' کارشناس با فعالیت در ۳۰ روز اخیر',
+        'agentCardFeed' => $agentCardFeed,
+        'agentCardFilter' => $agentCardFilter,
+        'agentProfileUrl' => fn (array $agent) => route('employer.intelligence.performance.show', $agent['id']),
+        'emptyTitle' => __('ui.empty.no_team_performance.title'),
+        'emptyDescription' => __('ui.empty.no_team_performance.description'),
+        'sectionTour' => 'dashboard-agents',
+        'showPerformanceLink' => true,
+    ])
 
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="saas-card lg:col-span-2" data-tour="dashboard-quality">

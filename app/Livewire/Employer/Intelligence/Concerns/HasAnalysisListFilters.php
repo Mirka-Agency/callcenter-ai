@@ -6,6 +6,7 @@ use App\Domain\Voip\Enums\CallStatus;
 use App\DTOs\AnalysisListFilter;
 use App\Enums\ReportDatePreset;
 use App\Services\EmployerContext;
+use Carbon\Carbon;
 use Livewire\Attributes\Renderless;
 use Livewire\Attributes\Url;
 
@@ -47,7 +48,9 @@ trait HasAnalysisListFilters
     public bool $showMoreDatePresets = false;
 
     public bool $showCustomDateRange = false;
+
     public ?string $draftCustomFrom = null;
+
     public ?string $draftCustomTo = null;
 
     public function mount(): void
@@ -248,8 +251,8 @@ trait HasAnalysisListFilters
         return AnalysisListFilter::make(
             organizationId: EmployerContext::organizationId(),
             preset: $preset,
-            customFrom: $this->customFrom ? \Carbon\Carbon::parse($this->customFrom) : null,
-            customTo: $this->customTo ? \Carbon\Carbon::parse($this->customTo) : null,
+            customFrom: $this->customFrom ? Carbon::parse($this->customFrom) : null,
+            customTo: $this->customTo ? Carbon::parse($this->customTo) : null,
             employeeId: $this->filterEmployeeId,
             statuses: $this->callStatus ? [$this->callStatus] : [],
             direction: $this->directionFilter ?: null,
@@ -258,6 +261,7 @@ trait HasAnalysisListFilters
             search: $this->search,
             sortBy: $this->sortBy,
             sortDir: $this->sortDir,
+            assignedEmployeesOnly: true,
         );
     }
 }

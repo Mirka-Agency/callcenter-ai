@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Application\Call\Services\UnmatchedVoipExtensionService;
+use App\Application\Intelligence\Jobs\AnalyzeAudioJob;
+use App\Application\Intelligence\Jobs\SyncCrmJob;
+use App\Application\Intelligence\Jobs\UpdateEmployeeMetricsJob;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Domain\Voip\Enums\VoipLogStatus;
@@ -12,17 +15,20 @@ use App\Enums\UserRole;
 use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
 use App\Livewire\Employer\Intelligence\Show as IntelligenceShow;
 use App\Livewire\Employer\Voip\Index;
+use App\Livewire\Employer\Voip\UnmatchedExtensions;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\EmployeeIntegrationMeta;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\OrganizationVoipConnection;
+use App\Models\PlatformAiSettings;
 use App\Models\User;
 use App\Models\VoipCallLog;
 use App\Models\VoipProvider;
 use App\Services\EmployeeIntegrationMetaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -404,6 +410,92 @@ class UnmatchedVoipExtensionTest extends TestCase
         $this->assertDatabaseHas('calls', [
             'voip_call_log_id' => $oldLog->id,
             'organization_user_id' => $employee->id,
+        ]);
+    }
+
+    public function test_unmatched_extensions_page_assigns_existing_employee(): void
+    {
+        [$organization, $connection, $employer, $employee] = $this->setupOrganization();
+
+        VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'call-page-1',
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '101',
+            'status' => 'completed',
+            'started_at' => now()->subDay(),
+            'raw_payload' => ['resolved_extension' => '101'],
+        ]);
+
+        $this->actingAs($employer);
+
+        Livewire::test(UnmatchedExtensions::class)
+            ->set('unmatchedSelections.101__'.$connection->id, $employee->id)
+            ->call('assignUnmatchedExtension', '101', $connection->id)
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('employee_integration_meta', [
+            'organization_user_id' => $employee->id,
+            'value' => '101',
+        ]);
+    }
+
+    public function test_assign_extension_queues_recorded_calls_for_analysis(): void
+    {
+        Bus::fake();
+        PlatformAiSettings::current()->update(['allow_negative_balance' => true]);
+
+        [$organization, $connection, , $employee] = $this->setupOrganization();
+
+        $log = VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'call-queue-1',
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '101',
+            'status' => 'completed',
+            'started_at' => now()->subDay(),
+            'recording_url' => 'https://example.test/recordings/call-queue-1.wav',
+            'raw_payload' => ['resolved_extension' => '101'],
+        ]);
+
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'voip_call_log_id' => $log->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'call-queue-1',
+            'direction' => 'inbound',
+            'caller_number' => '09120000000',
+            'receiver_number' => '101',
+            'status' => 'completed',
+            'organization_user_id' => null,
+        ]);
+
+        app(UnmatchedVoipExtensionService::class)->assignExtensionToEmployee(
+            organization: $organization,
+            extension: '101',
+            connectionId: $connection->id,
+            organizationUserId: $employee->id,
+        );
+
+        $call = Call::query()->where('voip_call_log_id', $log->id)->first();
+
+        $this->assertNotNull($call);
+        $this->assertSame($employee->id, $call->organization_user_id);
+        $this->assertDatabaseHas('call_processing_jobs', [
+            'call_id' => $call->id,
+            'organization_user_id' => $employee->id,
+        ]);
+        Bus::assertChained([
+            AnalyzeAudioJob::class,
+            UpdateEmployeeMetricsJob::class,
+            SyncCrmJob::class,
         ]);
     }
 

@@ -27,6 +27,7 @@ use App\Livewire\Employer\ProcessingQueue\Show;
 use App\Livewire\Employer\Profile\Edit as ProfileEdit;
 use App\Livewire\Employer\Reports\Index as ReportsIndex;
 use App\Livewire\Employer\Voip\Index as VoipIndex;
+use App\Livewire\Employer\Voip\UnmatchedExtensions;
 use App\Livewire\Employer\Wallet\Index as WalletIndex;
 use Illuminate\Support\Facades\Route;
 
@@ -82,6 +83,7 @@ Route::middleware(['auth', 'employer'])->group(function () {
         Route::get('/{customer}/edit', CustomersEdit::class)->name('edit');
         Route::get('/{customer}', CustomersShow::class)->name('show');
     });
+    Route::get('/unmatched-extensions', UnmatchedExtensions::class)->name('unmatched-extensions.index');
     Route::get('/voip', VoipIndex::class)->name('voip.index');
     Route::prefix('voip/connections')->name('voip.connections.')->group(function () {
         Route::get('/', App\Livewire\Employer\Voip\Connections\Index::class)->name('index');

@@ -2,14 +2,20 @@
 
 namespace App\Application\Call\Services;
 
+use App\Application\Intelligence\Jobs\AnalyzeAudioJob;
+use App\Domain\Call\Enums\CallProcessingStatus;
+use App\Exceptions\InsufficientWalletBalanceException;
 use App\Models\Call;
+use App\Models\ConversationAnalysis;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\OrganizationVoipConnection;
-use App\Models\ConversationAnalysis;
 use App\Models\VoipCallLog;
+use App\Services\AiBillingService;
+use App\Services\CallProcessingTracker;
 use App\Services\EmployeeIntegrationMetaService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 class UnmatchedVoipExtensionService
 {
@@ -24,19 +30,25 @@ class UnmatchedVoipExtensionService
      *     connection_id: int,
      *     connection_name: string,
      *     call_count: int,
-     *     last_call_at: ?Carbon
+     *     last_call_at: ?Carbon,
+     *     last_source_number: ?string,
+     *     last_destination_number: ?string
      * }>
      */
-    public function listUnmatched(Organization $organization, int $days = 14): array
+    public function listUnmatched(Organization $organization, ?int $days = null): array
     {
-        $logs = VoipCallLog::query()
+        $query = VoipCallLog::query()
             ->where('organization_id', $organization->id)
-            ->where('started_at', '>=', now()->subDays($days))
             ->with('connection')
-            ->orderByDesc('started_at')
-            ->get();
+            ->orderByDesc('started_at');
 
-        /** @var array<string, array{extension: string, connection_id: int, connection_name: string, call_count: int, last_call_at: ?Carbon}> $aggregated */
+        if ($days !== null) {
+            $query->where('started_at', '>=', now()->subDays($days));
+        }
+
+        $logs = $query->get();
+
+        /** @var array<string, array{extension: string, connection_id: int, connection_name: string, call_count: int, last_call_at: ?Carbon, last_source_number: ?string, last_destination_number: ?string}> $aggregated */
         $aggregated = [];
 
         foreach ($logs as $log) {
@@ -67,6 +79,8 @@ class UnmatchedVoipExtensionService
                     'connection_name' => $log->connection?->name ?? '—',
                     'call_count' => 0,
                     'last_call_at' => null,
+                    'last_source_number' => null,
+                    'last_destination_number' => null,
                 ];
             }
 
@@ -79,6 +93,8 @@ class UnmatchedVoipExtensionService
                 || $startedAt->gt($aggregated[$key]['last_call_at'])
             )) {
                 $aggregated[$key]['last_call_at'] = $startedAt;
+                $aggregated[$key]['last_source_number'] = $log->source_number;
+                $aggregated[$key]['last_destination_number'] = $log->destination_number;
             }
         }
 
@@ -120,6 +136,7 @@ class UnmatchedVoipExtensionService
     /**
      * Attach the employee to every matching VoIP call (and related analyses).
      * When $days is null, all historical calls for that extension are updated.
+     * Calls with a recording and no analysis are then placed in the processing queue.
      */
     public function backfillCalls(
         Organization $organization,
@@ -147,6 +164,7 @@ class UnmatchedVoipExtensionService
 
         $logs = $query->get();
         $count = 0;
+        $matched = collect();
 
         foreach ($logs as $log) {
             if (! in_array($extension, $this->resolver->extensionCandidates($log), true)) {
@@ -180,9 +198,63 @@ class UnmatchedVoipExtensionService
             }
 
             $count++;
+            $matched->push($log);
         }
 
+        $this->enqueueUnanalyzedLogs($organization, $matched);
+
         return $count;
+    }
+
+    /**
+     * @param  Collection<int, VoipCallLog>  $logs
+     */
+    private function enqueueUnanalyzedLogs(Organization $organization, Collection $logs): void
+    {
+        $tracker = app(CallProcessingTracker::class);
+        $billing = app(AiBillingService::class);
+
+        foreach ($logs as $log) {
+            if (! $log->recording_url) {
+                continue;
+            }
+
+            $callId = $this->ingestion->ingestFromVoipLog($log);
+            $call = Call::query()->find($callId);
+
+            if (! $call?->organization_user_id) {
+                continue;
+            }
+
+            if ($call->analyses()->exists()) {
+                continue;
+            }
+
+            if ($call->processing_status === CallProcessingStatus::Analyzed) {
+                continue;
+            }
+
+            $existing = $tracker->forCall($call->id);
+
+            if ($existing && ! $existing->status->isRecoverable()) {
+                continue;
+            }
+
+            try {
+                $billing->assertCanAnalyze($organization->id);
+            } catch (InsufficientWalletBalanceException) {
+                return;
+            }
+
+            if ($existing) {
+                $tracker->requeueForAnalysis($existing);
+            } else {
+                $job = $tracker->startUpload($call, 'voip-'.$log->external_call_id);
+                $tracker->markUploaded($job);
+            }
+
+            AnalyzeAudioJob::dispatchChain($callId, $log->recording_url);
+        }
     }
 
     public function primaryExtension(VoipCallLog $log): ?string

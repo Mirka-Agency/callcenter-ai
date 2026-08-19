@@ -6,11 +6,10 @@ use App\Application\Call\Services\CallEmployeeResolver;
 use App\Application\Call\Services\UnmatchedVoipExtensionService;
 use App\Domain\Voip\Enums\CallStatus;
 use App\Enums\IntegrationSetupStatus;
-use App\Models\OrganizationUser;
+use App\Livewire\Employer\Voip\Concerns\AssignsUnmatchedVoipExtensions;
 use App\Models\VoipCallLog;
 use App\Services\EmployerContext;
 use App\Services\EmployerIntegrationGate;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -19,8 +18,7 @@ use Livewire\Component;
 #[Title('VoIP')]
 class Index extends Component
 {
-    /** @var array<string, int|string> */
-    public array $unmatchedSelections = [];
+    use AssignsUnmatchedVoipExtensions;
 
     public function regenerateWebhookToken(int $connectionId): void
     {
@@ -32,30 +30,6 @@ class Index extends Component
         $connection->regenerateWebhookToken();
 
         session()->flash('status', __('ui.voip.webhook_token_regenerated'));
-    }
-
-    public function assignUnmatchedExtension(string $extension, int $connectionId): void
-    {
-        $organization = EmployerContext::organization();
-        $selectionKey = $extension.'__'.$connectionId;
-        $organizationUserId = (int) ($this->unmatchedSelections[$selectionKey] ?? 0);
-
-        if ($organizationUserId <= 0) {
-            throw ValidationException::withMessages([
-                'unmatchedSelections.'.$selectionKey => __('ui.voip.unmatched_extension_employee_required'),
-            ]);
-        }
-
-        $backfilled = app(UnmatchedVoipExtensionService::class)->assignExtensionToEmployee(
-            organization: $organization,
-            extension: $extension,
-            connectionId: $connectionId,
-            organizationUserId: $organizationUserId,
-        );
-
-        unset($this->unmatchedSelections[$selectionKey]);
-
-        session()->flash('status', __('ui.voip.unmatched_extension_assigned', ['count' => $backfilled]));
     }
 
     public function render()
@@ -85,7 +59,7 @@ class Index extends Component
             ? VoipCallLog::query()->where('organization_id', $organizationId)->latest('started_at')->limit(10)->get()
             : collect();
 
-        $recentCallRows = $recentCalls->map(function (VoipCallLog $log) use ($resolver, $unmatchedService, $organizationId) {
+        $recentCallRows = $recentCalls->map(function (VoipCallLog $log) use ($resolver, $unmatchedService) {
             $extension = $unmatchedService->primaryExtension($log);
             $employeeId = $resolver->resolveFromCallLog($log);
 
@@ -95,6 +69,10 @@ class Index extends Component
                 'employee_id' => $employeeId,
             ];
         });
+
+        $unmatchedExtensions = $isComplete
+            ? $unmatchedService->listUnmatched($organization)
+            : [];
 
         return view('livewire.employer.voip.index', [
             'connections' => $connections,
@@ -115,17 +93,7 @@ class Index extends Component
                     ->count()
                 : 0,
             'recentCallRows' => $recentCallRows,
-            'unmatchedExtensions' => $isComplete
-                ? $unmatchedService->listUnmatched($organization)
-                : [],
-            'employees' => $isComplete
-                ? OrganizationUser::query()
-                    ->where('organization_id', $organizationId)
-                    ->where('is_active', true)
-                    ->orderBy('first_name')
-                    ->orderBy('last_name')
-                    ->get()
-                : collect(),
+            'unmatchedExtensionCount' => count($unmatchedExtensions),
             'incomingCallEndpoint' => url('/api/voip/incoming-call'),
         ]);
     }

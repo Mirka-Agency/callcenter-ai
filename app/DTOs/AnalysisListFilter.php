@@ -3,6 +3,7 @@
 namespace App\DTOs;
 
 use App\Enums\ReportDatePreset;
+use App\Models\ConversationAnalysis;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -22,6 +23,7 @@ readonly class AnalysisListFilter
         public string $search = '',
         public string $sortBy = 'analyzed_at',
         public string $sortDir = 'desc',
+        public bool $assignedEmployeesOnly = false,
     ) {}
 
     public static function make(
@@ -37,6 +39,7 @@ readonly class AnalysisListFilter
         string $search = '',
         string $sortBy = 'analyzed_at',
         string $sortDir = 'desc',
+        bool $assignedEmployeesOnly = false,
     ): self {
         [$from, $to] = $preset->resolve($customFrom, $customTo);
 
@@ -53,6 +56,7 @@ readonly class AnalysisListFilter
             search: trim($search),
             sortBy: $sortBy,
             sortDir: $sortDir === 'asc' ? 'asc' : 'desc',
+            assignedEmployeesOnly: $assignedEmployeesOnly,
         );
     }
 
@@ -72,11 +76,15 @@ readonly class AnalysisListFilter
             || $this->preset !== ReportDatePreset::Last30;
     }
 
-    /** @param  Builder<\App\Models\ConversationAnalysis>  $query */
+    /** @param  Builder<ConversationAnalysis>  $query */
     public function apply(Builder $query): Builder
     {
         $query->where('conversation_analyses.organization_id', $this->organizationId)
             ->whereBetween('conversation_analyses.analyzed_at', [$this->from, $this->to]);
+
+        if ($this->assignedEmployeesOnly) {
+            $query->whereNotNull('conversation_analyses.organization_user_id');
+        }
 
         if ($this->employeeId !== null) {
             $query->where('conversation_analyses.organization_user_id', $this->employeeId);
@@ -122,7 +130,7 @@ readonly class AnalysisListFilter
         return $query;
     }
 
-    /** @param  Builder<\App\Models\ConversationAnalysis>  $query */
+    /** @param  Builder<ConversationAnalysis>  $query */
     public function applySort(Builder $query): Builder
     {
         $direction = $this->sortDir;

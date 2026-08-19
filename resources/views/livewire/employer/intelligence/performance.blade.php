@@ -1,13 +1,8 @@
 @php
-    use App\Support\AgentPerformancePresenter;
-
     $kpis = $dashboard['kpis'];
     $deltas = $dashboard['kpis_delta'];
     $employees = $dashboard['employees'];
     $qualityTrend = $dashboard['quality_trend'];
-
-    $topCount = collect($employees)->where('tier', 'top')->count();
-    $attentionCount = collect($employees)->where('tier', 'attention')->count();
 
     $qualityChart = [
         'labels' => collect($qualityTrend)->pluck('label')->all(),
@@ -66,34 +61,16 @@
         <x-saas.stat-card label="میانگین رضایت مشتری" :value="$kpis['average_sentiment'] ? $kpis['average_sentiment'].'%' : '—'" :trend="$deltas['average_sentiment']" />
     </div>
 
-    <section class="space-y-4" data-tour="performance-cards" x-data="{ filter: 'all' }">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h2 class="text-xl font-semibold">کارت‌های عملکرد</h2>
-                <p class="text-sm text-zinc-500">برای مشاهده جزئیات، روی هر کارشناس کلیک کنید.</p>
-            </div>
-            <div class="flex flex-wrap gap-2">
-                <button type="button" @click="filter = 'all'" :class="filter === 'all' ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'bg-zinc-100 text-zinc-600'" class="rounded-lg px-3 py-1.5 text-sm font-medium">همه</button>
-                <button type="button" @click="filter = 'top'" :class="filter === 'top' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700'" class="rounded-lg px-3 py-1.5 text-sm font-medium">برترین‌ها ({{ $topCount }})</button>
-                <button type="button" @click="filter = 'attention'" :class="filter === 'attention' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-700'" class="rounded-lg px-3 py-1.5 text-sm font-medium">نیازمند توجه ({{ $attentionCount }})</button>
-            </div>
-        </div>
-
-        <div class="grid gap-4 lg:grid-cols-2">
-            @forelse ($employees as $agent)
-                <div x-show="filter === 'all' || filter === '{{ $agent['tier'] }}'" x-cloak>
-                    <x-saas.agent-performance-card :agent="$agent" :href="$profileUrl($agent)" />
-                </div>
-            @empty
-                <div class="col-span-full">
-                    <x-saas.empty-state
-                        title="{{ __('ui.empty.no_activity.title') }}"
-                        description="{{ __('ui.empty.no_activity.description') }}"
-                    />
-                </div>
-            @endforelse
-        </div>
-    </section>
+    @include('livewire.employer.partials.agent-performance-cards', [
+        'title' => 'کارت‌های عملکرد',
+        'subtitle' => 'برای مشاهده جزئیات، روی هر کارشناس کلیک کنید.',
+        'agentCardFeed' => $agentCardFeed,
+        'agentCardFilter' => $agentCardFilter,
+        'agentProfileUrl' => $profileUrl,
+        'emptyTitle' => __('ui.empty.no_activity.title'),
+        'emptyDescription' => __('ui.empty.no_activity.description'),
+        'sectionTour' => 'performance-cards',
+    ])
 
     <div class="grid gap-6 lg:grid-cols-2" data-tour="performance-charts">
         <div class="saas-card">

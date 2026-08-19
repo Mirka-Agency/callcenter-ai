@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Application\Call\Services\CallEmployeeResolver;
 use App\Application\Call\Services\UnmatchedVoipExtensionService;
 use App\Domain\Voip\Enums\VoipProviderCode;
+use App\Enums\UserRole;
 use App\Infrastructure\Voip\Adapters\SimotelVoipAdapter;
 use App\Models\EmployeeIntegrationMeta;
 use App\Models\Organization;
@@ -13,7 +14,6 @@ use App\Models\OrganizationVoipConnection;
 use App\Models\User;
 use App\Models\VoipCallLog;
 use App\Models\VoipProvider;
-use App\Enums\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -122,6 +122,8 @@ class UnmatchedVoipExtensionServiceTest extends TestCase
         $this->assertSame('553', $rows[0]['extension']);
         $this->assertSame($connection->id, $rows[0]['connection_id']);
         $this->assertSame(2, $rows[0]['call_count']);
+        $this->assertSame('09121111111', $rows[0]['last_source_number']);
+        $this->assertSame('982191093492', $rows[0]['last_destination_number']);
     }
 
     public function test_list_unmatched_excludes_mapped_extensions(): void

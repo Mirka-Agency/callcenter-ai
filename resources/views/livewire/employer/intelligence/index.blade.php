@@ -310,7 +310,21 @@
                                                 />
                                             </button>
                                         @else
-                                            <span class="text-zinc-400">بدون اختصاص</span>
+                                            <div class="space-y-0.5">
+                                                <span class="text-zinc-400">بدون اختصاص</span>
+                                                @php
+                                                    $unassignedExtension = $analysis->callLog?->raw_payload['resolved_extension']
+                                                        ?? $analysis->callLog?->raw_payload['extension']
+                                                        ?? $analysis->call?->receiver_number;
+                                                @endphp
+                                                @if ($analysis->callLog?->source_number || $unassignedExtension)
+                                                    <p class="text-xs tabular-nums text-zinc-500" dir="ltr">
+                                                        {{ $analysis->callLog?->source_number ?: '—' }}
+                                                        →
+                                                        {{ $unassignedExtension ?: ($analysis->callLog?->destination_number ?: '—') }}
+                                                    </p>
+                                                @endif
+                                            </div>
                                         @endif
                                     </div>
 

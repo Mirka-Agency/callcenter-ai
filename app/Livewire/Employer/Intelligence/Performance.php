@@ -3,6 +3,7 @@
 namespace App\Livewire\Employer\Intelligence;
 
 use App\Enums\ReportDatePreset;
+use App\Livewire\Employer\Concerns\HasAgentPerformanceCardFeed;
 use App\Livewire\Employer\Intelligence\Concerns\HasPerformanceFilters;
 use App\Models\OrganizationUser;
 use App\Services\EmployerContext;
@@ -15,6 +16,7 @@ use Livewire\Component;
 #[Title('عملکرد کارشناسان')]
 class Performance extends Component
 {
+    use HasAgentPerformanceCardFeed;
     use HasPerformanceFilters;
 
     public function mount(): void
@@ -36,6 +38,7 @@ class Performance extends Component
 
         return view('livewire.employer.intelligence.performance', [
             'dashboard' => $dashboard,
+            'agentCardFeed' => $this->agentCardFeed($dashboard['employees']),
             'filterEmployees' => $employees,
             'filter' => $filter,
             'primaryDatePresets' => [
