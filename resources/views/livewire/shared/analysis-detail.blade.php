@@ -64,10 +64,15 @@
             </div>
 
             <div class="flex shrink-0 flex-wrap items-center gap-4 lg:justify-end">
-                @if ($showEmployeePerformance)
+                @if ($showEmployeePerformance && $analysis->isEvaluable())
                     <x-saas.score-ring :score="$analysis->score" size="md" label="امتیاز مکالمه" />
+                @elseif ($showEmployeePerformance)
+                    <div class="saas-inline-stat text-center">
+                        <p class="text-xs font-medium text-zinc-500">امتیاز مکالمه</p>
+                        <p class="mt-1 text-lg font-semibold text-zinc-500">{{ __('ui.intelligence.not_evaluable') }}</p>
+                    </div>
                 @endif
-                @if ($leadQuality)
+                @if ($leadQuality && $analysis->isEvaluable())
                     <div class="saas-inline-stat text-center">
                         <p class="text-xs font-medium text-zinc-500">کیفیت لید</p>
                         <p @class(['mt-1 text-3xl font-bold tabular-nums', AnalysisInsightPresenter::leadLevelClass($leadQuality['level'] ?? null)])>

@@ -94,4 +94,25 @@ class AnalysisResponseNormalizerTest extends TestCase
         $this->assertSame('آلفا', $result['customer_identity']['company_name']);
         $this->assertSame(0.92, $result['customer_identity']['confidence']);
     }
+
+    public function test_zero_score_without_evaluable_flag_is_not_evaluable(): void
+    {
+        $result = $this->normalizer->apply(['score' => 0, 'summary' => 'سکوت']);
+
+        $this->assertFalse($result['evaluable']);
+        $this->assertSame(0, $result['score']);
+        $this->assertSame(0, $result['lead_quality']['score']);
+    }
+
+    public function test_explicit_evaluable_false_forces_zero_score(): void
+    {
+        $result = $this->normalizer->apply([
+            'score' => 12,
+            'evaluable' => false,
+            'summary' => 'تماس گرفته شد ولی صحبت نشد',
+        ]);
+
+        $this->assertFalse($result['evaluable']);
+        $this->assertSame(0, $result['score']);
+    }
 }

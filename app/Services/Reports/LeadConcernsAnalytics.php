@@ -15,6 +15,7 @@ class LeadConcernsAnalytics
         $scores = [];
 
         $this->analyses($filter)
+            ->evaluable()
             ->select(['id', 'lead_quality_json'])
             ->chunkById(200, function (Collection $chunk) use (&$distribution, &$scores): void {
                 foreach ($chunk as $analysis) {
@@ -112,6 +113,7 @@ class LeadConcernsAnalytics
         $byEmployee = [];
 
         $this->analyses($filter)
+            ->evaluable()
             ->with('employee:id,first_name,last_name,user_id')
             ->select(['id', 'organization_user_id', 'lead_quality_json'])
             ->chunkById(200, function (Collection $chunk) use (&$byEmployee): void {

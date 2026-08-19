@@ -32,6 +32,25 @@ return [
         'pending_description' => 'هوش مصنوعی در حال بررسی این تماس است. معمولاً چند دقیقه طول می‌کشد.',
     ],
 
+    'intelligence' => [
+        'reanalyze_menu' => 'تحلیل مجدد',
+        'reanalyze_under_20' => 'امتیاز ۲۰ و کمتر',
+        'reanalyze_under_50' => 'امتیاز ۵۰ و کمتر',
+        'reanalyze_all' => 'همه تحلیل‌ها',
+        'reanalyze_all_dates' => 'همه تاریخ‌ها',
+        'reanalyze_date_range' => 'از تاریخ تا تاریخ',
+        'reanalyze_from' => 'از',
+        'reanalyze_to' => 'تا',
+        'reanalyze_submit' => 'ارسال به صف تحلیل',
+        'reanalyze_dates_required' => 'برای بازه دلخواه، تاریخ شروع و پایان را انتخاب کنید.',
+        'reanalyze_confirm_under_20' => 'مکالمات با امتیاز ۲۰ و کمتر با بازه انتخاب‌شده دوباره به صف تحلیل بروند؟',
+        'reanalyze_confirm_under_50' => 'مکالمات با امتیاز ۵۰ و کمتر با بازه انتخاب‌شده دوباره به صف تحلیل بروند؟',
+        'reanalyze_confirm_all' => 'مکالمات تحلیل‌شده با بازه انتخاب‌شده دوباره به صف تحلیل بروند؟ این کار اعتبار هوش مصنوعی مصرف می‌کند.',
+        'reanalyze_queued' => ':count تماس برای «:scope» به صف تحلیل اضافه شد.',
+        'reanalyze_empty' => 'برای «:scope» تماسی با فایل صوتی آماده پیدا نشد.',
+        'not_evaluable' => 'بدون مکالمه',
+    ],
+
     'wallet' => [
         'insufficient' => 'اعتبار تحلیل کافی نیست. برای ادامه، موجودی خود را شارژ کنید.',
         'insufficient_transaction' => 'موجودی برای این عملیات کافی نیست.',

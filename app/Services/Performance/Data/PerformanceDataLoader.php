@@ -17,6 +17,7 @@ class PerformanceDataLoader
         'organization_user_id',
         'call_id',
         'score',
+        'is_evaluable',
         'sentiment',
         'summary',
         'lead_quality_json',

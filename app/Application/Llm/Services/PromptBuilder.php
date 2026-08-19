@@ -3,6 +3,7 @@
 namespace App\Application\Llm\Services;
 
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
+use App\Models\LlmPromptVersion;
 
 class PromptBuilder
 {
@@ -130,6 +131,16 @@ PROMPT;
 PROMPT;
     }
 
+    public static function evaluableConversationPolicy(): string
+    {
+        return <<<'PROMPT'
+ارزیابی‌پذیری مکالمه (الزامی):
+- اگر تماس پاسخ داده شده ولی مکالمه معناداری رخ نداده (سکوت، فقط بوق/موزیک، قطع فوری بدون صحبت کارشناس و مشتری)، evaluable را false بگذارید و score را ۰ بگذارید.
+- امتیاز ۰ یعنی «قابل ارزیابی نیست»، نه عملکرد ضعیف. مکالمه واقعی ضعیف را بین ۱ تا ۴۰ امتیاز دهید؛ هرگز برای عملکرد ضعیف صفر ندهید.
+- وقتی evaluable=false است، در summary صریحاً بنویسید مکالمه قابل ارزیابی نبود و lead_quality را لید واقعی در نظر نگیرید.
+PROMPT;
+    }
+
     public static function persianLanguagePolicy(): string
     {
         return <<<'PROMPT'
@@ -160,7 +171,7 @@ PROMPT;
         $base = null;
 
         if ($version) {
-            $prompt = \App\Models\LlmPromptVersion::query()
+            $prompt = LlmPromptVersion::query()
                 ->where('version', $version)
                 ->where('is_active', true)
                 ->first();
@@ -171,7 +182,7 @@ PROMPT;
         }
 
         if ($base === null) {
-            $default = \App\Models\LlmPromptVersion::query()->where('is_active', true)->first();
+            $default = LlmPromptVersion::query()->where('is_active', true)->first();
 
             if ($default) {
                 $base = $default->system_prompt;
@@ -183,6 +194,7 @@ PROMPT;
 شما یک تحلیل‌گر حرفه‌ای کیفیت تماس در مرکز تماس هستید. به مکالمه صوتی پیوست‌شده گوش دهید و یک شی JSON با کلیدهای دقیق زیر برگردانید:
 
 - score (عدد صحیح ۰ تا ۱۰۰، امتیاز کلی عملکرد کارشناس)
+- evaluable (بولی: اگر مکالمه واقعی و قابل ارزیابی است true؛ اگر تماس گرفته شد ولی صحبت معناداری نشد false)
 - summary (رشته — خلاصه کسب‌وکاری مفصل فارسی؛ معمولاً ۱ تا ۳ پاراگراف و حدود ۱۰۰ تا ۳۰۰ کلمه شامل دلیل تماس، موضوعات، دغدغه‌ها، پاسخ‌های کلیدی، نتیجه و اقدامات بعدی)
 - sentiment (رشته: positive, neutral, negative, mixed)
 - overall_evaluation (رشته، ارزیابی کوتاه فارسی از عملکرد)
@@ -231,7 +243,7 @@ PROMPT;
 PROMPT;
         }
 
-        return trim($base)."\n\n".self::persianLanguagePolicy()."\n\n".self::summaryPolicy()."\n\n".self::organizationDomainPolicy()."\n\n".self::weaknessEvaluationPolicy()."\n\n".self::leadAnalysisPolicy()."\n\n".self::customerIdentityPolicy();
+        return trim($base)."\n\n".self::persianLanguagePolicy()."\n\n".self::summaryPolicy()."\n\n".self::organizationDomainPolicy()."\n\n".self::weaknessEvaluationPolicy()."\n\n".self::leadAnalysisPolicy()."\n\n".self::customerIdentityPolicy()."\n\n".self::evaluableConversationPolicy();
     }
 
     public function contextPrompt(AudioAnalysisRequestData $request): string

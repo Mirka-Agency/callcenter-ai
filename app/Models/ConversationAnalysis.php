@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'model_name',
     'prompt_version',
     'score',
+    'is_evaluable',
     'summary',
     'transcript',
     'sentiment',
@@ -60,6 +62,7 @@ class ConversationAnalysis extends Model
             'lead_quality_json' => 'array',
             'concerns_json' => 'array',
             'customer_identity_json' => 'array',
+            'is_evaluable' => 'boolean',
             'cost' => 'decimal:6',
             'input_price_snapshot' => 'decimal:6',
             'output_price_snapshot' => 'decimal:6',
@@ -97,5 +100,18 @@ class ConversationAnalysis extends Model
     public function crmSyncs(): HasMany
     {
         return $this->hasMany(CrmPipelineSync::class, 'conversation_analysis_id');
+    }
+
+    public function isEvaluable(): bool
+    {
+        return ($this->is_evaluable ?? true) && (int) $this->score > 0;
+    }
+
+    /** @param Builder<ConversationAnalysis> $query */
+    public function scopeEvaluable(Builder $query): Builder
+    {
+        $table = $query->getModel()->getTable();
+
+        return $query->where($table.'.is_evaluable', true)->where($table.'.score', '>', 0);
     }
 }

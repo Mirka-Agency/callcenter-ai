@@ -47,6 +47,19 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $this->assertNotEmpty($profile['executive_summary']);
     }
 
+    public function test_zero_score_calls_are_excluded_from_quality_average(): void
+    {
+        [$organization, $employee] = $this->seedEmployeeWithAnalysis(score: 80);
+        $this->seedAnalysisForEmployee($organization, $employee, score: 0);
+
+        $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
+        $dashboard = app(EmployeePerformanceAnalytics::class)->teamDashboard($filter);
+
+        $this->assertSame(80.0, $dashboard['kpis']['average_quality_score']);
+        $this->assertSame(80.0, $dashboard['employees'][0]['average_score']);
+        $this->assertSame(2, $dashboard['kpis']['total_analyzed']);
+    }
+
     public function test_report_date_preset_includes_quarter_and_year(): void
     {
         $this->assertContains(ReportDatePreset::CurrentQuarter, ReportDatePreset::selectable());
@@ -89,6 +102,7 @@ class EmployeePerformanceAnalyticsTest extends TestCase
             'llm_provider' => 'openai',
             'model_name' => 'gpt-4o-mini',
             'score' => $score,
+            'is_evaluable' => $score > 0,
             'summary' => 'خلاصه تست',
             'sentiment' => AnalysisSentiment::Positive,
             'strengths_json' => ['گوش دادن فعال'],
@@ -99,5 +113,40 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         ]);
 
         return [$organization, $employee];
+    }
+
+    private function seedAnalysisForEmployee(Organization $organization, OrganizationUser $employee, int $score): void
+    {
+        $call = Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $employee->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('perf-zero-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09120000000',
+            'receiver_number' => '02100000000',
+            'status' => 'completed',
+            'processing_status' => 'analyzed',
+            'duration_seconds' => 12,
+            'started_at' => now()->subHours(2),
+        ]);
+
+        ConversationAnalysis::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $employee->id,
+            'call_id' => $call->id,
+            'source' => ConversationSource::Voip,
+            'llm_provider' => 'openai',
+            'model_name' => 'gpt-4o-mini',
+            'score' => $score,
+            'is_evaluable' => $score > 0,
+            'summary' => 'تماس بدون مکالمه',
+            'sentiment' => AnalysisSentiment::Neutral,
+            'strengths_json' => [],
+            'weaknesses_json' => [],
+            'next_actions_json' => [],
+            'analyzed_at' => now(),
+        ]);
     }
 }

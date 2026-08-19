@@ -3,7 +3,6 @@
 namespace App\Services\Performance;
 
 use App\DTOs\ReportFilter;
-use App\Support\JalaliDate;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
 use App\Services\Performance\Calculators\EmployeeMetricsCalculator;
@@ -16,6 +15,9 @@ use App\Services\Performance\Data\PerformanceDataLoader;
 use App\Services\Performance\Support\ProgressInsightFormatter;
 use App\Services\Reports\CallMetricsAnalytics;
 use App\Services\Reports\LeadConcernsAnalytics;
+use App\Support\AgentPerformancePresenter;
+use App\Support\JalaliDate;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class EmployeePerformanceAnalytics
@@ -205,7 +207,7 @@ class EmployeePerformanceAnalytics
             ->with(['call:id,customer_id,customer_name,caller_number,duration_seconds', 'call.customer:id,name,company_name,phone_number,normalized_phone'])
             ->latest('analyzed_at')
             ->limit($limit)
-            ->get(['id', 'call_id', 'score', 'summary', 'sentiment', 'lead_quality_json', 'analyzed_at'])
+            ->get(['id', 'call_id', 'score', 'is_evaluable', 'summary', 'sentiment', 'lead_quality_json', 'analyzed_at'])
             ->map(function (ConversationAnalysis $analysis) {
                 $call = $analysis->call;
                 $lead = $analysis->lead_quality_json ?? [];
@@ -220,8 +222,8 @@ class EmployeePerformanceAnalytics
                         ?? '—',
                     'duration_seconds' => $call?->duration_seconds,
                     'duration_label' => $this->callMetrics->formatDuration($call?->duration_seconds ?? 0),
-                    'quality_score' => $analysis->score,
-                    'lead_score' => $lead['score'] ?? null,
+                    'quality_score' => $analysis->isEvaluable() ? $analysis->score : null,
+                    'lead_score' => $analysis->isEvaluable() ? ($lead['score'] ?? null) : null,
                     'lead_level' => $lead['level'] ?? null,
                     'sentiment' => $analysis->sentiment?->label(),
                     'summary' => $analysis->summary,
@@ -235,6 +237,8 @@ class EmployeePerformanceAnalytics
     {
         $leadDist = $this->leadConcerns->leadQualityDistribution($filter);
 
+        $scored = $data->analyses->filter(fn ($analysis) => $analysis->isEvaluable());
+
         return [
             'total_employees' => OrganizationUser::query()
                 ->where('organization_id', $filter->organizationId)
@@ -242,9 +246,9 @@ class EmployeePerformanceAnalytics
             'active_employees' => $data->employees->count(),
             'total_calls' => $data->calls->count(),
             'total_analyzed' => $data->analyses->count(),
-            'average_quality_score' => round((float) $data->analyses->avg('score'), 1),
+            'average_quality_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : 0.0,
             'average_lead_score' => $leadDist['average_score'],
-            'average_sentiment' => $this->sentimentCalculator->average($data->analyses),
+            'average_sentiment' => $this->sentimentCalculator->average($scored),
         ];
     }
 
@@ -316,7 +320,7 @@ class EmployeePerformanceAnalytics
             ->values()
             ->map(function (array $row, int $index) {
                 $row['rank'] = $index + 1;
-                $row['tier'] = \App\Support\AgentPerformancePresenter::tier($row);
+                $row['tier'] = AgentPerformancePresenter::tier($row);
 
                 return $row;
             })
@@ -354,8 +358,8 @@ class EmployeePerformanceAnalytics
             ->all();
     }
 
-    /** @param  \Illuminate\Support\Collection<int, ConversationAnalysis>  $analyses */
-    private function averageDimensions(\Illuminate\Support\Collection $analyses): array
+    /** @param  Collection<int, ConversationAnalysis>  $analyses */
+    private function averageDimensions(Collection $analyses): array
     {
         $sums = [];
         $counts = [];

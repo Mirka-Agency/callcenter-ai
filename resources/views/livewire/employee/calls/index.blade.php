@@ -354,10 +354,11 @@
                                     <div class="flex items-center justify-end gap-2 whitespace-nowrap">
                                         <span @class([
                                             'inline-flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-sm font-bold tabular-nums transition-all duration-200',
-                                            'bg-emerald-50 text-emerald-700 group-hover:bg-emerald-100 group-hover:shadow-sm dark:bg-emerald-950/40 dark:text-emerald-300 dark:group-hover:bg-emerald-950/60' => $analysis->score >= 85,
-                                            'bg-amber-50 text-amber-700 group-hover:bg-amber-100 group-hover:shadow-sm dark:bg-amber-950/40 dark:text-amber-300 dark:group-hover:bg-amber-950/60' => $analysis->score >= 70 && $analysis->score < 85,
-                                            'bg-red-50 text-red-700 group-hover:bg-red-100 group-hover:shadow-sm dark:bg-red-950/40 dark:text-red-300 dark:group-hover:bg-red-950/60' => $analysis->score < 70,
-                                        ])>{{ $analysis->score }}</span>
+                                            'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' => ! $analysis->isEvaluable(),
+                                            'bg-emerald-50 text-emerald-700 group-hover:bg-emerald-100 group-hover:shadow-sm dark:bg-emerald-950/40 dark:text-emerald-300 dark:group-hover:bg-emerald-950/60' => $analysis->isEvaluable() && $analysis->score >= 85,
+                                            'bg-amber-50 text-amber-700 group-hover:bg-amber-100 group-hover:shadow-sm dark:bg-amber-950/40 dark:text-amber-300 dark:group-hover:bg-amber-950/60' => $analysis->isEvaluable() && $analysis->score >= 70 && $analysis->score < 85,
+                                            'bg-red-50 text-red-700 group-hover:bg-red-100 group-hover:shadow-sm dark:bg-red-950/40 dark:text-red-300 dark:group-hover:bg-red-950/60' => $analysis->isEvaluable() && $analysis->score < 70,
+                                        ])>{{ $analysis->isEvaluable() ? $analysis->score : '—' }}</span>
                                         <span class="flex h-8 w-8 items-center justify-center rounded-full text-indigo-500 transition-all duration-200 group-hover:translate-x-0.5 group-hover:bg-indigo-500/10">
                                             <svg class="h-4 w-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />

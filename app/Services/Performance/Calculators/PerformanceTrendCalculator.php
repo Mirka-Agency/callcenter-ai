@@ -19,8 +19,10 @@ class PerformanceTrendCalculator
     public function qualityTrend(ReportFilter $filter, Collection $analyses): array
     {
         return $this->bucketAnalyses($filter, $analyses, function (Collection $items) {
+            $scored = $items->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable());
+
             return [
-                'avg_score' => round((float) $items->avg('score'), 1),
+                'avg_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : 0.0,
                 'count' => $items->count(),
             ];
         });

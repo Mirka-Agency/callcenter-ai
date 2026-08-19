@@ -41,10 +41,12 @@ class EmployeeMetricsCalculator
         $avgDuration = $durations->isNotEmpty() ? (int) round($durations->avg()) : 0;
 
         $leadScores = $analyses
+            ->filter(fn (ConversationAnalysis $a) => $a->isEvaluable())
             ->map(fn (ConversationAnalysis $a) => $a->lead_quality_json['score'] ?? null)
-            ->filter();
+            ->filter(fn ($score) => $score !== null && (int) $score > 0);
 
         $effectiveness = $analyses
+            ->filter(fn (ConversationAnalysis $a) => $a->isEvaluable())
             ->map(fn (ConversationAnalysis $a) => $this->effectivenessScore($a))
             ->filter();
 
@@ -52,6 +54,8 @@ class EmployeeMetricsCalculator
             ?? $analyses->min('analyzed_at');
         $lastActivity = $calls->max(fn (Call $c) => $c->started_at ?? $c->created_at)
             ?? $analyses->max('analyzed_at');
+
+        $scored = $analyses->filter(fn (ConversationAnalysis $a) => $a->isEvaluable());
 
         return [
             'total_calls' => $calls->count(),
@@ -62,9 +66,9 @@ class EmployeeMetricsCalculator
             'total_analyzed' => $analyses->count(),
             'first_activity_at' => JalaliDate::date($firstActivity),
             'last_activity_at' => JalaliDate::date($lastActivity),
-            'average_quality_score' => round((float) $analyses->avg('score'), 1),
+            'average_quality_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : 0.0,
             'average_lead_score' => $leadScores->isNotEmpty() ? round((float) $leadScores->avg(), 1) : 0.0,
-            'average_sentiment' => $this->sentimentCalculator->average($analyses),
+            'average_sentiment' => $this->sentimentCalculator->average($scored),
             'effectiveness_score' => $effectiveness->isNotEmpty() ? round((float) $effectiveness->avg(), 1) : 0.0,
         ];
     }

@@ -10,6 +10,7 @@ use App\Models\OrganizationUser;
 use App\Services\Reports\CallMetricsAnalytics;
 use App\Support\CustomerPresenter;
 use App\Support\JalaliDate;
+use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -51,7 +52,7 @@ class AnalysisListQuery
         $query = $this->filteredQuery($filter);
 
         $total = (clone $query)->count();
-        $avgScore = round((float) (clone $query)->avg('conversation_analyses.score'), 1);
+        $avgScore = round((float) (clone $query)->evaluable()->avg('conversation_analyses.score'), 1);
 
         $avgDuration = (int) round((float) (clone $query)
             ->avg(DB::raw('COALESCE(calls.duration_seconds, voip_call_logs.duration, 0)')));
@@ -143,14 +144,16 @@ class AnalysisListQuery
         $grouped = $this->filteredQuery($filter)
             ->whereNotNull('conversation_analyses.analyzed_at')
             ->orderBy('conversation_analyses.analyzed_at')
-            ->get(['conversation_analyses.analyzed_at', 'conversation_analyses.score'])
+            ->get(['conversation_analyses.analyzed_at', 'conversation_analyses.score', 'conversation_analyses.is_evaluable'])
             ->groupBy(fn (ConversationAnalysis $analysis) => $this->periodKey($analysis->analyzed_at, $granularity));
 
         return $grouped->map(function (Collection $items, string $period) use ($granularity) {
+            $scored = $items->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable());
+
             return [
                 'period' => $period,
                 'label' => $this->periodLabel($period, $granularity),
-                'avg_score' => round((float) $items->avg('score'), 1),
+                'avg_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : null,
                 'count' => $items->count(),
             ];
         })->values()->all();
@@ -183,9 +186,13 @@ class AnalysisListQuery
         $scores = [];
 
         $this->filteredQuery($filter)
-            ->select(['conversation_analyses.id', 'conversation_analyses.lead_quality_json'])
+            ->select(['conversation_analyses.id', 'conversation_analyses.lead_quality_json', 'conversation_analyses.is_evaluable', 'conversation_analyses.score'])
             ->chunkById(200, function (Collection $chunk) use (&$distribution, &$scores): void {
                 foreach ($chunk as $analysis) {
+                    if (! $analysis->isEvaluable()) {
+                        continue;
+                    }
+
                     $lead = $analysis->lead_quality_json;
                     if (! is_array($lead) || $lead === []) {
                         continue;
@@ -284,7 +291,7 @@ class AnalysisListQuery
         return $days > 60 ? 'week' : 'day';
     }
 
-    private function periodKey(\Carbon\Carbon $date, string $granularity): string
+    private function periodKey(Carbon $date, string $granularity): string
     {
         return match ($granularity) {
             'week' => $date->format('Y-W'),

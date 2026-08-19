@@ -2,17 +2,13 @@
 
 namespace App\Application\Call\Services;
 
-use App\Application\Intelligence\Jobs\AnalyzeAudioJob;
-use App\Domain\Call\Enums\CallProcessingStatus;
-use App\Exceptions\InsufficientWalletBalanceException;
+use App\Application\Intelligence\Services\CallAnalysisQueueService;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\OrganizationVoipConnection;
 use App\Models\VoipCallLog;
-use App\Services\AiBillingService;
-use App\Services\CallProcessingTracker;
 use App\Services\EmployeeIntegrationMetaService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -209,51 +205,17 @@ class UnmatchedVoipExtensionService
     /**
      * @param  Collection<int, VoipCallLog>  $logs
      */
-    private function enqueueUnanalyzedLogs(Organization $organization, Collection $logs): void
+    private function enqueueUnanalyzedLogs(Organization $organization, $logs): void
     {
-        $tracker = app(CallProcessingTracker::class);
-        $billing = app(AiBillingService::class);
+        $queue = app(CallAnalysisQueueService::class);
 
         foreach ($logs as $log) {
-            if (! $log->recording_url) {
-                continue;
-            }
-
             $callId = $this->ingestion->ingestFromVoipLog($log);
             $call = Call::query()->find($callId);
 
-            if (! $call?->organization_user_id) {
-                continue;
+            if ($call) {
+                $queue->dispatchForCall($call);
             }
-
-            if ($call->analyses()->exists()) {
-                continue;
-            }
-
-            if ($call->processing_status === CallProcessingStatus::Analyzed) {
-                continue;
-            }
-
-            $existing = $tracker->forCall($call->id);
-
-            if ($existing && ! $existing->status->isRecoverable()) {
-                continue;
-            }
-
-            try {
-                $billing->assertCanAnalyze($organization->id);
-            } catch (InsufficientWalletBalanceException) {
-                return;
-            }
-
-            if ($existing) {
-                $tracker->requeueForAnalysis($existing);
-            } else {
-                $job = $tracker->startUpload($call, 'voip-'.$log->external_call_id);
-                $tracker->markUploaded($job);
-            }
-
-            AnalyzeAudioJob::dispatchChain($callId, $log->recording_url);
         }
     }
 

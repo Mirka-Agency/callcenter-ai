@@ -42,6 +42,7 @@ readonly class AnalysisResultData
         public ?float $outputPriceSnapshot = null,
         public ?float $cachedInputPriceSnapshot = null,
         public ?float $reasoningPriceSnapshot = null,
+        public bool $isEvaluable = true,
     ) {}
 
     public function totalTokens(): int
@@ -86,6 +87,7 @@ readonly class AnalysisResultData
             outputPriceSnapshot: $this->outputPriceSnapshot,
             cachedInputPriceSnapshot: $this->cachedInputPriceSnapshot,
             reasoningPriceSnapshot: $this->reasoningPriceSnapshot,
+            isEvaluable: $this->isEvaluable,
         );
     }
 
@@ -117,6 +119,8 @@ readonly class AnalysisResultData
         $leadQuality = (array) ($response['lead_quality'] ?? []);
         $concerns = (array) ($response['concerns'] ?? []);
         $customerIdentity = (array) ($response['customer_identity'] ?? []);
+        $score = (int) ($response['score'] ?? $performance['overall_score'] ?? 0);
+        $isEvaluable = (bool) ($response['evaluable'] ?? true) && $score > 0;
 
         return new self(
             organizationId: $organizationId,
@@ -125,7 +129,7 @@ readonly class AnalysisResultData
             organizationLlmConnectionId: $organizationLlmConnectionId,
             llmProvider: $llmProvider,
             modelName: $modelName,
-            score: (int) ($response['score'] ?? $performance['overall_score'] ?? 0),
+            score: $score,
             summary: (string) ($response['summary'] ?? ''),
             sentiment: AnalysisSentiment::tryFrom($response['sentiment'] ?? $customer['sentiment'] ?? '') ?? AnalysisSentiment::Neutral,
             overallEvaluation: $response['overall_evaluation'] ?? $response['evaluation'] ?? null,
@@ -152,6 +156,7 @@ readonly class AnalysisResultData
             outputPriceSnapshot: $outputPriceSnapshot,
             cachedInputPriceSnapshot: $cachedInputPriceSnapshot,
             reasoningPriceSnapshot: $reasoningPriceSnapshot,
+            isEvaluable: $isEvaluable,
         );
     }
 }

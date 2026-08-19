@@ -117,7 +117,7 @@ class AnalysisResponseNormalizer
     }
 
     /** @param array<string, mixed> $response
-     * @param array<string, mixed>|null $crmContext
+     * @param  array<string, mixed>|null  $crmContext
      * @return array<string, mixed>
      */
     public function apply(array $response, ?array $crmContext = null): array
@@ -125,8 +125,43 @@ class AnalysisResponseNormalizer
         $response['lead_quality'] = $this->normalizeLeadQuality($response['lead_quality'] ?? null);
         $response['concerns'] = $this->normalizeConcerns($response['concerns'] ?? null);
         $response['customer_identity'] = $this->normalizeCustomerIdentity($response['customer_identity'] ?? null, $crmContext);
+        $response['evaluable'] = $this->resolveEvaluable($response);
+
+        if (! $response['evaluable']) {
+            $response['score'] = 0;
+            $response['lead_quality']['score'] = 0;
+            $response['lead_quality']['level'] = 'low';
+        }
 
         return $response;
+    }
+
+    /** @param array<string, mixed> $response */
+    private function resolveEvaluable(array $response): bool
+    {
+        if (array_key_exists('evaluable', $response)) {
+            $raw = $response['evaluable'];
+
+            if (is_bool($raw)) {
+                return $raw;
+            }
+
+            if (is_numeric($raw)) {
+                return (int) $raw === 1;
+            }
+
+            if (is_string($raw)) {
+                return in_array(mb_strtolower(trim($raw)), ['1', 'true', 'yes', 'بله'], true);
+            }
+
+            return false;
+        }
+
+        if (! array_key_exists('score', $response)) {
+            return true;
+        }
+
+        return (int) $response['score'] > 0;
     }
 
     private function matchesExcluded(string $value, string $excluded): bool

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Domain\Llm\Enums\AnalysisSentiment;
+use App\DTOs\ReportFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
@@ -31,23 +32,25 @@ class AiPerformanceAnalytics
 
         $totalAnalyzed = (clone $query)->count();
         $totalCalls = Call::query()->where('organization_id', $this->organizationId)->count();
-        $avgScore = round((float) (clone $query)->avg('score'), 1);
+        $avgScore = round((float) (clone $query)->evaluable()->avg('score'), 1);
         $totalCost = round((float) (clone $query)->sum('cost'), 4);
         $totalTokens = (int) (clone $query)->sum('total_tokens');
 
         $employeeAvg = round((float) OrganizationUser::query()
             ->where('organization_id', $this->organizationId)
             ->whereHas('conversationAnalyses')
-            ->withAvg('conversationAnalyses', 'score')
+            ->withAvg(['conversationAnalyses' => fn (Builder $q) => $q->evaluable()], 'score')
             ->get()
             ->avg('conversation_analyses_avg_score'), 1);
 
         $thisMonth = (clone $query)
+            ->evaluable()
             ->whereMonth('analyzed_at', now()->month)
             ->whereYear('analyzed_at', now()->year)
             ->avg('score');
 
         $lastMonth = (clone $query)
+            ->evaluable()
             ->whereMonth('analyzed_at', now()->subMonth()->month)
             ->whereYear('analyzed_at', now()->subMonth()->year)
             ->avg('score');
@@ -75,9 +78,9 @@ class AiPerformanceAnalytics
         $query = OrganizationUser::query()
             ->where('organization_id', $this->organizationId)
             ->withCount('conversationAnalyses')
-            ->withAvg('conversationAnalyses', 'score')
-            ->withMax('conversationAnalyses', 'score')
-            ->withMin('conversationAnalyses', 'score');
+            ->withAvg(['conversationAnalyses' => fn (Builder $q) => $q->evaluable()], 'score')
+            ->withMax(['conversationAnalyses' => fn (Builder $q) => $q->evaluable()], 'score')
+            ->withMin(['conversationAnalyses' => fn (Builder $q) => $q->evaluable()], 'score');
 
         if ($filters['department'] ?? null) {
             $query->where('department', $filters['department']);
@@ -100,7 +103,7 @@ class AiPerformanceAnalytics
         ]);
     }
 
-    public function employeePerformanceInRange(\App\DTOs\ReportFilter $filter): Collection
+    public function employeePerformanceInRange(ReportFilter $filter): Collection
     {
         $query = OrganizationUser::query()
             ->where('organization_id', $this->organizationId)
@@ -119,6 +122,7 @@ class AiPerformanceAnalytics
                 ->whereBetween('analyzed_at', [$from, $to]),
             ])
             ->withAvg(['conversationAnalyses as average_score' => fn (Builder $q) => $q
+                ->evaluable()
                 ->whereBetween('analyzed_at', [$from, $to]),
             ], 'score')
             ->get()
@@ -138,7 +142,7 @@ class AiPerformanceAnalytics
         $employees = $this->employeePerformance();
 
         return [
-            'team_average' => round((float) $this->baseQuery()->avg('score'), 1),
+            'team_average' => round((float) $this->baseQuery()->evaluable()->avg('score'), 1),
             'top_performers' => $employees->sortByDesc('average_score')->take(3)->values()->all(),
             'lowest_performers' => $employees->sortBy('average_score')->take(3)->values()->all(),
             'coaching_opportunities' => $this->coachingOpportunities(),
@@ -168,7 +172,7 @@ class AiPerformanceAnalytics
 
         return $grouped->map(fn (Collection $items, string $key) => [
             'period' => $key,
-            'avg_score' => round((float) $items->avg('score'), 1),
+            'avg_score' => round((float) $items->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable())->avg('score'), 1),
             'count' => $items->count(),
         ])->values()->all();
     }

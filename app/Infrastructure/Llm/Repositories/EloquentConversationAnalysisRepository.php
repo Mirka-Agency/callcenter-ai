@@ -11,7 +11,7 @@ class EloquentConversationAnalysisRepository implements ConversationAnalysisRepo
 {
     public function store(AnalysisResultData $data): int
     {
-        $analysis = ConversationAnalysis::query()->create([
+        $attributes = [
             'organization_id' => $data->organizationId,
             'organization_user_id' => $data->organizationUserId,
             'voip_call_log_id' => $data->voipCallLogId,
@@ -19,6 +19,7 @@ class EloquentConversationAnalysisRepository implements ConversationAnalysisRepo
             'model_name' => $data->modelName,
             'prompt_version' => $data->promptVersion,
             'score' => $data->score,
+            'is_evaluable' => $data->isEvaluable,
             'summary' => $data->summary,
             'transcript' => $data->transcript,
             'sentiment' => $data->sentiment,
@@ -45,9 +46,22 @@ class EloquentConversationAnalysisRepository implements ConversationAnalysisRepo
             'reasoning_price_snapshot' => $data->reasoningPriceSnapshot,
             'processing_duration_ms' => $data->processingDurationMs,
             'analyzed_at' => $data->analyzedAt ?? now(),
-        ]);
+        ];
 
-        return $analysis->id;
+        $existing = $data->callId
+            ? ConversationAnalysis::query()
+                ->where('call_id', $data->callId)
+                ->latest('analyzed_at')
+                ->first()
+            : null;
+
+        if ($existing) {
+            $existing->update($attributes);
+
+            return $existing->id;
+        }
+
+        return ConversationAnalysis::query()->create($attributes)->id;
     }
 
     public function findLatestForCall(int $callId): ?AnalysisResultData
@@ -97,6 +111,7 @@ class EloquentConversationAnalysisRepository implements ConversationAnalysisRepo
             outputPriceSnapshot: $analysis->output_price_snapshot !== null ? (float) $analysis->output_price_snapshot : null,
             cachedInputPriceSnapshot: $analysis->cached_input_price_snapshot !== null ? (float) $analysis->cached_input_price_snapshot : null,
             reasoningPriceSnapshot: $analysis->reasoning_price_snapshot !== null ? (float) $analysis->reasoning_price_snapshot : null,
+            isEvaluable: $analysis->isEvaluable(),
         );
     }
 }

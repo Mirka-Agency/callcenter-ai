@@ -53,4 +53,12 @@ class PromptBuilderOrganizationDomainTest extends TestCase
         $this->assertStringContainsString('زمینه فعالیت سازمان', $policy);
         $this->assertStringContainsString('تخصص یا خدمات نامرتبط اختراع نکنید', $policy);
     }
+
+    public function test_evaluable_conversation_policy_rejects_zero_for_real_calls(): void
+    {
+        $policy = PromptBuilder::evaluableConversationPolicy();
+
+        $this->assertStringContainsString('evaluable', $policy);
+        $this->assertStringContainsString('صفر', $policy);
+    }
 }

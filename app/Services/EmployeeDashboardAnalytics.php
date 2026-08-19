@@ -9,8 +9,8 @@ use App\Models\EmployeePerformanceSnapshot;
 use App\Models\OrganizationUser;
 use App\Services\Performance\Calculators\JsonFieldAggregator;
 use App\Support\JalaliDate;
-use Illuminate\Support\Collection;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 
 class EmployeeDashboardAnalytics
 {
@@ -27,7 +27,6 @@ class EmployeeDashboardAnalytics
     public function cockpit(): array
     {
         $analyses = $this->analysisQuery()->get();
-        $latest = $analyses->sortByDesc('analyzed_at')->first();
 
         $weekly = $this->periodAverage(now()->subWeek());
         $monthly = $this->periodAverage(now()->startOfMonth());
@@ -38,10 +37,11 @@ class EmployeeDashboardAnalytics
             ->where('organization_user_id', $this->employee->id)
             ->count();
 
-        $avgScore = round((float) $this->analysisQuery()->avg('score'), 1);
+        $avgScore = round((float) $this->analysisQuery()->evaluable()->avg('score'), 1);
+        $latestEvaluable = $analyses->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable())->sortByDesc('analyzed_at')->first();
 
         return [
-            'performance_score' => $latest?->score ?? $avgScore,
+            'performance_score' => $latestEvaluable?->score ?? $avgScore,
             'weekly_progress' => $weekly,
             'monthly_progress' => $monthly,
             'weekly_delta' => $weekly && $previousWeek ? round($weekly - $previousWeek, 1) : 0,
@@ -189,7 +189,7 @@ class EmployeeDashboardAnalytics
             $query->where('analyzed_at', '<=', $to);
         }
 
-        $avg = $query->avg('score');
+        $avg = $query->evaluable()->avg('score');
 
         return $avg ? round((float) $avg, 1) : null;
     }

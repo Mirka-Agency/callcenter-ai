@@ -11,7 +11,6 @@ use App\Services\Reports\CallMetricsAnalytics;
 use App\Support\JalaliDate;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 
 class EmployeeActivityAnalytics
 {
@@ -42,7 +41,7 @@ class EmployeeActivityAnalytics
             'upload_count' => $uploadCount,
             'feedback_count' => $feedbackCount,
             'total_events' => $analyzedCount + $uploadCount,
-            'average_score' => round((float) (clone $analyses)->avg('score'), 1),
+            'average_score' => round((float) (clone $analyses)->evaluable()->avg('score'), 1),
             'analyzed_delta' => $analyzedCount - $previousAnalyzed,
             'last_activity' => $lastActivityAt ? JalaliDate::ago($lastActivityAt) : null,
         ];

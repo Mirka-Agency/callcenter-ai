@@ -90,7 +90,7 @@ class EmployerReportsAnalytics
     {
         $query = $filter->applyToAnalysisQuery(ConversationAnalysis::query());
         $totalAnalyzed = (clone $query)->count();
-        $avgScore = round((float) (clone $query)->avg('score'), 1);
+        $avgScore = round((float) (clone $query)->evaluable()->avg('score'), 1);
         $totalCost = round((float) (clone $query)->sum('cost'), 4);
         $totalTokens = (int) (clone $query)->sum('total_tokens');
 
@@ -140,7 +140,7 @@ class EmployerReportsAnalytics
             ->whereNotNull('analyzed_at')
             ->orderBy('analyzed_at');
 
-        $grouped = $query->get(['analyzed_at', 'score'])->groupBy(function (ConversationAnalysis $analysis) use ($granularity) {
+        $grouped = $query->get(['analyzed_at', 'score', 'is_evaluable'])->groupBy(function (ConversationAnalysis $analysis) use ($granularity) {
             return match ($granularity) {
                 'week' => $analysis->analyzed_at->format('Y-W'),
                 default => $analysis->analyzed_at->format('Y-m-d'),
@@ -151,7 +151,7 @@ class EmployerReportsAnalytics
             return [
                 'period' => $key,
                 'label' => $granularity === 'week' ? 'هفته '.$key : JalaliDate::monthDay($key),
-                'avg_score' => round((float) $items->avg('score'), 1),
+                'avg_score' => round((float) $items->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable())->avg('score'), 1),
                 'count' => $items->count(),
             ];
         })->values()->all();

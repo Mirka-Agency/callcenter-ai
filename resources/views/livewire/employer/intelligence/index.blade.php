@@ -86,10 +86,80 @@
         description="پایش کیفیت مکالمات، روند تحلیل‌ها و بررسی جزئیات هر تماس در یک نما."
     >
         <x-slot:actions>
+            <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                <button type="button" class="saas-btn-secondary" @click="open = ! open">
+                    {{ __('ui.intelligence.reanalyze_menu') }}
+                </button>
+                <div
+                    x-show="open"
+                    x-cloak
+                    class="absolute end-0 z-30 mt-2 w-80 space-y-3 rounded-lg border border-zinc-200 bg-white p-3 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+                >
+                    <p class="text-xs font-medium text-zinc-500">بازه زمانی</p>
+                    <div class="flex flex-col gap-2">
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="radio" wire:model.live="reanalyzeRangeMode" value="all" class="text-indigo-600">
+                            {{ __('ui.intelligence.reanalyze_all_dates') }}
+                        </label>
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="radio" wire:model.live="reanalyzeRangeMode" value="range" class="text-indigo-600">
+                            {{ __('ui.intelligence.reanalyze_date_range') }}
+                        </label>
+                    </div>
+
+                    @if ($reanalyzeRangeMode === 'range')
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <p class="mb-1 text-xs text-zinc-500">{{ __('ui.intelligence.reanalyze_from') }}</p>
+                                <x-saas.jalali-date-input wire:key="reanalyze-from" wire:model="reanalyzeFrom" class="text-sm" />
+                            </div>
+                            <div>
+                                <p class="mb-1 text-xs text-zinc-500">{{ __('ui.intelligence.reanalyze_to') }}</p>
+                                <x-saas.jalali-date-input wire:key="reanalyze-to" wire:model="reanalyzeTo" class="text-sm" />
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="space-y-1 border-t border-zinc-200 pt-2 dark:border-zinc-700">
+                        <button
+                            type="button"
+                            class="block w-full rounded-md px-3 py-2 text-start text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                            wire:click="reanalyzeConversations('under_20')"
+                            wire:confirm="{{ __('ui.intelligence.reanalyze_confirm_under_20') }}"
+                            @click="open = false"
+                        >{{ __('ui.intelligence.reanalyze_under_20') }}</button>
+                        <button
+                            type="button"
+                            class="block w-full rounded-md px-3 py-2 text-start text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                            wire:click="reanalyzeConversations('under_50')"
+                            wire:confirm="{{ __('ui.intelligence.reanalyze_confirm_under_50') }}"
+                            @click="open = false"
+                        >{{ __('ui.intelligence.reanalyze_under_50') }}</button>
+                        <button
+                            type="button"
+                            class="block w-full rounded-md px-3 py-2 text-start text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                            wire:click="reanalyzeConversations('all')"
+                            wire:confirm="{{ __('ui.intelligence.reanalyze_confirm_all') }}"
+                            @click="open = false"
+                        >{{ __('ui.intelligence.reanalyze_all') }}</button>
+                    </div>
+                </div>
+            </div>
             <a href="{{ route('employer.intelligence.performance') }}" class="saas-btn-secondary">عملکرد کارشناسان</a>
             <a href="{{ route('employer.reports.index') }}" class="saas-btn-secondary">گزارش‌های مدیریتی</a>
         </x-slot:actions>
     </x-saas.page-header>
+
+    @if (session('status'))
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100">
+            {{ session('status') }}
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100">
+            {{ session('error') }}
+        </div>
+    @endif
 
     @include('livewire.employer.intelligence.partials.analysis-filters', [
         'primaryDatePresets' => $primaryDatePresets,
@@ -356,10 +426,11 @@
                                     <div class="flex items-center justify-end gap-2 whitespace-nowrap">
                                         <span @class([
                                             'inline-flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-sm font-bold tabular-nums transition-all duration-200',
-                                            'bg-emerald-50 text-emerald-700 group-hover:bg-emerald-100 group-hover:shadow-sm dark:bg-emerald-950/40 dark:text-emerald-300 dark:group-hover:bg-emerald-950/60' => $analysis->score >= 85,
-                                            'bg-amber-50 text-amber-700 group-hover:bg-amber-100 group-hover:shadow-sm dark:bg-amber-950/40 dark:text-amber-300 dark:group-hover:bg-amber-950/60' => $analysis->score >= 70 && $analysis->score < 85,
-                                            'bg-red-50 text-red-700 group-hover:bg-red-100 group-hover:shadow-sm dark:bg-red-950/40 dark:text-red-300 dark:group-hover:bg-red-950/60' => $analysis->score < 70,
-                                        ])>{{ $analysis->score }}</span>
+                                            'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' => ! $analysis->isEvaluable(),
+                                            'bg-emerald-50 text-emerald-700 group-hover:bg-emerald-100 group-hover:shadow-sm dark:bg-emerald-950/40 dark:text-emerald-300 dark:group-hover:bg-emerald-950/60' => $analysis->isEvaluable() && $analysis->score >= 85,
+                                            'bg-amber-50 text-amber-700 group-hover:bg-amber-100 group-hover:shadow-sm dark:bg-amber-950/40 dark:text-amber-300 dark:group-hover:bg-amber-950/60' => $analysis->isEvaluable() && $analysis->score >= 70 && $analysis->score < 85,
+                                            'bg-red-50 text-red-700 group-hover:bg-red-100 group-hover:shadow-sm dark:bg-red-950/40 dark:text-red-300 dark:group-hover:bg-red-950/60' => $analysis->isEvaluable() && $analysis->score < 70,
+                                        ]) title="{{ $analysis->isEvaluable() ? '' : __('ui.intelligence.not_evaluable') }}">{{ $analysis->isEvaluable() ? $analysis->score : '—' }}</span>
                                         <span class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500/0 text-indigo-500 transition-all duration-200 group-hover:translate-x-0.5 group-hover:bg-indigo-500/10">
                                             <svg class="h-4 w-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />

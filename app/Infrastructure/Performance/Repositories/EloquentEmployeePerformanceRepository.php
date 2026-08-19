@@ -51,7 +51,7 @@ class EloquentEmployeePerformanceRepository implements EmployeePerformanceReposi
                 [
                     'organization_id' => $organizationId,
                     'period_end' => $end->toDateString(),
-                    'average_score' => (int) round((clone $query)->avg('score')),
+                    'average_score' => (int) round((clone $query)->evaluable()->avg('score') ?: 0),
                     'conversations_count' => $count,
                     'top_strengths_json' => array_slice(array_keys($strengths), 0, 5),
                     'top_weaknesses_json' => array_slice(array_keys($weaknesses), 0, 5),
