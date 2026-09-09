@@ -36,7 +36,7 @@
         description="مقایسه، رتبه‌بندی و شناسایی فرصت‌های مربیگری تیم تماس."
     >
         <x-slot:actions>
-            <x-saas.export-actions route-name="employer.intelligence.performance.export" />
+            <x-saas.export-actions route-name="employer.intelligence.performance.export" :formats="['pdf']" />
         </x-slot:actions>
     </x-saas.page-header>
 

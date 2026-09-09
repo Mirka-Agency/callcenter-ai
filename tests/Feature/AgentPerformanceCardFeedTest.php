@@ -37,7 +37,10 @@ class AgentPerformanceCardFeedTest extends TestCase
             ->call('loadMoreAgentCards')
             ->assertSet('agentCardVisible', 16)
             ->call('setAgentCardFilter', 'invalid')
-            ->assertSet('agentCardFilter', 'all');
+            ->assertSet('agentCardFilter', 'all')
+            ->assertSee('PDF')
+            ->assertDontSee('CSV')
+            ->assertDontSee('Excel');
     }
 
     private function actingAsEmployer(): void
