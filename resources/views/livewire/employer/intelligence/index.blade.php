@@ -3,13 +3,11 @@
 
     $qualityTrend = $charts['quality_trend'] ?? [];
     $volumeTrend = $charts['volume_trend'] ?? [];
-    $leadDist = $charts['lead_distribution'] ?? [];
     $sentimentBreakdown = $charts['sentiment_breakdown'] ?? [];
     $concerns = $charts['concerns'] ?? [];
 
     $hasQualityTrend = collect($qualityTrend)->isNotEmpty();
     $hasVolumeTrend = collect($volumeTrend)->isNotEmpty();
-    $hasLeadDist = ($leadDist['total'] ?? 0) > 0;
     $hasSentiment = count($sentimentBreakdown) > 0;
     $hasConcerns = count($concerns) > 0;
 
@@ -38,14 +36,6 @@
             'backgroundColor' => 'rgba(14, 165, 233, 0.85)',
         ]],
         'options' => ['plugins' => ['legend' => ['display' => false]]],
-    ];
-
-    $leadChart = [
-        'labels' => ['بالا', 'متوسط', 'پایین'],
-        'datasets' => [[
-            'data' => [$leadDist['high'] ?? 0, $leadDist['medium'] ?? 0, $leadDist['low'] ?? 0],
-            'backgroundColor' => ['rgb(16, 185, 129)', 'rgb(245, 158, 11)', 'rgb(244, 63, 94)'],
-        ]],
     ];
 
     $sentimentColors = [
@@ -226,20 +216,6 @@
             @else
                 <div class="mt-4">
                     <x-saas.empty-state title="{{ __('ui.empty.chart_volume.title') }}" description="{{ __('ui.empty.chart_volume.description') }}" />
-                </div>
-            @endif
-        </div>
-
-        <div class="saas-card">
-            <h2 class="text-lg font-semibold">توزیع کیفیت لید</h2>
-            <p class="mt-1 text-sm text-zinc-500">سطح لید در تماس‌های تحلیل‌شده</p>
-            @if ($hasLeadDist)
-                <div class="mt-4 h-56" wire:key="intel-lead-{{ md5(json_encode($leadDist)) }}">
-                    <canvas id="intel-lead-dist" data-report-chart data-type="doughnut" data-config='@json($leadChart)'></canvas>
-                </div>
-            @else
-                <div class="mt-4">
-                    <x-saas.empty-state title="{{ __('ui.empty.chart_lead.title') }}" description="{{ __('ui.empty.chart_lead.description') }}" />
                 </div>
             @endif
         </div>
