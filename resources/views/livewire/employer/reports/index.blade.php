@@ -122,7 +122,7 @@
             'metric' => fn (array $row) => $row['average_score'] ?? '—',
         ],
         'most_analyzed' => [
-            'title' => 'بیشترین تحلیل',
+            'title' => 'بیشترین تماس',
             'subtitle' => 'حجم فعالیت',
             'accent' => 'sky',
             'metric' => fn (array $row) => $row['total_analyzed'] ?? '—',
