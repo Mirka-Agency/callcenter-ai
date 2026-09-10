@@ -37,6 +37,7 @@ class Overview extends Component
             'cockpit' => $analytics->cockpit(),
             'agentCardFeed' => $this->agentCardFeed($agents),
             'teamKpis' => $performanceDashboard['kpis'],
+            'teamWeaknesses' => $performanceDashboard['team_weaknesses'],
             'qualityTrend' => $performanceDashboard['quality_trend'],
             'dailyTrend' => $analytics->dailyTrend(),
             'activityFeed' => $analytics->activityFeed(6),

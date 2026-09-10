@@ -46,6 +46,17 @@
         <x-saas.stat-card label="رضایت مشتری" :value="$teamKpis['average_sentiment'] ? $teamKpis['average_sentiment'].'%' : '—'" />
     </div>
 
+    @if (! empty($teamWeaknesses))
+        <div class="saas-card">
+            <h2 class="text-lg font-semibold">ضعف‌های پرتکرار تیم</h2>
+            <div class="mt-4 flex flex-wrap gap-2">
+                @foreach (array_slice($teamWeaknesses, 0, 8) as $weakness)
+                    <span class="rounded-md bg-red-50 px-3 py-1 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{{ $weakness['item'] }} ({{ $weakness['count'] }})</span>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     @include('livewire.employer.partials.agent-performance-cards', [
         'title' => 'عملکرد کارشناسان',
         'subtitle' => $agentCardFeed['counts']['all'].' کارشناس با فعالیت در ۳۰ روز اخیر',
