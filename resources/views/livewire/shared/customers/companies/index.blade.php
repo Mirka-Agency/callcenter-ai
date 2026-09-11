@@ -17,12 +17,15 @@
     </x-saas.page-header>
 
     <div class="saas-card p-4" data-tour="customers-companies-search">
-        <input
-            wire:model.live.debounce.300ms="search"
-            type="search"
-            placeholder="جستجو در نام، صنعت، تلفن یا ایمیل سازمان..."
-            class="saas-input w-full max-w-xl"
-        >
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <input
+                wire:model.live.debounce.300ms="search"
+                type="search"
+                placeholder="جستجو در نام، صنعت، تلفن یا ایمیل سازمان..."
+                class="saas-input w-full max-w-xl flex-1"
+            >
+            @include('livewire.shared.customers.partials.sort-select')
+        </div>
     </div>
 
     <div class="grid gap-5 lg:grid-cols-2" data-tour="customers-companies-grid">

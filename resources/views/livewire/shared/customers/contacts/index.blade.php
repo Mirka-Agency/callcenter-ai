@@ -12,12 +12,15 @@
     />
 
     <div class="saas-card p-4" data-tour="customers-contacts-search">
-        <input
-            wire:model.live.debounce.300ms="search"
-            type="search"
-            placeholder="جستجو در نام، سازمان، شماره یا ایمیل..."
-            class="saas-input w-full max-w-xl"
-        >
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <input
+                wire:model.live.debounce.300ms="search"
+                type="search"
+                placeholder="جستجو در نام، سازمان، شماره یا ایمیل..."
+                class="saas-input w-full max-w-xl flex-1"
+            >
+            @include('livewire.shared.customers.partials.sort-select')
+        </div>
     </div>
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" data-tour="customers-contacts-grid">
