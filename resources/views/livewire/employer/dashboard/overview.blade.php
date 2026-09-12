@@ -38,8 +38,6 @@
         </div>
     </section>
 
-    <x-saas.smart-call-intelligence-card />
-
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-tour="dashboard-stats">
         <x-saas.stat-card label="تماس‌های امروز" :value="$cockpit['calls_today']" />
         <x-saas.stat-card label="میانگین کیفیت لید" :value="$teamKpis['average_lead_score'] ?: '—'" />

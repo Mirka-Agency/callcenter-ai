@@ -16,6 +16,31 @@ class SentimentScoreCalculator
         AnalysisSentiment::Negative->value => 20,
     ];
 
+    /** @return array<string, int> */
+    public static function weights(): array
+    {
+        return self::WEIGHTS;
+    }
+
+    public static function weightExpression(string $column = 'conversation_analyses.sentiment'): string
+    {
+        $allowed = ['conversation_analyses.sentiment', 'sentiment'];
+        $column = in_array($column, $allowed, true) ? $column : 'conversation_analyses.sentiment';
+
+        return sprintf(
+            "CASE %s WHEN '%s' THEN %d WHEN '%s' THEN %d WHEN '%s' THEN %d WHEN '%s' THEN %d ELSE NULL END",
+            $column,
+            AnalysisSentiment::Positive->value,
+            self::WEIGHTS[AnalysisSentiment::Positive->value],
+            AnalysisSentiment::Mixed->value,
+            self::WEIGHTS[AnalysisSentiment::Mixed->value],
+            AnalysisSentiment::Neutral->value,
+            self::WEIGHTS[AnalysisSentiment::Neutral->value],
+            AnalysisSentiment::Negative->value,
+            self::WEIGHTS[AnalysisSentiment::Negative->value],
+        );
+    }
+
     /** @param  Collection<int, ConversationAnalysis>  $analyses */
     public function average(Collection $analyses): float
     {

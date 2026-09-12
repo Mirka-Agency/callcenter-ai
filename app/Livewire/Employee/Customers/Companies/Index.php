@@ -2,8 +2,10 @@
 
 namespace App\Livewire\Employee\Customers\Companies;
 
+use App\Livewire\Concerns\HasCustomerListSort;
 use App\Models\CustomerCompany;
 use App\Services\EmployeeContext;
+use App\Support\CustomerListSort;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -13,6 +15,7 @@ use Livewire\WithPagination;
 #[Title('سازمان‌ها')]
 class Index extends Component
 {
+    use HasCustomerListSort;
     use WithPagination;
 
     public string $search = '';
@@ -37,10 +40,11 @@ class Index extends Component
                         ->orWhere('phone', 'like', $term)
                         ->orWhere('email', 'like', $term);
                 });
-            })
-            ->orderByDesc('last_contact_at')
-            ->orderBy('name')
-            ->paginate(12);
+            });
+
+        CustomerListSort::apply($companies, $this->sort, 'company', $organizationId);
+
+        $companies = $companies->paginate(12);
 
         return view('livewire.shared.customers.companies.index', [
             'companies' => $companies,
