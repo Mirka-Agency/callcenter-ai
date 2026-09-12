@@ -1,7 +1,6 @@
 @php
     $kpis = $dashboard['kpis'];
     $deltas = $dashboard['kpis_delta'];
-    $employees = $dashboard['employees'];
     $qualityTrend = $dashboard['quality_trend'];
 
     $qualityChart = [
@@ -16,17 +15,9 @@
         ]],
     ];
 
-    $employeeChart = [
-        'labels' => collect($employees)->pluck('name')->all(),
-        'datasets' => [
-            ['label' => 'امتیاز مکالمه', 'data' => collect($employees)->pluck('average_score')->all(), 'backgroundColor' => 'rgba(99, 102, 241, 0.85)', 'borderRadius' => 6],
-            ['label' => 'امتیاز لید', 'data' => collect($employees)->pluck('average_lead_score')->all(), 'backgroundColor' => 'rgba(16, 185, 129, 0.75)', 'borderRadius' => 6],
-        ],
-    ];
-
     $profileUrl = fn (array $agent) => route('employer.intelligence.performance.show', $agent['id']).'?preset='.$datePreset.'&from='.$customFrom.'&to='.$customTo;
 
-    $filterActionTargets = 'applyCustomDateRange,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter';
+    $filterActionTargets = 'applyCustomDateRange,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter,selectTeamWeakness,clearTeamWeakness';
 @endphp
 
 <div class="saas-page space-y-6">
@@ -36,7 +27,7 @@
         description="مقایسه، رتبه‌بندی و شناسایی فرصت‌های مربیگری تیم تماس."
     >
         <x-slot:actions>
-            <x-saas.export-actions route-name="employer.intelligence.performance.export" />
+            <x-saas.export-actions route-name="employer.intelligence.performance.export" :formats="['pdf']" />
         </x-slot:actions>
     </x-saas.page-header>
 
@@ -72,31 +63,20 @@
         'sectionTour' => 'performance-cards',
     ])
 
-    <div class="grid gap-6 lg:grid-cols-2" data-tour="performance-charts">
+    <div data-tour="performance-charts">
         <div class="saas-card">
             <h2 class="text-lg font-semibold">روند کیفیت مکالمه</h2>
             <div class="mt-4 h-64" wire:ignore>
                 <canvas id="perf-quality-trend" data-report-chart data-type="line" data-config='@json($qualityChart)'></canvas>
             </div>
         </div>
-        <div class="saas-card">
-            <h2 class="text-lg font-semibold">مقایسه امتیاز کارشناسان</h2>
-            <div class="mt-4 h-64" wire:ignore>
-                <canvas id="perf-employee-compare" data-report-chart data-type="bar" data-config='@json(array_merge($employeeChart, ["options" => ["plugins" => ["legend" => ["position" => "bottom"]]]]))'></canvas>
-            </div>
-        </div>
     </div>
 
-    @if (! empty($dashboard['team_weaknesses']))
-        <div class="saas-card">
-            <h2 class="text-lg font-semibold">ضعف‌های پرتکرار تیم</h2>
-            <div class="mt-4 flex flex-wrap gap-2">
-                @foreach (array_slice($dashboard['team_weaknesses'], 0, 8) as $weakness)
-                    <span class="rounded-md bg-red-50 px-3 py-1 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{{ $weakness['item'] }} ({{ $weakness['count'] }})</span>
-                @endforeach
-            </div>
-        </div>
-    @endif
+    @include('livewire.employer.partials.team-weaknesses-card', [
+        'teamWeaknesses' => $dashboard['team_weaknesses'],
+        'selectedTeamWeakness' => $selectedTeamWeakness,
+        'teamWeaknessCalls' => $teamWeaknessCalls,
+    ])
 
     @php
         $rankingMeta = [

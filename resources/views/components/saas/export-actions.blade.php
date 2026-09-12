@@ -1,14 +1,15 @@
 @props([
     'routeName',
     'routeParams' => [],
+    'formats' => ['csv', 'xlsx', 'pdf'],
 ])
 
 @php
-    $labels = [
+    $labels = collect([
         'csv' => 'CSV',
         'xlsx' => 'Excel',
         'pdf' => 'PDF',
-    ];
+    ])->only($formats);
 
     $query = collect(request()->query())
         ->only(['preset', 'from', 'to', 'employees', 'compare'])

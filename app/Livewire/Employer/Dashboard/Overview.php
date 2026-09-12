@@ -5,6 +5,7 @@ namespace App\Livewire\Employer\Dashboard;
 use App\DTOs\ReportFilter;
 use App\Enums\ReportDatePreset;
 use App\Livewire\Employer\Concerns\HasAgentPerformanceCardFeed;
+use App\Livewire\Employer\Concerns\HasTeamWeaknessDrilldown;
 use App\Services\EmployerContext;
 use App\Services\EmployerDashboardAnalytics;
 use App\Services\Performance\EmployeePerformanceAnalytics;
@@ -17,6 +18,7 @@ use Livewire\Component;
 class Overview extends Component
 {
     use HasAgentPerformanceCardFeed;
+    use HasTeamWeaknessDrilldown;
 
     public function render()
     {
@@ -28,7 +30,9 @@ class Overview extends Component
             organizationId: $organizationId,
             preset: ReportDatePreset::Last30,
         );
-        $performanceDashboard = app(EmployeePerformanceAnalytics::class)->teamDashboard($performanceFilter);
+        $performance = app(EmployeePerformanceAnalytics::class);
+        $performanceDashboard = $performance->teamDashboard($performanceFilter);
+        $selectedWeakness = $this->resolvedTeamWeakness($performanceDashboard['team_weaknesses']);
 
         $agents = $performanceDashboard['employees'];
 
@@ -38,6 +42,10 @@ class Overview extends Component
             'agentCardFeed' => $this->agentCardFeed($agents),
             'teamKpis' => $performanceDashboard['kpis'],
             'teamWeaknesses' => $performanceDashboard['team_weaknesses'],
+            'selectedTeamWeakness' => $selectedWeakness,
+            'teamWeaknessCalls' => $selectedWeakness
+                ? $performance->teamWeaknessCalls($performanceFilter, $selectedWeakness)
+                : [],
             'qualityTrend' => $performanceDashboard['quality_trend'],
             'dailyTrend' => $analytics->dailyTrend(),
             'activityFeed' => $analytics->activityFeed(6),

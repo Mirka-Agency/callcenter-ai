@@ -65,6 +65,69 @@ class EmployeePerformanceAnalytics
         return $this->computeTeamKpis($filter, $data);
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function teamWeaknessCalls(ReportFilter $filter, ?string $weakness, int $limit = 20): array
+    {
+        $weakness = is_string($weakness) ? trim($weakness) : '';
+
+        if ($weakness === '' || mb_strlen($weakness) > 500) {
+            return [];
+        }
+
+        $data = $this->loader->load($filter, withPreviousPeriod: false);
+        $allowed = collect($this->jsonAggregator->rankedItems($data->analyses, 'weaknesses_json'))
+            ->pluck('item')
+            ->all();
+
+        if (! in_array($weakness, $allowed, true)) {
+            return [];
+        }
+
+        $matchingIds = $data->analyses
+            ->filter(fn (ConversationAnalysis $analysis) => $this->jsonAggregator->analysisHasItem($analysis, 'weaknesses_json', $weakness))
+            ->pluck('id')
+            ->all();
+
+        if ($matchingIds === []) {
+            return [];
+        }
+
+        return ConversationAnalysis::query()
+            ->where('organization_id', $filter->organizationId)
+            ->whereIn('id', $matchingIds)
+            ->with([
+                'employee.user:id,avatar_path,name',
+                'call:id,customer_id,customer_name,caller_number,duration_seconds',
+                'call.customer:id,name,company_name,phone_number,normalized_phone',
+            ])
+            ->latest('analyzed_at')
+            ->limit($limit)
+            ->get(['id', 'call_id', 'organization_user_id', 'score', 'is_evaluable', 'summary', 'sentiment', 'lead_quality_json', 'analyzed_at'])
+            ->map(function (ConversationAnalysis $analysis) {
+                $call = $analysis->call;
+                $lead = $analysis->lead_quality_json ?? [];
+
+                return [
+                    'analysis_id' => $analysis->id,
+                    'call_id' => $call?->id,
+                    'date' => JalaliDate::datetime($analysis->analyzed_at),
+                    'employee' => $analysis->employee?->full_name ?? '—',
+                    'customer' => $call?->customer?->displayName()
+                        ?? $call?->customer_name
+                        ?? $call?->caller_number
+                        ?? '—',
+                    'duration_label' => $this->callMetrics->formatDuration($call?->duration_seconds ?? 0),
+                    'quality_score' => $analysis->isEvaluable() ? $analysis->score : null,
+                    'lead_score' => $analysis->isEvaluable() ? ($lead['score'] ?? null) : null,
+                    'sentiment' => $analysis->sentiment?->label(),
+                    'summary' => $analysis->summary,
+                ];
+            })
+            ->all();
+    }
+
     /** @return array<string, float|null> */
     public function teamKpiDeltas(ReportFilter $filter): array
     {
