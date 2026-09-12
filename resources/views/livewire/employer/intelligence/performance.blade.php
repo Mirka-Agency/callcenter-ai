@@ -86,12 +86,6 @@
                 'accent' => 'indigo',
                 'icon' => 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.8 6.5 20l1-6.2L3 9.4l6.2-.9L12 3z',
             ],
-            'best_lead' => [
-                'title' => 'بهترین لید',
-                'subtitle' => 'میانگین امتیاز لید',
-                'accent' => 'emerald',
-                'icon' => 'M3 17l6-6 4 4 8-8M14 7h7v7',
-            ],
             'most_improved' => [
                 'title' => 'بیشترین پیشرفت',
                 'subtitle' => 'رشد دوره اخیر',
@@ -104,23 +98,15 @@
                 'accent' => 'sky',
                 'icon' => 'M5 7a2 2 0 0 1 2-2h2l2 4-1.5 1.5a12 12 0 0 0 5 5L16 14l4 2v2a2 2 0 0 1-2 2h-1C10.4 20 4 13.6 4 6V5z',
             ],
-            'best_sentiment' => [
-                'title' => 'بالاترین رضایت',
-                'subtitle' => 'احساس مثبت مشتری',
-                'accent' => 'rose',
-                'icon' => 'M12 21s-7-4.4-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.6-7 10-7 10z',
-            ],
         ];
     @endphp
 
-    <div class="grid gap-4 sm:grid-cols-2" data-tour="performance-rankings">
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-tour="performance-rankings">
         @foreach ($rankingMeta as $key => $meta)
             @php
                 $accentClasses = match ($meta['accent']) {
-                    'emerald' => 'from-emerald-500/10 to-emerald-100/30 border-emerald-200/70 dark:from-emerald-500/15 dark:to-emerald-950/20 dark:border-emerald-500/20',
                     'amber' => 'from-amber-500/10 to-amber-100/30 border-amber-200/70 dark:from-amber-500/15 dark:to-amber-950/20 dark:border-amber-500/20',
                     'sky' => 'from-sky-500/10 to-sky-100/30 border-sky-200/70 dark:from-sky-500/15 dark:to-sky-950/20 dark:border-sky-500/20',
-                    'rose' => 'from-rose-500/10 to-rose-100/30 border-rose-200/70 dark:from-rose-500/15 dark:to-rose-950/20 dark:border-rose-500/20',
                     default => 'from-indigo-500/10 to-indigo-100/30 border-indigo-200/70 dark:from-indigo-500/15 dark:to-indigo-950/20 dark:border-indigo-500/20',
                 };
             @endphp
@@ -147,8 +133,6 @@
                                 $metricValue = match ($key) {
                                     'most_calls' => $row['total_calls'],
                                     'most_improved' => (($row['improvement_percent'] ?? 0) > 0 ? '+' : '').($row['improvement_percent'] ?? 0).'%',
-                                    'best_sentiment' => $row['average_sentiment'] ?? '—',
-                                    'best_lead' => $row['average_lead_score'] ?? '—',
                                     default => $row['average_score'] ?? '—',
                                 };
                             @endphp
