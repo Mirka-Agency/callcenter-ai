@@ -4,6 +4,7 @@ namespace App\Livewire\Employer\Intelligence;
 
 use App\Enums\ReportDatePreset;
 use App\Livewire\Employer\Concerns\HasAgentPerformanceCardFeed;
+use App\Livewire\Employer\Concerns\HasTeamWeaknessDrilldown;
 use App\Livewire\Employer\Intelligence\Concerns\HasPerformanceFilters;
 use App\Models\OrganizationUser;
 use App\Services\EmployerContext;
@@ -18,6 +19,7 @@ class Performance extends Component
 {
     use HasAgentPerformanceCardFeed;
     use HasPerformanceFilters;
+    use HasTeamWeaknessDrilldown;
 
     public function mount(): void
     {
@@ -27,7 +29,9 @@ class Performance extends Component
     public function render()
     {
         $filter = $this->performanceFilter();
-        $dashboard = app(EmployeePerformanceAnalytics::class)->teamDashboard($filter);
+        $performance = app(EmployeePerformanceAnalytics::class);
+        $dashboard = $performance->teamDashboard($filter);
+        $selectedWeakness = $this->resolvedTeamWeakness($dashboard['team_weaknesses']);
 
         $employees = OrganizationUser::query()
             ->where('organization_id', EmployerContext::organizationId())
@@ -38,6 +42,10 @@ class Performance extends Component
 
         return view('livewire.employer.intelligence.performance', [
             'dashboard' => $dashboard,
+            'selectedTeamWeakness' => $selectedWeakness,
+            'teamWeaknessCalls' => $selectedWeakness
+                ? $performance->teamWeaknessCalls($filter, $selectedWeakness)
+                : [],
             'agentCardFeed' => $this->agentCardFeed($dashboard['employees']),
             'filterEmployees' => $employees,
             'filter' => $filter,

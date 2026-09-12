@@ -17,7 +17,7 @@
 
     $profileUrl = fn (array $agent) => route('employer.intelligence.performance.show', $agent['id']).'?preset='.$datePreset.'&from='.$customFrom.'&to='.$customTo;
 
-    $filterActionTargets = 'applyCustomDateRange,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter';
+    $filterActionTargets = 'applyCustomDateRange,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter,selectTeamWeakness,clearTeamWeakness';
 @endphp
 
 <div class="saas-page space-y-6">
@@ -72,16 +72,11 @@
         </div>
     </div>
 
-    @if (! empty($dashboard['team_weaknesses']))
-        <div class="saas-card">
-            <h2 class="text-lg font-semibold">ضعف‌های پرتکرار تیم</h2>
-            <div class="mt-4 flex flex-wrap gap-2">
-                @foreach (array_slice($dashboard['team_weaknesses'], 0, 8) as $weakness)
-                    <span class="rounded-md bg-red-50 px-3 py-1 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{{ $weakness['item'] }} ({{ $weakness['count'] }})</span>
-                @endforeach
-            </div>
-        </div>
-    @endif
+    @include('livewire.employer.partials.team-weaknesses-card', [
+        'teamWeaknesses' => $dashboard['team_weaknesses'],
+        'selectedTeamWeakness' => $selectedTeamWeakness,
+        'teamWeaknessCalls' => $teamWeaknessCalls,
+    ])
 
     @php
         $rankingMeta = [

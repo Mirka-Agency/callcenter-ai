@@ -44,6 +44,12 @@
         <x-saas.stat-card label="رضایت مشتری" :value="$teamKpis['average_sentiment'] ? $teamKpis['average_sentiment'].'%' : '—'" />
     </div>
 
+    @include('livewire.employer.partials.team-weaknesses-card', [
+        'teamWeaknesses' => $teamWeaknesses,
+        'selectedTeamWeakness' => $selectedTeamWeakness,
+        'teamWeaknessCalls' => $teamWeaknessCalls,
+    ])
+
     @include('livewire.employer.partials.agent-performance-cards', [
         'title' => 'عملکرد کارشناسان',
         'subtitle' => $agentCardFeed['counts']['all'].' کارشناس با فعالیت در ۳۰ روز اخیر',

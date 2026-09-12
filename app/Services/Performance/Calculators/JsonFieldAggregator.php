@@ -52,6 +52,17 @@ class JsonFieldAggregator
             ->all();
     }
 
+    public function analysisHasItem(ConversationAnalysis $analysis, string $column, string $item): bool
+    {
+        foreach ($analysis->{$column} ?? [] as $value) {
+            if ($this->extractItemText($value) === $item) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * @param  Collection<int, ConversationAnalysis>  $analyses
      * @return array{items: list<array{item: string, count: int}>, derived: bool}
