@@ -304,14 +304,6 @@
                 ></canvas>
             </div>
         </div>
-    @elseif ($hasEmployees)
-        <div class="saas-card">
-            <h2 class="text-lg font-semibold">مقایسه عملکرد کارشناسان</h2>
-            <p class="mt-1 text-sm text-zinc-500">برای مشاهده نمودار مقایسه‌ای، حالت مقایسه را در فیلترها فعال کنید</p>
-            <div class="mt-4 rounded-lg border border-dashed border-zinc-200 px-6 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
-                {{ count($employees) }} کارشناس در این بازه فعالیت داشته‌اند.
-            </div>
-        </div>
     @endif
 
     <div class="grid gap-4 sm:grid-cols-2" data-tour="report-rankings">
