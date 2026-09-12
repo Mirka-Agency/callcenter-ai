@@ -4,6 +4,7 @@
     'url' => null,
     'href' => null,
     'active' => false,
+    'showAvatar' => true,
 ])
 
 @php
@@ -20,7 +21,9 @@
         wire:navigate
         {{ $attributes->class(['saas-chip', $chipClass]) }}
     >
-        <x-saas.avatar :employee="$employee" :name="$label" :url="$url" size="xs" class="shrink-0" />
+        @if ($showAvatar)
+            <x-saas.avatar :employee="$employee" :name="$label" :url="$url" size="xs" class="shrink-0" />
+        @endif
         <span class="max-w-[12rem] truncate sm:max-w-none sm:whitespace-nowrap">{{ $label }}</span>
     </a>
 @else
@@ -28,7 +31,9 @@
         type="button"
         {{ $attributes->class(['saas-chip', $chipClass]) }}
     >
-        <x-saas.avatar :employee="$employee" :name="$label" :url="$url" size="xs" class="shrink-0" />
+        @if ($showAvatar)
+            <x-saas.avatar :employee="$employee" :name="$label" :url="$url" size="xs" class="shrink-0" />
+        @endif
         <span class="max-w-[12rem] truncate sm:max-w-none sm:whitespace-nowrap">{{ $label }}</span>
     </button>
 @endif

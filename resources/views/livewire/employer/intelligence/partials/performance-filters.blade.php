@@ -96,12 +96,14 @@
             <div class="flex flex-wrap items-center gap-2">
                 <x-saas.agent-chip
                     name="همه"
+                    :show-avatar="false"
                     wire:click="clearEmployeeFilter"
                     :active="$selectedEmployeeIds === []"
                 />
                 @foreach ($filterEmployees as $employee)
                     <x-saas.agent-chip
                         :employee="$employee"
+                        :show-avatar="false"
                         :href="route('employer.intelligence.performance.show', $employee->id).'?preset='.$datePreset.'&from='.$customFrom.'&to='.$customTo"
                     />
                 @endforeach
