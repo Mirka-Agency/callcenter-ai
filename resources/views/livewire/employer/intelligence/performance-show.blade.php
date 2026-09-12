@@ -31,10 +31,69 @@
         ]],
     ];
 
-    $filterActionTargets = 'applyCustomDateRange,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter';
+    $filterActionTargets = 'applyCustomDateRange,applyPrintDateRange,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,clearEmployeeFilter';
 @endphp
 
-<div class="space-y-6">
+{{--
+    PDF print calls applyPrintDateRange(), which validates then reuses
+    applyCustomDateRange(). After that Livewire request and DOM morph, two
+    animation frames let reports-charts.js re-init Chart.js from its
+    morph.updated/morph.added rAF hook before window.print(). The first
+    Chart.js frame already contains the new data; we do not wait for the
+    800ms animation.
+--}}
+<div
+    class="space-y-6"
+    x-data="{
+        printError: '',
+        printBusy: false,
+        missingDatesMessage: @js(__('ui.intelligence.reanalyze_dates_required')),
+        invalidRangeMessage: 'تاریخ شروع نباید بعد از تاریخ پایان باشد.',
+        isValidIsoDate(value) {
+            return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+        },
+        async confirmPrint() {
+            if (this.printBusy) {
+                return;
+            }
+
+            const container = this.$refs.printRange;
+            const from = container?.querySelector('[data-wire-model=\'printDraftFrom\']')?._jalaliGetValue?.() ?? null;
+            const to = container?.querySelector('[data-wire-model=\'printDraftTo\']')?._jalaliGetValue?.() ?? null;
+
+            if (! this.isValidIsoDate(from) || ! this.isValidIsoDate(to)) {
+                this.printError = this.missingDatesMessage;
+                return;
+            }
+
+            if (from > to) {
+                this.printError = this.invalidRangeMessage;
+                return;
+            }
+
+            this.printBusy = true;
+            this.printError = '';
+
+            try {
+                const applied = await $wire.applyPrintDateRange(from, to);
+
+                if (applied === false) {
+                    this.printError = this.invalidRangeMessage;
+                    return;
+                }
+
+                await new Promise((resolve) => {
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(resolve);
+                    });
+                });
+                window.print();
+            } finally {
+                this.printBusy = false;
+            }
+        },
+    }"
+>
     <a href="{{ route('employer.intelligence.performance') }}?preset={{ $datePreset }}&from={{ $customFrom }}&to={{ $customTo }}" wire:navigate class="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
         <svg class="h-4 w-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6" /></svg>
         بازگشت به عملکرد کارشناسان
@@ -64,10 +123,13 @@
             </div>
             <div class="flex flex-wrap items-center gap-4">
                 <x-saas.score-ring :score="$metrics['average_quality_score']" size="lg" label="امتیاز کلی" />
-                <x-saas.export-actions
-                    route-name="employer.intelligence.performance.show.export"
-                    :route-params="['employee' => $profile['employee']['id']]"
-                />
+                <button
+                    type="button"
+                    class="js-performance-print-trigger saas-btn-secondary text-sm"
+                    wire:click="openPrintDateRange"
+                >
+                    PDF
+                </button>
             </div>
         </div>
         <p class="mt-6 text-sm leading-7 text-zinc-600 dark:text-zinc-300">{{ $profile['executive_summary'] }}</p>
@@ -92,13 +154,13 @@
     <div class="grid gap-6 lg:grid-cols-2">
         <div class="saas-card">
             <h2 class="text-lg font-semibold">روند امتیاز مکالمه</h2>
-            <div class="mt-4 h-56" wire:ignore>
+            <div class="mt-4 h-56" wire:key="emp-quality-trend-{{ $filter->from->toDateString() }}-{{ $filter->to->toDateString() }}" wire:ignore>
                 <canvas id="emp-quality-trend" data-report-chart data-type="line" data-config='@json($qualityChart)'></canvas>
             </div>
         </div>
         <div class="saas-card">
             <h2 class="text-lg font-semibold">حجم تماس‌ها</h2>
-            <div class="mt-4 h-56" wire:ignore>
+            <div class="mt-4 h-56" wire:key="emp-volume-trend-{{ $filter->from->toDateString() }}-{{ $filter->to->toDateString() }}" wire:ignore>
                 <canvas id="emp-volume-trend" data-report-chart data-type="bar" data-config='@json($volumeChart)'></canvas>
             </div>
         </div>
@@ -187,4 +249,91 @@
         </div>
     </section>
     </div>
+
+    <div
+        x-show="$wire.showPrintDateRange"
+        x-cloak
+        x-transition.opacity
+        class="js-performance-print-dialog fixed inset-0 z-50 flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="performance-print-range-title"
+        @keydown.escape.window="if ($wire.showPrintDateRange && ! printBusy) { $wire.closePrintDateRange() }"
+    >
+        <div class="absolute inset-0 bg-zinc-950/40" @click="if (! printBusy) { $wire.closePrintDateRange() }"></div>
+        <div class="relative w-full max-w-sm space-y-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+            <h2 id="performance-print-range-title" class="text-base font-semibold text-zinc-900 dark:text-white">بازه زمانی گزارش</h2>
+
+            <div x-ref="printRange" class="space-y-3">
+                <div>
+                    <p class="mb-1 text-xs font-medium text-zinc-500">از تاریخ</p>
+                    <x-saas.jalali-date-input wire:key="performance-print-from" wire:model="printDraftFrom" defer class="text-sm" />
+                </div>
+                <div>
+                    <p class="mb-1 text-xs font-medium text-zinc-500">تا تاریخ</p>
+                    <x-saas.jalali-date-input wire:key="performance-print-to" wire:model="printDraftTo" defer class="text-sm" />
+                </div>
+            </div>
+
+            <p x-show="printError" x-cloak class="text-sm text-rose-600 dark:text-rose-400" x-text="printError"></p>
+
+            <div class="flex items-center justify-end gap-2 pt-1">
+                <button type="button" class="saas-btn-secondary text-sm" wire:click="closePrintDateRange" :disabled="printBusy">انصراف</button>
+                <button type="button" class="saas-btn-primary text-sm" @click="confirmPrint()" :disabled="printBusy">چاپ PDF</button>
+            </div>
+        </div>
+    </div>
 </div>
+
+<style>
+    @media print {
+        html,
+        body,
+        .saas-shell {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }
+
+        .js-performance-print-trigger,
+        .js-performance-print-dialog,
+        .saas-filter-loading-chip,
+        [data-jalali-panel] {
+            display: none !important;
+        }
+
+        /* Print preview uses a narrow page width, which would otherwise hide the desktop sidebar. */
+        .saas-shell {
+            display: flex !important;
+            flex-direction: row !important;
+            min-height: auto !important;
+            overflow: visible !important;
+        }
+
+        .saas-sidebar {
+            display: flex !important;
+            position: relative !important;
+            inset: auto !important;
+            height: auto !important;
+            width: 16rem !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .saas-main {
+            flex: 1 1 auto;
+            min-width: 0;
+            padding-inline-start: 0 !important;
+        }
+
+        .saas-topbar {
+            position: static !important;
+        }
+
+        #emp-quality-trend,
+        #emp-volume-trend {
+            display: block !important;
+            width: 100% !important;
+            height: 14rem !important;
+        }
+    }
+</style>
