@@ -6,6 +6,37 @@
         </p>
     @endif
 
+    @php
+        $routing = $routing ?? [];
+        $hasRouting = filled($routing['resolved_extension'] ?? null) || filled($routing['employee_name'] ?? null);
+    @endphp
+
+    @if ($hasRouting)
+        <div>
+            <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-200">
+                {{ __('filament.misc.webhook_call_details_routing') }}
+            </p>
+            <dl class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div class="rounded-md bg-gray-100 px-3 py-2 dark:bg-gray-800">
+                    <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ __('filament.fields.connected_extension') }}
+                    </dt>
+                    <dd class="mt-0.5 font-mono text-sm text-gray-900 dark:text-gray-100" dir="ltr">
+                        {{ filled($routing['resolved_extension'] ?? null) ? $routing['resolved_extension'] : __('filament.misc.em_dash') }}
+                    </dd>
+                </div>
+                <div class="rounded-md bg-gray-100 px-3 py-2 dark:bg-gray-800">
+                    <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ __('filament.fields.conversation_employee') }}
+                    </dt>
+                    <dd class="mt-0.5 text-sm text-gray-900 dark:text-gray-100">
+                        {{ filled($routing['employee_name'] ?? null) ? $routing['employee_name'] : __('filament.misc.em_dash') }}
+                    </dd>
+                </div>
+            </dl>
+        </div>
+    @endif
+
     @if (! empty($diagnosis))
         <div class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
             <p class="mb-2 font-medium">{{ __('filament.misc.webhook_call_details_diagnosis') }}</p>

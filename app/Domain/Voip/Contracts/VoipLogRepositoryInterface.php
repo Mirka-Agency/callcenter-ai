@@ -14,6 +14,8 @@ interface VoipLogRepositoryInterface
         ?array $payload = null,
         ?string $message = null,
         ?string $eventType = null,
+        ?string $resolvedExtension = null,
+        ?int $organizationUserId = null,
     ): void;
 
     public function logSync(
