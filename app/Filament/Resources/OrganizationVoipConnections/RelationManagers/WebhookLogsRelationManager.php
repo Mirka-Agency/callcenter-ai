@@ -28,6 +28,7 @@ class WebhookLogsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with(['employee.user']))
             ->columns([
                 TextColumn::make('event_type')
                     ->label(__('filament.fields.event'))
@@ -41,6 +42,14 @@ class WebhookLogsRelationManager extends RelationManager
 
                         return $type?->label() ?? $state;
                     })
+                    ->placeholder(__('filament.misc.em_dash')),
+                TextColumn::make('resolved_extension')
+                    ->label(__('filament.fields.connected_extension'))
+                    ->searchable()
+                    ->placeholder(__('filament.misc.em_dash')),
+                TextColumn::make('employee_name')
+                    ->label(__('filament.fields.conversation_employee'))
+                    ->state(fn (VoipWebhookLog $record): ?string => $record->employee?->full_name)
                     ->placeholder(__('filament.misc.em_dash')),
                 TextColumn::make('status')
                     ->badge()
@@ -84,6 +93,7 @@ class WebhookLogsRelationManager extends RelationManager
 
                         return view('filament.components.webhook-call-details', [
                             'callId' => $details['call_id'],
+                            'routing' => $details['routing'],
                             'highlights' => $details['highlights'],
                             'localCallLog' => $details['local_call_log'],
                             'api' => $details['api'],

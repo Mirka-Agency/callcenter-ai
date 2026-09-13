@@ -8,10 +8,14 @@ use App\Domain\Voip\DTOs\VoipConnectionConfig;
 use App\Domain\Voip\Enums\VoipLogStatus;
 use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Domain\Voip\Enums\VoipWebhookEventType;
+use App\Enums\UserRole;
 use App\Infrastructure\Voip\Adapters\SimotelVoipAdapter;
 use App\Infrastructure\Voip\Services\SimotelAgentExtensionCache;
+use App\Models\EmployeeIntegrationMeta;
 use App\Models\Organization;
+use App\Models\OrganizationUser;
 use App\Models\OrganizationVoipConnection;
+use App\Models\User;
 use App\Models\VoipProvider;
 use App\Models\VoipWebhookLog;
 use App\Support\WebhookPayloadPresenter;
@@ -52,6 +56,74 @@ class SimotelAgentResolutionTest extends TestCase
             'organization_voip_connection_id' => $connection->id,
             'event_type' => VoipWebhookEventType::AgentStateChanged->value,
             'status' => VoipLogStatus::Success->value,
+            'resolved_extension' => '553',
+        ]);
+    }
+
+    public function test_cdr_after_new_state_stores_resolved_extension_and_employee_on_webhook_log(): void
+    {
+        Http::fake([
+            'http://simotel.test/api/v4/reports/quick/*' => Http::response([
+                'success' => 1,
+                'data' => ['data' => []],
+            ], 200),
+        ]);
+
+        $connection = $this->createSimotelConnection();
+        $employee = OrganizationUser::query()->create([
+            'organization_id' => $connection->organization_id,
+            'user_id' => User::factory()->create(['role' => UserRole::Employee])->id,
+            'first_name' => 'Sara',
+            'last_name' => 'Agent',
+            'is_active' => true,
+        ]);
+
+        EmployeeIntegrationMeta::query()->create([
+            'organization_user_id' => $employee->id,
+            'integratable_type' => OrganizationVoipConnection::class,
+            'integratable_id' => $connection->id,
+            'key' => 'extension',
+            'value' => '553',
+        ]);
+
+        $config = VoipConnectionConfig::fromModel($connection->load('provider'));
+        $adapter = new SimotelVoipAdapter;
+        $adapter->configure($config);
+
+        $adapter->normalizeWebhook([
+            'event_name' => 'New State',
+            'exten' => '553',
+            'state' => 'InUse',
+            'cuid' => '1784375548.939408',
+        ]);
+
+        $event = $adapter->normalizeWebhook([
+            'event_name' => 'Cdr',
+            'src' => '09198202502',
+            'dst' => '982191093492',
+            'type' => 'incoming',
+            'disposition' => 'ANSWERED',
+            'billsec' => 106,
+            'cuid' => '1784375548.939408',
+            'did' => '982191093492',
+        ]);
+
+        app(VoipEventIngestionService::class)->ingest($config, $event);
+
+        $this->assertDatabaseHas('voip_call_logs', [
+            'organization_voip_connection_id' => $connection->id,
+            'external_call_id' => '1784375548.939408',
+            'destination_number' => '982191093492',
+        ]);
+
+        $log = $connection->callLogs()->where('external_call_id', '1784375548.939408')->first();
+        $this->assertSame('553', $log?->raw_payload['resolved_extension'] ?? null);
+
+        $this->assertDatabaseHas('voip_webhook_logs', [
+            'organization_voip_connection_id' => $connection->id,
+            'event_type' => VoipWebhookEventType::CallEnded->value,
+            'resolved_extension' => '553',
+            'organization_user_id' => $employee->id,
         ]);
     }
 
@@ -192,6 +264,9 @@ class SimotelAgentResolutionTest extends TestCase
         $details = app(\App\Application\Voip\Services\VoipWebhookCallDetailsService::class)->forWebhookLog($log);
 
         $this->assertSame('1784375548.939408', $details['call_id']);
+        $this->assertArrayHasKey('routing', $details);
+        $this->assertNull($details['routing']['resolved_extension']);
+        $this->assertNull($details['routing']['employee_name']);
         $this->assertFalse($details['api']['success']);
         $this->assertStringContainsString('Access denied', (string) $details['api']['error']);
         $this->assertNotEmpty($details['diagnosis']);

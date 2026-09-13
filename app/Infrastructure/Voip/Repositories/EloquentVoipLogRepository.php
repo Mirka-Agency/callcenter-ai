@@ -16,10 +16,14 @@ class EloquentVoipLogRepository implements VoipLogRepositoryInterface
         ?array $payload = null,
         ?string $message = null,
         ?string $eventType = null,
+        ?string $resolvedExtension = null,
+        ?int $organizationUserId = null,
     ): void {
         VoipWebhookLog::query()->create([
             'organization_voip_connection_id' => $connectionId,
             'event_type' => $eventType,
+            'resolved_extension' => $resolvedExtension,
+            'organization_user_id' => $organizationUserId,
             'status' => $status->value,
             'payload' => $payload,
             'message' => $message,

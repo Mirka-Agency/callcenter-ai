@@ -16,6 +16,8 @@ class VoipWebhookCallDetailsService
     /** @return array<string, mixed> */
     public function forWebhookLog(VoipWebhookLog $log): array
     {
+        $log->loadMissing('employee.user');
+
         $payload = is_array($log->payload) ? $log->payload : [];
         $callId = $this->extractCallId($payload);
 
@@ -60,6 +62,11 @@ class VoipWebhookCallDetailsService
             'call_id' => $callId,
             'highlights' => $this->presenter->highlights($payload),
             'webhook_payload' => $this->presenter->format($payload),
+            'routing' => [
+                'resolved_extension' => $log->resolved_extension
+                    ?: ($localLog?->raw_payload['resolved_extension'] ?? null),
+                'employee_name' => $log->employee?->full_name,
+            ],
             'local_call_log' => $localLog ? [
                 'id' => $localLog->id,
                 'external_call_id' => $localLog->external_call_id,
