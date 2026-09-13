@@ -157,6 +157,46 @@ class UnmatchedVoipExtensionServiceTest extends TestCase
         $this->assertSame([], $rows);
     }
 
+    public function test_extension_employee_map_resolves_without_per_call_queries(): void
+    {
+        [$organization, $connection] = $this->createOrganizationWithConnection();
+        $employee = $this->createEmployee($organization);
+
+        EmployeeIntegrationMeta::query()->create([
+            'organization_user_id' => $employee->id,
+            'integratable_type' => OrganizationVoipConnection::class,
+            'integratable_id' => $connection->id,
+            'key' => 'extension',
+            'value' => '101',
+        ]);
+
+        $resolver = app(CallEmployeeResolver::class);
+        $map = $resolver->extensionEmployeeMapForOrganization($organization->id);
+
+        $this->assertSame([$connection->id.'|101' => $employee->id], $map);
+
+        $matched = VoipCallLog::query()->make([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '982191093492',
+            'raw_payload' => ['extension' => '101'],
+        ]);
+
+        $unmatched = VoipCallLog::query()->make([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '982191093492',
+            'raw_payload' => ['extension' => '999'],
+        ]);
+
+        $this->assertSame($employee->id, $resolver->resolveFromCallLogUsingMap($matched, $map));
+        $this->assertNull($resolver->resolveFromCallLogUsingMap($unmatched, $map));
+    }
+
     /** @return array{0: Organization, 1: OrganizationVoipConnection} */
     private function createOrganizationWithConnection(): array
     {

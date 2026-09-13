@@ -33,36 +33,37 @@ class UnmatchedVoipExtensionService
      */
     public function listUnmatched(Organization $organization, ?int $days = null): array
     {
+        $extensionMap = $this->resolver->extensionEmployeeMapForOrganization((int) $organization->id);
+
         $query = VoipCallLog::query()
             ->where('organization_id', $organization->id)
             ->with('connection')
-            ->orderByDesc('started_at');
+            ->select([
+                'id',
+                'organization_id',
+                'organization_voip_connection_id',
+                'direction',
+                'source_number',
+                'destination_number',
+                'started_at',
+                'raw_payload',
+            ]);
 
         if ($days !== null) {
             $query->where('started_at', '>=', now()->subDays($days));
         }
 
-        $logs = $query->get();
-
         /** @var array<string, array{extension: string, connection_id: int, connection_name: string, call_count: int, last_call_at: ?Carbon, last_source_number: ?string, last_destination_number: ?string}> $aggregated */
         $aggregated = [];
 
-        foreach ($logs as $log) {
-            if ($this->resolver->resolveFromCallLog($log) !== null) {
+        foreach ($query->lazy(500) as $log) {
+            if ($this->resolver->resolveFromCallLogUsingMap($log, $extensionMap) !== null) {
                 continue;
             }
 
             $extension = $this->primaryExtension($log);
 
             if ($extension === null) {
-                continue;
-            }
-
-            if ($this->resolver->resolveByExtension(
-                (int) $log->organization_id,
-                (int) $log->organization_voip_connection_id,
-                $extension,
-            ) !== null) {
                 continue;
             }
 

@@ -25,6 +25,54 @@ class CallEmployeeResolver
         return null;
     }
 
+    /**
+     * Resolve against a preloaded extension map to avoid per-call DB lookups.
+     *
+     * @param  array<string, int>  $extensionEmployeeMap  keys: "{connectionId}|{extension}"
+     */
+    public function resolveFromCallLogUsingMap(VoipCallLog $log, array $extensionEmployeeMap): ?int
+    {
+        $connectionId = (int) $log->organization_voip_connection_id;
+
+        foreach ($this->extensionCandidates($log) as $extension) {
+            $employeeId = $extensionEmployeeMap[$connectionId.'|'.$extension] ?? null;
+
+            if ($employeeId !== null) {
+                return $employeeId;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Prefetch all VoIP extension → employee mappings for an organization.
+     *
+     * @return array<string, int> keys: "{connectionId}|{extension}"
+     */
+    public function extensionEmployeeMapForOrganization(int $organizationId): array
+    {
+        $map = [];
+
+        $metas = EmployeeIntegrationMeta::query()
+            ->where('integratable_type', OrganizationVoipConnection::class)
+            ->where('key', 'extension')
+            ->whereHas('employee', fn ($q) => $q->where('organization_id', $organizationId))
+            ->get(['organization_user_id', 'integratable_id', 'value']);
+
+        foreach ($metas as $meta) {
+            $extension = trim((string) $meta->value);
+
+            if ($extension === '') {
+                continue;
+            }
+
+            $map[((int) $meta->integratable_id).'|'.$extension] = (int) $meta->organization_user_id;
+        }
+
+        return $map;
+    }
+
     public function resolveByExtension(int $organizationId, int $voipConnectionId, string $extension): ?int
     {
         $extension = trim($extension);
