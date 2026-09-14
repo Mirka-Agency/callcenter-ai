@@ -42,7 +42,12 @@ class Login extends Component
 
         session()->regenerate();
 
-        $this->redirect(auth()->user()->portalRoute(), navigate: true);
+        $user = auth()->user();
+
+        $this->redirect(
+            $user->portalRoute(),
+            navigate: ! $user->role->canAccessAdminPanel(),
+        );
     }
 
     /** @return array{email: string, password: string}|null */
