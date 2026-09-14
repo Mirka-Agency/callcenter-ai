@@ -22,7 +22,7 @@ class PromptBuilderOrganizationDomainTest extends TestCase
 
         $prompt = $builder->contextPrompt($request);
 
-        $this->assertStringContainsString('سازمان: کلینیک غدد', $prompt);
+        $this->assertStringContainsString("Organization:\nکلینیک غدد", $prompt);
         $this->assertStringContainsString('زمینه فعالیت سازمان: کلینیک غدد درون‌ریز. خدمات: تیروئید، دیابت. لیزر پوست نیست.', $prompt);
     }
 
@@ -39,7 +39,7 @@ class PromptBuilderOrganizationDomainTest extends TestCase
 
         $prompt = $builder->contextPrompt($request);
 
-        $this->assertStringContainsString('سازمان: میرکو', $prompt);
+        $this->assertStringContainsString("Organization:\nمیرکو", $prompt);
         $this->assertStringNotContainsString('زمینه فعالیت سازمان:', $prompt);
     }
 
