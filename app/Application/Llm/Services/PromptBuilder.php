@@ -3,6 +3,8 @@
 namespace App\Application\Llm\Services;
 
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
+use App\Domain\Llm\DTOs\PromptContextData;
+use App\Domain\Voip\Enums\CallDirection;
 use App\Models\LlmPromptVersion;
 
 class PromptBuilder
@@ -249,25 +251,82 @@ PROMPT;
     public function contextPrompt(AudioAnalysisRequestData $request): string
     {
         $context = $request->context;
+
+        $sections = [
+            $this->labeledBlock('Organization', $this->contextValue($context?->organizationName)),
+            $this->labeledBlock('Agent', $this->contextValue($context?->employeeName)),
+            $this->labeledBlock('Agent Role', $this->firstContextValue($context?->agentRole, $context?->position)),
+            $this->labeledBlock('Call Direction', $this->formatCallDirection($context?->callDirection)),
+        ];
+
+        $additional = $this->additionalContextLines($context);
+        if ($additional !== []) {
+            $sections[] = "Additional Context:\n".implode("\n", $additional);
+        }
+
+        $transcript = $this->contextValue($context?->transcript, 'Attached audio recording (no separate transcript).');
+        $sections[] = $this->labeledBlock('Conversation Transcript', $transcript);
+        $sections[] = $this->labeledBlock(
+            'Task',
+            "Analyze this conversation based on the provided context.\nمکالمه صوتی پیوست‌شده را تحلیل کن. خلاصه (summary) باید مفصل و کسب‌وکاری باشد. JSON خواسته‌شده را فقط به فارسی برگردان.",
+        );
+
+        return implode("\n\n", $sections);
+    }
+
+    private function labeledBlock(string $label, string $value): string
+    {
+        return "{$label}:\n{$value}";
+    }
+
+    private function contextValue(?string $value, string $default = 'Unknown'): string
+    {
+        $trimmed = trim((string) $value);
+
+        return $trimmed !== '' ? $trimmed : $default;
+    }
+
+    private function firstContextValue(?string ...$values): string
+    {
+        foreach ($values as $value) {
+            $trimmed = trim((string) $value);
+            if ($trimmed !== '') {
+                return $trimmed;
+            }
+        }
+
+        return 'Unknown';
+    }
+
+    private function formatCallDirection(?string $direction): string
+    {
+        $normalized = strtolower(trim((string) $direction));
+        $enum = CallDirection::tryFrom($normalized);
+
+        if ($enum === null) {
+            $enum = match ($normalized) {
+                'in', 'incoming', 'inbound call' => CallDirection::Inbound,
+                'out', 'outgoing', 'outbound call' => CallDirection::Outbound,
+                default => null,
+            };
+        }
+
+        return $enum?->analysisPromptLabel() ?? $this->contextValue($direction);
+    }
+
+    /** @return list<string> */
+    private function additionalContextLines(?PromptContextData $context): array
+    {
         $meta = [];
 
-        if ($context?->organizationName) {
-            $meta[] = "سازمان: {$context->organizationName}";
-        }
         if ($context?->organizationBusinessContext) {
             $businessContext = trim($context->organizationBusinessContext);
             if ($businessContext !== '') {
                 $meta[] = "زمینه فعالیت سازمان: {$businessContext}";
             }
         }
-        if ($context?->employeeName) {
-            $meta[] = "کارشناس: {$context->employeeName}";
-        }
         if ($context?->department) {
             $meta[] = "دپارتمان: {$context->department}";
-        }
-        if ($context?->position) {
-            $meta[] = "سمت: {$context->position}";
         }
         if ($context?->title) {
             $meta[] = "عنوان: {$context->title}";
@@ -280,9 +339,6 @@ PROMPT;
         }
         if ($context?->category) {
             $meta[] = "دسته‌بندی: {$context->category}";
-        }
-        if ($context?->callDirection) {
-            $meta[] = "جهت تماس: {$context->callDirection}";
         }
         if ($context?->callDurationSeconds) {
             $meta[] = "مدت تماس: {$context->callDurationSeconds} ثانیه";
@@ -300,9 +356,7 @@ PROMPT;
             $meta[] = 'زمینه CRM: '.json_encode($crmContext, JSON_UNESCAPED_UNICODE);
         }
 
-        $header = $meta !== [] ? "زمینه:\n".implode("\n", $meta)."\n\n" : '';
-
-        return $header.'مکالمه صوتی پیوست‌شده را تحلیل کن. خلاصه (summary) باید مفصل و کسب‌وکاری باشد. JSON خواسته‌شده را فقط به فارسی برگردان.';
+        return $meta;
     }
 
     /** @return list<array{role: string, content: mixed}> */

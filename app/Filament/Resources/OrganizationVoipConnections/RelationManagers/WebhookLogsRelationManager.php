@@ -4,8 +4,11 @@ namespace App\Filament\Resources\OrganizationVoipConnections\RelationManagers;
 
 use App\Application\Voip\Jobs\ProcessVoipWebhookJob;
 use App\Application\Voip\Services\VoipWebhookCallDetailsService;
+use App\Application\Voip\Support\VoipReportFilter;
+use App\Domain\Voip\Enums\CallDirection;
 use App\Domain\Voip\Enums\VoipLogStatus;
 use App\Domain\Voip\Enums\VoipWebhookEventType;
+use App\Filament\Resources\OrganizationVoipConnections\Tables\VoipReportTableFilters;
 use App\Models\VoipWebhookLog;
 use App\Support\WebhookPayloadPresenter;
 use Filament\Actions\Action;
@@ -27,9 +30,15 @@ class WebhookLogsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return $table
+        return VoipReportTableFilters::configure($table, VoipReportTableFilters::forWebhookLogs())
             ->modifyQueryUsing(fn ($query) => $query->with(['employee.user']))
             ->columns([
+                TextColumn::make('call_id')
+                    ->label(__('filament.fields.call_id'))
+                    ->state(fn (VoipWebhookLog $record): ?string => VoipReportFilter::callIdFromPayload(
+                        is_array($record->payload) ? $record->payload : null,
+                    ))
+                    ->placeholder(__('filament.misc.em_dash')),
                 TextColumn::make('event_type')
                     ->label(__('filament.fields.event'))
                     ->badge()
@@ -42,6 +51,14 @@ class WebhookLogsRelationManager extends RelationManager
 
                         return $type?->label() ?? $state;
                     })
+                    ->placeholder(__('filament.misc.em_dash')),
+                TextColumn::make('call_direction')
+                    ->label(__('filament.fields.call_direction'))
+                    ->badge()
+                    ->state(fn (VoipWebhookLog $record): ?CallDirection => VoipReportFilter::directionFromPayload(
+                        is_array($record->payload) ? $record->payload : null,
+                    ))
+                    ->formatStateUsing(fn (?CallDirection $state): string => $state?->label() ?? __('filament.misc.em_dash'))
                     ->placeholder(__('filament.misc.em_dash')),
                 TextColumn::make('resolved_extension')
                     ->label(__('filament.fields.connected_extension'))

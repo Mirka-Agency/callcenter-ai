@@ -45,12 +45,13 @@ class UnifiedAuthLoginTest extends TestCase
         $employer = User::factory()->create(['role' => UserRole::Employer]);
         Organization::factory()->create(['user_id' => $employer->id]);
 
-        Livewire::test(Login::class)
-            ->set('email', $employer->email)
+        $component = Livewire::test(Login::class)
+            ->set('identifier', $employer->email)
             ->set('password', 'password')
             ->call('authenticate')
             ->assertRedirect(route('employer.dashboard'));
 
+        $this->assertTrue($component->effects['redirectUsingNavigate'] ?? false);
         $this->assertAuthenticatedAs($employer);
     }
 
@@ -68,7 +69,7 @@ class UnifiedAuthLoginTest extends TestCase
         ]);
 
         Livewire::test(Login::class)
-            ->set('email', $employee->email)
+            ->set('identifier', $employee->email)
             ->set('password', 'password')
             ->call('authenticate')
             ->assertRedirect(route('employee.dashboard'));
@@ -80,22 +81,37 @@ class UnifiedAuthLoginTest extends TestCase
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);
 
-        Livewire::test(Login::class)
-            ->set('email', $admin->email)
+        $component = Livewire::test(Login::class)
+            ->set('identifier', $admin->email)
             ->set('password', 'password')
             ->call('authenticate')
             ->assertRedirect(url('/admin'));
 
+        $this->assertArrayNotHasKey('redirectUsingNavigate', $component->effects);
+        $this->assertAuthenticatedAs($admin);
+    }
+
+    public function test_super_admin_is_redirected_to_admin_panel_without_spa_navigation(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+
+        $component = Livewire::test(Login::class)
+            ->set('identifier', $admin->email)
+            ->set('password', 'password')
+            ->call('authenticate')
+            ->assertRedirect(url('/admin'));
+
+        $this->assertArrayNotHasKey('redirectUsingNavigate', $component->effects);
         $this->assertAuthenticatedAs($admin);
     }
 
     public function test_invalid_credentials_show_persian_error(): void
     {
         Livewire::test(Login::class)
-            ->set('email', 'missing@example.com')
+            ->set('identifier', 'missing@example.com')
             ->set('password', 'wrong-password')
             ->call('authenticate')
-            ->assertHasErrors(['email']);
+            ->assertHasErrors(['identifier']);
 
         $this->assertGuest();
     }

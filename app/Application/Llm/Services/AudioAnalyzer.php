@@ -46,8 +46,10 @@ class AudioAnalyzer
             ? OrganizationUser::query()->find($call->organization_user_id)
             : null;
 
-        $customerNumber = $callLog?->direction?->value === 'inbound'
-            ? $callLog->source_number
+        $callDirection = $this->resolveCallDirection($call, $callLog);
+
+        $customerNumber = $callDirection === 'inbound'
+            ? $callLog?->source_number
             : $callLog?->destination_number;
 
         $callDuration = $callLog?->duration;
@@ -61,7 +63,7 @@ class AudioAnalyzer
             employeeName: $employee?->full_name,
             department: $employee?->department,
             position: $employee?->position,
-            callDirection: $callLog?->direction?->value ?? ($call->isManualUpload() ? 'manual' : null),
+            callDirection: $callDirection,
             callDurationSeconds: $callDuration,
             customerNumber: $customerNumber,
             title: $call->title,
@@ -70,6 +72,7 @@ class AudioAnalyzer
             notes: $call->notes,
             organizationName: $call->organization?->title,
             organizationBusinessContext: $call->organization?->business_context,
+            agentRole: $employee?->position,
         );
 
         $recording = $call->recording;
@@ -146,5 +149,20 @@ class AudioAnalyzer
         ));
 
         return $stored;
+    }
+
+    private function resolveCallDirection(Call $call, ?VoipCallLog $callLog): ?string
+    {
+        $fromLog = $callLog?->direction?->value;
+        if (is_string($fromLog) && $fromLog !== '') {
+            return $fromLog;
+        }
+
+        $fromCall = $call->direction;
+        if (is_string($fromCall) && $fromCall !== '') {
+            return $fromCall;
+        }
+
+        return null;
     }
 }
