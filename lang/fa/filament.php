@@ -171,6 +171,8 @@ return [
         'operation' => 'عملیات',
         'message' => 'پیام',
         'call_id' => 'شناسه تماس',
+        'call_direction' => 'جهت تماس',
+        'internal_number' => 'شماره داخلی',
         'job_class' => 'کلاس Job',
         'job_uuid' => 'شناسه Job',
         'error' => 'خطا',
