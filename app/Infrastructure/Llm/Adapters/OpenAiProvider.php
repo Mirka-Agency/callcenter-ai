@@ -63,46 +63,37 @@ class OpenAiProvider extends AbstractLlmProvider
         }
 
         $guard = app(\App\Services\PersianOutputGuard::class);
-        $parsed = null;
-        $body = null;
+        $messages = $promptBuilder->buildAudioMessages(
+            $request,
+            $audioFormat,
+            false,
+            $request->sendAudioFile ? null : $request->playbackUrl,
+            $audioBase64,
+            $mimeType,
+        );
 
-        foreach ([false, true] as $strictPersian) {
-            $messages = $promptBuilder->buildAudioMessages(
-                $request,
-                $audioFormat,
-                $strictPersian,
-                $request->sendAudioFile ? null : $request->playbackUrl,
-                $audioBase64,
-                $mimeType,
-            );
+        $response = $this->postChatCompletion($messages, $model);
 
-            $response = $this->postChatCompletion($messages, $model);
+        if (! $response->successful()) {
+            $status = $response->status();
 
-            if (! $response->successful()) {
-                $status = $response->status();
-
-                if (in_array($status, [429, 502, 503, 504], true)) {
-                    return $this->failure('OpenAI API error (HTTP '.$status.'): '.$response->body());
-                }
-
-                return $this->failure('OpenAI API error: '.$response->body());
+            if (in_array($status, [429, 502, 503, 504], true)) {
+                return $this->failure('OpenAI API error (HTTP '.$status.'): '.$response->body());
             }
 
-            $body = $response->json();
-            $content = $body['choices'][0]['message']['content'] ?? '';
-            $parsed = $this->parseJsonResponse($content);
-
-            if (! $parsed) {
-                return $this->failure('Failed to parse OpenAI audio analysis response.');
-            }
-
-            if (! $guard->containsEnglish($parsed)) {
-                break;
-            }
+            return $this->failure('OpenAI API error: '.$response->body());
         }
 
-        if ($parsed && $guard->containsEnglish($parsed)) {
-            \Illuminate\Support\Facades\Log::warning('AI analysis still contains English after Persian retry', [
+        $body = $response->json();
+        $content = $body['choices'][0]['message']['content'] ?? '';
+        $parsed = $this->parseJsonResponse($content);
+
+        if (! $parsed) {
+            return $this->failure('Failed to parse OpenAI audio analysis response.');
+        }
+
+        if ($guard->containsEnglish($parsed)) {
+            \Illuminate\Support\Facades\Log::warning('AI analysis contains English and was stored without a second model request', [
                 'call_id' => $request->callId,
             ]);
         }

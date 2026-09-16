@@ -70,44 +70,34 @@ class GeminiProvider extends AbstractLlmProvider
         }
 
         $guard = app(PersianOutputGuard::class);
-        $parsed = null;
-        $body = null;
+        $response = $this->postGenerateContent(
+            model: $model,
+            promptBuilder: $promptBuilder,
+            request: $request,
+            audioBase64: $audioBase64,
+            mimeType: $mimeType ?? $this->mimeTypeForFormat($audioFormat),
+        );
 
-        foreach ([false, true] as $strictPersian) {
-            $response = $this->postGenerateContent(
-                model: $model,
-                promptBuilder: $promptBuilder,
-                request: $request,
-                strictPersian: $strictPersian,
-                audioBase64: $audioBase64,
-                mimeType: $mimeType ?? $this->mimeTypeForFormat($audioFormat),
-            );
+        if (! $response->successful()) {
+            $status = $response->status();
 
-            if (! $response->successful()) {
-                $status = $response->status();
-
-                if (in_array($status, [429, 502, 503, 504], true)) {
-                    return $this->failure('Gemini API error (HTTP '.$status.'): '.$response->body());
-                }
-
-                return $this->failure('Gemini API error: '.$response->body());
+            if (in_array($status, [429, 502, 503, 504], true)) {
+                return $this->failure('Gemini API error (HTTP '.$status.'): '.$response->body());
             }
 
-            $body = $response->json();
-            $content = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
-            $parsed = $this->parseJsonResponse($content);
-
-            if (! $parsed) {
-                return $this->failure('Failed to parse Gemini audio analysis response.');
-            }
-
-            if (! $guard->containsEnglish($parsed)) {
-                break;
-            }
+            return $this->failure('Gemini API error: '.$response->body());
         }
 
-        if ($parsed && $guard->containsEnglish($parsed)) {
-            Log::warning('Gemini analysis still contains English after Persian retry', [
+        $body = $response->json();
+        $content = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
+        $parsed = $this->parseJsonResponse($content);
+
+        if (! $parsed) {
+            return $this->failure('Failed to parse Gemini audio analysis response.');
+        }
+
+        if ($guard->containsEnglish($parsed)) {
+            Log::warning('Gemini analysis contains English and was stored without a second model request', [
                 'call_id' => $request->callId,
             ]);
         }
@@ -129,15 +119,10 @@ class GeminiProvider extends AbstractLlmProvider
         string $model,
         PromptBuilder $promptBuilder,
         AudioAnalysisRequestData $request,
-        bool $strictPersian,
         ?string $audioBase64,
         string $mimeType,
     ): \Illuminate\Http\Client\Response {
         $systemPrompt = $promptBuilder->systemPrompt($request->promptVersion);
-
-        if ($strictPersian) {
-            $systemPrompt .= "\n\n".PromptBuilder::persianStrictRetryPolicy();
-        }
 
         $userParts = [
             ['text' => $promptBuilder->contextPrompt($request)],

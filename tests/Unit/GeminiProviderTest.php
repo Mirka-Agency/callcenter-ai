@@ -80,6 +80,57 @@ class GeminiProviderTest extends TestCase
                 && ($parts[1]['inline_data']['mime_type'] ?? null) === 'audio/mpeg'
                 && ($parts[1]['inline_data']['data'] ?? null) === base64_encode('audio-bytes');
         });
+        Http::assertSentCount(2);
+    }
+
+    public function test_english_analysis_is_accepted_without_a_second_model_request(): void
+    {
+        $analysisJson = json_encode([
+            'score' => 70,
+            'summary' => 'The customer asked about pricing and next steps.',
+            'sentiment' => 'neutral',
+            'strengths' => ['Clear explanation'],
+            'weaknesses' => [],
+            'next_actions' => ['Follow up tomorrow'],
+        ]);
+
+        Http::fake([
+            'https://example.com/recording.mp3' => Http::response('audio-bytes'),
+            'https://generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [[
+                    'content' => [
+                        'parts' => [['text' => $analysisJson]],
+                    ],
+                ]],
+                'usageMetadata' => [
+                    'promptTokenCount' => 1200,
+                    'candidatesTokenCount' => 300,
+                ],
+            ]),
+        ]);
+
+        $provider = new GeminiProvider;
+        $provider->configure(new LlmConnectionConfig(
+            connectionId: null,
+            organizationId: 1,
+            providerCode: LlmProviderCode::Gemini,
+            name: 'Gemini',
+            credentials: new LlmCredentials(apiKey: 'test-gemini-key'),
+            settings: new LlmSettings(),
+            isDefault: true,
+            isActive: true,
+        ));
+
+        $result = $provider->analyzeAudio(new AudioAnalysisRequestData(
+            callId: 99,
+            recordingUrl: 'https://example.com/recording.mp3',
+            sendAudioFile: true,
+            mimeType: 'audio/mpeg',
+        ));
+
+        $this->assertTrue($result->success);
+        $this->assertSame('The customer asked about pricing and next steps.', $result->data['summary']);
+        Http::assertSentCount(2);
     }
 
     public function test_analyze_audio_without_api_key_and_audio_refuses_real_analysis(): void

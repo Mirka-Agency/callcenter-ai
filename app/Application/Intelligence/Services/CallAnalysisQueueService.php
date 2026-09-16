@@ -42,7 +42,12 @@ class CallAnalysisQueueService
                 return false;
             }
 
-            if ($call->processing_status === CallProcessingStatus::Analyzed) {
+            if (in_array($call->processing_status, [
+                CallProcessingStatus::Analyzed,
+                CallProcessingStatus::Failed,
+                CallProcessingStatus::Analyzing,
+                CallProcessingStatus::Downloading,
+            ], true)) {
                 return false;
             }
         }

@@ -4,10 +4,7 @@ namespace App\Application\Intelligence\Jobs;
 
 use App\Application\Llm\AnalysisManager;
 use App\Domain\Call\Enums\CallProcessingStatus;
-use App\Domain\Llm\Exceptions\LlmTransientException;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
-use App\Domain\Processing\Enums\ProcessingLogLevel;
-use App\Domain\Recording\Exceptions\RecordingNotFoundException;
 use App\Domain\Recording\Contracts\RecordingDownloaderInterface;
 use App\Domain\Recording\Contracts\RecordingRepositoryInterface;
 use App\Domain\Recording\DTOs\RecordingData;
@@ -18,30 +15,32 @@ use App\Services\CallProcessingTracker;
 use App\Services\RecordingRetentionService;
 use App\Services\RecordingStorage;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Bus;
 
-class AnalyzeAudioJob implements ShouldQueue
+class AnalyzeAudioJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
+    public int $tries = 1;
 
     public int $timeout = 600;
 
-    /** @return list<int> */
-    public function backoff(): array
-    {
-        return [30, 60];
-    }
+    public int $uniqueFor = 1800;
 
     public function __construct(
         public int $callId,
         public ?string $recordingUrl = null,
     ) {}
+
+    public function uniqueId(): string
+    {
+        return 'analyze-call-'.$this->callId;
+    }
 
     public function handle(
         AnalysisManager $analysis,
@@ -85,25 +84,8 @@ class AnalyzeAudioJob implements ShouldQueue
 
             $this->scheduleRetentionAfterAnalysis($call->id, $retention);
         } catch (\Throwable $e) {
-            if ($this->shouldRetry($e)) {
-                if ($job) {
-                    $tracker->log(
-                        $job,
-                        ProcessingLogLevel::Warning,
-                        'analysis',
-                        $e instanceof RecordingNotFoundException
-                            ? 'فایل صوتی هنوز در دسترس نیست — تلاش مجدد ('.$this->attempts().'/'.$this->tries.')'
-                            : 'خطای موقت سرویس هوش مصنوعی — تلاش مجدد ('.$this->attempts().'/'.$this->tries.')',
-                        ['error' => $e->getMessage()],
-                    );
-                }
-
-                throw $e;
-            }
-
             $this->markPermanentFailure($call, $job, $tracker, $e);
-
-            throw $e;
+            $this->failWithoutRetry($e);
         }
     }
 
@@ -121,15 +103,15 @@ class AnalyzeAudioJob implements ShouldQueue
         $this->markPermanentFailure($call, $job, $tracker, $exception);
     }
 
-    private function shouldRetry(\Throwable $e): bool
+    private function failWithoutRetry(\Throwable $e): void
     {
-        if ($this->attempts() >= $this->tries) {
-            return false;
+        if ($this->job) {
+            $this->fail($e);
+
+            return;
         }
 
-        return $e instanceof RecordingNotFoundException
-            || $e instanceof LlmTransientException
-            || LlmTransientException::isTransientMessage($e->getMessage());
+        throw $e;
     }
 
     private function markPermanentFailure(
