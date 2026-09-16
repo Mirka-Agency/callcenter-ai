@@ -4,7 +4,6 @@ namespace Tests\Unit;
 
 use App\Application\Llm\Services\PromptBuilder;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
-use App\Domain\Llm\DTOs\PromptContextData;
 use PHPUnit\Framework\TestCase;
 
 class PromptBuilderSummaryTest extends TestCase
@@ -13,12 +12,12 @@ class PromptBuilderSummaryTest extends TestCase
     {
         $policy = PromptBuilder::summaryPolicy();
 
-        $this->assertStringContainsString('Generate a detailed business summary in Persian', $policy);
-        $this->assertStringContainsString('why the customer contacted us', $policy);
-        $this->assertStringContainsString('what follow-up actions are required', $policy);
-        $this->assertStringContainsString('Prefer a comprehensive summary over a very short summary', $policy);
-        $this->assertStringContainsString('۱ تا ۳ پاراگراف', $policy);
-        $this->assertStringContainsString('رونوشت را تکرار نکنید', $policy);
+        $this->assertStringContainsString('یک خلاصه کسب‌وکاری مفصل، فقط به فارسی بنویسید', $policy);
+        $this->assertStringContainsString('دلیل اصلی تماس', $policy);
+        $this->assertStringContainsString('اقدامات بعدی توافق‌شده', $policy);
+        $this->assertStringContainsString('یک تا سه پاراگراف', $policy);
+        $this->assertStringContainsString('متن مکالمه را تکرار نکنید', $policy);
+        $this->assertStringNotContainsString('Generate a detailed business summary', $policy);
     }
 
     public function test_context_prompt_requests_detailed_summary(): void
@@ -28,6 +27,6 @@ class PromptBuilderSummaryTest extends TestCase
 
         $prompt = $builder->contextPrompt($request);
 
-        $this->assertStringContainsString('خلاصه (summary) باید مفصل و کسب‌وکاری باشد', $prompt);
+        $this->assertStringContainsString('خلاصه باید مفصل، کسب‌وکاری و کاملاً فارسی باشد', $prompt);
     }
 }

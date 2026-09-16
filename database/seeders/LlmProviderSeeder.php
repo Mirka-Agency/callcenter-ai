@@ -62,8 +62,8 @@ class LlmProviderSeeder extends Seeder
         LlmPromptVersion::query()->updateOrCreate(
             ['version' => 'v1'],
             [
-                'name' => 'Default Performance Analysis',
-                'system_prompt' => app(\App\Application\Llm\Services\PromptBuilder::class)->systemPrompt(),
+                'name' => 'تحلیل پیش‌فرض کیفیت تماس',
+                'system_prompt' => app(\App\Application\Llm\Services\PromptBuilder::class)->defaultSystemPrompt(),
                 'is_active' => true,
             ],
         );

@@ -9,6 +9,18 @@ enum AnalysisSentiment: string
     case Negative = 'negative';
     case Mixed = 'mixed';
 
+    public static function fromAnalysisValue(mixed $value): self
+    {
+        $normalized = mb_strtolower(trim((string) $value));
+
+        return match ($normalized) {
+            'positive', 'مثبت' => self::Positive,
+            'negative', 'منفی' => self::Negative,
+            'mixed', 'ترکیبی', 'مختلط', 'مخلوط' => self::Mixed,
+            default => self::Neutral,
+        };
+    }
+
     public function label(): string
     {
         return match ($this) {
