@@ -325,13 +325,13 @@
     }
 
     .saas-opportunity-col-toggle { width: 2rem; }
-    .saas-opportunity-col-name { width: 16%; }
-    .saas-opportunity-col-phone { width: 13%; }
-    .saas-opportunity-col-agent { width: 13%; }
+    .saas-opportunity-col-name { width: 15%; }
+    .saas-opportunity-col-phone { width: 12%; }
+    .saas-opportunity-col-agent { width: 12%; }
     .saas-opportunity-col-date { width: 11%; }
-    .saas-opportunity-col-product { width: 18%; }
-    .saas-opportunity-col-lead { width: 9%; }
-    .saas-opportunity-col-prob { width: 9%; }
+    .saas-opportunity-col-product { width: 16%; }
+    .saas-opportunity-col-lead { width: 12%; }
+    .saas-opportunity-col-prob { width: 12%; }
     .saas-opportunity-col-forgotten { width: 26%; }
     .saas-opportunity-col-due { width: 14%; }
 
@@ -356,10 +356,64 @@
         border-bottom: 1px solid rgb(228 228 231 / 0.8);
     }
 
+    .saas-opportunity-table thead th.saas-sortable {
+        cursor: pointer;
+        user-select: none;
+        overflow: visible;
+        text-overflow: unset;
+    }
+
+    .saas-opportunity-table thead th.saas-sortable button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        transition: color 0.15s ease;
+    }
+
+    .saas-opportunity-table thead th.saas-sortable button:hover,
+    .saas-opportunity-table thead th.saas-sortable.is-active button {
+        color: rgb(24 24 27);
+    }
+
+    .saas-sort-icon {
+        display: inline-flex;
+        width: 0.75rem;
+        height: 1rem;
+        flex-shrink: 0;
+        opacity: 0.55;
+    }
+
+    .saas-sort-icon svg {
+        width: 100%;
+        height: 100%;
+    }
+
+    .saas-sort-icon .saas-sort-up,
+    .saas-sort-icon .saas-sort-down {
+        opacity: 0.35;
+    }
+
+    .saas-sort-icon.is-active {
+        opacity: 1;
+    }
+
+    .saas-sort-icon.is-asc .saas-sort-up,
+    .saas-sort-icon.is-desc .saas-sort-down {
+        opacity: 1;
+    }
+
     .dark .saas-opportunity-table thead th {
         background: rgb(24 24 27);
         border-bottom-color: rgb(39 39 42);
         color: rgb(161 161 170);
+    }
+
+    .dark .saas-opportunity-table thead th.saas-sortable button:hover,
+    .dark .saas-opportunity-table thead th.saas-sortable.is-active button {
+        color: rgb(244 244 245);
     }
 
     .saas-opportunity-table th:nth-child(3),
@@ -416,6 +470,14 @@
 
     .saas-opportunity-row:hover td {
         background: rgb(250 250 250 / 0.8);
+    }
+
+    .saas-opportunity-table td.saas-lead-quality-cell {
+        overflow: visible;
+    }
+
+    .saas-lead-quality {
+        @apply inline-flex min-w-9 items-center justify-center rounded-lg bg-emerald-50 px-2 py-0.5 text-sm font-bold tabular-nums text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300;
     }
 
     .dark .saas-opportunity-row:hover td {

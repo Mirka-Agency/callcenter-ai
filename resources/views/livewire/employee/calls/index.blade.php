@@ -250,35 +250,29 @@
             @else
                 <div class="saas-analysis-list-scroll overflow-x-auto lg:overflow-x-auto">
                     <div class="saas-analysis-list-table min-w-[52rem] lg:min-w-[52rem]">
-                        @php
-                            $sortIcon = fn (string $column) => $sortBy === $column
-                                ? ($sortDir === 'asc' ? '↑' : '↓')
-                                : '↕';
-                        @endphp
-
                         <div class="saas-analysis-list-header saas-employee-call-list-grid">
                             <div>
                                 <button type="button" wire:click="sortByColumn('analyzed_at')" class="inline-flex items-center gap-1 transition hover:text-zinc-900 dark:hover:text-white">
-                                    تاریخ <span class="text-[10px] text-zinc-400">{{ $sortIcon('analyzed_at') }}</span>
+                                    تاریخ <x-saas.sort-icon :active="$sortBy === 'analyzed_at'" :dir="$sortDir" />
                                 </button>
                             </div>
                             <div>مشتری</div>
                             <div>خلاصه</div>
                             <div>
                                 <button type="button" wire:click="sortByColumn('duration')" class="inline-flex items-center gap-1 transition hover:text-zinc-900 dark:hover:text-white">
-                                    مدت <span class="text-[10px] text-zinc-400">{{ $sortIcon('duration') }}</span>
+                                    مدت <x-saas.sort-icon :active="$sortBy === 'duration'" :dir="$sortDir" />
                                 </button>
                             </div>
                             <div>
                                 <button type="button" wire:click="sortByColumn('status')" class="inline-flex items-center gap-1 transition hover:text-zinc-900 dark:hover:text-white">
-                                    وضعیت <span class="text-[10px] text-zinc-400">{{ $sortIcon('status') }}</span>
+                                    وضعیت <x-saas.sort-icon :active="$sortBy === 'status'" :dir="$sortDir" />
                                 </button>
                             </div>
                             <div>جهت</div>
                             <div>سرنخ</div>
                             <div class="text-end">
                                 <button type="button" wire:click="sortByColumn('score')" class="inline-flex items-center gap-1 transition hover:text-zinc-900 dark:hover:text-white">
-                                    امتیاز <span class="text-[10px] text-zinc-400">{{ $sortIcon('score') }}</span>
+                                    امتیاز <x-saas.sort-icon :active="$sortBy === 'score'" :dir="$sortDir" />
                                 </button>
                             </div>
                         </div>

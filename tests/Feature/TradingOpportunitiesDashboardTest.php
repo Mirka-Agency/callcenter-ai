@@ -13,6 +13,7 @@ use App\Models\OrganizationUser;
 use App\Models\User;
 use App\Services\EmployerDashboardAnalytics;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -61,6 +62,7 @@ class TradingOpportunitiesDashboardTest extends TestCase
             ->assertSee('علی احمدی')
             ->assertSee('اشتراک سازمانی')
             ->assertDontSee('بالا')
+            ->assertSee('saas-lead-quality')
             ->assertSee('88٪')
             ->assertSee('ارسال پیش‌فاکتور امروز')
             ->assertSee('درخواست پیش‌فاکتور')
@@ -120,6 +122,43 @@ class TradingOpportunitiesDashboardTest extends TestCase
         $this->assertSame(91, $opportunities[0]['lead_score']);
         $this->assertSame('high', $opportunities[0]['lead_level']);
         $this->assertSame('اشتراک سازمانی', $opportunities[0]['product']);
+        $this->assertArrayHasKey('sort_date', $opportunities[0]);
+    }
+
+    public function test_dashboard_sorts_trading_opportunities_by_clicked_column_titles(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $this->seedOpportunity($organization, [
+            'external_id' => 'opp-newer-high-lead',
+            'customer_name' => 'فرصت جدیدتر',
+            'lead_level' => 'high',
+            'lead_score' => 96,
+            'purchase_probability' => 40,
+            'analyzed_at' => now()->subDay(),
+        ]);
+        $this->seedOpportunity($organization, [
+            'external_id' => 'opp-older-high-prob',
+            'customer_name' => 'فرصت قدیمی‌تر',
+            'lead_level' => 'high',
+            'lead_score' => 72,
+            'purchase_probability' => 90,
+            'analyzed_at' => now()->subDays(5),
+        ]);
+
+        $component = Livewire::test(Overview::class);
+        $html = $component->html();
+
+        $this->assertSame(['فرصت جدیدتر', 'فرصت قدیمی‌تر'], $this->opportunityNames($component));
+        $this->assertStringContainsString("sortBy('date')", $html);
+        $this->assertStringContainsString("sortBy('lead_quality')", $html);
+        $this->assertStringContainsString("sortBy('purchase_probability')", $html);
+        $this->assertStringContainsString('saas-sort-icon', $html);
+        $this->assertStringContainsString('data-sort-lead-quality="96"', $html);
+        $this->assertStringContainsString('data-sort-lead-quality="72"', $html);
+        $this->assertStringContainsString('data-sort-purchase-probability="40"', $html);
+        $this->assertStringContainsString('data-sort-purchase-probability="90"', $html);
+        $this->assertStringNotContainsString('wire:click="sortOpportunitiesBy', $html);
+        $this->assertFalse(method_exists(Overview::class, 'sortOpportunitiesBy'));
     }
 
     public function test_empty_state_is_shown_when_there_are_no_high_quality_leads(): void
@@ -130,6 +169,14 @@ class TradingOpportunitiesDashboardTest extends TestCase
             ->assertSee('فرصت‌های معاملاتی جدید')
             ->assertSee('هنوز فرصت معاملاتی جدیدی نیست')
             ->assertSee('وقتی لید باکیفیتی اخیراً تماس بگیرد، برای پیگیری فروش اینجا دیده می‌شود.');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function opportunityNames(Testable $component): array
+    {
+        return collect($component->viewData('tradingOpportunities'))->pluck('customer')->all();
     }
 
     private function actingAsEmployer(): Organization
@@ -199,7 +246,7 @@ class TradingOpportunitiesDashboardTest extends TestCase
             ],
             'customer_insights_json' => [
                 'intent' => $data['intent'] ?? 'استعلام قیمت',
-                'purchase_probability' => $data['lead_score'],
+                'purchase_probability' => $data['purchase_probability'] ?? $data['lead_score'],
             ],
             'operational_insights_json' => [
                 'important_keywords' => $data['keywords'] ?? $data['buying_signals'] ?? [],

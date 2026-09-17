@@ -19,8 +19,16 @@
             />
         </div>
     @else
-        <div class="saas-opportunity-table-wrap">
-            <table class="saas-opportunity-table">
+        <div
+            class="saas-opportunity-table-wrap"
+            x-data="dashboardTableSort({
+                column: 'date',
+                dir: 'desc',
+                allowed: ['date', 'lead_quality', 'purchase_probability'],
+                defaultDir: 'desc',
+            })"
+        >
+            <table class="saas-opportunity-table" x-ref="table">
                 <colgroup>
                     <col class="saas-opportunity-col-toggle">
                     <col class="saas-opportunity-col-name">
@@ -37,15 +45,19 @@
                         <th>نام شخص/شرکت</th>
                         <th>شماره تماس</th>
                         <th>نام کارشناس</th>
-                        <th>تاریخ</th>
+                        <x-saas.sort-header column="date" label="تاریخ" />
                         <th>محصول/سرویس قابل فروش</th>
-                        <th>کیفیت لید</th>
-                        <th>احتمال خرید</th>
+                        <x-saas.sort-header column="lead_quality" label="کیفیت لید" />
+                        <x-saas.sort-header column="purchase_probability" label="احتمال خرید" />
                     </tr>
                 </thead>
                 @foreach ($tradingOpportunities as $opportunity)
                     <tbody
                         wire:key="opportunity-{{ $opportunity['analysis_id'] }}"
+                        data-sort-row
+                        data-sort-date="{{ $opportunity['sort_date'] ?? 0 }}"
+                        data-sort-lead-quality="{{ $opportunity['lead_score'] ?? -1 }}"
+                        data-sort-purchase-probability="{{ $opportunity['purchase_probability'] ?? -1 }}"
                         x-data="{ open: false }"
                     >
                         <tr
@@ -73,7 +85,13 @@
                             <td class="truncate">{{ $opportunity['employee'] }}</td>
                             <td class="truncate">{{ $opportunity['date'] }}</td>
                             <td class="truncate">{{ $opportunity['product'] ?? '—' }}</td>
-                            <td>{{ $opportunity['lead_score'] ?? '—' }}</td>
+                            <td class="saas-lead-quality-cell">
+                                @if ($opportunity['lead_score'] !== null)
+                                    <span class="saas-lead-quality">{{ $opportunity['lead_score'] }}</span>
+                                @else
+                                    —
+                                @endif
+                            </td>
                             <td>{{ $opportunity['purchase_probability'] !== null ? $opportunity['purchase_probability'].'٪' : '—' }}</td>
                         </tr>
                         <tr x-show="open" x-cloak class="saas-opportunity-detail-row">

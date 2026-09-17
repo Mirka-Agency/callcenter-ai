@@ -73,6 +73,74 @@
         <x-saas.onboarding-tour :portal="$portal" />
     @endif
 
+    <script>
+        window.dashboardTableSort = function dashboardTableSort(config) {
+            config = config || {};
+
+            return {
+                column: config.column || 'date',
+                dir: config.dir || 'desc',
+                allowed: config.allowed || [],
+                defaultDir: config.defaultDir || 'desc',
+                isActive(column) {
+                    return this.column === column;
+                },
+                ariaSort(column) {
+                    if (this.column !== column) {
+                        return 'none';
+                    }
+
+                    return this.dir === 'asc' ? 'ascending' : 'descending';
+                },
+                sortIconClass(column) {
+                    return {
+                        'is-active': this.column === column,
+                        'is-asc': this.column === column && this.dir === 'asc',
+                        'is-desc': this.column === column && this.dir === 'desc',
+                    };
+                },
+                sortBy(column) {
+                    if (! this.allowed.includes(column)) {
+                        return;
+                    }
+
+                    if (this.column === column) {
+                        this.dir = this.dir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        this.column = column;
+                        this.dir = this.defaultDir;
+                    }
+
+                    this.apply();
+                },
+                apply() {
+                    const table = this.$refs.table || this.$root.querySelector('table');
+
+                    if (! table) {
+                        return;
+                    }
+
+                    const attr = 'data-sort-' + this.column.replaceAll('_', '-');
+                    const multiplier = this.dir === 'asc' ? 1 : -1;
+
+                    Array.from(table.querySelectorAll(':scope > tbody[data-sort-row]'))
+                        .sort(function (left, right) {
+                            const a = Number(left.getAttribute(attr) || Number.NEGATIVE_INFINITY);
+                            const b = Number(right.getAttribute(attr) || Number.NEGATIVE_INFINITY);
+
+                            if (a === b) {
+                                return 0;
+                            }
+
+                            return a < b ? -1 * multiplier : 1 * multiplier;
+                        })
+                        .forEach(function (row) {
+                            table.appendChild(row);
+                        });
+                },
+            };
+        };
+    </script>
     @livewireScripts
     <script>
         document.addEventListener('alpine:init', () => {
