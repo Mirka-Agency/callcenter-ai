@@ -3,7 +3,7 @@
     $dissatisfied = $sentimentCustomers['dissatisfied'] ?? [];
 @endphp
 
-<div class="grid gap-6 lg:grid-cols-2" data-tour="dashboard-sentiment-customers">
+<div class="grid items-start gap-6 lg:grid-cols-2" data-tour="dashboard-sentiment-customers">
     <section class="saas-card overflow-hidden p-0">
         <div class="flex flex-wrap items-start justify-between gap-3 px-4 py-4 sm:px-6 sm:pt-6">
             <div>
