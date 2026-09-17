@@ -89,5 +89,51 @@ class OpenAiProviderAudioAnalysisTest extends TestCase
             return str_contains($request->url(), 'api.avalai.ir')
                 && ($request->data()['model'] ?? null) === 'google/gemini-3.1-flash-lite';
         });
+        Http::assertSentCount(2);
+    }
+
+    public function test_english_analysis_is_accepted_without_a_second_model_request(): void
+    {
+        $analysisJson = json_encode([
+            'score' => 70,
+            'summary' => 'The customer asked about pricing and next steps.',
+            'sentiment' => 'neutral',
+            'strengths' => ['Clear explanation'],
+            'weaknesses' => [],
+            'next_actions' => ['Follow up tomorrow'],
+        ]);
+
+        Http::fake([
+            'https://example.com/recording.mp3' => Http::response('audio-bytes'),
+            'https://api.openai.com/*' => Http::response([
+                'choices' => [[
+                    'message' => ['content' => $analysisJson],
+                ]],
+                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5],
+            ]),
+        ]);
+
+        $provider = new OpenAiProvider;
+        $provider->configure(new LlmConnectionConfig(
+            connectionId: 1,
+            organizationId: 1,
+            providerCode: LlmProviderCode::OpenAi,
+            name: 'OpenAI',
+            credentials: new LlmCredentials(apiKey: 'test-key'),
+            settings: new LlmSettings(),
+            isDefault: true,
+            isActive: true,
+        ));
+
+        $result = $provider->analyzeAudio(new AudioAnalysisRequestData(
+            callId: 1,
+            recordingUrl: 'https://example.com/recording.mp3',
+            sendAudioFile: true,
+            mimeType: 'audio/mpeg',
+        ));
+
+        $this->assertTrue($result->success);
+        $this->assertSame('The customer asked about pricing and next steps.', $result->data['summary']);
+        Http::assertSentCount(2);
     }
 }

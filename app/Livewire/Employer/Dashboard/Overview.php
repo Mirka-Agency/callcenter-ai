@@ -46,6 +46,7 @@ class Overview extends Component
             'teamWeaknessCalls' => $selectedWeakness
                 ? $performance->teamWeaknessCalls($performanceFilter, $selectedWeakness)
                 : [],
+            'tradingOpportunities' => $analytics->tradingOpportunities(),
             'qualityTrend' => $performanceDashboard['quality_trend'],
             'dailyTrend' => $analytics->dailyTrend(),
             'activityFeed' => $analytics->activityFeed(6),

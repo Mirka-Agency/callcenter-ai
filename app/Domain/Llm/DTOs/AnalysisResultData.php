@@ -131,7 +131,7 @@ readonly class AnalysisResultData
             modelName: $modelName,
             score: $score,
             summary: (string) ($response['summary'] ?? ''),
-            sentiment: AnalysisSentiment::tryFrom($response['sentiment'] ?? $customer['sentiment'] ?? '') ?? AnalysisSentiment::Neutral,
+            sentiment: AnalysisSentiment::fromAnalysisValue($response['sentiment'] ?? $customer['sentiment'] ?? ''),
             overallEvaluation: $response['overall_evaluation'] ?? $response['evaluation'] ?? null,
             strengths: (array) ($response['strengths'] ?? []),
             weaknesses: (array) ($response['weaknesses'] ?? []),

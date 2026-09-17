@@ -22,7 +22,7 @@ class PromptBuilderOrganizationDomainTest extends TestCase
 
         $prompt = $builder->contextPrompt($request);
 
-        $this->assertStringContainsString("Organization:\nکلینیک غدد", $prompt);
+        $this->assertStringContainsString("سازمان:\nکلینیک غدد", $prompt);
         $this->assertStringContainsString('زمینه فعالیت سازمان: کلینیک غدد درون‌ریز. خدمات: تیروئید، دیابت. لیزر پوست نیست.', $prompt);
     }
 
@@ -39,7 +39,7 @@ class PromptBuilderOrganizationDomainTest extends TestCase
 
         $prompt = $builder->contextPrompt($request);
 
-        $this->assertStringContainsString("Organization:\nمیرکو", $prompt);
+        $this->assertStringContainsString("سازمان:\nمیرکو", $prompt);
         $this->assertStringNotContainsString('زمینه فعالیت سازمان:', $prompt);
     }
 
@@ -47,11 +47,12 @@ class PromptBuilderOrganizationDomainTest extends TestCase
     {
         $policy = PromptBuilder::organizationDomainPolicy();
 
-        $this->assertStringContainsString('organization business context', $policy);
-        $this->assertStringContainsString('phonetically similar speech', $policy);
-        $this->assertStringContainsString('endocrine clinic', $policy);
         $this->assertStringContainsString('زمینه فعالیت سازمان', $policy);
+        $this->assertStringContainsString('شبیه از نظر آوایی', $policy);
+        $this->assertStringContainsString('کلینیک غدد', $policy);
         $this->assertStringContainsString('تخصص یا خدمات نامرتبط اختراع نکنید', $policy);
+        $this->assertStringNotContainsString('organization business context', $policy);
+        $this->assertStringNotContainsString('endocrine clinic', $policy);
     }
 
     public function test_evaluable_conversation_policy_rejects_zero_for_real_calls(): void

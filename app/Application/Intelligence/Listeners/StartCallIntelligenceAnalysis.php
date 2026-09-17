@@ -3,13 +3,11 @@
 namespace App\Application\Intelligence\Listeners;
 
 use App\Application\Call\Services\CallIngestionService;
-use App\Application\Intelligence\Jobs\AnalyzeAudioJob;
+use App\Application\Intelligence\Services\CallAnalysisQueueService;
 use App\Domain\Voip\Events\CallEnded;
 use App\Domain\Voip\Events\RecordingCreated;
-use App\Exceptions\InsufficientWalletBalanceException;
 use App\Models\Call;
 use App\Models\VoipCallLog;
-use App\Services\AiBillingService;
 
 class StartCallIntelligenceAnalysis
 {
@@ -27,18 +25,10 @@ class StartCallIntelligenceAnalysis
         $callId = app(CallIngestionService::class)->ingestFromVoipLog($callLog);
         $call = Call::query()->find($callId);
 
-        if (! $call?->organization_user_id) {
+        if (! $call) {
             return;
         }
 
-        if ($callLog->recording_url || $event instanceof RecordingCreated) {
-            try {
-                app(AiBillingService::class)->assertCanAnalyze($callLog->organization_id);
-            } catch (InsufficientWalletBalanceException) {
-                return;
-            }
-
-            AnalyzeAudioJob::dispatchChain($callId, $callLog->recording_url);
-        }
+        app(CallAnalysisQueueService::class)->dispatchForCall($call);
     }
 }

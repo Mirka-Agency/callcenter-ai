@@ -21,27 +21,30 @@ class PromptBuilderCallMetadataTest extends TestCase
 
         $this->assertSame(
             <<<'PROMPT'
-Organization:
+سازمان:
 میرکو
 
-Agent:
+کارشناس:
 علی رضایی
 
-Agent Role:
+نقش کارشناس:
 کارشناس فروش
 
-Call Direction:
-Inbound Call (تماس ورودی)
+جهت تماس:
+تماس ورودی
 
-Additional Context:
-زمینه CRM: {"current_user_name":"علی رضایی","current_company_name":"میرکو"}
+زمینه تکمیلی:
+زمینه سامانه (این مقدارها هویت مشتری نیستند):
+نام کارشناس فعلی سامانه: علی رضایی
+نام سازمان فعلی سامانه: میرکو
 
-Conversation Transcript:
-Attached audio recording (no separate transcript).
+متن مکالمه:
+فایل صوتی پیوست شده است و متن جداگانه‌ای در دست نیست.
 
-Task:
-Analyze this conversation based on the provided context.
-مکالمه صوتی پیوست‌شده را تحلیل کن. خلاصه (summary) باید مفصل و کسب‌وکاری باشد. JSON خواسته‌شده را فقط به فارسی برگردان.
+وظیفه:
+به فایل صوتی پیوست‌شده گوش دهید و مکالمه را تحلیل کنید.
+خلاصه باید مفصل، کسب‌وکاری و کاملاً فارسی باشد.
+فقط خروجی ساخت‌یافته با کلیدهای خواسته‌شده را برگردانید؛ همه مقدارهای متنی فارسی باشند.
 PROMPT,
             $prompt,
         );
@@ -56,19 +59,19 @@ PROMPT,
             agentRole: 'کارشناس پذیرش',
         ));
 
-        $this->assertStringContainsString("Call Direction:\nOutbound Call (تماس خروجی)", $prompt);
-        $this->assertStringNotContainsString('Inbound Call', $prompt);
+        $this->assertStringContainsString("جهت تماس:\nتماس خروجی", $prompt);
+        $this->assertStringNotContainsString('تماس ورودی', $prompt);
     }
 
     public function test_context_prompt_uses_unknown_defaults_without_failing(): void
     {
         $prompt = $this->buildPrompt(new PromptContextData);
 
-        $this->assertStringContainsString("Organization:\nUnknown", $prompt);
-        $this->assertStringContainsString("Agent:\nUnknown", $prompt);
-        $this->assertStringContainsString("Agent Role:\nUnknown", $prompt);
-        $this->assertStringContainsString("Call Direction:\nUnknown", $prompt);
-        $this->assertStringContainsString('Analyze this conversation based on the provided context.', $prompt);
+        $this->assertStringContainsString("سازمان:\nنامشخص", $prompt);
+        $this->assertStringContainsString("کارشناس:\nنامشخص", $prompt);
+        $this->assertStringContainsString("نقش کارشناس:\nنامشخص", $prompt);
+        $this->assertStringContainsString("جهت تماس:\nنامشخص", $prompt);
+        $this->assertStringContainsString('به فایل صوتی پیوست‌شده گوش دهید و مکالمه را تحلیل کنید.', $prompt);
     }
 
     public function test_context_prompt_falls_back_to_position_for_agent_role(): void
@@ -77,7 +80,7 @@ PROMPT,
             position: 'سرپرست تماس',
         ));
 
-        $this->assertStringContainsString("Agent Role:\nسرپرست تماس", $prompt);
+        $this->assertStringContainsString("نقش کارشناس:\nسرپرست تماس", $prompt);
     }
 
     public function test_context_prompt_falls_back_to_position_when_agent_role_is_blank(): void
@@ -87,21 +90,35 @@ PROMPT,
             agentRole: '   ',
         ));
 
-        $this->assertStringContainsString("Agent Role:\nکارشناس پشتیبانی", $prompt);
+        $this->assertStringContainsString("نقش کارشناس:\nکارشناس پشتیبانی", $prompt);
     }
 
     public function test_context_prompt_includes_provided_transcript(): void
     {
         $prompt = $this->buildPrompt(new PromptContextData(
             callDirection: 'inbound',
-            transcript: "Agent: سلام، چطور می‌تونم کمکتون کنم؟\nCustomer: می‌خواستم وضعیت سفارشم را بپرسم.",
+            transcript: "کارشناس: سلام، چطور می‌تونم کمکتون کنم؟\nمشتری: می‌خواستم وضعیت سفارشم را بپرسم.",
         ));
 
         $this->assertStringContainsString(
-            "Conversation Transcript:\nAgent: سلام، چطور می‌تونم کمکتون کنم؟\nCustomer: می‌خواستم وضعیت سفارشم را بپرسم.",
+            "متن مکالمه:\nکارشناس: سلام، چطور می‌تونم کمکتون کنم؟\nمشتری: می‌خواستم وضعیت سفارشم را بپرسم.",
             $prompt,
         );
-        $this->assertStringNotContainsString('Attached audio recording (no separate transcript).', $prompt);
+        $this->assertStringNotContainsString('فایل صوتی پیوست شده است و متن جداگانه‌ای در دست نیست.', $prompt);
+    }
+
+    public function test_context_prompt_avoids_english_instruction_labels(): void
+    {
+        $prompt = $this->buildPrompt(new PromptContextData(
+            organizationName: 'میرکو',
+            callDirection: 'inbound',
+        ));
+
+        $this->assertStringNotContainsString('Organization:', $prompt);
+        $this->assertStringNotContainsString('Analyze this conversation', $prompt);
+        $this->assertStringNotContainsString('Attached audio recording', $prompt);
+        $this->assertStringNotContainsString('Unknown', $prompt);
+        $this->assertStringNotContainsString('Inbound Call', $prompt);
     }
 
     private function buildPrompt(?PromptContextData $context = null): string

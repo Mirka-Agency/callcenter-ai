@@ -13,19 +13,11 @@ class PromptBuilder
     {
         return <<<'PROMPT'
 قوانین تفسیر دامنه سازمان (الزامی در صورت وجود زمینه فعالیت):
-- When organization business context is provided in the user/context prompt, treat it as ground truth for domain, specialty, services, and vocabulary.
-- Use that context to interpret ambiguous, incomplete, or phonetically similar speech (e.g. do not invent unrelated specialties or services).
-- Prefer domain-consistent terms, product/service names, and medical or industry vocabulary from the org context over generic or out-of-domain guesses.
-- Do not substitute services or topics that contradict the organization context (for example, do not report cosmetic/skin-laser services for an endocrine clinic).
-- When building summary, intent, important_keywords, strengths, weaknesses, and customer_insights, stay aligned with the stated organization domain.
-- If business context is absent, analyze from audio and other metadata alone as usual.
-
-قوانین دامنه فعالیت سازمان:
-- اگر «زمینه فعالیت سازمان» در زمینه تماس آمده، آن را مرجع حوزه تخصص، خدمات و واژگان بدانید
-- گفتار مبهم یا شبیه از نظر آوایی را با توجه به همین زمینه تفسیر کنید؛ تخصص یا خدمات نامرتبط اختراع نکنید
-- واژه‌ها و خدمات هم‌راستا با دامنه سازمان را به حدس‌های عمومی یا خارج از حوزه ترجیح دهید
-- خدمات یا موضوعاتی که با زمینه سازمان تناقض دارند ثبت نکنید
-- در خلاصه، intent، important_keywords و بینش‌های مشتری با دامنه اعلام‌شده سازمان هم‌خوان باشید
+- اگر «زمینه فعالیت سازمان» در زمینه تماس آمده، آن را حقیقت پایه برای حوزه تخصص، خدمات و واژگان بدانید
+- گفتار مبهم، ناقص یا شبیه از نظر آوایی را با همین زمینه تفسیر کنید؛ تخصص یا خدمات نامرتبط اختراع نکنید
+- واژه‌ها، نام خدمات و اصطلاحات هم‌راستا با دامنه سازمان را به حدس‌های عمومی یا خارج از حوزه ترجیح دهید
+- خدمات یا موضوعاتی که با زمینه سازمان تناقض دارند ثبت نکنید؛ برای مثال برای کلینیک غدد، خدمات زیبایی یا لیزر پوست گزارش نکنید
+- در خلاصه، خواسته مشتری، کلیدواژه‌های مهم، نقاط قوت، نقاط ضعف و بینش مشتری با دامنه اعلام‌شده سازمان هم‌خوان باشید
 - اگر زمینه فعالیت خالی است، فقط بر اساس صوت و سایر فراداده‌ها تحلیل کنید
 PROMPT;
     }
@@ -34,9 +26,9 @@ PROMPT;
     {
         return <<<'PROMPT'
 قوانین ارزیابی نقاط ضعف:
-- کلمات فنی انگلیسی، نام محصولات، اصطلاحات صنعتی و اصطلاحات تخصصی (مانند file، CRM، API، login، upload) نقاط ضعف محسوب نمی‌شوند.
-- استفاده ترکیبی از فارسی و انگلیسی در گفتار حرفه‌ای جریمه نشود.
-- فقط موارد زیر را به‌عنوان نقطه ضعف ثبت کن:
+- کلمات فنی لاتین، نام محصولات، اصطلاحات صنعتی و اصطلاحات تخصصی نقطه ضعف محسوب نمی‌شوند
+- گفتار حرفه‌ای که واژه لاتین هم دارد جریمه نشود
+- فقط موارد زیر را به‌عنوان نقطه ضعف ثبت کنید:
   - گفتار نامفهوم یا مبهم
   - ارتباط نادرست یا ضعیف با مشتری
   - رعایت نکردن مراحل صحیح فرآیند تماس
@@ -48,21 +40,10 @@ PROMPT;
     public static function summaryPolicy(): string
     {
         return <<<'PROMPT'
-Generate a detailed business summary in Persian.
-
-The summary must explain:
-- why the customer contacted us
-- what was discussed
-- what concerns were raised
-- what decisions were made
-- what follow-up actions are required
-
-Prefer a comprehensive summary over a very short summary.
-
-قوانین تولید خلاصه (فیلد summary):
-- یک خلاصه کسب‌وکاری مفصل به فارسی بنویسید، نه فقط چند جمله کوتاه
-- معمولاً ۱ تا ۳ پاراگراف (حدود ۱۰۰ تا ۳۰۰ کلمه) باشد؛ تماس‌های طولانی‌تر خلاصه مفصل‌تری بگیرند
-- به‌صورت روایت طبیعی فارسی بنویسید، نه فقط بولت‌پوینت
+قوانین تولید خلاصه:
+- یک خلاصه کسب‌وکاری مفصل، فقط به فارسی بنویسید؛ نه انگلیسی، نه چند جمله کوتاه
+- معمولاً یک تا سه پاراگراف (حدود صد تا سیصد کلمه) باشد؛ تماس طولانی‌تر خلاصه مفصل‌تری بگیرد
+- به‌صورت روایت طبیعی فارسی بنویسید، نه فقط فهرست گلوله‌ای
 - این موارد را پوشش دهید:
   - دلیل اصلی تماس
   - درخواست یا پرسش مشتری
@@ -72,38 +53,36 @@ Prefer a comprehensive summary over a very short summary.
   - نتیجه کلی مکالمه
   - اقدامات بعدی توافق‌شده
   - نیازهای پیگیری
-- رونوشت را تکرار نکنید؛ اطلاعات را فشرده و برای تصمیم‌گیری مدیران، سرپرستان، فروش و CRM مفید کنید
+- متن مکالمه را تکرار نکنید؛ اطلاعات را فشرده و برای تصمیم‌گیری مدیران، سرپرستان، فروش و سامانه مشتریان مفید کنید
 - از بازگوی جمله‌به‌جمله، جزئیات بی‌اهمیت و محتوای پرکننده خودداری کنید
-- خواننده باید بدون خواندن رونوشت کامل، مکالمه را درک کند
+- خواننده باید بدون خواندن متن کامل مکالمه، جریان تماس را درک کند
 PROMPT;
     }
 
     public static function customerIdentityPolicy(): string
     {
         return <<<'PROMPT'
-You are provided with the current CRM user name and current CRM company name.
-These belong to the sales agent or organization using the CRM.
-Do NOT identify these values as customer information unless the conversation explicitly proves otherwise.
-Extract only the customer's identity and company information.
-
 قوانین استخراج هویت مشتری:
-- نام کامل مشتری، نام شرکت، سازمان، برند یا کسب‌وکار را از گفتار مشتری استخراج کنید
-- فیلد customer_identity (شیء) را برگردانید:
+- نام کارشناس فعلی و نام سازمان فعلی متعلق به فروشنده یا سازمان استفاده‌کننده از سامانه است
+- این مقدارها را هویت مشتری ندانید مگر اینکه مکالمه صریحاً خلاف آن را ثابت کند
+- فقط هویت و اطلاعات شرکت خودِ مشتری را استخراج کنید
+- نام کامل مشتری، نام شرکت، سازمان، برند یا کسب‌وکار را از گفتار مشتری بگیرید
+- فیلد customer_identity را به‌صورت شیء برگردانید:
   - person_name (رشته فارسی — نام مشتری؛ خالی اگر شناسایی نشد)
-  - company_name (رشته فارسی — نام شرکت/سازمان/برند مشتری؛ خالی اگر شناسایی نشد)
-  - email (رشته — فقط اگر صریحاً در مکالمه ذکر شد؛ در غیر این صورت خالی)
+  - company_name (رشته فارسی — نام شرکت یا برند مشتری؛ خالی اگر شناسایی نشد)
+  - email (رشته — فقط اگر صریحاً در مکالمه ذکر شد؛ وگرنه خالی)
   - job_title (رشته فارسی — سمت شغلی مشتری؛ خالی اگر ذکر نشد)
-  - phone_number (رشته — فقط اگر مشتری شماره خود را گفت؛ خالی در غیر این صورت)
-  - confidence (عدد اعشاری ۰ تا ۱ — میزان اطمینان استخراج)
+  - phone_number (رشته — فقط اگر مشتری شماره خود را گفت؛ وگرنه خالی)
+  - confidence (عدد اعشاری صفر تا یک — میزان اطمینان استخراج)
   - evidence (رشته فارسی — نقل‌قول یا جمله‌ای از مکالمه که استخراج را تأیید می‌کند)
-- اگر اطلاعاتی موجود نیست یا اطمینان پایین است، فیلد را خالی بگذارید — هرگز حدس نزنید
-- اگر تلفظ نامشخص، چند نام ذکر شده یا ارجاع مبهم به شرکت وجود دارد، confidence را پایین بگذارید
-- نام کارشناس فروش و شرکت CRM را هرگز به‌عنوان هویت مشتری ثبت نکنید مگر اینکه مکالمه صریحاً خلاف آن را ثابت کند
+- اگر اطلاعاتی موجود نیست یا اطمینان پایین است، فیلد را خالی بگذارید؛ هرگز حدس نزنید
+- اگر تلفظ نامشخص، چند نام ذکر شده یا ارجاع مبهم به شرکت وجود دارد، اطمینان را پایین بگذارید
+- نام کارشناس فروش و شرکت سامانه را هرگز به‌عنوان هویت مشتری ثبت نکنید مگر اینکه مکالمه صریحاً خلاف آن را ثابت کند
 
 قوانین ایزولاسیون چندمستاجری (الزامی):
-- هویت مشتری استخراج‌شده فقط برای سازمان/مستاجر فعلی این تماس معتبر است
+- هویت مشتری استخراج‌شده فقط برای سازمان فعلی این تماس معتبر است
 - هرگز فرض نکنید یک شماره تلفن در سازمان‌های دیگر همان مشتری است
-- کلید هویت مشتری = سازمان فعلی + شماره تلفن — نه شماره تلفن به‌تنهایی
+- کلید هویت مشتری برابر است با سازمان فعلی به‌علاوه شماره تلفن؛ نه شماره تلفن به‌تنهایی
 - داده‌های استخراج‌شده (نام، شرکت، ایمیل، سمت) فقط در محیط همین سازمان ذخیره و استفاده می‌شوند
 PROMPT;
     }
@@ -112,24 +91,24 @@ PROMPT;
     {
         return <<<'PROMPT'
 علاوه بر تحلیل تماس، باید:
-1. کیفیت لید مشتری را بر اساس سیگنال‌های تمایل به خرید ارزیابی کنید
+1. کیفیت لید مشتری را بر اساس نشانه‌های تمایل به خرید ارزیابی کنید
 2. دغدغه‌ها و اعتراضات مشتری را به‌صورت صریح استخراج کنید
-3. برای هر دو فیلد lead_quality و concerns خروجی JSON ساختاریافته تولید کنید
-4. سیگنال‌های ضمنی تمایل به خرید را نادیده نگیرید
+3. برای هر دو فیلد lead_quality و concerns خروجی ساخت‌یافته تولید کنید
+4. نشانه‌های ضمنی تمایل به خرید را نادیده نگیرید
 5. با نگاه فروش و تبدیل مشتری تحلیل کنید
 
-فیلدهای اجباری جدید:
+فیلدهای اجباری:
 - lead_quality (شیء):
-  - score (عدد ۰ تا ۱۰۰)
-  - level (رشته: low, medium, high)
+  - score (عدد صفر تا صد)
+  - level (فقط یکی از: low ، medium ، high)
   - reason (رشته فارسی — توضیح کیفیت لید)
   - buying_intent_signals (آرایه رشته‌های فارسی — نشانه‌های تمایل به خرید)
 - concerns (آرایه‌ای از اشیاء):
-  - type (رشته: price, trust, timing, technical, other)
+  - type (فقط یکی از: price ، trust ، timing ، technical ، other)
   - text (رشته فارسی — شرح دغدغه یا اعتراض)
-  - severity (رشته: low, medium, high)
+  - severity (فقط یکی از: low ، medium ، high)
 
-در ارزیابی lead_quality این موارد را در نظر بگیرید: احتمال خرید، سیگنال‌های فوریت، نشانه‌های بودجه، جدیت پرسش مشتری، احتمال تبدیل.
+در ارزیابی کیفیت لید این موارد را در نظر بگیرید: احتمال خرید، نشانه‌های فوریت، نشانه‌های بودجه، جدیت پرسش مشتری، احتمال تبدیل.
 PROMPT;
     }
 
@@ -137,25 +116,86 @@ PROMPT;
     {
         return <<<'PROMPT'
 ارزیابی‌پذیری مکالمه (الزامی):
-- اگر تماس پاسخ داده شده ولی مکالمه معناداری رخ نداده (سکوت، فقط بوق/موزیک، قطع فوری بدون صحبت کارشناس و مشتری)، evaluable را false بگذارید و score را ۰ بگذارید.
-- امتیاز ۰ یعنی «قابل ارزیابی نیست»، نه عملکرد ضعیف. مکالمه واقعی ضعیف را بین ۱ تا ۴۰ امتیاز دهید؛ هرگز برای عملکرد ضعیف صفر ندهید.
-- وقتی evaluable=false است، در summary صریحاً بنویسید مکالمه قابل ارزیابی نبود و lead_quality را لید واقعی در نظر نگیرید.
+- اگر تماس پاسخ داده شده ولی مکالمه معناداری رخ نداده (سکوت، فقط بوق یا موسیقی، قطع فوری بدون صحبت کارشناس و مشتری)، evaluable را نادرست بگذارید و score را صفر بگذارید
+- امتیاز صفر یعنی «قابل ارزیابی نیست»، نه عملکرد ضعیف. مکالمه واقعی ضعیف را بین یک تا چهل امتیاز دهید؛ هرگز برای عملکرد ضعیف صفر ندهید
+- وقتی مکالمه قابل ارزیابی نیست، در خلاصه صریحاً بنویسید مکالمه قابل ارزیابی نبود و کیفیت لید را لید واقعی در نظر نگیرید
 PROMPT;
     }
 
     public static function persianLanguagePolicy(): string
     {
         return <<<'PROMPT'
-تمام خروجی را فقط به زبان فارسی تولید کن.
-هیچ کلمه انگلیسی استفاده نکن.
-حتی نام بخش‌ها و لیبل‌ها هم فارسی باشند.
-تمام جملات، توضیحات، نقاط قوت، نقاط ضعف، اقدامات بعدی و خلاصه باید کاملاً فارسی باشند.
-مقادیر sentiment فقط یکی از این‌ها باشد: positive, neutral, negative, mixed
-مقادیر urgency_level فقط یکی از این‌ها باشد: low, medium, high, critical
-مقادیر risk_level فقط یکی از این‌ها باشد: low, medium, high
-مقادیر lead_quality.level فقط یکی از این‌ها باشد: low, medium, high
-مقادیر concerns.type فقط یکی از این‌ها باشد: price, trust, timing, technical, other
-مقادیر concerns.severity فقط یکی از این‌ها باشد: low, medium, high
+قانون زبان (الزامی و مقدم بر هر دستور دیگر):
+- مخاطب خروجی فارسی‌زبان است. تمام مقدارهای متنی را فقط به فارسی بنویسید
+- جمله، پاراگراف، توضیح، خلاصه، ارزیابی، نقاط قوت، نقاط ضعف، اقدامات بعدی، خواسته مشتری، دغدغه، دلیل کیفیت لید و نقل‌قول شاهد باید کاملاً فارسی باشند
+- هیچ جمله، عبارت یا توضیح انگلیسی ننویسید. حتی یک کلمه انگلیسی در مقدارهای متنی ممنوع است
+- اگر واژه لاتین در صوت شنیده شد، معادل فارسی یا همان تلفظ فارسی‌شده را بنویسید؛ جمله را به انگلیسی ادامه ندهید
+- نام کلیدهای خروجی را عوض نکنید؛ همان املای مشخص‌شده را نگه دارید. فقط مقدار متنی کلیدها فارسی باشد
+- تنها استثنای لاتین در مقدارها، کدهای بسته زیر است و باید دقیقاً با همین املا بیایند:
+  - احساس: positive یا neutral یا negative یا mixed
+  - فوریت: low یا medium یا high یا critical
+  - ریسک: low یا medium یا high
+  - سطح لید: low یا medium یا high
+  - نوع دغدغه: price یا trust یا timing یا technical یا other
+  - شدت دغدغه: low یا medium یا high
+- به‌جز این کدها و نام کلیدها، هیچ حرف لاتین در متن نیاید
+PROMPT;
+    }
+
+    public static function persianOutputSample(): string
+    {
+        return <<<'PROMPT'
+نمونه خروجی درست (ساختار و زبان را از همین الگو پیروی کنید؛ محتوا را از مکالمه فعلی بسازید):
+{
+  "score": 78,
+  "evaluable": true,
+  "summary": "مشتری برای استعلام هزینه تمدید اشتراک تماس گرفت. کارشناس خدمات را توضیح داد، نگرانی قیمت را شنید و پیشنهاد تخفیف تمدید سالانه را مطرح کرد. در پایان قرار شد پیش‌فاکتور امروز ارسال شود و فردا برای تصمیم نهایی پیگیری شود.",
+  "sentiment": "neutral",
+  "overall_evaluation": "کارشناس مؤدب و مسلط بود، اما دعوت به تصمیم خرید را کمی دیر شروع کرد.",
+  "strengths": ["لحن آرام و محترمانه", "توضیح شفاف خدمات"],
+  "weaknesses": ["دعوت مستقیم به تصمیم خرید کمی دیر انجام شد"],
+  "next_actions": ["ارسال پیش‌فاکتور در همین روز", "تماس پیگیری در روز بعد"],
+  "performance_dimensions": {
+    "communication_skills": 86,
+    "product_knowledge": 82,
+    "objection_handling": 74,
+    "closing_ability": 68,
+    "professionalism": 88
+  },
+  "customer_insights": {
+    "sentiment": "neutral",
+    "intent": "استعلام هزینه و شرایط تمدید اشتراک",
+    "purchase_probability": 62,
+    "urgency_level": "medium",
+    "risk_level": "low"
+  },
+  "operational_insights": {
+    "missed_opportunities": ["پیشنهاد زمان مشخص برای نهایی کردن خرید"],
+    "escalation_risks": [],
+    "compliance_issues": [],
+    "important_keywords": ["تمدید اشتراک", "تخفیف", "پیش‌فاکتور"],
+    "follow_up_suggestions": ["ارسال پیش‌فاکتور و پیگیری فردا"]
+  },
+  "lead_quality": {
+    "score": 70,
+    "level": "medium",
+    "reason": "مشتری هزینه و شرایط را جدی می‌پرسد و با ارسال پیش‌فاکتور موافقت کرده است.",
+    "buying_intent_signals": ["پرسش درباره قیمت", "درخواست پیش‌فاکتور"]
+  },
+  "concerns": [
+    {
+      "type": "price",
+      "text": "نگرانی از هزینه تمدید",
+      "severity": "medium"
+    }
+  ],
+  "customer_identity": {
+    "person_name": "",
+    "company_name": "",
+    "confidence": 0,
+    "evidence": ""
+  }
+}
 PROMPT;
     }
 
@@ -163,63 +203,42 @@ PROMPT;
     {
         return <<<'PROMPT'
 هشدار: خروجی قبلی شامل متن انگلیسی بود.
-دوباره تحلیل کن و این بار فقط فارسی بنویس.
-هیچ کلمه، عبارت یا جمله انگلیسی در هیچ فیلدی نباشد.
+دوباره تحلیل کنید و این بار فقط فارسی بنویسید.
+هیچ کلمه، عبارت یا جمله انگلیسی در هیچ فیلد متنی نباشد.
+نام کلیدها را عوض نکنید. مقدارهای متنی را کامل به فارسی برگردانید.
 PROMPT;
     }
 
-    public function systemPrompt(?string $version = null): string
+    public function defaultSystemPrompt(): string
     {
-        $base = null;
+        return <<<'PROMPT'
+شما تحلیل‌گر حرفه‌ای کیفیت تماس در مرکز تماس هستید. به مکالمه صوتی پیوست‌شده گوش دهید و فقط یک خروجی ساخت‌یافته با کلیدهای دقیق زیر برگردانید. همه مقدارهای متنی باید فارسی باشند.
 
-        if ($version) {
-            $prompt = LlmPromptVersion::query()
-                ->where('version', $version)
-                ->where('is_active', true)
-                ->first();
-
-            if ($prompt) {
-                $base = $prompt->system_prompt;
-            }
-        }
-
-        if ($base === null) {
-            $default = LlmPromptVersion::query()->where('is_active', true)->first();
-
-            if ($default) {
-                $base = $default->system_prompt;
-            }
-        }
-
-        if ($base === null) {
-            $base = <<<'PROMPT'
-شما یک تحلیل‌گر حرفه‌ای کیفیت تماس در مرکز تماس هستید. به مکالمه صوتی پیوست‌شده گوش دهید و یک شی JSON با کلیدهای دقیق زیر برگردانید:
-
-- score (عدد صحیح ۰ تا ۱۰۰، امتیاز کلی عملکرد کارشناس)
-- evaluable (بولی: اگر مکالمه واقعی و قابل ارزیابی است true؛ اگر تماس گرفته شد ولی صحبت معناداری نشد false)
-- summary (رشته — خلاصه کسب‌وکاری مفصل فارسی؛ معمولاً ۱ تا ۳ پاراگراف و حدود ۱۰۰ تا ۳۰۰ کلمه شامل دلیل تماس، موضوعات، دغدغه‌ها، پاسخ‌های کلیدی، نتیجه و اقدامات بعدی)
-- sentiment (رشته: positive, neutral, negative, mixed)
-- overall_evaluation (رشته، ارزیابی کوتاه فارسی از عملکرد)
+- score (عدد صحیح صفر تا صد، امتیاز کلی عملکرد کارشناس)
+- evaluable (درست اگر مکالمه واقعی و قابل ارزیابی است؛ نادرست اگر تماس گرفته شد ولی صحبت معناداری نشد)
+- summary (رشته فارسی — خلاصه کسب‌وکاری مفصل؛ معمولاً یک تا سه پاراگراف و حدود صد تا سیصد کلمه شامل دلیل تماس، موضوعات، دغدغه‌ها، پاسخ‌های کلیدی، نتیجه و اقدامات بعدی)
+- sentiment (فقط یکی از: positive ، neutral ، negative ، mixed)
+- overall_evaluation (رشته فارسی، ارزیابی کوتاه از عملکرد)
 - strengths (آرایه‌ای از رشته‌های فارسی — نقاط قوت)
-- weaknesses (آرایه‌ای از رشته‌های فارسی — فقط نقاط ضعف رفتاری و ارتباطی واقعی؛ هرگز کلمات فنی انگلیسی یا اصطلاحات تخصصی را به‌عنوان نقطه ضعف ذکر نکن)
+- weaknesses (آرایه‌ای از رشته‌های فارسی — فقط نقاط ضعف رفتاری و ارتباطی واقعی؛ هرگز واژه فنی لاتین یا اصطلاح تخصصی را نقطه ضعف ندانید)
 - next_actions (آرایه‌ای از رشته‌های فارسی — اقدامات پیشنهادی برای بهبود)
 - input_tokens (عدد صحیح)
 - output_tokens (عدد صحیح)
 - total_tokens (عدد صحیح)
 - cost (عدد)
 - model (رشته)
-- performance_dimensions (شیء با امتیاز ۰ تا ۱۰۰ برای هر کلید):
+- performance_dimensions (شیء با امتیاز صفر تا صد برای هر کلید):
   - communication_skills
   - product_knowledge
   - objection_handling
   - closing_ability
   - professionalism
 - customer_insights (شیء):
-  - sentiment (رشته: positive, neutral, negative, mixed)
+  - sentiment (فقط یکی از: positive ، neutral ، negative ، mixed)
   - intent (رشته فارسی — خواسته مشتری)
-  - purchase_probability (عدد ۰ تا ۱۰۰)
-  - urgency_level (رشته: low, medium, high, critical)
-  - risk_level (رشته: low, medium, high)
+  - purchase_probability (عدد صفر تا صد)
+  - urgency_level (فقط یکی از: low ، medium ، high ، critical)
+  - risk_level (فقط یکی از: low ، medium ، high)
 - operational_insights (شیء):
   - missed_opportunities (آرایه رشته‌های فارسی)
   - escalation_risks (آرایه رشته‌های فارسی)
@@ -227,25 +246,39 @@ PROMPT;
   - important_keywords (آرایه رشته‌های فارسی)
   - follow_up_suggestions (آرایه رشته‌های فارسی)
 - lead_quality (شیء):
-  - score (عدد ۰ تا ۱۰۰)
-  - level (رشته: low, medium, high)
+  - score (عدد صفر تا صد)
+  - level (فقط یکی از: low ، medium ، high)
   - reason (رشته فارسی)
   - buying_intent_signals (آرایه رشته‌های فارسی)
 - concerns (آرایه اشیاء):
-  - type (رشته: price, trust, timing, technical, other)
+  - type (فقط یکی از: price ، trust ، timing ، technical ، other)
   - text (رشته فارسی)
-  - severity (رشته: low, medium, high)
+  - severity (فقط یکی از: low ، medium ، high)
 - customer_identity (شیء):
   - person_name (رشته فارسی — نام مشتری)
-  - company_name (رشته فارسی — نام شرکت/سازمان/برند مشتری)
-  - confidence (عدد اعشاری ۰ تا ۱)
+  - company_name (رشته فارسی — نام شرکت یا برند مشتری)
+  - confidence (عدد اعشاری صفر تا یک)
   - evidence (رشته فارسی — جمله استخراج‌شده از مکالمه)
 
 منصفانه، سازنده و دقیق باشید. روی مهارت ارتباطی، حل مسئله، همدلی، انطباق و فرصت‌های فروش تمرکز کنید.
 PROMPT;
-        }
+    }
 
-        return trim($base)."\n\n".self::persianLanguagePolicy()."\n\n".self::summaryPolicy()."\n\n".self::organizationDomainPolicy()."\n\n".self::weaknessEvaluationPolicy()."\n\n".self::leadAnalysisPolicy()."\n\n".self::customerIdentityPolicy()."\n\n".self::evaluableConversationPolicy();
+    public function systemPrompt(?string $version = null): string
+    {
+        $base = $this->resolveBasePrompt($version);
+
+        return implode("\n\n", [
+            self::persianLanguagePolicy(),
+            trim($base),
+            self::persianOutputSample(),
+            self::summaryPolicy(),
+            self::organizationDomainPolicy(),
+            self::weaknessEvaluationPolicy(),
+            self::leadAnalysisPolicy(),
+            self::customerIdentityPolicy(),
+            self::evaluableConversationPolicy(),
+        ]);
     }
 
     public function contextPrompt(AudioAnalysisRequestData $request): string
@@ -253,25 +286,41 @@ PROMPT;
         $context = $request->context;
 
         $sections = [
-            $this->labeledBlock('Organization', $this->contextValue($context?->organizationName)),
-            $this->labeledBlock('Agent', $this->contextValue($context?->employeeName)),
-            $this->labeledBlock('Agent Role', $this->firstContextValue($context?->agentRole, $context?->position)),
-            $this->labeledBlock('Call Direction', $this->formatCallDirection($context?->callDirection)),
+            $this->labeledBlock('سازمان', $this->contextValue($context?->organizationName)),
+            $this->labeledBlock('کارشناس', $this->contextValue($context?->employeeName)),
+            $this->labeledBlock('نقش کارشناس', $this->firstContextValue($context?->agentRole, $context?->position)),
+            $this->labeledBlock('جهت تماس', $this->formatCallDirection($context?->callDirection)),
         ];
 
         $additional = $this->additionalContextLines($context);
         if ($additional !== []) {
-            $sections[] = "Additional Context:\n".implode("\n", $additional);
+            $sections[] = "زمینه تکمیلی:\n".implode("\n", $additional);
         }
 
-        $transcript = $this->contextValue($context?->transcript, 'Attached audio recording (no separate transcript).');
-        $sections[] = $this->labeledBlock('Conversation Transcript', $transcript);
+        $transcript = $this->contextValue($context?->transcript, 'فایل صوتی پیوست شده است و متن جداگانه‌ای در دست نیست.');
+        $sections[] = $this->labeledBlock('متن مکالمه', $transcript);
         $sections[] = $this->labeledBlock(
-            'Task',
-            "Analyze this conversation based on the provided context.\nمکالمه صوتی پیوست‌شده را تحلیل کن. خلاصه (summary) باید مفصل و کسب‌وکاری باشد. JSON خواسته‌شده را فقط به فارسی برگردان.",
+            'وظیفه',
+            "به فایل صوتی پیوست‌شده گوش دهید و مکالمه را تحلیل کنید.\nخلاصه باید مفصل، کسب‌وکاری و کاملاً فارسی باشد.\nفقط خروجی ساخت‌یافته با کلیدهای خواسته‌شده را برگردانید؛ همه مقدارهای متنی فارسی باشند.",
         );
 
         return implode("\n\n", $sections);
+    }
+
+    private function resolveBasePrompt(?string $version): string
+    {
+        if (is_string($version) && $version !== '' && $version !== 'v1') {
+            $prompt = LlmPromptVersion::query()
+                ->where('version', $version)
+                ->where('is_active', true)
+                ->first();
+
+            if ($prompt) {
+                return $prompt->system_prompt;
+            }
+        }
+
+        return $this->defaultSystemPrompt();
     }
 
     private function labeledBlock(string $label, string $value): string
@@ -279,7 +328,7 @@ PROMPT;
         return "{$label}:\n{$value}";
     }
 
-    private function contextValue(?string $value, string $default = 'Unknown'): string
+    private function contextValue(?string $value, string $default = 'نامشخص'): string
     {
         $trimmed = trim((string) $value);
 
@@ -295,7 +344,7 @@ PROMPT;
             }
         }
 
-        return 'Unknown';
+        return 'نامشخص';
     }
 
     private function formatCallDirection(?string $direction): string
@@ -347,13 +396,19 @@ PROMPT;
             $meta[] = "یادداشت‌ها: {$context->notes}";
         }
 
-        $crmContext = array_filter([
-            'current_user_name' => $context?->employeeName,
-            'current_company_name' => $context?->organizationName,
-        ], fn (mixed $value) => is_string($value) && trim($value) !== '');
+        $crmLines = [];
+        $employeeName = trim((string) $context?->employeeName);
+        $organizationName = trim((string) $context?->organizationName);
 
-        if ($crmContext !== []) {
-            $meta[] = 'زمینه CRM: '.json_encode($crmContext, JSON_UNESCAPED_UNICODE);
+        if ($employeeName !== '') {
+            $crmLines[] = "نام کارشناس فعلی سامانه: {$employeeName}";
+        }
+        if ($organizationName !== '') {
+            $crmLines[] = "نام سازمان فعلی سامانه: {$organizationName}";
+        }
+
+        if ($crmLines !== []) {
+            $meta[] = "زمینه سامانه (این مقدارها هویت مشتری نیستند):\n".implode("\n", $crmLines);
         }
 
         return $meta;

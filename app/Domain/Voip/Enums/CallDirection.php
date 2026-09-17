@@ -18,8 +18,8 @@ enum CallDirection: string
     public function analysisPromptLabel(): string
     {
         return match ($this) {
-            self::Inbound => 'Inbound Call (تماس ورودی)',
-            self::Outbound => 'Outbound Call (تماس خروجی)',
+            self::Inbound => 'تماس ورودی',
+            self::Outbound => 'تماس خروجی',
         };
     }
 }

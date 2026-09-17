@@ -8,6 +8,8 @@ use App\Enums\UserRole;
 use App\Livewire\Employer\Dashboard\Overview;
 use App\Livewire\Employer\Intelligence\Performance;
 use App\Livewire\Employer\Intelligence\PerformanceShow;
+use App\Models\Call;
+use App\Models\ConversationAnalysis;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\User;

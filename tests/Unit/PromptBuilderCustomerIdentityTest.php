@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 class PromptBuilderCustomerIdentityTest extends TestCase
 {
-    public function test_context_prompt_includes_crm_context_json(): void
+    public function test_context_prompt_includes_crm_context_in_persian(): void
     {
         $builder = new PromptBuilder;
         $request = new AudioAnalysisRequestData(
@@ -22,9 +22,11 @@ class PromptBuilderCustomerIdentityTest extends TestCase
 
         $prompt = $builder->contextPrompt($request);
 
-        $this->assertStringContainsString('زمینه CRM:', $prompt);
-        $this->assertStringContainsString('"current_user_name":"علی رضایی"', $prompt);
-        $this->assertStringContainsString('"current_company_name":"میرکو"', $prompt);
+        $this->assertStringContainsString('زمینه سامانه (این مقدارها هویت مشتری نیستند):', $prompt);
+        $this->assertStringContainsString('نام کارشناس فعلی سامانه: علی رضایی', $prompt);
+        $this->assertStringContainsString('نام سازمان فعلی سامانه: میرکو', $prompt);
+        $this->assertStringNotContainsString('current_user_name', $prompt);
+        $this->assertStringNotContainsString('زمینه CRM:', $prompt);
     }
 
     public function test_customer_identity_policy_includes_crm_exclusion_rules(): void
@@ -32,7 +34,9 @@ class PromptBuilderCustomerIdentityTest extends TestCase
         $policy = PromptBuilder::customerIdentityPolicy();
 
         $this->assertStringContainsString('customer_identity', $policy);
-        $this->assertStringContainsString('Do NOT identify these values as customer information', $policy);
-        $this->assertStringContainsString('current CRM user name', $policy);
+        $this->assertStringContainsString('این مقدارها را هویت مشتری ندانید', $policy);
+        $this->assertStringContainsString('نام کارشناس فعلی', $policy);
+        $this->assertStringNotContainsString('Do NOT identify these values as customer information', $policy);
+        $this->assertStringNotContainsString('You are provided with the current CRM user name', $policy);
     }
 }

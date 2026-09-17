@@ -14,6 +14,7 @@ use App\Domain\Voip\Enums\VoipOperation;
 use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Domain\Voip\Enums\VoipWebhookEventType;
 use App\Domain\Voip\Events\CallEnded;
+use App\Domain\Voip\Events\RecordingCreated;
 use App\Enums\UserRole;
 use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
 use App\Models\Call;
@@ -129,6 +130,70 @@ class StartCallIntelligenceAnalysisTest extends TestCase
             UpdateEmployeeMetricsJob::class,
             SyncCrmJob::class,
         ]);
+    }
+
+    public function test_recording_created_does_not_queue_a_second_analysis_for_the_same_call(): void
+    {
+        Bus::fake();
+        PlatformAiSettings::current()->update(['allow_negative_balance' => true]);
+
+        [$organization, $connection, $employee] = $this->setupOrganization(withEmployee: true);
+
+        EmployeeIntegrationMeta::query()->create([
+            'organization_user_id' => $employee->id,
+            'integratable_type' => OrganizationVoipConnection::class,
+            'integratable_id' => $connection->id,
+            'key' => 'extension',
+            'value' => '101',
+        ]);
+
+        VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'assigned-2',
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '101',
+            'status' => 'completed',
+            'started_at' => now(),
+            'recording_url' => 'https://example.test/assigned-2.wav',
+            'raw_payload' => ['resolved_extension' => '101'],
+        ]);
+
+        $ended = new NormalizedWebhookEvent(
+            type: VoipWebhookEventType::CallEnded,
+            callId: 'assigned-2',
+            direction: CallDirection::Inbound,
+            sourceNumber: '09120000000',
+            destinationNumber: '101',
+            status: CallStatus::Completed,
+            recordingUrl: 'https://example.test/assigned-2.wav',
+            extension: '101',
+        );
+
+        $listener = app(StartCallIntelligenceAnalysis::class);
+        $listener->handleVoipEvent(new CallEnded(
+            organizationId: $organization->id,
+            connectionId: $connection->id,
+            event: $ended,
+        ));
+        $listener->handleVoipEvent(new RecordingCreated(
+            organizationId: $organization->id,
+            connectionId: $connection->id,
+            event: new NormalizedWebhookEvent(
+                type: VoipWebhookEventType::RecordingCreated,
+                callId: 'assigned-2',
+                direction: CallDirection::Inbound,
+                sourceNumber: '09120000000',
+                destinationNumber: '101',
+                status: CallStatus::Completed,
+                recordingUrl: 'https://example.test/assigned-2.wav',
+                extension: '101',
+            ),
+        ));
+
+        Bus::assertDispatched(AnalyzeAudioJob::class, 1);
     }
 
     /**

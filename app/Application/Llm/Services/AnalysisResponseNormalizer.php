@@ -12,7 +12,7 @@ class AnalysisResponseNormalizer
         }
 
         $score = max(0, min(100, (int) ($leadQuality['score'] ?? 0)));
-        $level = strtolower((string) ($leadQuality['level'] ?? $this->levelFromScore($score)));
+        $level = $this->normalizeLevel($leadQuality['level'] ?? null);
         $level = in_array($level, ['low', 'medium', 'high'], true) ? $level : $this->levelFromScore($score);
 
         $signals = array_values(array_filter(
@@ -47,10 +47,8 @@ class AnalysisResponseNormalizer
                 continue;
             }
 
-            $type = strtolower((string) ($concern['type'] ?? 'other'));
-            $type = in_array($type, ['price', 'trust', 'timing', 'technical', 'other'], true) ? $type : 'other';
-
-            $severity = strtolower((string) ($concern['severity'] ?? 'medium'));
+            $type = $this->normalizeConcernType($concern['type'] ?? null);
+            $severity = $this->normalizeLevel($concern['severity'] ?? null);
             $severity = in_array($severity, ['low', 'medium', 'high'], true) ? $severity : 'medium';
 
             $normalized[] = [
@@ -179,6 +177,32 @@ class AnalysisResponseNormalizer
             $score >= 70 => 'high',
             $score >= 40 => 'medium',
             default => 'low',
+        };
+    }
+
+    private function normalizeLevel(mixed $value): ?string
+    {
+        $normalized = mb_strtolower(trim((string) $value));
+
+        return match ($normalized) {
+            'low', 'کم', 'پایین' => 'low',
+            'medium', 'متوسط' => 'medium',
+            'high', 'بالا', 'زیاد' => 'high',
+            'critical', 'بحرانی' => 'critical',
+            default => null,
+        };
+    }
+
+    private function normalizeConcernType(mixed $value): string
+    {
+        $normalized = mb_strtolower(trim((string) $value));
+
+        return match ($normalized) {
+            'price', 'قیمت' => 'price',
+            'trust', 'اعتماد' => 'trust',
+            'timing', 'زمان', 'زمان‌بندی', 'زمانبندی' => 'timing',
+            'technical', 'فنی' => 'technical',
+            default => 'other',
         };
     }
 }

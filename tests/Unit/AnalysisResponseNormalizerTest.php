@@ -104,6 +104,27 @@ class AnalysisResponseNormalizerTest extends TestCase
         $this->assertSame(0, $result['lead_quality']['score']);
     }
 
+    public function test_accepts_persian_aliases_for_levels_and_concern_types(): void
+    {
+        $result = $this->normalizer->apply([
+            'lead_quality' => [
+                'score' => 55,
+                'level' => 'متوسط',
+                'reason' => 'مشتری در حال مقایسه قیمت است',
+            ],
+            'concerns' => [
+                ['type' => 'قیمت', 'text' => 'گران است', 'severity' => 'بالا'],
+                ['type' => 'اعتماد', 'text' => 'نگران کیفیت است', 'severity' => 'کم'],
+            ],
+        ]);
+
+        $this->assertSame('medium', $result['lead_quality']['level']);
+        $this->assertSame('price', $result['concerns'][0]['type']);
+        $this->assertSame('high', $result['concerns'][0]['severity']);
+        $this->assertSame('trust', $result['concerns'][1]['type']);
+        $this->assertSame('low', $result['concerns'][1]['severity']);
+    }
+
     public function test_explicit_evaluable_false_forces_zero_score(): void
     {
         $result = $this->normalizer->apply([
