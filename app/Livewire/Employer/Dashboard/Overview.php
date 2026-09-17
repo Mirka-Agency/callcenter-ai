@@ -53,9 +53,11 @@ class Overview extends Component
             'sentimentCustomers' => $analytics->sentimentCustomers(),
             'forgottenFollowUps' => $analytics->forgottenFollowUps(),
             'qualityTrend' => $performanceDashboard['quality_trend'],
+            'qualityTrendInsights' => $performanceDashboard['quality_trend_insights'] ?? [],
             'qualityTrendInsight' => $selectedQualityPeriod
-                ? $performance->qualityTrendPointInsight($performanceFilter, $selectedQualityPeriod)
+                ? ($performanceDashboard['quality_trend_insights'][$selectedQualityPeriod] ?? null)
                 : null,
+            'agentProfileBase' => preg_replace('#/\d+$#', '', route('employer.intelligence.performance.show', 1)),
             'dailyTrend' => $analytics->dailyTrend(),
             'activityFeed' => $analytics->activityFeed(6),
         ]);
