@@ -42,6 +42,7 @@ class TradingOpportunitiesDashboardTest extends TestCase
             'customer_name' => 'لید متوسط',
             'lead_level' => 'medium',
             'lead_score' => 55,
+            'sentiment' => AnalysisSentiment::Neutral,
             'analyzed_at' => now()->subDay(),
         ]);
 
@@ -186,7 +187,7 @@ class TradingOpportunitiesDashboardTest extends TestCase
             'score' => 80,
             'is_evaluable' => true,
             'summary' => 'خلاصه '.$data['customer_name'],
-            'sentiment' => AnalysisSentiment::Positive,
+            'sentiment' => $data['sentiment'] ?? AnalysisSentiment::Positive,
             'strengths_json' => [],
             'weaknesses_json' => array_filter([$data['weakness'] ?? null]),
             'next_actions_json' => $data['next_actions'] ?? ['تماس پیگیری فردا'],

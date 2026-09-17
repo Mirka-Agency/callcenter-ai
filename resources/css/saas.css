@@ -332,6 +332,8 @@
     .saas-opportunity-col-product { width: 18%; }
     .saas-opportunity-col-lead { width: 9%; }
     .saas-opportunity-col-prob { width: 9%; }
+    .saas-opportunity-col-forgotten { width: 26%; }
+    .saas-opportunity-col-due { width: 14%; }
 
     .saas-opportunity-table th,
     .saas-opportunity-table td {
@@ -367,6 +369,34 @@
     .saas-opportunity-table th:nth-child(8),
     .saas-opportunity-table td:nth-child(8) {
         text-align: center;
+    }
+
+    .saas-forgotten-table th:nth-child(3),
+    .saas-forgotten-table td:nth-child(3),
+    .saas-forgotten-table th:nth-child(6),
+    .saas-forgotten-table td:nth-child(6) {
+        text-align: center;
+    }
+
+    .saas-sentiment-list {
+        max-height: calc(6 * 5.4rem);
+        overflow-y: auto;
+        scrollbar-gutter: stable;
+        padding: 0 1rem 1.25rem;
+    }
+
+    @media (min-width: 640px) {
+        .saas-sentiment-list {
+            padding-inline: 1.5rem;
+        }
+    }
+
+    .saas-sentiment-item {
+        @apply mb-2 flex rounded-lg border border-zinc-200/80 bg-white p-3.5 transition last:mb-0 hover:border-emerald-300 hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-emerald-800;
+    }
+
+    .saas-sentiment-item--warning {
+        @apply hover:border-red-300 dark:hover:border-red-800;
     }
 
     .saas-opportunity-row {

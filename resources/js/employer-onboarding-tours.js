@@ -21,9 +21,19 @@ export const employerPageTours = {
                 content: 'لیدهای باکیفیت اخیر را اینجا ببینید و برای بستن فروش پیگیری کنید.',
             },
             {
+                selector: '[data-tour="dashboard-sentiment-customers"]',
+                title: 'مشتریان راضی و ناراضی',
+                content: 'مکالمه‌های مثبت و منفی اخیر را در دو باکس جدا ببینید و برای جزئیات روی هر مشتری کلیک کنید.',
+            },
+            {
                 selector: '[data-tour="dashboard-agents"]',
                 title: 'عملکرد کارشناسان',
                 content: 'کارت هر کارشناس را ببینید، فیلتر برترین‌ها یا نیازمند توجه را بزنید و برای جزئیات روی کارت کلیک کنید.',
+            },
+            {
+                selector: '[data-tour="dashboard-forgotten-followups"]',
+                title: 'پیگیری‌های فراموش‌شده',
+                content: 'پیگیری‌هایی که هوش مصنوعی تعیین کرده، موعدشان گذشته و کارشناس هنوز انجام نداده است.',
             },
             {
                 selector: '[data-tour="dashboard-quality"]',

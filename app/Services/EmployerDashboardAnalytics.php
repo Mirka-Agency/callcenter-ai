@@ -2,10 +2,16 @@
 
 namespace App\Services;
 
+use App\Domain\Llm\Enums\AnalysisSentiment;
+use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationActivity;
 use App\Services\Reports\OrganizationCallMetrics;
+use App\Support\FollowUpDueDateParser;
 use App\Support\JalaliDate;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
+use DateTimeInterface;
 use Illuminate\Support\Collection;
 
 class EmployerDashboardAnalytics
@@ -156,6 +162,495 @@ class EmployerDashboardAnalytics
             ->map(fn (ConversationAnalysis $analysis) => $this->mapTradingOpportunity($analysis))
             ->values()
             ->all();
+    }
+
+    /**
+     * Recent customers from satisfied (positive) and dissatisfied (negative) conversations.
+     *
+     * @return array{
+     *     satisfied: list<array{
+     *         analysis_id: int,
+     *         customer: string,
+     *         phone: ?string,
+     *         company: ?string,
+     *         date: string,
+     *         employee: string,
+     *         summary: ?string,
+     *         highlight: ?string
+     *     }>,
+     *     dissatisfied: list<array{
+     *         analysis_id: int,
+     *         customer: string,
+     *         phone: ?string,
+     *         company: ?string,
+     *         date: string,
+     *         employee: string,
+     *         summary: ?string,
+     *         highlight: ?string
+     *     }>
+     * }
+     */
+    public function sentimentCustomers(int $days = 30, int $limit = 10): array
+    {
+        $days = max(1, min(90, $days));
+        $limit = max(1, min(50, $limit));
+
+        return [
+            'satisfied' => $this->sentimentCustomerList(AnalysisSentiment::Positive, $days, $limit),
+            'dissatisfied' => $this->sentimentCustomerList(AnalysisSentiment::Negative, $days, $limit),
+        ];
+    }
+
+    /**
+     * AI-assigned follow-ups whose due date has passed and the agent never called back.
+     *
+     * @return list<array{
+     *     analysis_id: int,
+     *     customer: string,
+     *     phone: ?string,
+     *     company: ?string,
+     *     employee: string,
+     *     forgotten_action: string,
+     *     due_date: string,
+     *     days_overdue: int,
+     *     forgotten_actions: list<string>,
+     *     summary: ?string
+     * }>
+     */
+    public function forgottenFollowUps(int $days = 90): array
+    {
+        $days = max(1, min(180, $days));
+        $today = now()->startOfDay();
+
+        $analyses = ConversationAnalysis::query()
+            ->where('organization_id', $this->organizationId)
+            ->evaluable()
+            ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay())
+            ->with([
+                'employee:id,first_name,last_name,user_id',
+                'call:id,customer_id,customer_name,customer_phone,caller_number,started_at',
+                'call.customer:id,name,company_name,phone_number',
+            ])
+            ->latest('analyzed_at')
+            ->get([
+                'id',
+                'call_id',
+                'organization_user_id',
+                'summary',
+                'next_actions_json',
+                'customer_identity_json',
+                'operational_insights_json',
+                'analyzed_at',
+            ]);
+
+        $laterCalls = $this->laterCallsByCustomer($analyses);
+
+        return $analyses
+            ->map(fn (ConversationAnalysis $analysis) => $this->mapForgottenFollowUp($analysis, $today, $laterCalls))
+            ->filter()
+            ->sortByDesc('days_overdue')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, ConversationAnalysis>  $analyses
+     * @return Collection<int, Call>
+     */
+    private function laterCallsByCustomer(Collection $analyses): Collection
+    {
+        $customerIds = $analyses->pluck('call.customer_id')->filter()->unique()->values()->all();
+        $phones = $analyses
+            ->map(fn (ConversationAnalysis $analysis) => $this->contactPhone($analysis))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($customerIds === [] && $phones === []) {
+            return collect();
+        }
+
+        $earliest = $analyses
+            ->map(fn (ConversationAnalysis $analysis) => $analysis->call?->started_at ?? $analysis->analyzed_at)
+            ->filter()
+            ->min();
+
+        return Call::query()
+            ->where('organization_id', $this->organizationId)
+            ->where('direction', 'outbound')
+            ->when($earliest, fn ($query) => $query->where(function ($inner) use ($earliest) {
+                $inner->where('started_at', '>', $earliest)
+                    ->orWhere(function ($created) use ($earliest) {
+                        $created->whereNull('started_at')->where('created_at', '>', $earliest);
+                    });
+            }))
+            ->where(function ($query) use ($customerIds, $phones) {
+                if ($customerIds !== []) {
+                    $query->orWhereIn('customer_id', $customerIds);
+                }
+                if ($phones !== []) {
+                    $query->orWhereIn('customer_phone', $phones)
+                        ->orWhereIn('caller_number', $phones)
+                        ->orWhereIn('receiver_number', $phones);
+                }
+            })
+            ->get(['id', 'customer_id', 'customer_phone', 'caller_number', 'receiver_number', 'started_at', 'created_at']);
+    }
+
+    /**
+     * @param  Collection<int, Call>  $laterCalls
+     * @return array{
+     *     analysis_id: int,
+     *     customer: string,
+     *     phone: ?string,
+     *     company: ?string,
+     *     employee: string,
+     *     forgotten_action: string,
+     *     due_date: string,
+     *     days_overdue: int,
+     *     forgotten_actions: list<string>,
+     *     summary: ?string
+     * }|null
+     */
+    private function mapForgottenFollowUp(ConversationAnalysis $analysis, CarbonInterface $today, Collection $laterCalls): ?array
+    {
+        $actions = $this->overdueFollowUpActions($analysis, $today);
+
+        if ($actions === [] || $this->wasFollowedUp($analysis, $laterCalls)) {
+            return null;
+        }
+
+        $primary = $actions[0];
+        $contact = $this->contactSnapshot($analysis);
+
+        return [
+            'analysis_id' => $analysis->id,
+            'customer' => $contact['customer'],
+            'phone' => $contact['phone'],
+            'company' => $contact['company'],
+            'employee' => $analysis->employee?->full_name ?? '—',
+            'forgotten_action' => $primary['text'],
+            'due_date' => JalaliDate::date($primary['due_at']),
+            'days_overdue' => $primary['days_overdue'],
+            'forgotten_actions' => array_values(array_unique(array_column($actions, 'text'))),
+            'summary' => $this->nullableText($analysis->summary),
+        ];
+    }
+
+    /**
+     * @return list<array{text: string, due_at: CarbonInterface, days_overdue: int}>
+     */
+    private function overdueFollowUpActions(ConversationAnalysis $analysis, CarbonInterface $today): array
+    {
+        $from = $analysis->analyzed_at ?? now();
+        $overdue = [];
+
+        foreach ($this->aiFollowUpActions($analysis) as $action) {
+            $dueAt = $this->actionDueDate($action['raw'], $action['text'], $from)->startOfDay();
+
+            if ($dueAt->gte($today)) {
+                continue;
+            }
+
+            $overdue[] = [
+                'text' => $action['text'],
+                'due_at' => $dueAt,
+                'days_overdue' => (int) $dueAt->diffInDays($today),
+            ];
+        }
+
+        usort($overdue, fn (array $left, array $right) => $right['days_overdue'] <=> $left['days_overdue']);
+
+        return $overdue;
+    }
+
+    /**
+     * @return list<array{raw: mixed, text: string}>
+     */
+    private function aiFollowUpActions(ConversationAnalysis $analysis): array
+    {
+        $suggestions = is_array($analysis->operational_insights_json['follow_up_suggestions'] ?? null)
+            ? $analysis->operational_insights_json['follow_up_suggestions']
+            : [];
+        $nextActions = is_array($analysis->next_actions_json) ? $analysis->next_actions_json : [];
+        $seen = [];
+        $actions = [];
+
+        foreach ($suggestions as $raw) {
+            $text = $this->actionText($raw);
+            if ($text === null || isset($seen[$text])) {
+                continue;
+            }
+
+            $seen[$text] = true;
+            $actions[] = ['raw' => $raw, 'text' => $text];
+        }
+
+        foreach ($nextActions as $raw) {
+            $text = $this->actionText($raw);
+            if ($text === null || isset($seen[$text]) || ! $this->looksLikeCustomerFollowUp($text)) {
+                continue;
+            }
+
+            $seen[$text] = true;
+            $actions[] = ['raw' => $raw, 'text' => $text];
+        }
+
+        return $actions;
+    }
+
+    private function looksLikeCustomerFollowUp(string $action): bool
+    {
+        return (bool) preg_match('/پیگیری|تماس\s*مجدد|تماس\s*فردا|ارسال|هماهنگی|پیش\s*فاکتور|نوبت|یادآور|چک\s*لیست/u', $action);
+    }
+
+    private function actionText(mixed $action): ?string
+    {
+        if (is_string($action)) {
+            return $this->nullableText($action);
+        }
+
+        if (! is_array($action)) {
+            return null;
+        }
+
+        return $this->nullableText($action['action'] ?? $action['title'] ?? $action['text'] ?? null);
+    }
+
+    private function actionDueDate(mixed $raw, string $text, DateTimeInterface $from): Carbon
+    {
+        if (is_array($raw)) {
+            foreach (['due_at', 'due_date', 'date', 'follow_up_at'] as $key) {
+                $value = $raw[$key] ?? null;
+
+                if ($value instanceof DateTimeInterface) {
+                    return Carbon::parse($value)->startOfDay();
+                }
+
+                if (! is_string($value) || trim($value) === '') {
+                    continue;
+                }
+
+                $jalali = JalaliDate::toGregorian($value);
+                if ($jalali !== null) {
+                    return $jalali->startOfDay();
+                }
+
+                try {
+                    return Carbon::parse($value)->startOfDay();
+                } catch (\Throwable) {
+                    continue;
+                }
+            }
+        }
+
+        return FollowUpDueDateParser::parseOrDefault($text, $from);
+    }
+
+    /**
+     * @param  Collection<int, Call>  $laterCalls
+     */
+    private function wasFollowedUp(ConversationAnalysis $analysis, Collection $laterCalls): bool
+    {
+        $originalCallId = $analysis->call_id;
+        $originalAt = $analysis->call?->started_at ?? $analysis->analyzed_at;
+        $customerId = $analysis->call?->customer_id;
+        $phone = $this->normalizedPhone($this->contactPhone($analysis));
+
+        if (! $originalAt) {
+            return false;
+        }
+
+        return $laterCalls->contains(function (Call $call) use ($originalCallId, $originalAt, $customerId, $phone) {
+            if ($originalCallId && $call->id === $originalCallId) {
+                return false;
+            }
+
+            $callAt = $call->started_at ?? $call->created_at;
+            if (! $callAt || $callAt->lte($originalAt)) {
+                return false;
+            }
+
+            if ($customerId && $call->customer_id === $customerId) {
+                return true;
+            }
+
+            if ($phone === null) {
+                return false;
+            }
+
+            foreach ([$call->customer_phone, $call->caller_number, $call->receiver_number] as $candidate) {
+                if ($this->normalizedPhone($candidate) === $phone) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
+    }
+
+    /**
+     * @return list<array{
+     *     analysis_id: int,
+     *     customer: string,
+     *     phone: ?string,
+     *     company: ?string,
+     *     date: string,
+     *     employee: string,
+     *     summary: ?string,
+     *     highlight: ?string
+     * }>
+     */
+    private function sentimentCustomerList(AnalysisSentiment $sentiment, int $days, int $limit): array
+    {
+        $seen = [];
+
+        return ConversationAnalysis::query()
+            ->where('organization_id', $this->organizationId)
+            ->evaluable()
+            ->where('sentiment', $sentiment)
+            ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay())
+            ->with([
+                'employee:id,first_name,last_name,user_id',
+                'call:id,customer_id,customer_name,customer_phone,caller_number',
+                'call.customer:id,name,company_name,phone_number',
+            ])
+            ->latest('analyzed_at')
+            ->limit($limit * 8)
+            ->get([
+                'id',
+                'call_id',
+                'organization_user_id',
+                'summary',
+                'sentiment',
+                'strengths_json',
+                'concerns_json',
+                'customer_identity_json',
+                'analyzed_at',
+            ])
+            ->map(fn (ConversationAnalysis $analysis) => $this->mapSentimentCustomer($analysis))
+            ->filter(function (array $item) use (&$seen) {
+                $key = $item['customer_key'];
+
+                if (isset($seen[$key])) {
+                    return false;
+                }
+
+                $seen[$key] = true;
+
+                return true;
+            })
+            ->take($limit)
+            ->map(function (array $item) {
+                unset($item['customer_key']);
+
+                return $item;
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array{
+     *     analysis_id: int,
+     *     customer: string,
+     *     phone: ?string,
+     *     company: ?string,
+     *     date: string,
+     *     employee: string,
+     *     summary: ?string,
+     *     highlight: ?string,
+     *     customer_key: string
+     * }
+     */
+    private function mapSentimentCustomer(ConversationAnalysis $analysis): array
+    {
+        $contact = $this->contactSnapshot($analysis);
+
+        return [
+            'analysis_id' => $analysis->id,
+            'customer' => $contact['customer'],
+            'phone' => $contact['phone'],
+            'company' => $contact['company'],
+            'date' => JalaliDate::date($analysis->analyzed_at),
+            'employee' => $analysis->employee?->full_name ?? '—',
+            'summary' => $this->nullableText($analysis->summary),
+            'highlight' => $analysis->sentiment === AnalysisSentiment::Negative
+                ? $this->firstListText($analysis->concerns_json)
+                : $this->firstListText($analysis->strengths_json),
+            'customer_key' => $this->sentimentCustomerKey($analysis, $contact['phone']),
+        ];
+    }
+
+    private function sentimentCustomerKey(ConversationAnalysis $analysis, ?string $phone): string
+    {
+        $customerId = $analysis->call?->customer_id;
+        if ($customerId) {
+            return 'customer:'.$customerId;
+        }
+
+        $normalized = $this->normalizedPhone($phone);
+        if ($normalized !== null) {
+            return 'phone:'.$normalized;
+        }
+
+        return 'analysis:'.$analysis->id;
+    }
+
+    private function firstListText(mixed $items): ?string
+    {
+        foreach (is_array($items) ? $items : [] as $item) {
+            $text = $this->actionText($item);
+
+            if ($text !== null) {
+                return $text;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{customer: string, phone: ?string, company: ?string}
+     */
+    private function contactSnapshot(ConversationAnalysis $analysis): array
+    {
+        $call = $analysis->call;
+        $customer = $call?->customer;
+        $identity = $analysis->customer_identity_json ?? [];
+        $phone = $this->contactPhone($analysis);
+        $company = $customer?->company_name
+            ?: ($identity['company_name'] ?? null);
+
+        return [
+            'customer' => $customer?->displayName()
+                ?: ($identity['person_name'] ?? null)
+                ?: ($call?->customer_name ?: null)
+                ?: ($phone ?: '—'),
+            'phone' => $this->nullableText($phone),
+            'company' => $this->nullableText($company),
+        ];
+    }
+
+    private function contactPhone(ConversationAnalysis $analysis): ?string
+    {
+        $call = $analysis->call;
+        $identity = $analysis->customer_identity_json ?? [];
+
+        return $this->nullableText(
+            $call?->customer?->phone_number
+                ?: ($call?->customer_phone ?: null)
+                ?: ($identity['phone_number'] ?? null)
+                ?: $call?->caller_number
+        );
+    }
+
+    private function normalizedPhone(?string $phone): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $phone);
+
+        return $digits !== '' ? $digits : null;
     }
 
     /**
