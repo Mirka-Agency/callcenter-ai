@@ -128,6 +128,83 @@ class EmployeePerformanceAnalytics
             ->all();
     }
 
+    /**
+     * Explains why the team quality trend moved at a clicked chart point.
+     *
+     * @return array{
+     *     period: string,
+     *     label: string,
+     *     direction: 'up'|'down'|'stable'|'baseline',
+     *     headline: string,
+     *     reason: string,
+     *     current_score: float,
+     *     previous_score: ?float,
+     *     score_delta: ?float,
+     *     analyzed_count: int,
+     *     factors: list<array{item: string, count: int}>,
+     *     agents: list<array{
+     *         id: int,
+     *         name: string,
+     *         avatar_url: ?string,
+     *         score: float,
+     *         previous_score: ?float,
+     *         score_delta: ?float,
+     *         analyzed_count: int,
+     *         contribution: float,
+     *         highlight: ?string
+     *     }>
+     * }|null
+     */
+    public function qualityTrendPointInsight(ReportFilter $filter, ?string $period): ?array
+    {
+        $period = is_string($period) ? trim($period) : '';
+
+        if ($period === '' || mb_strlen($period) > 32 || ! preg_match('/^\d{4}-\d{2}(?:-\d{2})?$/', $period)) {
+            return null;
+        }
+
+        $data = $this->loader->load($filter, withPreviousPeriod: false);
+        $trend = $this->trendCalculator->qualityTrend($filter, $data->analyses);
+        $currentRow = collect($trend)->firstWhere('period', $period);
+
+        if (! is_array($currentRow)) {
+            return null;
+        }
+
+        $previousRow = $this->trendCalculator->previousTrendRow($trend, $period);
+        $currentAnalyses = $this->trendCalculator->analysesForPeriod($filter, $data->analyses, $period);
+        $previousAnalyses = is_array($previousRow)
+            ? $this->trendCalculator->analysesForPeriod($filter, $data->analyses, $previousRow['period'])
+            : collect();
+
+        $currentScore = (float) ($currentRow['avg_score'] ?? 0);
+        $previousScore = is_array($previousRow) ? (float) ($previousRow['avg_score'] ?? 0) : null;
+        $direction = $this->trendDirection($currentScore, $previousScore);
+        $agents = $this->trendPointAgents(
+            $data->employees,
+            $currentAnalyses,
+            $previousAnalyses,
+            $previousScore ?? $currentScore,
+            $direction,
+        );
+        $factors = $this->trendPointFactors($currentAnalyses, $agents, $direction);
+        $label = (string) ($currentRow['label'] ?? $period);
+
+        return [
+            'period' => $period,
+            'label' => $label,
+            'direction' => $direction,
+            'headline' => $this->trendHeadline($direction),
+            'reason' => $this->trendReason($direction, $label, $factors, $currentScore),
+            'current_score' => $currentScore,
+            'previous_score' => $previousScore,
+            'score_delta' => $previousScore === null ? null : round($currentScore - $previousScore, 1),
+            'analyzed_count' => $currentAnalyses->count(),
+            'factors' => $factors,
+            'agents' => $agents,
+        ];
+    }
+
     /** @return array<string, float|null> */
     public function teamKpiDeltas(ReportFilter $filter): array
     {
@@ -473,5 +550,182 @@ class EmployeePerformanceAnalytics
         }
 
         return round((($current - $previous) / $previous) * 100, 1);
+    }
+
+    /**
+     * @return 'up'|'down'|'stable'|'baseline'
+     */
+    private function trendDirection(float $currentScore, ?float $previousScore): string
+    {
+        if ($previousScore === null) {
+            return 'baseline';
+        }
+
+        $delta = round($currentScore - $previousScore, 1);
+
+        if ($delta > 0) {
+            return 'up';
+        }
+
+        if ($delta < 0) {
+            return 'down';
+        }
+
+        return 'stable';
+    }
+
+    private function trendHeadline(string $direction): string
+    {
+        return match ($direction) {
+            'up' => 'افزایش کیفیت',
+            'down' => 'کاهش کیفیت',
+            'stable' => 'کیفیت پایدار',
+            default => 'کیفیت این روز',
+        };
+    }
+
+    /**
+     * @param  list<array{item: string, count: int}>  $factors
+     */
+    private function trendReason(
+        string $direction,
+        string $label,
+        array $factors,
+        float $currentScore,
+    ): string {
+        $joined = collect($factors)
+            ->pluck('item')
+            ->filter(fn ($item) => is_string($item) && trim($item) !== '')
+            ->take(2)
+            ->implode(' و ');
+
+        return match ($direction) {
+            'up' => $joined !== ''
+                ? "روند کیفیت در {$label} افزایش داشت، به این دلیل که {$joined}."
+                : "روند کیفیت در {$label} افزایش داشت، به این دلیل که میانگین امتیاز کارشناسان نسبت به نقطه قبل بالاتر رفت.",
+            'down' => $joined !== ''
+                ? "روند کیفیت در {$label} کاهش داشت، به این دلیل که {$joined}."
+                : "روند کیفیت در {$label} کاهش داشت، به این دلیل که میانگین امتیاز کارشناسان نسبت به نقطه قبل پایین‌تر آمد.",
+            'stable' => "روند کیفیت در {$label} نسبت به نقطه قبل تقریباً ثابت ماند.",
+            default => "کیفیت تیم در {$label} برابر {$currentScore} بوده است.",
+        };
+    }
+
+    /**
+     * @param  Collection<int, OrganizationUser>  $employees
+     * @param  Collection<int, ConversationAnalysis>  $currentAnalyses
+     * @param  Collection<int, ConversationAnalysis>  $previousAnalyses
+     * @param  'up'|'down'|'stable'|'baseline'  $direction
+     * @return list<array{
+     *     id: int,
+     *     name: string,
+     *     avatar_url: ?string,
+     *     score: float,
+     *     previous_score: ?float,
+     *     score_delta: ?float,
+     *     analyzed_count: int,
+     *     contribution: float,
+     *     highlight: ?string
+     * }>
+     */
+    private function trendPointAgents(
+        Collection $employees,
+        Collection $currentAnalyses,
+        Collection $previousAnalyses,
+        float $previousTeamAvg,
+        string $direction,
+    ): array {
+        $currentScored = $currentAnalyses->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable());
+        $previousScored = $previousAnalyses->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable());
+        $totalCurrent = $currentScored->count();
+
+        if ($totalCurrent === 0) {
+            return [];
+        }
+
+        $employeesById = $employees->keyBy('id');
+        $previousByEmployee = $previousScored->groupBy('organization_user_id');
+        $highlightColumn = $direction === 'down' ? 'weaknesses_json' : 'strengths_json';
+
+        $agents = $currentScored
+            ->groupBy('organization_user_id')
+            ->map(function (Collection $items, $employeeId) use (
+                $employeesById,
+                $previousByEmployee,
+                $previousTeamAvg,
+                $totalCurrent,
+                $highlightColumn,
+            ) {
+                $employee = $employeesById->get((int) $employeeId);
+                $score = round((float) $items->avg('score'), 1);
+                $previousItems = $previousByEmployee->get($employeeId, collect());
+                $previousScore = $previousItems->isNotEmpty()
+                    ? round((float) $previousItems->avg('score'), 1)
+                    : null;
+                $personalDelta = $previousScore !== null
+                    ? round($score - $previousScore, 1)
+                    : round($score - $previousTeamAvg, 1);
+
+                return [
+                    'id' => (int) $employeeId,
+                    'name' => $employee?->full_name ?: '—',
+                    'avatar_url' => $employee?->avatarUrl(),
+                    'score' => $score,
+                    'previous_score' => $previousScore,
+                    'score_delta' => $previousScore === null ? null : round($score - $previousScore, 1),
+                    'analyzed_count' => $items->count(),
+                    'contribution' => round($personalDelta * ($items->count() / $totalCurrent), 2),
+                    'highlight' => $this->jsonAggregator->topItems($items, $highlightColumn, 1)[0] ?? null,
+                ];
+            });
+
+        $filtered = $this->filterTrendPointAgents($agents, $direction);
+
+        if ($filtered->isEmpty()) {
+            $filtered = $agents->sortByDesc('analyzed_count');
+        }
+
+        return $filtered->take(6)->values()->all();
+    }
+
+    /**
+     * @param  Collection<int, array{score_delta: ?float, contribution: float, analyzed_count: int}>  $agents
+     * @param  'up'|'down'|'stable'|'baseline'  $direction
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function filterTrendPointAgents(Collection $agents, string $direction): Collection
+    {
+        if (! in_array($direction, ['up', 'down'], true)) {
+            return $agents->sortByDesc('analyzed_count');
+        }
+
+        $delta = fn (array $agent) => (float) ($agent['score_delta'] ?? $agent['contribution']);
+        $maxMagnitude = (float) $agents->max(fn (array $agent) => abs($delta($agent)));
+        $threshold = max(2.0, round($maxMagnitude * 0.25, 1));
+
+        return $direction === 'up'
+            ? $agents->filter(fn (array $agent) => $delta($agent) >= $threshold)->sortByDesc($delta)
+            : $agents->filter(fn (array $agent) => $delta($agent) <= -$threshold)->sortBy($delta);
+    }
+
+    /**
+     * @param  Collection<int, ConversationAnalysis>  $currentAnalyses
+     * @param  list<array{id: int}>  $agents
+     * @param  'up'|'down'|'stable'|'baseline'  $direction
+     * @return list<array{item: string, count: int}>
+     */
+    private function trendPointFactors(Collection $currentAnalyses, array $agents, string $direction): array
+    {
+        $column = $direction === 'down' ? 'weaknesses_json' : 'strengths_json';
+        $contributorIds = collect($agents)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $source = $currentAnalyses->filter(
+            fn (ConversationAnalysis $analysis) => in_array((int) $analysis->organization_user_id, $contributorIds, true),
+        );
+
+        if ($source->isEmpty()) {
+            $source = $currentAnalyses;
+        }
+
+        return $this->jsonAggregator->rankedItems($source, $column, 3);
     }
 }

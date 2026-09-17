@@ -38,7 +38,7 @@ export const employerPageTours = {
             {
                 selector: '[data-tour="dashboard-quality"]',
                 title: 'روند کیفیت تیم',
-                content: 'نمودار روند میانگین امتیاز مکالمه در بازه اخیر.',
+                content: 'نمودار روند میانگین امتیاز مکالمه. روی هر نقطه کلیک کنید تا دلیل افزایش یا کاهش و کارشناسان مؤثر را ببینید.',
             },
             {
                 selector: '[data-tour="dashboard-activity"]',

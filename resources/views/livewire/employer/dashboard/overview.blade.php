@@ -6,6 +6,9 @@
             'data' => collect($qualityTrend)->pluck('avg_score')->all(),
             'borderColor' => 'rgb(99, 102, 241)',
             'backgroundColor' => 'rgba(99, 102, 241, 0.12)',
+            'pointRadius' => 0,
+            'pointHoverRadius' => 6,
+            'pointHitRadius' => 20,
             'fill' => true,
             'tension' => 0.35,
         ]],
@@ -77,10 +80,25 @@
     <div class="grid gap-6 lg:grid-cols-3">
         <div class="saas-card lg:col-span-2" data-tour="dashboard-quality">
             <h2 class="text-lg font-semibold">روند کیفیت تیم</h2>
-            <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز مکالمه در بازه ۳۰ روز اخیر</p>
-            <div class="mt-4 h-56" wire:ignore>
-                <canvas id="dashboard-quality-trend" data-report-chart data-type="line" data-config='@json($qualityChart)'></canvas>
+            <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز مکالمه در بازه ۳۰ روز اخیر. برای دیدن دلیل تغییر، روی یک نقطه کلیک کنید.</p>
+            <div data-drilldown-selected="{{ $selectedQualityTrendPeriod ?? '' }}">
+                <div class="mt-4 h-56" wire:ignore>
+                    <canvas
+                        id="dashboard-quality-trend"
+                        class="h-full w-full cursor-pointer"
+                        data-report-chart
+                        data-type="line"
+                        data-config='@json($qualityChart)'
+                        data-drilldown="period"
+                        data-drilldown-values='@json(collect($qualityTrend)->pluck('period')->all())'
+                    ></canvas>
+                </div>
             </div>
+            @if (! empty($qualityTrendInsight))
+                @include('livewire.employer.partials.quality-trend-insight', [
+                    'qualityTrendInsight' => $qualityTrendInsight,
+                ])
+            @endif
         </div>
 
         <div class="saas-card" data-tour="dashboard-activity">
