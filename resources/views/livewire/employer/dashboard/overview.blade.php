@@ -48,6 +48,10 @@
         'tradingOpportunities' => $tradingOpportunities,
     ])
 
+    @include('livewire.employer.partials.sentiment-customers-card', [
+        'sentimentCustomers' => $sentimentCustomers,
+    ])
+
     @include('livewire.employer.partials.team-weaknesses-card', [
         'teamWeaknesses' => $teamWeaknesses,
         'selectedTeamWeakness' => $selectedTeamWeakness,
@@ -64,6 +68,10 @@
         'emptyDescription' => __('ui.empty.no_team_performance.description'),
         'sectionTour' => 'dashboard-agents',
         'showPerformanceLink' => true,
+    ])
+
+    @include('livewire.employer.partials.forgotten-follow-ups-card', [
+        'forgottenFollowUps' => $forgottenFollowUps,
     ])
 
     <div class="grid gap-6 lg:grid-cols-3">
