@@ -19,8 +19,16 @@
             />
         </div>
     @else
-        <div class="saas-opportunity-table-wrap">
-            <table class="saas-opportunity-table saas-forgotten-table">
+        <div
+            class="saas-opportunity-table-wrap"
+            x-data="dashboardTableSort({
+                column: 'due_date',
+                dir: 'asc',
+                allowed: ['due_date'],
+                defaultDir: 'asc',
+            })"
+        >
+            <table class="saas-opportunity-table saas-forgotten-table" x-ref="table">
                 <colgroup>
                     <col class="saas-opportunity-col-toggle">
                     <col class="saas-opportunity-col-name">
@@ -36,12 +44,14 @@
                         <th>شماره تماس</th>
                         <th>نام کارشناس</th>
                         <th>اقدام فراموش‌شده</th>
-                        <th>تاریخ پیگیری</th>
+                        <x-saas.sort-header column="due_date" label="تاریخ پیگیری" />
                     </tr>
                 </thead>
                 @foreach ($forgottenFollowUps as $followUp)
                     <tbody
                         wire:key="forgotten-follow-up-{{ $followUp['analysis_id'] }}"
+                        data-sort-row
+                        data-sort-due-date="{{ $followUp['sort_due_date'] ?? 0 }}"
                         x-data="{ open: false }"
                     >
                         <tr

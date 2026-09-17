@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\EmployerDashboardAnalytics;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -132,6 +133,38 @@ class ForgottenFollowUpsDashboardTest extends TestCase
         );
         $this->assertSame('تماس پیگیری فردا', $forgotten[0]['forgotten_action']);
         $this->assertGreaterThan(0, $forgotten[0]['days_overdue']);
+        $this->assertArrayHasKey('sort_due_date', $forgotten[0]);
+    }
+
+    public function test_dashboard_sorts_forgotten_follow_ups_by_due_date_title(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $this->seedFollowUp($organization, [
+            'external_id' => 'forgotten-older',
+            'customer_name' => 'پیگیری قدیمی‌تر',
+            'customer_phone' => '09121110001',
+            'follow_up' => 'تماس پیگیری فردا',
+            'analyzed_at' => now()->subDays(8),
+            'started_at' => now()->subDays(8),
+        ]);
+        $this->seedFollowUp($organization, [
+            'external_id' => 'forgotten-newer',
+            'customer_name' => 'پیگیری جدیدتر',
+            'customer_phone' => '09121110002',
+            'follow_up' => 'تماس پیگیری فردا',
+            'analyzed_at' => now()->subDays(3),
+            'started_at' => now()->subDays(3),
+        ]);
+
+        $component = Livewire::test(Overview::class);
+        $html = $component->html();
+
+        $this->assertSame(['پیگیری قدیمی‌تر', 'پیگیری جدیدتر'], $this->forgottenNames($component));
+        $this->assertStringContainsString("sortBy('due_date')", $html);
+        $this->assertStringContainsString('saas-sort-icon', $html);
+        $this->assertStringContainsString('data-sort-due-date="', $html);
+        $this->assertStringNotContainsString('wire:click="sortForgottenBy', $html);
+        $this->assertFalse(method_exists(Overview::class, 'sortForgottenBy'));
     }
 
     public function test_empty_state_is_shown_when_there_are_no_forgotten_follow_ups(): void
@@ -142,6 +175,14 @@ class ForgottenFollowUpsDashboardTest extends TestCase
             ->assertSee('پیگیری‌های فراموش‌شده')
             ->assertSee('پیگیری فراموش‌شده‌ای نیست')
             ->assertSee('اگر موعد پیگیری پیشنهادی هوش مصنوعی بگذرد و کارشناس تماس نگیرد، اینجا دیده می‌شود.');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function forgottenNames(Testable $component): array
+    {
+        return collect($component->viewData('forgottenFollowUps'))->pluck('customer')->all();
     }
 
     private function actingAsEmployer(): Organization

@@ -139,6 +139,7 @@ class PerformanceTrendCalculator
         return $analyses
             ->filter(fn (ConversationAnalysis $a) => $a->analyzed_at !== null)
             ->groupBy(fn (ConversationAnalysis $a) => $this->periodKey($a->analyzed_at, $granularity))
+            ->sortKeys()
             ->map(function (Collection $items, string $period) use ($granularity, $aggregator) {
                 return array_merge([
                     'period' => $period,
@@ -147,6 +148,36 @@ class PerformanceTrendCalculator
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  Collection<int, ConversationAnalysis>  $analyses
+     * @return Collection<int, ConversationAnalysis>
+     */
+    public function analysesForPeriod(ReportFilter $filter, Collection $analyses, string $period): Collection
+    {
+        $granularity = $filter->granularity();
+
+        return $analyses
+            ->filter(fn (ConversationAnalysis $analysis) => $analysis->analyzed_at !== null
+                && $this->periodKey($analysis->analyzed_at, $granularity) === $period)
+            ->values();
+    }
+
+    /**
+     * @param  list<array{period: string, label: string, avg_score?: float, count?: int}>  $trend
+     * @return array{period: string, label: string, avg_score?: float, count?: int}|null
+     */
+    public function previousTrendRow(array $trend, string $period): ?array
+    {
+        $ordered = collect($trend)->sortBy('period')->values();
+        $index = $ordered->search(fn (array $row) => ($row['period'] ?? null) === $period);
+
+        if ($index === false || $index < 1) {
+            return null;
+        }
+
+        return $ordered[$index - 1];
     }
 
     private function periodKey(Carbon $date, string $granularity): string

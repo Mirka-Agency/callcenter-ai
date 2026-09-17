@@ -311,11 +311,26 @@ function initChart(canvas) {
         const datasetCount = config.datasets?.length ?? 1;
         const options = deepMerge(baseOptions(type, datasetCount), config.options || {});
 
-        charts.set(id, new Chart(canvas, {
+        attachDrilldown(canvas, options);
+
+        const chart = new Chart(canvas, {
             type,
             data: config,
             options,
-        }));
+        });
+
+        charts.set(id, chart);
+
+        if (canvas.closest('[data-drilldown-selected]')) {
+            const selectedIndex = selectedDrilldownIndex(canvas);
+            const values = JSON.parse(canvas.dataset.drilldownValues || '[]');
+            canvas.dataset.selectedPoint = selectedIndex === null ? '' : String(values[selectedIndex]);
+            pinSelectedPoint(chart, selectedIndex);
+        }
+
+        requestAnimationFrame(() => {
+            charts.get(id)?.resize();
+        });
 
         canvas.addEventListener('chart:click', (event) => {
             const detail = event.detail || {};
@@ -329,25 +344,77 @@ function initChart(canvas) {
     }
 }
 
-function wireDrilldown(canvas, chart) {
-    canvas.onclick = (evt) => {
-        const points = chart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
+function selectedDrilldownIndex(canvas) {
+    const values = JSON.parse(canvas.dataset.drilldownValues || '[]');
+    const selected = canvas.closest('[data-drilldown-selected]')?.getAttribute('data-drilldown-selected')
+        || canvas.dataset.selectedPoint
+        || '';
 
-        if (! points.length) {
+    if (selected === '') {
+        return null;
+    }
+
+    const index = values.findIndex((value) => String(value) === String(selected));
+
+    return index >= 0 ? index : null;
+}
+
+function pinSelectedPoint(chart, selectedIndex) {
+    if (! chart?.data?.datasets) {
+        return;
+    }
+
+    chart.data.datasets.forEach((dataset) => {
+        const count = dataset.data?.length ?? 0;
+
+        dataset.pointRadius = Array.from({ length: count }, (_, index) => (
+            index === selectedIndex ? 6 : 0
+        ));
+        dataset.pointHoverRadius = Array.from({ length: count }, (_, index) => (
+            index === selectedIndex ? 8 : 6
+        ));
+    });
+
+    chart.update('none');
+}
+
+function attachDrilldown(canvas, options) {
+    if (! canvas.dataset.drilldown) {
+        return;
+    }
+
+    options.onHover = (event, elements) => {
+        const target = event?.native?.target;
+
+        if (target) {
+            target.style.cursor = elements.length ? 'pointer' : 'default';
+        }
+    };
+
+    options.onClick = (_event, elements, chart) => {
+        if (! elements.length || ! window.Livewire) {
             return;
         }
 
-        const index = points[0].index;
+        const index = elements[0].index;
         const dimension = canvas.dataset.drilldown;
         const values = JSON.parse(canvas.dataset.drilldownValues || '[]');
         const value = values[index];
 
-        if (dimension && value !== undefined && window.Livewire) {
-            const component = canvas.closest('[wire\\:id]');
+        if (dimension === undefined || value === undefined) {
+            return;
+        }
 
-            if (component) {
-                window.Livewire.find(component.getAttribute('wire:id'))?.call('drilldown', dimension, String(value));
-            }
+        if (canvas.closest('[data-drilldown-selected]')) {
+            const next = canvas.dataset.selectedPoint === String(value) ? '' : String(value);
+            canvas.dataset.selectedPoint = next;
+            pinSelectedPoint(chart, next === '' ? null : index);
+        }
+
+        const component = canvas.closest('[wire\\:id]');
+
+        if (component) {
+            window.Livewire.find(component.getAttribute('wire:id'))?.call('drilldown', dimension, String(value));
         }
     };
 }
@@ -355,12 +422,6 @@ function wireDrilldown(canvas, chart) {
 export function initReportCharts() {
     document.querySelectorAll('[data-report-chart]').forEach((canvas) => {
         initChart(canvas);
-
-        const chart = charts.get(canvas.id);
-
-        if (chart && canvas.dataset.drilldown) {
-            wireDrilldown(canvas, chart);
-        }
     });
 }
 

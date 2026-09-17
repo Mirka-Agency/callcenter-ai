@@ -5,6 +5,7 @@ namespace App\Livewire\Employer\Dashboard;
 use App\DTOs\ReportFilter;
 use App\Enums\ReportDatePreset;
 use App\Livewire\Employer\Concerns\HasAgentPerformanceCardFeed;
+use App\Livewire\Employer\Concerns\HasQualityTrendDrilldown;
 use App\Livewire\Employer\Concerns\HasTeamWeaknessDrilldown;
 use App\Services\EmployerContext;
 use App\Services\EmployerDashboardAnalytics;
@@ -18,6 +19,7 @@ use Livewire\Component;
 class Overview extends Component
 {
     use HasAgentPerformanceCardFeed;
+    use HasQualityTrendDrilldown;
     use HasTeamWeaknessDrilldown;
 
     public function render()
@@ -35,6 +37,7 @@ class Overview extends Component
         $selectedWeakness = $this->resolvedTeamWeakness($performanceDashboard['team_weaknesses']);
 
         $agents = $performanceDashboard['employees'];
+        $selectedQualityPeriod = $this->resolvedQualityTrendPeriod($performanceDashboard['quality_trend']);
 
         return view('livewire.employer.dashboard.overview', [
             'organization' => $organization,
@@ -50,6 +53,9 @@ class Overview extends Component
             'sentimentCustomers' => $analytics->sentimentCustomers(),
             'forgottenFollowUps' => $analytics->forgottenFollowUps(),
             'qualityTrend' => $performanceDashboard['quality_trend'],
+            'qualityTrendInsight' => $selectedQualityPeriod
+                ? $performance->qualityTrendPointInsight($performanceFilter, $selectedQualityPeriod)
+                : null,
             'dailyTrend' => $analytics->dailyTrend(),
             'activityFeed' => $analytics->activityFeed(6),
         ]);
