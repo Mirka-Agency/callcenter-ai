@@ -24,26 +24,16 @@
         </div>
     @endif
 
-    <div class="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <div class="saas-card border-indigo-200/50 shadow-md shadow-indigo-500/5 dark:border-indigo-500/20" data-tour="manual-upload-panel">
-            <x-saas.manual-upload-panel
-                :employees="$employees"
-                :show-employee-assign="true"
-                :upload-zone-state="$uploadZoneState"
-                :selected-file-name="$selectedFileName"
-                :selected-file-size="$selectedFileSize"
-                :show-metadata="$showMetadata"
-                :audio-ready="$audioReady"
-                :highlighted-sample-id="$highlightedSampleId"
-            />
-        </div>
-
-        <div data-tour="manual-samples">
-            <x-saas.sample-conversations
-                :samples="$sampleConversations"
-                :highlighted-id="$highlightedSampleId"
-            />
-        </div>
+    <div class="saas-card border-indigo-200/50 shadow-md shadow-indigo-500/5 dark:border-indigo-500/20" data-tour="manual-upload-panel">
+        <x-saas.manual-upload-panel
+            :employees="$employees"
+            :show-employee-assign="true"
+            :upload-zone-state="$uploadZoneState"
+            :selected-file-name="$selectedFileName"
+            :selected-file-size="$selectedFileSize"
+            :show-metadata="$showMetadata"
+            :audio-ready="$audioReady"
+        />
     </div>
 
     <div class="space-y-4" data-tour="manual-history">

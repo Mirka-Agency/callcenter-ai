@@ -283,11 +283,6 @@ export const employerPageTours = {
                 content: 'فایل را بکشید یا انتخاب کنید، کارشناس را مشخص کنید و برای تحلیل ارسال کنید. موجودی کیف پول باید کافی باشد.',
             },
             {
-                selector: '[data-tour="manual-samples"]',
-                title: 'مکالمات نمونه',
-                content: 'نمونه‌های آماده برای آشنایی با قابلیت‌های تحلیل.',
-            },
-            {
                 selector: '[data-tour="manual-history"]',
                 title: 'آپلودهای اخیر',
                 content: 'تاریخچه آپلودهای تیم با فیلتر وضعیت و کارشناس.',
