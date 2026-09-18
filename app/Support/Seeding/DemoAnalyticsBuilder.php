@@ -223,15 +223,11 @@ class DemoAnalyticsBuilder
     }
 
     /** @return Collection<int, Customer> */
-    private function seedCustomers(Organization $organization, int $orgIndex): Collection
+    public function seedCustomers(Organization $organization, int $orgIndex): Collection
     {
         $customers = collect();
         $companyNames = DemoCatalog::customerNames();
-        $personNames = [
-            'علی رضایی', 'مریم احمدی', 'حسین کریمی', 'زهرا موسوی', 'رضا نوری',
-            'فاطمه حسینی', 'مهدی جعفری', 'سارا محمدی', 'امیر صادقی', 'نرگس قاسمی',
-            'پویا اکبری', 'لیلا فرهادی',
-        ];
+        $personNames = DemoCatalog::personNames();
         $faker = \fake();
         $faker->seed($organization->id * 3_331);
 

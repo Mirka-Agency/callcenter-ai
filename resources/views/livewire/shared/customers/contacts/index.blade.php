@@ -11,6 +11,7 @@
     >
         <x-slot:actions>
             <a href="{{ route($contactCreateRoute) }}" class="saas-btn-primary text-sm" wire:navigate>شخص جدید</a>
+            <x-saas.customer-list-export :portal="$portal" entity="contacts" :search="$search" :sort="$sort" />
         </x-slot:actions>
     </x-saas.page-header>
 
@@ -45,5 +46,5 @@
         @endforelse
     </div>
 
-    {{ $contacts->links() }}
+    {{ $contacts->onEachSide(1)->links('livewire.shared.customers.partials.contacts-pagination') }}
 </div>

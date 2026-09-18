@@ -34,10 +34,17 @@ class CustomerListSortTest extends TestCase
 
         $happyContact = $this->createContact($organization, 'مخاطب راضی', '09121110001', now()->subDay(), $older);
         $this->attachSentiment($organization, $happyContact, AnalysisSentiment::Positive);
+        $unhappyContact = $this->createContact($organization, 'مخاطب ناراضی', '09121110002', now()->subDay(), $recent);
+        $this->attachSentiment($organization, $unhappyContact, AnalysisSentiment::Negative);
 
         $component = Livewire::test(CompaniesIndex::class)
             ->assertSet('sort', 'last_contact')
-            ->assertSee('مرتب‌سازی');
+            ->assertSee('مرتب‌سازی')
+            ->assertSee('آخرین تماس')
+            ->assertSee('راضی‌ترین مشتری')
+            ->assertSee('ناراضی‌ترین مشتری')
+            ->assertSee('جدیدترین مشتری')
+            ->assertSee('قدیمی‌ترین مشتری');
 
         $this->assertSame(['سازمان تازه‌تماس', 'سازمان قدیمی‌تر'], $this->listedNames($component, 'companies'));
 
@@ -52,6 +59,10 @@ class CustomerListSortTest extends TestCase
         $this->assertSame(
             ['سازمان قدیمی‌تر', 'سازمان تازه‌تماس'],
             $this->listedNames($component->set('sort', 'satisfaction'), 'companies'),
+        );
+        $this->assertSame(
+            ['سازمان تازه‌تماس', 'سازمان قدیمی‌تر'],
+            $this->listedNames($component->set('sort', 'dissatisfaction'), 'companies'),
         );
     }
 
@@ -69,7 +80,12 @@ class CustomerListSortTest extends TestCase
 
         $component = Livewire::test(ContactsIndex::class)
             ->assertSet('sort', 'last_contact')
-            ->assertSee('مرتب‌سازی');
+            ->assertSee('مرتب‌سازی')
+            ->assertSee('آخرین تماس')
+            ->assertSee('راضی‌ترین مشتری')
+            ->assertSee('ناراضی‌ترین مشتری')
+            ->assertSee('جدیدترین مشتری')
+            ->assertSee('قدیمی‌ترین مشتری');
 
         $this->assertSame(['مخاطب تازه‌تماس', 'مخاطب قدیمی‌تر'], $this->listedNames($component, 'contacts'));
 
@@ -84,6 +100,10 @@ class CustomerListSortTest extends TestCase
         $this->assertSame(
             ['مخاطب قدیمی‌تر', 'مخاطب تازه‌تماس'],
             $this->listedNames($component->set('sort', 'satisfaction'), 'contacts'),
+        );
+        $this->assertSame(
+            ['مخاطب تازه‌تماس', 'مخاطب قدیمی‌تر'],
+            $this->listedNames($component->set('sort', 'dissatisfaction'), 'contacts'),
         );
     }
 
@@ -180,6 +200,10 @@ class CustomerListSortTest extends TestCase
         Livewire::withQueryParams(['sort' => 'newest'])
             ->test(ContactsIndex::class)
             ->assertSet('sort', 'newest');
+
+        Livewire::withQueryParams(['sort' => 'dissatisfaction'])
+            ->test(CompaniesIndex::class)
+            ->assertSet('sort', 'dissatisfaction');
     }
 
     public function test_customers_hub_omits_unassigned_stat(): void

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CustomerListExportController;
 use App\Livewire\Employee\Activity\Index as ActivityIndex;
 use App\Livewire\Employee\Calls\Index as CallsIndex;
 use App\Livewire\Employee\Calls\Show as CallsShow;
@@ -14,8 +15,10 @@ use App\Livewire\Employee\Customers\Edit as CustomersEdit;
 use App\Livewire\Employee\Customers\Index as CustomersIndex;
 use App\Livewire\Employee\Customers\Show as CustomersShow;
 use App\Livewire\Employee\Dashboard\Overview as EmployeeDashboard;
-use App\Livewire\Employee\Profile\Edit as ProfileEdit;
 use App\Livewire\Employee\Performance\Index as PerformanceIndex;
+use App\Livewire\Employee\ProcessingQueue\Index;
+use App\Livewire\Employee\ProcessingQueue\Show;
+use App\Livewire\Employee\Profile\Edit as ProfileEdit;
 use App\Livewire\Employee\Uploads\Index as UploadsIndex;
 use App\Livewire\Employee\Uploads\Show as UploadsShow;
 use Illuminate\Support\Facades\Route;
@@ -29,14 +32,20 @@ Route::middleware(['auth', 'employee'])->group(function () {
     Route::get('/performance', PerformanceIndex::class)->name('performance');
     Route::get('/uploads', UploadsIndex::class)->name('uploads');
     Route::get('/uploads/{upload}', UploadsShow::class)->name('uploads.show');
-    Route::get('/processing-queue', \App\Livewire\Employee\ProcessingQueue\Index::class)->name('processing-queue.index');
-    Route::get('/processing-queue/{job}', \App\Livewire\Employee\ProcessingQueue\Show::class)->name('processing-queue.show');
+    Route::get('/processing-queue', Index::class)->name('processing-queue.index');
+    Route::get('/processing-queue/{job}', Show::class)->name('processing-queue.show');
     Route::get('/calls', CallsIndex::class)->name('calls');
     Route::get('/calls/{analysis}', CallsShow::class)->name('calls.show');
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', CustomersIndex::class)->name('index');
         Route::get('/companies', CustomerCompaniesIndex::class)->name('companies.index');
+        Route::get('/companies/export/{format}', [CustomerListExportController::class, 'companies'])
+            ->name('companies.export')
+            ->whereIn('format', ['xlsx', 'pdf']);
         Route::get('/contacts', CustomerContactsIndex::class)->name('contacts.index');
+        Route::get('/contacts/export/{format}', [CustomerListExportController::class, 'contacts'])
+            ->name('contacts.export')
+            ->whereIn('format', ['xlsx', 'pdf']);
         Route::get('/contacts/create', CustomerContactsCreate::class)->name('contacts.create');
         Route::get('/companies/create', CustomerCompaniesCreate::class)->name('companies.create');
         Route::get('/companies/{customerCompany}/edit', CustomerCompaniesEdit::class)->name('companies.edit');

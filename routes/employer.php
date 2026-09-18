@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CustomerListExportController;
 use App\Http\Controllers\Employer\ReportExportController;
 use App\Livewire\Employer\Crm\Connections\Create;
 use App\Livewire\Employer\Crm\Connections\Edit;
@@ -76,7 +77,13 @@ Route::middleware(['auth', 'employer'])->group(function () {
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', CustomersIndex::class)->name('index');
         Route::get('/companies', CustomerCompaniesIndex::class)->name('companies.index');
+        Route::get('/companies/export/{format}', [CustomerListExportController::class, 'companies'])
+            ->name('companies.export')
+            ->whereIn('format', ['xlsx', 'pdf']);
         Route::get('/contacts', CustomerContactsIndex::class)->name('contacts.index');
+        Route::get('/contacts/export/{format}', [CustomerListExportController::class, 'contacts'])
+            ->name('contacts.export')
+            ->whereIn('format', ['xlsx', 'pdf']);
         Route::get('/contacts/create', CustomerContactsCreate::class)->name('contacts.create');
         Route::get('/companies/create', CustomerCompaniesCreate::class)->name('companies.create');
         Route::get('/companies/{customerCompany}/edit', CustomerCompaniesEdit::class)->name('companies.edit');

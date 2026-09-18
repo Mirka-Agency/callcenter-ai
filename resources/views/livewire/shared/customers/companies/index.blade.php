@@ -11,6 +11,7 @@
     >
         <x-slot:actions>
             <a href="{{ route($companyCreateRoute) }}" class="saas-btn-primary text-sm" wire:navigate>شرکت جدید</a>
+            <x-saas.customer-list-export :portal="$portal" entity="companies" :search="$search" :sort="$sort" />
         </x-slot:actions>
     </x-saas.page-header>
 

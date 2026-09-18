@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Employer\Customers\Contacts;
 
+use App\Livewire\Concerns\HasCustomerListPerPage;
 use App\Livewire\Concerns\HasCustomerListSort;
-use App\Models\Customer;
 use App\Services\EmployerContext;
-use App\Support\CustomerListSort;
+use App\Support\CustomerListQuery;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -15,6 +15,7 @@ use Livewire\WithPagination;
 #[Title('اشخاص')]
 class Index extends Component
 {
+    use HasCustomerListPerPage;
     use HasCustomerListSort;
     use WithPagination;
 
@@ -27,25 +28,11 @@ class Index extends Component
 
     public function render()
     {
-        $organizationId = EmployerContext::organizationId();
-
-        $contacts = Customer::query()
-            ->forOrganization($organizationId)
-            ->with('company')
-            ->when($this->search !== '', function ($query) {
-                $term = '%'.$this->search.'%';
-                $query->where(function ($inner) use ($term) {
-                    $inner->where('name', 'like', $term)
-                        ->orWhere('company_name', 'like', $term)
-                        ->orWhere('phone_number', 'like', $term)
-                        ->orWhere('email', 'like', $term)
-                        ->orWhereHas('company', fn ($company) => $company->where('name', 'like', $term));
-                });
-            });
-
-        CustomerListSort::apply($contacts, $this->sort, 'contact', $organizationId);
-
-        $contacts = $contacts->paginate(15);
+        $contacts = CustomerListQuery::contacts(
+            EmployerContext::organizationId(),
+            $this->search,
+            $this->sort,
+        )->paginate($this->currentPerPage());
 
         return view('livewire.shared.customers.contacts.index', [
             'contacts' => $contacts,
