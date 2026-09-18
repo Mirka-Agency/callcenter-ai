@@ -192,6 +192,7 @@ class AgentPerformanceCardFeedTest extends TestCase
         $this->assertNotFalse($cardsPosition);
         $this->assertLessThan($cardsPosition, $attentionPosition);
         $this->assertStringContainsString('کارشناسان نیازمند توجه', $html);
+        $this->assertStringContainsString('overflow-x-auto', $html);
         $this->assertStringContainsString('رضا کریمی', $html);
         $this->assertStringContainsString('پیگیری ضعیف (2)', $html);
         $this->assertStringContainsString('جمع‌بندی ضعیف (2)', $html);

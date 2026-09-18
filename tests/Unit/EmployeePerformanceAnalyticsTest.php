@@ -115,6 +115,26 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $this->assertSame(3, $attention->firstWhere('id', $agent->id)['repeated_weaknesses'][0]['count']);
     }
 
+    public function test_team_dashboard_excludes_agents_with_sparse_repeated_weaknesses(): void
+    {
+        $organization = Organization::factory()->create();
+        $agent = $this->seedNamedEmployee($organization, 'مریم', 'جعفری');
+
+        $this->seedAnalysisForEmployee($organization, $agent, 82, ['پیگیری ضعیف']);
+        $this->seedAnalysisForEmployee($organization, $agent, 80, ['پیگیری ضعیف']);
+        $this->seedAnalysisForEmployee($organization, $agent, 84, ['جمع‌بندی ضعیف']);
+        $this->seedAnalysisForEmployee($organization, $agent, 81, ['جمع‌بندی ضعیف']);
+        $this->seedAnalysisForEmployee($organization, $agent, 83, ['گوش دادن فعال']);
+        $this->seedAnalysisForEmployee($organization, $agent, 85, ['توضیح کامل محصول']);
+        $this->seedAnalysisForEmployee($organization, $agent, 86, ['همدلی مناسب']);
+        $this->seedAnalysisForEmployee($organization, $agent, 84, ['جمع‌بندی خوب']);
+
+        $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
+        $dashboard = app(EmployeePerformanceAnalytics::class)->teamDashboard($filter);
+
+        $this->assertFalse(collect($dashboard['attention_employees'])->contains('id', $agent->id));
+    }
+
     /** @return array{0: Organization, 1: OrganizationUser} */
     private function seedEmployeeWithAnalysis(int $score): array
     {

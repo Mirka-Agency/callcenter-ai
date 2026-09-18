@@ -480,7 +480,7 @@ class EmployeePerformanceAnalytics
                 $repeatedOccurrences = (int) collect($repeated)->sum('count');
                 $weaknessRate = $repeatedOccurrences / $analyzed;
 
-                if (! $this->hasRepeatedCoachingWeaknesses($repeated) || $weaknessRate < 0.5) {
+                if (! $this->hasRepeatedCoachingWeaknesses($repeated) || $weaknessRate <= 0.5) {
                     return null;
                 }
 
