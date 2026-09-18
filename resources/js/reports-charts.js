@@ -378,6 +378,19 @@ function pinSelectedPoint(chart, selectedIndex) {
     chart.update('none');
 }
 
+export function unpinChartPoint(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const chart = charts.get(canvasId);
+
+    if (canvas) {
+        canvas.dataset.selectedPoint = '';
+    }
+
+    if (chart) {
+        pinSelectedPoint(chart, null);
+    }
+}
+
 function attachDrilldown(canvas, options) {
     if (! canvas.dataset.drilldown) {
         return;
@@ -392,7 +405,7 @@ function attachDrilldown(canvas, options) {
     };
 
     options.onClick = (_event, elements, chart) => {
-        if (! elements.length || ! window.Livewire) {
+        if (! elements.length) {
             return;
         }
 
@@ -405,10 +418,25 @@ function attachDrilldown(canvas, options) {
             return;
         }
 
-        if (canvas.closest('[data-drilldown-selected]')) {
-            const next = canvas.dataset.selectedPoint === String(value) ? '' : String(value);
+        const instantCard = canvas.closest('[data-quality-trend-card]');
+        const next = canvas.dataset.selectedPoint === String(value) ? '' : String(value);
+
+        if (canvas.closest('[data-drilldown-selected]') || instantCard) {
             canvas.dataset.selectedPoint = next;
             pinSelectedPoint(chart, next === '' ? null : index);
+        }
+
+        if (instantCard) {
+            instantCard.dispatchEvent(new CustomEvent('quality-trend-select', {
+                detail: { period: next },
+                bubbles: true,
+            }));
+
+            return;
+        }
+
+        if (! window.Livewire) {
+            return;
         }
 
         const component = canvas.closest('[wire\\:id]');
@@ -452,4 +480,73 @@ new MutationObserver(() => {
 }).observe(document.documentElement, {
     attributes: true,
     attributeFilter: ['class'],
+});
+
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('qualityTrendCard', (insights, profileBase) => ({
+        insights: insights || {},
+        profileBase: profileBase || '',
+        selected: '',
+        get insight() {
+            return this.selected ? (this.insights[this.selected] ?? null) : null;
+        },
+        select(period) {
+            this.selected = period || '';
+        },
+        close() {
+            this.selected = '';
+            const canvas = this.$el.querySelector('[data-report-chart]');
+            unpinChartPoint(canvas?.id);
+        },
+        scoreClass(score) {
+            const value = Number(score || 0);
+
+            if (value >= 85) {
+                return 'text-emerald-600 dark:text-emerald-400';
+            }
+            if (value >= 70) {
+                return 'text-indigo-600 dark:text-indigo-400';
+            }
+            if (value >= 50) {
+                return 'text-amber-600 dark:text-amber-400';
+            }
+            if (value > 0) {
+                return 'text-red-600 dark:text-red-400';
+            }
+
+            return 'text-zinc-400';
+        },
+        deltaClass(delta) {
+            if (delta > 0) {
+                return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300';
+            }
+            if (delta < 0) {
+                return 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300';
+            }
+
+            return 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400';
+        },
+        signedDelta(delta) {
+            if (delta === null || delta === undefined) {
+                return null;
+            }
+
+            return delta > 0 ? `+${delta}` : String(delta);
+        },
+        agentUrl(id) {
+            return `${this.profileBase}/${id}`;
+        },
+        agentsTitle() {
+            const direction = this.insight?.direction;
+
+            if (direction === 'up') {
+                return 'کارشناسانی که باعث افزایش روند شدند';
+            }
+            if (direction === 'down') {
+                return 'کارشناسانی که باعث کاهش روند شدند';
+            }
+
+            return 'کارشناسان این روز';
+        },
+    }));
 });

@@ -6,8 +6,6 @@ use App\Enums\ReportDatePreset;
 use App\Livewire\Employer\Concerns\HasAgentPerformanceCardFeed;
 use App\Livewire\Employer\Concerns\HasTeamWeaknessDrilldown;
 use App\Livewire\Employer\Intelligence\Concerns\HasPerformanceFilters;
-use App\Models\OrganizationUser;
-use App\Services\EmployerContext;
 use App\Services\Performance\EmployeePerformanceAnalytics;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -33,13 +31,6 @@ class Performance extends Component
         $dashboard = $performance->teamDashboard($filter);
         $selectedWeakness = $this->resolvedTeamWeakness($dashboard['team_weaknesses']);
 
-        $employees = OrganizationUser::query()
-            ->where('organization_id', EmployerContext::organizationId())
-            ->where('is_active', true)
-            ->with('user:id,avatar_path,name')
-            ->orderBy('first_name')
-            ->get(['id', 'user_id', 'first_name', 'last_name', 'department']);
-
         return view('livewire.employer.intelligence.performance', [
             'dashboard' => $dashboard,
             'selectedTeamWeakness' => $selectedWeakness,
@@ -47,7 +38,6 @@ class Performance extends Component
                 ? $performance->teamWeaknessCalls($filter, $selectedWeakness)
                 : [],
             'agentCardFeed' => $this->agentCardFeed($dashboard['employees']),
-            'filterEmployees' => $employees,
             'filter' => $filter,
             'primaryDatePresets' => [
                 ReportDatePreset::Today,

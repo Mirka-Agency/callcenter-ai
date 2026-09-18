@@ -58,7 +58,7 @@ export const employerPageTours = {
             {
                 selector: '[data-tour="performance-filters"]',
                 title: 'فیلتر بازه زمانی',
-                content: 'بازه زمانی را انتخاب کنید یا پروفایل هر کارشناس را از چیپ‌ها باز کنید. خروجی CSV/Excel/PDF هم از همین بالا در دسترس است.',
+                content: 'بازه زمانی را انتخاب کنید. خروجی CSV/Excel/PDF هم از همین بالا در دسترس است.',
             },
             {
                 selector: '[data-tour="performance-summary"]',

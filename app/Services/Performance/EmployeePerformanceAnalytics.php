@@ -163,46 +163,7 @@ class EmployeePerformanceAnalytics
             return null;
         }
 
-        $data = $this->loader->load($filter, withPreviousPeriod: false);
-        $trend = $this->trendCalculator->qualityTrend($filter, $data->analyses);
-        $currentRow = collect($trend)->firstWhere('period', $period);
-
-        if (! is_array($currentRow)) {
-            return null;
-        }
-
-        $previousRow = $this->trendCalculator->previousTrendRow($trend, $period);
-        $currentAnalyses = $this->trendCalculator->analysesForPeriod($filter, $data->analyses, $period);
-        $previousAnalyses = is_array($previousRow)
-            ? $this->trendCalculator->analysesForPeriod($filter, $data->analyses, $previousRow['period'])
-            : collect();
-
-        $currentScore = (float) ($currentRow['avg_score'] ?? 0);
-        $previousScore = is_array($previousRow) ? (float) ($previousRow['avg_score'] ?? 0) : null;
-        $direction = $this->trendDirection($currentScore, $previousScore);
-        $agents = $this->trendPointAgents(
-            $data->employees,
-            $currentAnalyses,
-            $previousAnalyses,
-            $previousScore ?? $currentScore,
-            $direction,
-        );
-        $factors = $this->trendPointFactors($currentAnalyses, $agents, $direction);
-        $label = (string) ($currentRow['label'] ?? $period);
-
-        return [
-            'period' => $period,
-            'label' => $label,
-            'direction' => $direction,
-            'headline' => $this->trendHeadline($direction),
-            'reason' => $this->trendReason($direction, $label, $factors, $currentScore),
-            'current_score' => $currentScore,
-            'previous_score' => $previousScore,
-            'score_delta' => $previousScore === null ? null : round($currentScore - $previousScore, 1),
-            'analyzed_count' => $currentAnalyses->count(),
-            'factors' => $factors,
-            'agents' => $agents,
-        ];
+        return $this->teamDashboard($filter)['quality_trend_insights'][$period] ?? null;
     }
 
     /** @return array<string, float|null> */
@@ -285,6 +246,12 @@ class EmployeePerformanceAnalytics
                 $rankings['most_improved'][0] ?? null,
             ),
         ];
+
+        $dashboard['quality_trend_insights'] = $this->buildQualityTrendPointInsights(
+            $filter,
+            $data,
+            $dashboard['quality_trend'],
+        );
 
         $dashboard['executive_summary'] = $this->summaryService->teamSummaryFromDashboard($filter, $dashboard);
 
@@ -550,6 +517,73 @@ class EmployeePerformanceAnalytics
         }
 
         return round((($current - $previous) / $previous) * 100, 1);
+    }
+
+    /**
+     * @param  list<array{period: string, label: string, avg_score?: float}>  $trend
+     * @return array<string, array<string, mixed>>
+     */
+    private function buildQualityTrendPointInsights(ReportFilter $filter, LoadedPerformanceData $data, array $trend): array
+    {
+        $insights = [];
+
+        foreach ($trend as $row) {
+            $period = (string) ($row['period'] ?? '');
+
+            if ($period === '') {
+                continue;
+            }
+
+            $insights[$period] = $this->insightForTrendRow($filter, $data, $trend, $row);
+        }
+
+        return $insights;
+    }
+
+    /**
+     * @param  list<array{period: string, label: string, avg_score?: float}>  $trend
+     * @param  array{period: string, label: string, avg_score?: float}  $currentRow
+     * @return array<string, mixed>
+     */
+    private function insightForTrendRow(
+        ReportFilter $filter,
+        LoadedPerformanceData $data,
+        array $trend,
+        array $currentRow,
+    ): array {
+        $period = (string) $currentRow['period'];
+        $previousRow = $this->trendCalculator->previousTrendRow($trend, $period);
+        $currentAnalyses = $this->trendCalculator->analysesForPeriod($filter, $data->analyses, $period);
+        $previousAnalyses = is_array($previousRow)
+            ? $this->trendCalculator->analysesForPeriod($filter, $data->analyses, $previousRow['period'])
+            : collect();
+
+        $currentScore = (float) ($currentRow['avg_score'] ?? 0);
+        $previousScore = is_array($previousRow) ? (float) ($previousRow['avg_score'] ?? 0) : null;
+        $direction = $this->trendDirection($currentScore, $previousScore);
+        $agents = $this->trendPointAgents(
+            $data->employees,
+            $currentAnalyses,
+            $previousAnalyses,
+            $previousScore ?? $currentScore,
+            $direction,
+        );
+        $factors = $this->trendPointFactors($currentAnalyses, $agents, $direction);
+        $label = (string) ($currentRow['label'] ?? $period);
+
+        return [
+            'period' => $period,
+            'label' => $label,
+            'direction' => $direction,
+            'headline' => $this->trendHeadline($direction),
+            'reason' => $this->trendReason($direction, $label, $factors, $currentScore),
+            'current_score' => $currentScore,
+            'previous_score' => $previousScore,
+            'score_delta' => $previousScore === null ? null : round($currentScore - $previousScore, 1),
+            'analyzed_count' => $currentAnalyses->count(),
+            'factors' => $factors,
+            'agents' => $agents,
+        ];
     }
 
     /**

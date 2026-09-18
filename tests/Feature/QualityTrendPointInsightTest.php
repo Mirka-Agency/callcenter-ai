@@ -42,6 +42,7 @@ class QualityTrendPointInsightTest extends TestCase
 
         $this->assertNotNull($insight);
         $this->assertSame('up', $insight['direction']);
+        $this->assertArrayHasKey($period, app(EmployeePerformanceAnalytics::class)->teamDashboard(ReportFilter::make($organization->id, ReportDatePreset::Last30))['quality_trend_insights']);
         $this->assertStringContainsString('افزایش داشت، به این دلیل که', $insight['reason']);
         $this->assertStringContainsString('گوش دادن فعال', $insight['reason']);
         $this->assertSame(['سارا کریمی'], collect($insight['agents'])->pluck('name')->all());

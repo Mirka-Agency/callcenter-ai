@@ -78,10 +78,16 @@
     ])
 
     <div class="grid gap-6 lg:grid-cols-3">
-        <div class="saas-card lg:col-span-2" data-tour="dashboard-quality">
+        <div
+            class="saas-card lg:col-span-2"
+            data-tour="dashboard-quality"
+            data-quality-trend-card
+            x-data="qualityTrendCard({{ \Illuminate\Support\Js::from($qualityTrendInsights ?? []) }}, {{ \Illuminate\Support\Js::from($agentProfileBase ?? '') }})"
+            @quality-trend-select="select($event.detail.period)"
+        >
             <h2 class="text-lg font-semibold">روند کیفیت تیم</h2>
             <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز مکالمه در بازه ۳۰ روز اخیر. برای دیدن دلیل تغییر، روی یک نقطه کلیک کنید.</p>
-            <div data-drilldown-selected="{{ $selectedQualityTrendPeriod ?? '' }}">
+            <div data-drilldown-selected="{{ $selectedQualityTrendPeriod ?? '' }}" :data-drilldown-selected="selected">
                 <div class="mt-4 h-56" wire:ignore>
                     <canvas
                         id="dashboard-quality-trend"
@@ -94,10 +100,13 @@
                     ></canvas>
                 </div>
             </div>
+            @include('livewire.employer.partials.quality-trend-insight-client')
             @if (! empty($qualityTrendInsight))
-                @include('livewire.employer.partials.quality-trend-insight', [
-                    'qualityTrendInsight' => $qualityTrendInsight,
-                ])
+                <div x-show="!insight">
+                    @include('livewire.employer.partials.quality-trend-insight', [
+                        'qualityTrendInsight' => $qualityTrendInsight,
+                    ])
+                </div>
             @endif
         </div>
 
