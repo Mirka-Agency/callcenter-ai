@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Application\Llm\Services\AiCostCalculator;
 use App\Application\Llm\Services\AnalysisResponseNormalizer;
+use App\Domain\Call\Enums\ConversationSource;
+use App\Domain\Llm\Contracts\ConversationAnalysisRepositoryInterface;
 use App\Domain\Llm\DTOs\AnalysisResultData;
 use App\Models\ConversationAnalysis;
 use App\Models\LlmModel;
@@ -39,7 +41,7 @@ class AiBillingService
         int $processingDurationMs,
         ?string $promptVersion = null,
         ?int $callId = null,
-        ?\App\Domain\Call\Enums\ConversationSource $source = null,
+        ?ConversationSource $source = null,
         ?string $transcript = null,
         ?array $crmContext = null,
     ): AnalysisResultData {
@@ -74,7 +76,7 @@ class AiBillingService
         );
     }
 
-    public function storeAndCharge(AnalysisResultData $data, \App\Domain\Llm\Contracts\ConversationAnalysisRepositoryInterface $repository): AnalysisResultData
+    public function storeAndCharge(AnalysisResultData $data, ConversationAnalysisRepositoryInterface $repository): AnalysisResultData
     {
         return DB::transaction(function () use ($data, $repository) {
             $analysisId = $repository->store($data);
@@ -103,6 +105,7 @@ class AiBillingService
         return [
             'balance' => (float) $wallet->balance,
             'currency' => $wallet->currency,
+            'low_balance_threshold' => $wallet->lowBalanceThreshold(),
             'model' => $model,
             'month_tokens' => $usage['total_tokens'] ?? 0,
             'month_cost' => $usage['total_cost'] ?? 0,

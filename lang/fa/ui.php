@@ -51,6 +51,7 @@ return [
     'wallet' => [
         'insufficient' => 'اعتبار تحلیل کافی نیست. برای ادامه، موجودی خود را شارژ کنید.',
         'insufficient_transaction' => 'موجودی برای این عملیات کافی نیست.',
+        'threshold_saved' => 'آستانه هشدار ذخیره شد.',
     ],
 
     'integrations' => [

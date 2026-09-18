@@ -133,9 +133,48 @@
                     <p class="text-xs text-zinc-500">میانگین روزانه</p>
                     <p class="mt-1 text-lg font-semibold">{{ $formatMoney($avgDailyCost) }}</p>
                 </div>
-                <div class="saas-inline-stat">
-                    <p class="text-xs text-zinc-500">آستانه هشدار</p>
-                    <p class="mt-1 text-lg font-semibold">{{ $formatMoney($lowBalanceThreshold) }}</p>
+                <div class="saas-inline-stat" data-tour="wallet-threshold">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-xs text-zinc-500">آستانه هشدار</p>
+                        @unless ($editingThreshold)
+                            <button
+                                type="button"
+                                wire:click="startEditingThreshold"
+                                class="text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                            >
+                                تغییر
+                            </button>
+                        @endunless
+                    </div>
+
+                    @if ($editingThreshold)
+                        <form wire:submit="saveThreshold" class="mt-2 space-y-2">
+                            <input
+                                wire:model="thresholdInput"
+                                wire:keydown.escape="cancelEditingThreshold"
+                                type="text"
+                                inputmode="decimal"
+                                dir="ltr"
+                                autofocus
+                                class="saas-input px-3 py-2 text-sm"
+                                placeholder="مثلاً ۱۰۰٬۰۰۰"
+                            >
+                            @error('thresholdInput')
+                                <p class="text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                            <p class="text-[11px] leading-4 text-zinc-400">وقتی موجودی کمتر از این مقدار شود، هشدار نمایش داده می‌شود.</p>
+                            <div class="flex items-center gap-2">
+                                <button type="submit" class="saas-btn-primary px-3 py-1.5 text-xs" wire:loading.attr="disabled">
+                                    ذخیره
+                                </button>
+                                <button type="button" wire:click="cancelEditingThreshold" class="saas-btn-secondary px-3 py-1.5 text-xs">
+                                    انصراف
+                                </button>
+                            </div>
+                        </form>
+                    @else
+                        <p class="mt-1 text-lg font-semibold">{{ $formatMoney($lowBalanceThreshold) }}</p>
+                    @endif
                 </div>
             </div>
         </div>
@@ -145,9 +184,9 @@
     <div class="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <x-saas.stat-card label="تحلیل‌های این ماه" :value="number_format($overview['month_analyses'])" />
         <x-saas.stat-card label="هزینه این ماه" :value="$formatMoney($overview['month_cost'])" />
-        <x-saas.stat-card label="توکن مصرف‌شده" :value="number_format($overview['month_tokens'])" hint="این ماه" />
+        <x-saas.stat-card label="توکن مصرف‌شده این ماه" :value="number_format($overview['month_tokens'])" />
         <x-saas.stat-card
-            label="میانگین هزینه هر تحلیل"
+            label="میانگین هزینه هر تماس"
             :value="$formatMoney($monthOverview['average_cost_per_analysis'] ?? 0)"
         />
     </div>
