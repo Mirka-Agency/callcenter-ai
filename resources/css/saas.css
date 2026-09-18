@@ -536,6 +536,11 @@
     .saas-chart-shell:has(> [data-report-chart]),
     .saas-card div:has(> [data-report-chart]) {
         @apply relative overflow-hidden rounded-xl border border-zinc-200/50 bg-gradient-to-b from-indigo-50/25 via-white to-white p-3 dark:border-zinc-800/80 dark:from-indigo-950/15 dark:via-zinc-900 dark:to-zinc-950;
+        direction: ltr;
+    }
+
+    [data-report-chart] {
+        direction: ltr;
     }
 
     .saas-chart-shell:has(> [data-report-chart])::before,

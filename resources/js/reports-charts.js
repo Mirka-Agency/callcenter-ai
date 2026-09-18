@@ -1,6 +1,12 @@
-import { Chart, registerables } from 'chart.js';
+import { Chart, Tooltip, registerables } from 'chart.js';
 
 Chart.register(...registerables);
+
+Tooltip.positioners.cursor = function cursorPositioner(_items, eventPosition) {
+    return eventPosition?.x == null || eventPosition?.y == null
+        ? false
+        : { x: eventPosition.x, y: eventPosition.y };
+};
 
 export const palette = {
     indigo: 'rgb(99, 102, 241)',
@@ -144,6 +150,11 @@ const saasChartThemePlugin = {
                 dataset.maxBarThickness = dataset.maxBarThickness ?? 44;
                 dataset.borderWidth = dataset.borderWidth ?? 0;
 
+                if (typeof color === 'string') {
+                    dataset.borderColor = dataset.borderColor || color;
+                    dataset.hoverBackgroundColor = dataset.hoverBackgroundColor || withAlpha(color, 1);
+                }
+
                 if (typeof dataset.backgroundColor === 'string' && dataset.backgroundColor.includes('rgba')) {
                     dataset.backgroundColor = horizontal
                         ? makeHorizontalGradient(ctx, chartArea, color)
@@ -169,6 +180,27 @@ const saasChartThemePlugin = {
 };
 
 Chart.register(saasChartThemePlugin);
+
+const saasCanvasLtrPlugin = {
+    id: 'saasCanvasLtr',
+    afterInit(chart) {
+        forceCanvasLtr(chart.canvas);
+    },
+    afterDraw(chart) {
+        forceCanvasLtr(chart.canvas);
+    },
+};
+
+Chart.register(saasCanvasLtrPlugin);
+
+function forceCanvasLtr(canvas) {
+    if (! canvas) {
+        return;
+    }
+
+    canvas.setAttribute('dir', 'ltr');
+    canvas.style.setProperty('direction', 'ltr');
+}
 
 function destroyChart(id) {
     if (charts.has(id)) {
@@ -197,6 +229,13 @@ function baseOptions(type = 'line', datasetCount = 1) {
         animation: {
             duration: 800,
             easing: 'easeOutQuart',
+        },
+        transitions: {
+            active: {
+                animation: {
+                    duration: 120,
+                },
+            },
         },
         plugins: {
             legend: {
@@ -243,7 +282,36 @@ function baseOptions(type = 'line', datasetCount = 1) {
                 boxHeight: 10,
                 boxPadding: 6,
                 caretSize: 6,
-                caretPadding: 10,
+                caretPadding: 8,
+                animation: {
+                    duration: 0,
+                },
+                animations: {
+                    numbers: {
+                        type: 'number',
+                        properties: ['x', 'y', 'width', 'height', 'caretX', 'caretY'],
+                        duration: 0,
+                    },
+                    opacity: {
+                        easing: 'linear',
+                        duration: 0,
+                    },
+                },
+                callbacks: {
+                    labelColor(ctx) {
+                        const dataset = ctx.dataset || {};
+                        const solid = typeof dataset.borderColor === 'string'
+                            ? dataset.borderColor
+                            : resolveColor(dataset, ctx.datasetIndex ?? 0);
+
+                        return {
+                            borderColor: typeof solid === 'string' ? solid : palette.indigo,
+                            backgroundColor: typeof solid === 'string' ? solid : palette.indigo,
+                            borderWidth: 0,
+                            borderRadius: 3,
+                        };
+                    },
+                },
             },
         },
     };
@@ -296,6 +364,26 @@ function baseOptions(type = 'line', datasetCount = 1) {
     return options;
 }
 
+function applyHorizontalBarHover(type, options) {
+    if (type !== 'bar' || options.indexAxis !== 'y') {
+        return;
+    }
+
+    options.interaction = {
+        ...(options.interaction || {}),
+        mode: 'nearest',
+        axis: 'y',
+        intersect: false,
+    };
+
+    options.plugins = options.plugins || {};
+    options.plugins.tooltip = {
+        ...(options.plugins.tooltip || {}),
+        position: 'cursor',
+        yAlign: options.plugins.tooltip?.yAlign || 'center',
+    };
+}
+
 function initChart(canvas) {
     const id = canvas.id;
 
@@ -306,11 +394,14 @@ function initChart(canvas) {
     destroyChart(id);
 
     try {
+        forceCanvasLtr(canvas);
+
         const config = JSON.parse(canvas.dataset.config || '{}');
         const type = canvas.dataset.type || 'line';
         const datasetCount = config.datasets?.length ?? 1;
         const options = deepMerge(baseOptions(type, datasetCount), config.options || {});
 
+        applyHorizontalBarHover(type, options);
         attachDrilldown(canvas, options);
 
         const chart = new Chart(canvas, {
