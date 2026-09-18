@@ -98,7 +98,7 @@ export const employerPageTours = {
             {
                 selector: '[data-tour="analysis-stats"]',
                 title: 'شاخص‌های فیلترشده',
-                content: 'تعداد کل تماس‌ها، تعداد تحلیل، میانگین امتیاز، لید، رضایت و آمار تماس در بازه فعلی.',
+                content: 'تعداد کل تماس‌ها، تعداد تحلیل، میانگین امتیاز، لید، کل لیدها، رضایت و آمار تماس در بازه فعلی.',
             },
             {
                 selector: '[data-tour="analysis-charts"]',

@@ -166,6 +166,7 @@
         <x-saas.stat-card label="تحلیل‌های فیلترشده" :value="number_format($overview['total'])" />
         <x-saas.stat-card label="میانگین امتیاز" :value="$overview['average_score'] ?: '—'" hint="کیفیت مکالمه" />
         <x-saas.stat-card label="میانگین لید" :value="$overview['average_lead_score'] ?: '—'" :hint="$overview['high_lead_count'] ? $overview['high_lead_count'].' لید بالا' : null" />
+        <x-saas.stat-card label="کل لیدها" :value="number_format($overview['total_leads'])" />
         <x-saas.stat-card label="رضایت مشتری" :value="$overview['average_sentiment'] ? $overview['average_sentiment'].'%' : '—'" :hint="$overview['dominant_sentiment']" />
         <x-saas.stat-card label="میانگین مدت تماس" :value="$overview['average_duration_label']" />
         <x-saas.stat-card

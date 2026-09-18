@@ -118,6 +118,7 @@ class AnalysisListQuery
             'inbound_count' => $inboundCount,
             'outbound_count' => $outboundCount,
             'average_lead_score' => $lead['average_score'] ?: null,
+            'total_leads' => $lead['total'],
             'high_lead_count' => $lead['high'],
             'average_sentiment' => $averageSentiment,
             'dominant_sentiment' => collect($sentiment)->sortByDesc('count')->first()['label'] ?? null,

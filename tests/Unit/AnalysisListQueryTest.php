@@ -93,6 +93,7 @@ class AnalysisListQueryTest extends TestCase
         $this->assertSame(2, $overview['top_agent_count']);
         $this->assertSame(3, $overview['total']);
         $this->assertSame(3, $overview['total_calls']);
+        $this->assertSame(3, $overview['total_leads']);
     }
 
     public function test_overview_counts_unanalyzed_calls_in_total_calls(): void

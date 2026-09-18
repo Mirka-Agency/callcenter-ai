@@ -25,7 +25,8 @@ class AttentionCallsQuickFilterTest extends TestCase
 
         Livewire::test(IntelligenceIndex::class)
             ->assertSee('تعداد کل تماس‌ها')
-            ->assertSee('تحلیل‌های فیلترشده');
+            ->assertSee('تحلیل‌های فیلترشده')
+            ->assertSee('کل لیدها');
     }
 
     public function test_analysis_page_shows_attention_quick_filter_next_to_missed_calls(): void
