@@ -368,7 +368,12 @@
 
                                     <div class="min-w-0">
                                         <p class="line-clamp-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">{{ $analysis->summary }}</p>
-                                        <p class="mt-1 text-xs text-zinc-400">{{ $analysis->source?->label() ?? 'VoIP' }}</p>
+                                        <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                                            <p class="text-xs text-zinc-400">{{ $analysis->source?->label() ?? 'VoIP' }}</p>
+                                            @if ($analysis->needs_attention)
+                                                <span class="rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">نیازمند توجه</span>
+                                            @endif
+                                        </div>
                                     </div>
 
                                     <div class="whitespace-nowrap tabular-nums text-sm text-zinc-600 dark:text-zinc-400">

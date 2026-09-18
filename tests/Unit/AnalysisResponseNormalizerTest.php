@@ -28,6 +28,9 @@ class AnalysisResponseNormalizerTest extends TestCase
         $this->assertSame('', $result['customer_identity']['company_name']);
         $this->assertSame(0.0, $result['customer_identity']['confidence']);
         $this->assertSame('', $result['customer_identity']['evidence']);
+        $this->assertFalse($result['needs_attention']['needed']);
+        $this->assertSame([], $result['needs_attention']['categories']);
+        $this->assertSame('', $result['needs_attention']['reason']);
     }
 
     public function test_normalizes_lead_quality_and_concerns_from_partial_response(): void
@@ -123,6 +126,21 @@ class AnalysisResponseNormalizerTest extends TestCase
         $this->assertSame('high', $result['concerns'][0]['severity']);
         $this->assertSame('trust', $result['concerns'][1]['type']);
         $this->assertSame('low', $result['concerns'][1]['severity']);
+    }
+
+    public function test_normalizes_explicit_needs_attention(): void
+    {
+        $result = $this->normalizer->apply([
+            'needs_attention' => [
+                'needed' => true,
+                'categories' => ['agent', 'محصول'],
+                'reason' => 'مشتری به عملکرد کارشناس و محصول اعتراض دارد',
+            ],
+        ]);
+
+        $this->assertTrue($result['needs_attention']['needed']);
+        $this->assertSame(['agent', 'product'], $result['needs_attention']['categories']);
+        $this->assertSame('مشتری به عملکرد کارشناس و محصول اعتراض دارد', $result['needs_attention']['reason']);
     }
 
     public function test_explicit_evaluable_false_forces_zero_score(): void

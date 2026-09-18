@@ -24,6 +24,7 @@ readonly class AnalysisListFilter
         public string $sortBy = 'analyzed_at',
         public string $sortDir = 'desc',
         public bool $assignedEmployeesOnly = false,
+        public bool $needsAttention = false,
     ) {}
 
     public static function make(
@@ -40,6 +41,7 @@ readonly class AnalysisListFilter
         string $sortBy = 'analyzed_at',
         string $sortDir = 'desc',
         bool $assignedEmployeesOnly = false,
+        bool $needsAttention = false,
     ): self {
         [$from, $to] = $preset->resolve($customFrom, $customTo);
 
@@ -57,6 +59,7 @@ readonly class AnalysisListFilter
             sortBy: $sortBy,
             sortDir: $sortDir === 'asc' ? 'asc' : 'desc',
             assignedEmployeesOnly: $assignedEmployeesOnly,
+            needsAttention: $needsAttention,
         );
     }
 
@@ -73,7 +76,8 @@ readonly class AnalysisListFilter
             || $this->minDurationSeconds !== null
             || $this->maxDurationSeconds !== null
             || $this->search !== ''
-            || $this->preset !== ReportDatePreset::Last30;
+            || $this->preset !== ReportDatePreset::Last30
+            || $this->needsAttention;
     }
 
     /** @param  Builder<ConversationAnalysis>  $query */
@@ -114,6 +118,10 @@ readonly class AnalysisListFilter
         if ($this->maxDurationSeconds !== null) {
             $max = $this->maxDurationSeconds;
             $query->whereRaw('COALESCE(calls.duration_seconds, voip_call_logs.duration, 0) <= ?', [$max]);
+        }
+
+        if ($this->needsAttention) {
+            $query->where('conversation_analyses.needs_attention', true);
         }
 
         if ($this->search !== '') {

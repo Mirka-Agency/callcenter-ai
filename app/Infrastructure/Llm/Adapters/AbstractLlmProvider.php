@@ -120,6 +120,11 @@ abstract class AbstractLlmProvider implements LlmProviderInterface
                 'confidence' => 0.92,
                 'evidence' => 'سلام، من مهدی بشیرپور از شرکت آلفا هستم',
             ],
+            'needs_attention' => [
+                'needed' => true,
+                'categories' => ['product'],
+                'reason' => 'مشتری از کیفیت محصول معیوب ناراضی است و درخواست جایگزینی دارد.',
+            ],
         ];
 
         $inputTokens = 4500;

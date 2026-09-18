@@ -112,6 +112,18 @@ PROMPT;
 PROMPT;
     }
 
+    public static function attentionPolicy(): string
+    {
+        return <<<'PROMPT'
+تماس‌های نیازمند توجه (الزامی):
+- اگر مشتری اعتراض یا شکایت مهمی دارد که مدیریت باید بداند، needs_attention.needed را درست بگذارید
+- مثال‌ها: اعتراض به عملکرد کارشناس، اعتراض به محصول، اعتراض به سرویس یا خدمات، اعتراض کلی، تهدید به قطع همکاری، درخواست صحبت با مدیر، ریسک تشدید یا شکایت رسمی
+- نگرانی معمولی مثل پرسش قیمت یا زمان تحویل به‌تنهایی نیازمند توجه نیست مگر با نارضایتی جدی یا درخواست پیگیری مدیریت همراه باشد
+- اگر نیازمند توجه است، حداقل یک دسته از agent ، product ، service ، general ، other را در categories بنویسید و دلیل را به فارسی در reason توضیح دهید
+- اگر نیازمند توجه نیست، needed را نادرست بگذارید، categories را آرایه خالی و reason را رشته خالی بگذارید
+PROMPT;
+    }
+
     public static function evaluableConversationPolicy(): string
     {
         return <<<'PROMPT'
@@ -138,6 +150,7 @@ PROMPT;
   - سطح لید: low یا medium یا high
   - نوع دغدغه: price یا trust یا timing یا technical یا other
   - شدت دغدغه: low یا medium یا high
+  - دسته نیازمند توجه: agent یا product یا service یا general یا other
 - به‌جز این کدها و نام کلیدها، هیچ حرف لاتین در متن نیاید
 PROMPT;
     }
@@ -189,6 +202,11 @@ PROMPT;
       "severity": "medium"
     }
   ],
+  "needs_attention": {
+    "needed": false,
+    "categories": [],
+    "reason": ""
+  },
   "customer_identity": {
     "person_name": "",
     "company_name": "",
@@ -254,6 +272,10 @@ PROMPT;
   - type (فقط یکی از: price ، trust ، timing ، technical ، other)
   - text (رشته فارسی)
   - severity (فقط یکی از: low ، medium ، high)
+- needs_attention (شیء):
+  - needed (درست اگر تماس داده مهمی برای پیگیری مدیریت دارد؛ مثل اعتراض مشتری به کارشناس، محصول، سرویس یا اعتراض کلی)
+  - categories (آرایه؛ فقط از: agent ، product ، service ، general ، other)
+  - reason (رشته فارسی — توضیح کوتاه دلیل توجه)
 - customer_identity (شیء):
   - person_name (رشته فارسی — نام مشتری)
   - company_name (رشته فارسی — نام شرکت یا برند مشتری)
@@ -276,6 +298,7 @@ PROMPT;
             self::organizationDomainPolicy(),
             self::weaknessEvaluationPolicy(),
             self::leadAnalysisPolicy(),
+            self::attentionPolicy(),
             self::customerIdentityPolicy(),
             self::evaluableConversationPolicy(),
         ]);

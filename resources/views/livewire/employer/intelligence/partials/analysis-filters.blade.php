@@ -77,6 +77,15 @@
                 'bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400' => $callStatus !== 'missed',
             ])
         >تماس‌های از دست رفته</button>
+        <button
+            type="button"
+            wire:click="applyQuickFilter('attention')"
+            @class([
+                'rounded-md px-3 py-1.5 text-xs font-medium transition',
+                'bg-amber-600 text-white' => $needsAttention,
+                'bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-300' => ! $needsAttention,
+            ])
+        >تماس‌های نیازمند توجه</button>
     </div>
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -122,7 +131,7 @@
         </div>
     </div>
 
-    @if (! $isDefaultDate || $filterEmployeeId || $callStatus || $directionFilter || $durationMin || $durationMax)
+    @if (! $isDefaultDate || $filterEmployeeId || $callStatus || $directionFilter || $durationMin || $durationMax || $needsAttention)
         <div class="flex flex-wrap items-center gap-2 border-t border-zinc-200/80 pt-4 dark:border-zinc-800">
             <span class="text-xs font-medium text-zinc-500">فیلترهای فعال:</span>
             @if (! $isDefaultDate)
@@ -143,6 +152,11 @@
             @if ($callStatus)
                 <button type="button" wire:click="$set('callStatus', null)" class="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                     وضعیت: {{ \App\Domain\Voip\Enums\CallStatus::tryFrom($callStatus)?->label() }} ×
+                </button>
+            @endif
+            @if ($needsAttention)
+                <button type="button" wire:click="$set('needsAttention', false)" class="rounded-md bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                    نیازمند توجه ×
                 </button>
             @endif
             @if ($directionFilter)

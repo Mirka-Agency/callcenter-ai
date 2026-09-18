@@ -11,6 +11,7 @@ use App\Domain\Llm\DTOs\AnalysisResultData;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Call;
 use App\Services\CallProcessingTracker;
+use App\Support\NeedsAttention;
 use App\Support\SampleConversationAnalysisCache;
 
 class SampleConversationAnalysisService
@@ -59,6 +60,8 @@ class SampleConversationAnalysisService
         $inputTokens = (int) ($payload['input_tokens'] ?? 0);
         $outputTokens = (int) ($payload['output_tokens'] ?? 0);
 
+        $attention = NeedsAttention::fromResponse($payload);
+
         return new AnalysisResultData(
             organizationId: $call->organization_id,
             organizationUserId: $call->organization_user_id,
@@ -93,6 +96,8 @@ class SampleConversationAnalysisService
             outputPriceSnapshot: null,
             cachedInputPriceSnapshot: null,
             reasoningPriceSnapshot: null,
+            needsAttention: $attention['needed'],
+            attention: $attention,
         );
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Application\Llm\Services;
 
+use App\Support\NeedsAttention;
+
 class AnalysisResponseNormalizer
 {
     /** @return array{score: int, level: string, reason: string, buying_intent_signals: list<string>} */
@@ -123,6 +125,7 @@ class AnalysisResponseNormalizer
         $response['lead_quality'] = $this->normalizeLeadQuality($response['lead_quality'] ?? null);
         $response['concerns'] = $this->normalizeConcerns($response['concerns'] ?? null);
         $response['customer_identity'] = $this->normalizeCustomerIdentity($response['customer_identity'] ?? null, $crmContext);
+        $response['needs_attention'] = NeedsAttention::fromResponse($response);
         $response['evaluable'] = $this->resolveEvaluable($response);
 
         if (! $response['evaluable']) {

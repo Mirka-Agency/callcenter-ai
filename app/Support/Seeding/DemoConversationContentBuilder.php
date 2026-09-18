@@ -2,14 +2,17 @@
 
 namespace App\Support\Seeding;
 
+use App\Application\Llm\Services\PromptBuilder;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Customer;
 use App\Models\OrganizationUser;
+use App\Support\NeedsAttention;
+use Faker\Generator;
 use Illuminate\Support\Arr;
 
 /**
  * Generates realistic Persian call transcripts and analysis payloads
- * aligned with {@see \App\Application\Llm\Services\PromptBuilder} output shape.
+ * aligned with {@see PromptBuilder} output shape.
  */
 final class DemoConversationContentBuilder
 {
@@ -26,6 +29,8 @@ final class DemoConversationContentBuilder
      *     operational_insights_json: array<string, list<string>>,
      *     lead_quality_json: array<string, mixed>,
      *     concerns_json: list<array<string, string>>,
+     *     needs_attention: bool,
+     *     attention_json: array{needed: bool, categories: list<string>, reason: string},
      *     customer_identity_json: array<string, mixed>,
      *     call_status: string,
      *     call_category: string,
@@ -92,6 +97,46 @@ final class DemoConversationContentBuilder
 
         $nextActions = $this->nextActionsForOutcome($outcome, $scenario, $faker);
 
+        $concerns = [[
+            'type' => $scenario['concern_type'],
+            'text' => $scenario['concern_text'],
+            'severity' => $concernSeverity,
+        ]];
+
+        $customerInsights = [
+            'sentiment' => $sentiment->value,
+            'intent' => $scenario['intent'],
+            'purchase_probability' => $purchaseProbability,
+            'urgency_level' => $urgency,
+            'risk_level' => $score >= 70 ? 'low' : ($score >= 55 ? 'medium' : 'high'),
+        ];
+
+        $operationalInsights = [
+            'missed_opportunities' => $score < 72
+                ? [Arr::random(['فرصت پیشنهاد بسته مکمل از دست رفت', 'عدم پرسش درباره نیازهای آینده مشتری'])]
+                : [],
+            'escalation_risks' => $score < 58
+                ? ['احتمال شکایت مجدد در صورت عدم پیگیری سریع']
+                : [],
+            'compliance_issues' => [],
+            'important_keywords' => $scenario['keywords'],
+            'follow_up_suggestions' => $nextActions,
+        ];
+
+        $attention = ! empty($scenario['needs_attention'])
+            ? NeedsAttention::normalize([
+                'needed' => true,
+                'categories' => $scenario['attention_categories'] ?? ['general'],
+                'reason' => $scenario['attention_reason'] ?? $scenario['concern_text'],
+            ])
+            : NeedsAttention::inferFromSignals(
+                $sentiment->value,
+                $customerInsights,
+                $operationalInsights,
+                $concerns,
+                $summary,
+            );
+
         return [
             'transcript' => $transcript,
             'summary' => $summary,
@@ -100,35 +145,17 @@ final class DemoConversationContentBuilder
             'weaknesses_json' => $weaknesses,
             'next_actions_json' => $nextActions,
             'performance_dimensions_json' => $this->performanceDimensions($score, $faker),
-            'customer_insights_json' => [
-                'sentiment' => $sentiment->value,
-                'intent' => $scenario['intent'],
-                'purchase_probability' => $purchaseProbability,
-                'urgency_level' => $urgency,
-                'risk_level' => $score >= 70 ? 'low' : ($score >= 55 ? 'medium' : 'high'),
-            ],
-            'operational_insights_json' => [
-                'missed_opportunities' => $score < 72
-                    ? [Arr::random(['فرصت پیشنهاد بسته مکمل از دست رفت', 'عدم پرسش درباره نیازهای آینده مشتری'])]
-                    : [],
-                'escalation_risks' => $score < 58
-                    ? ['احتمال شکایت مجدد در صورت عدم پیگیری سریع']
-                    : [],
-                'compliance_issues' => [],
-                'important_keywords' => $scenario['keywords'],
-                'follow_up_suggestions' => $nextActions,
-            ],
+            'customer_insights_json' => $customerInsights,
+            'operational_insights_json' => $operationalInsights,
             'lead_quality_json' => [
                 'score' => $leadScore,
                 'level' => $leadLevel,
                 'reason' => $scenario['lead_reason'],
                 'buying_intent_signals' => $scenario['buying_signals'],
             ],
-            'concerns_json' => [[
-                'type' => $scenario['concern_type'],
-                'text' => $scenario['concern_text'],
-                'severity' => $concernSeverity,
-            ]],
+            'concerns_json' => $concerns,
+            'needs_attention' => $attention['needed'],
+            'attention_json' => $attention,
             'customer_identity_json' => [
                 'person_name' => $customer->name,
                 'company_name' => $customer->company_name,
@@ -151,7 +178,7 @@ final class DemoConversationContentBuilder
         ];
     }
 
-    private function resolveOutcome(int $score, string $preferredOutcome, \Faker\Generator $faker): string
+    private function resolveOutcome(int $score, string $preferredOutcome, Generator $faker): string
     {
         if ($score < 52 && $faker->boolean(35)) {
             return 'failed';
@@ -168,7 +195,7 @@ final class DemoConversationContentBuilder
         return $preferredOutcome;
     }
 
-    private function callStatusForOutcome(string $outcome, \Faker\Generator $faker): string
+    private function callStatusForOutcome(string $outcome, Generator $faker): string
     {
         return match ($outcome) {
             'failed' => $faker->randomElement(['missed', 'failed', 'cancelled']),
@@ -177,7 +204,7 @@ final class DemoConversationContentBuilder
         };
     }
 
-  private function leadScoreForScenario(int $score, int $leadBias, \Faker\Generator $faker): int
+    private function leadScoreForScenario(int $score, int $leadBias, Generator $faker): int
     {
         return max(15, min(98, $score + $leadBias + $faker->numberBetween(-10, 10)));
     }
@@ -190,7 +217,7 @@ final class DemoConversationContentBuilder
         string $organizationTitle,
         string $direction,
         int $durationSeconds,
-        \Faker\Generator $faker,
+        Generator $faker,
     ): string {
         $opening = $direction === 'inbound'
             ? "کارشناس ({$agentName}): سلام، {$organizationTitle}، وقت بخیر. بفرمایید چطور می‌تونم کمکتون کنم؟"
@@ -252,7 +279,7 @@ final class DemoConversationContentBuilder
     }
 
     /** @return list<string> */
-    private function nextActionsForOutcome(string $outcome, array $scenario, \Faker\Generator $faker): array
+    private function nextActionsForOutcome(string $outcome, array $scenario, Generator $faker): array
     {
         $base = $scenario['next_actions'];
 
@@ -265,7 +292,7 @@ final class DemoConversationContentBuilder
     }
 
     /** @return array<string, array{score: int}> */
-    private function performanceDimensions(int $score, \Faker\Generator $faker): array
+    private function performanceDimensions(int $score, Generator $faker): array
     {
         $keys = [
             'communication_skills',

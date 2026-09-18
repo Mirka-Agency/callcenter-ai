@@ -8,12 +8,17 @@ use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\Customer;
+use App\Models\CustomerCompany;
 use App\Models\LlmModel;
 use App\Models\Organization;
 use App\Models\OrganizationActivity;
 use App\Models\OrganizationUser;
 use App\Models\PlatformAiSettings;
+use App\Services\CustomerCompanyService;
+use Carbon\Carbon;
+use Faker\Generator;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 
 class DemoAnalyticsBuilder
 {
@@ -130,6 +135,8 @@ class DemoAnalyticsBuilder
                     'operational_insights_json' => $content['operational_insights_json'],
                     'lead_quality_json' => $content['lead_quality_json'],
                     'concerns_json' => $content['concerns_json'],
+                    'needs_attention' => $content['needs_attention'],
+                    'attention_json' => $content['attention_json']['needed'] ? $content['attention_json'] : null,
                     'customer_identity_json' => $content['customer_identity_json'],
                     'input_tokens' => $inputTokens,
                     'output_tokens' => $outputTokens,
@@ -190,8 +197,8 @@ class DemoAnalyticsBuilder
         }
     }
 
-    /** @param  \Illuminate\Support\Collection<int, Customer>  $customers */
-    private function syncCustomerStats(\Illuminate\Support\Collection $customers): void
+    /** @param  Collection<int, Customer>  $customers */
+    private function syncCustomerStats(Collection $customers): void
     {
         foreach ($customers as $customer) {
             $calls = Call::query()
@@ -215,8 +222,8 @@ class DemoAnalyticsBuilder
         }
     }
 
-    /** @return \Illuminate\Support\Collection<int, Customer> */
-    private function seedCustomers(Organization $organization, int $orgIndex): \Illuminate\Support\Collection
+    /** @return Collection<int, Customer> */
+    private function seedCustomers(Organization $organization, int $orgIndex): Collection
     {
         $customers = collect();
         $companyNames = DemoCatalog::customerNames();
@@ -236,10 +243,10 @@ class DemoAnalyticsBuilder
         for ($c = 1; $c <= $companyCount; $c++) {
             $companyName = $companyNames[($c - 1) % count($companyNames)];
             $companies->push(
-                \App\Models\CustomerCompany::query()->updateOrCreate(
+                CustomerCompany::query()->updateOrCreate(
                     [
                         'organization_id' => $organization->id,
-                        'normalized_name' => \App\Models\CustomerCompany::normalizeName($companyName),
+                        'normalized_name' => CustomerCompany::normalizeName($companyName),
                     ],
                     [
                         'name' => $companyName,
@@ -283,13 +290,13 @@ class DemoAnalyticsBuilder
         }
 
         foreach ($companies as $company) {
-            app(\App\Services\CustomerCompanyService::class)->refreshAggregates($company);
+            app(CustomerCompanyService::class)->refreshAggregates($company);
         }
 
         return $customers;
     }
 
-    private function startedAtForDemoCall(int $organizationId, int $callIndex, \Faker\Generator $faker): \Carbon\Carbon
+    private function startedAtForDemoCall(int $organizationId, int $callIndex, Generator $faker): Carbon
     {
         if ($callIndex <= DemoCatalog::CALLS_TODAY_PER_ORGANIZATION) {
             return now()->startOfDay()
@@ -307,7 +314,7 @@ class DemoAnalyticsBuilder
             ->addSeconds($faker->numberBetween(0, 59));
     }
 
-    private function scoreForEmployee(int $employeeId, int $callIndex, \Faker\Generator $faker): int
+    private function scoreForEmployee(int $employeeId, int $callIndex, Generator $faker): int
     {
         $base = 52 + ($employeeId % 7) * 5;
         $variance = ($callIndex % 5) * 3 + $faker->numberBetween(-6, 8);

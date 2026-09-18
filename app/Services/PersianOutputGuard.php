@@ -18,6 +18,7 @@ class PersianOutputGuard
         'customer_identity.person_name',
         'customer_identity.company_name',
         'customer_identity.evidence',
+        'needs_attention.reason',
     ];
 
     /** @var list<string> */
@@ -96,7 +97,6 @@ class PersianOutputGuard
         return (bool) preg_match('/[A-Za-z]{3,}/', $normalized);
     }
 
-    /** @param mixed $items */
     private function listHasEnglish(mixed $items): bool
     {
         if (! is_array($items)) {
@@ -112,7 +112,6 @@ class PersianOutputGuard
         return false;
     }
 
-    /** @return mixed */
     private function valueAtPath(array $payload, string $path): mixed
     {
         $current = $payload;
