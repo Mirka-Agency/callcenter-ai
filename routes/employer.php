@@ -26,7 +26,6 @@ use App\Livewire\Employer\ManualAnalyses\Show as ManualAnalysesShow;
 use App\Livewire\Employer\ProcessingQueue\Index;
 use App\Livewire\Employer\ProcessingQueue\Show;
 use App\Livewire\Employer\Profile\Edit as ProfileEdit;
-use App\Livewire\Employer\Reports\Index as ReportsIndex;
 use App\Livewire\Employer\Voip\Index as VoipIndex;
 use App\Livewire\Employer\Voip\UnmatchedExtensions;
 use App\Livewire\Employer\Wallet\Index as WalletIndex;
@@ -98,11 +97,6 @@ Route::middleware(['auth', 'employer'])->group(function () {
         Route::get('/create', App\Livewire\Employer\Voip\Connections\Create::class)->name('create');
         Route::get('/{connection}/edit', App\Livewire\Employer\Voip\Connections\Edit::class)->name('edit');
     });
-    Route::get('/reports/export/{format}', [ReportExportController::class, 'reports'])
-        ->name('reports.export')
-        ->whereIn('format', ['csv', 'xlsx', 'pdf']);
-    Route::get('/reports', ReportsIndex::class)->name('reports.index');
-    Route::redirect('/analytics', '/reports')->name('analytics.index');
     Route::get('/wallet', WalletIndex::class)->name('wallet.index');
     Route::get('/profile', ProfileEdit::class)->name('profile.edit');
 });

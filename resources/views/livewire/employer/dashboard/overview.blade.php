@@ -132,6 +132,5 @@
     <div class="flex flex-wrap gap-3">
         <a href="{{ route('employer.intelligence.index') }}" class="saas-btn-secondary">تحلیل تماس‌ها</a>
         <a href="{{ route('employer.intelligence.performance') }}" class="saas-btn-primary">عملکرد کارشناسان</a>
-        <a href="{{ route('employer.reports.index') }}" class="saas-btn-secondary">گزارش‌های مدیریتی</a>
     </div>
 </div>

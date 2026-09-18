@@ -6,7 +6,7 @@ The product ships with three user-facing surfaces:
 
 | Portal | URL prefix | Audience |
 |--------|------------|----------|
-| **Employer dashboard** | `/app` | Team managers — agents, reports, intelligence, wallet |
+| **Employer dashboard** | `/app` | Team managers — agents, intelligence, wallet |
 | **Employee workspace** | `/workspace` | Call specialists — personal performance, uploads, coaching |
 | **Admin panel** | `/admin` | Platform admins — organizations, billing, integrations (Filament) |
 
@@ -227,7 +227,6 @@ routes/
 - `/app/intelligence/performance` — Agent performance
 - `/app/manual-analyses` — Manual upload hub
 - `/app/processing-queue` — AI processing queue
-- `/app/reports` — Management reports
 - `/app/customers` — Customer intelligence
 - `/app/employees` — Agent management
 - `/app/wallet` — AI wallet & usage

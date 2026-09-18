@@ -26,22 +26,9 @@ class EmployerReportExportTest extends TestCase
         $this->assertStringContainsString('attachment', (string) $response->headers->get('content-disposition'));
     }
 
-    public function test_employer_can_download_reports_excel_export(): void
-    {
-        $employer = User::factory()->create(['role' => UserRole::Employer]);
-        Organization::factory()->create(['user_id' => $employer->id]);
-
-        $response = $this->actingAs($employer)->get(
-            route('employer.reports.export', ['format' => 'xlsx', 'preset' => 'last_30'])
-        );
-
-        $response->assertOk();
-        $response->assertHeader('content-disposition');
-    }
-
     public function test_guest_cannot_download_exports(): void
     {
-        $this->get(route('employer.reports.export', ['format' => 'csv']))
+        $this->get(route('employer.intelligence.performance.export', ['format' => 'csv']))
             ->assertRedirect(route('login'));
     }
 }

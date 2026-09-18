@@ -6,7 +6,6 @@ use App\Enums\UserRole;
 use App\Livewire\Employer\Intelligence\Index as IntelligenceIndex;
 use App\Livewire\Employer\Intelligence\Performance;
 use App\Livewire\Employer\Intelligence\PerformanceShow;
-use App\Livewire\Employer\Reports\Index as ReportsIndex;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\User;
@@ -35,13 +34,6 @@ class EmployerDateFilterPresetsTest extends TestCase
         $this->actingAsEmployer();
 
         $this->assertVisibleDatePresets(Livewire::test(IntelligenceIndex::class)->html());
-    }
-
-    public function test_reports_page_shows_all_date_presets_without_more_toggle(): void
-    {
-        $this->actingAsEmployer();
-
-        $this->assertVisibleDatePresets(Livewire::test(ReportsIndex::class)->html());
     }
 
     public function test_employee_performance_page_shows_all_date_presets_without_more_toggle(): void

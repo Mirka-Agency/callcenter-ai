@@ -136,7 +136,6 @@
                 </div>
             </div>
             <a href="{{ route('employer.intelligence.performance') }}" class="saas-btn-secondary">عملکرد کارشناسان</a>
-            <a href="{{ route('employer.reports.index') }}" class="saas-btn-secondary">گزارش‌های مدیریتی</a>
         </x-slot:actions>
     </x-saas.page-header>
 

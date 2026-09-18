@@ -379,41 +379,6 @@ export const employerPageTours = {
             },
         ],
     },
-    'employer.reports.index': {
-        label: 'گزارش‌های مدیریتی',
-        steps: [
-            {
-                selector: '[data-tour="page-header"]',
-                title: 'گزارش مدیریتی',
-                content: 'داشبورد تصمیم‌گیری: KPI، نمودارها و رتبه‌بندی تیم. خروجی CSV/Excel/PDF از بالای صفحه.',
-            },
-            {
-                selector: '[data-tour="report-filters"]',
-                title: 'فیلتر گزارش',
-                content: 'بازه زمانی، انتخاب کارشناسان و حالت مقایسه در نمودارها.',
-            },
-            {
-                selector: '[data-tour="report-summary"]',
-                title: 'خلاصه مدیریتی',
-                content: 'جمع‌بندی متنی وضعیت بر اساس داده‌های فیلترشده.',
-            },
-            {
-                selector: '[data-tour="report-kpis"]',
-                title: 'شاخص‌های کلیدی',
-                content: 'تماس، تحلیل، کیفیت، لید، نگرانی و هزینه AI.',
-            },
-            {
-                selector: '[data-tour="report-charts"]',
-                title: 'نمودارها',
-                content: 'روند فعالیت، کیفیت، لید، نگرانی‌ها و مصرف AI. روی بخش‌های نمودار کلیک کنید برای drill-down.',
-            },
-            {
-                selector: '[data-tour="report-rankings"]',
-                title: 'رتبه‌بندی کارشناسان',
-                content: 'بهترین کیفیت، بیشترین تحلیل، لید و عملکرد کلی.',
-            },
-        ],
-    },
     'employer.wallet.index': {
         label: 'اعتبار هوش مصنوعی',
         steps: [
@@ -456,7 +421,6 @@ const navSteps = [
     ['employer.processing-queue.index', 'صف تحلیل', 'پیگیری وضعیت پردازش فایل‌های در صف.'],
     ['employer.crm.index', 'CRM', 'اتصال سیستم ارتباط با مشتری.'],
     ['employer.voip.index', 'خطوط تلفنی', 'اتصال VoIP و وب‌هوک تماس.'],
-    ['employer.reports.index', 'گزارش‌های مدیریتی', 'گزارش جامع برای تصمیم‌گیری.'],
     ['employer.wallet.index', 'اعتبار هوش مصنوعی', 'موجودی و مصرف اعتبار تحلیل AI.'],
 ];
 
@@ -531,7 +495,6 @@ export const employerRouteMatchers = [
     { pattern: /^\/app\/crm\/?$/, route: 'employer.crm.index' },
     { pattern: /^\/app\/unmatched-extensions\/?$/, route: 'employer.unmatched-extensions.index' },
     { pattern: /^\/app\/voip\/?$/, route: 'employer.voip.index' },
-    { pattern: /^\/app\/reports\/?$/, route: 'employer.reports.index' },
     { pattern: /^\/app\/wallet\/?$/, route: 'employer.wallet.index' },
 ];
 
