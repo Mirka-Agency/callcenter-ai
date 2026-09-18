@@ -20,8 +20,11 @@ class UnmatchedExtensions extends Component
     {
         $organization = EmployerContext::organization();
 
+        $unmatchedExtensions = app(UnmatchedVoipExtensionService::class)->listUnmatched($organization);
+
         return view('livewire.employer.voip.unmatched-extensions', [
-            'unmatchedExtensions' => app(UnmatchedVoipExtensionService::class)->listUnmatched($organization),
+            'unmatchedExtensions' => $unmatchedExtensions,
+            'waitingCallCount' => collect($unmatchedExtensions)->sum('call_count'),
             'employees' => OrganizationUser::query()
                 ->where('organization_id', $organization->id)
                 ->where('is_active', true)

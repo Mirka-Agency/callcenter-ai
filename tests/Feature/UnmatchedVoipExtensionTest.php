@@ -433,6 +433,18 @@ class UnmatchedVoipExtensionTest extends TestCase
         $this->actingAs($employer);
 
         Livewire::test(UnmatchedExtensions::class)
+            ->assertSee('شماره داخلی 101 هنوز کارشناس ندارد')
+            ->assertSee('این داخلی مال کدام کارشناس است؟')
+            ->assertSee('وصل کردن به کارشناس')
+            ->assertSee('چه کاری باید انجام دهید؟')
+            ->assertSee('شماره داخلی را بشناسید')
+            ->assertSee('تماس ورودی از')
+            ->assertSee('09120000000')
+            ->assertSee('خط تلفنی')
+            ->assertSee('Asterisk')
+            ->assertDontSee('از / به')
+            ->assertDontSee('اختصاص و ورود به صف')
+            ->assertDontSee('نگاشت')
             ->set('unmatchedSelections.101__'.$connection->id, $employee->id)
             ->call('assignUnmatchedExtension', '101', $connection->id)
             ->assertHasNoErrors();
@@ -441,6 +453,19 @@ class UnmatchedVoipExtensionTest extends TestCase
             'organization_user_id' => $employee->id,
             'value' => '101',
         ]);
+    }
+
+    public function test_unmatched_extensions_empty_state_is_plain_language(): void
+    {
+        [, , $employer] = $this->setupOrganization();
+
+        $this->actingAs($employer);
+
+        Livewire::test(UnmatchedExtensions::class)
+            ->assertSee('فعلاً داخلی بدون کارشناس نیست')
+            ->assertSee('اگر تماسی برسد که شماره داخلی‌اش هنوز مال هیچ کارشناسی نباشد')
+            ->assertSee('مشاهده خطوط تلفنی')
+            ->assertDontSee('نگاشت شده‌اند');
     }
 
     public function test_assign_extension_queues_recorded_calls_for_analysis(): void
