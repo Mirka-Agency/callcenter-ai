@@ -8,16 +8,13 @@ use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
 use App\Models\OrganizationUser;
+use App\Support\CustomerNextActionAggregator;
 use App\Support\CustomerPresenter;
 use App\Support\JalaliDate;
 use Illuminate\Support\Collection;
 
 class CustomerCompanyIntelligenceService
 {
-    public function __construct(
-        private CustomerIntelligenceService $customerIntelligence,
-    ) {}
-
     /** @return list<int> */
     public function contactIds(CustomerCompany $company): array
     {
@@ -60,15 +57,20 @@ class CustomerCompanyIntelligenceService
     /** @return list<string> */
     public function aggregatedNextActions(CustomerCompany $company): array
     {
-        $actions = [];
+        $contactIds = $this->contactIds($company);
 
-        foreach ($company->contacts as $contact) {
-            foreach ($this->customerIntelligence->aggregatedNextActions($contact) as $action) {
-                $actions[] = $action;
-            }
+        if ($contactIds === []) {
+            return [];
         }
 
-        return array_values(array_unique(array_filter($actions)));
+        $analyses = ConversationAnalysis::query()
+            ->where('organization_id', $company->organization_id)
+            ->whereHas('call', fn ($q) => $q->whereIn('customer_id', $contactIds))
+            ->latest('analyzed_at')
+            ->limit(40)
+            ->get();
+
+        return CustomerNextActionAggregator::prioritized($analyses);
     }
 
     /** @return list<array<string, mixed>> */

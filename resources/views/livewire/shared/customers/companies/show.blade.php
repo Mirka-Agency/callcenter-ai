@@ -189,7 +189,7 @@
             @endif
 
             @if (! empty($nextActions))
-                <x-saas.analysis-insight-list title="اقدامات پیشنهادی" :items="$nextActions" tone="warning" />
+                <x-saas.analysis-insight-list title="اقدامات بعدی" :items="$nextActions" tone="warning" />
             @endif
         </div>
 

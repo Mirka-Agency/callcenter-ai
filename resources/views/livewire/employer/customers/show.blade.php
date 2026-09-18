@@ -211,7 +211,7 @@
 
             @if (! empty($nextActions))
                 <x-saas.analysis-insight-list
-                    title="اقدامات بعدی (جمع‌بندی)"
+                    title="اقدامات بعدی"
                     :items="$nextActions"
                     tone="warning"
                 />

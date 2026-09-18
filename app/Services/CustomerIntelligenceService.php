@@ -8,6 +8,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
 use App\Models\OrganizationUser;
+use App\Support\CustomerNextActionAggregator;
 use App\Support\CustomerPresenter;
 use App\Support\CustomerTenantGuard;
 use App\Support\JalaliDate;
@@ -154,30 +155,14 @@ class CustomerIntelligenceService
     /** @return list<string> */
     public function aggregatedNextActions(Customer $customer): array
     {
-        $actions = [];
-
-        ConversationAnalysis::query()
+        $analyses = ConversationAnalysis::query()
             ->where('organization_id', $customer->organization_id)
             ->whereHas('call', fn ($q) => $q->where('customer_id', $customer->id))
             ->latest('analyzed_at')
             ->limit(20)
-            ->get()
-            ->each(function (ConversationAnalysis $analysis) use (&$actions): void {
-                foreach ($analysis->next_actions_json ?? [] as $action) {
-                    $text = is_string($action) ? $action : ($action['action'] ?? $action['title'] ?? null);
-                    if ($text) {
-                        $actions[] = $text;
-                    }
-                }
-                foreach ($analysis->operational_insights_json['follow_up_suggestions'] ?? [] as $suggestion) {
-                    $text = is_string($suggestion) ? $suggestion : ($suggestion['action'] ?? null);
-                    if ($text) {
-                        $actions[] = $text;
-                    }
-                }
-            });
+            ->get();
 
-        return array_values(array_unique(array_filter($actions)));
+        return CustomerNextActionAggregator::prioritized($analyses);
     }
 
     /** @return array<string, mixed> */
