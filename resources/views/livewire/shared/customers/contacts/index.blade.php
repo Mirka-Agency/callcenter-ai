@@ -1,5 +1,6 @@
 @php
     $contactShowRoute = $portal === 'employee' ? 'employee.customers.show' : 'employer.customers.show';
+    $contactCreateRoute = $portal === 'employee' ? 'employee.customers.contacts.create' : 'employer.customers.contacts.create';
 @endphp
 
 <div class="saas-page space-y-6">
@@ -7,7 +8,11 @@
         title="اشخاص"
         description="افراد و اشخاص شرکت‌ها — با یا بدون شرکت. پروفایل از تحلیل تماس‌ها ساخته می‌شود."
         data-tour="page-header"
-    />
+    >
+        <x-slot:actions>
+            <a href="{{ route($contactCreateRoute) }}" class="saas-btn-primary text-sm" wire:navigate>شخص جدید</a>
+        </x-slot:actions>
+    </x-saas.page-header>
 
     <div class="saas-card p-4" data-tour="customers-contacts-search">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -33,7 +38,9 @@
                 <x-saas.empty-state
                     title="{{ __('ui.empty.no_contacts.title') }}"
                     description="{{ __('ui.empty.no_contacts.description') }}"
-                />
+                >
+                    <a href="{{ route($contactCreateRoute) }}" class="saas-btn-primary mt-4 text-sm" wire:navigate>ثبت اولین شخص</a>
+                </x-saas.empty-state>
             </div>
         @endforelse
     </div>

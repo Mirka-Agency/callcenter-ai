@@ -199,6 +199,17 @@ class CustomerListSortTest extends TestCase
         $this->assertStringNotContainsString('بدون سازمان', substr($html, $statsStart, $statsEnd - $statsStart));
         $this->assertStringNotContainsString('customers-section-nav', $html);
         $this->assertStringNotContainsString('نمای کلی', $html);
+        $this->assertStringNotContainsString('مشاهده همه اشخاص', $html);
+        $heroStart = strpos($html, 'data-tour="customers-hub-hero"');
+        $this->assertNotFalse($heroStart);
+        $actions = substr($html, 0, $heroStart);
+        $this->assertStringContainsString('شرکت جدید', $actions);
+        $this->assertStringContainsString('شخص جدید', $actions);
+        $this->assertStringContainsString('saas-btn-primary', $actions);
+        $this->assertStringContainsString('border-zinc-900', $actions);
+        $cards = substr($html, (int) strpos($html, 'data-tour="customers-hub-cards"'));
+        $this->assertStringNotContainsString('شرکت جدید', $cards);
+        $this->assertStringNotContainsString('شخص جدید', $cards);
         $component->assertSee('شرکت')->assertSee('شخص')->assertSee('تماس');
     }
 

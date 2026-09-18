@@ -4,11 +4,25 @@
     $contactShowRoute = $portal === 'employee' ? 'employee.customers.show' : 'employer.customers.show';
     $contactListRoute = $portal === 'employee' ? 'employee.customers.contacts.index' : 'employer.customers.contacts.index';
     $companyCreateRoute = $portal === 'employee' ? 'employee.customers.companies.create' : 'employer.customers.companies.create';
+    $contactCreateRoute = $portal === 'employee' ? 'employee.customers.contacts.create' : 'employer.customers.contacts.create';
 @endphp
 
 <div class="saas-page space-y-8">
+    <div class="flex flex-wrap items-center gap-3" data-tour="customers-hub-actions">
+        <a
+            href="{{ route($companyCreateRoute) }}"
+            class="saas-btn-primary text-sm"
+            wire:navigate
+        >شرکت جدید</a>
+        <a
+            href="{{ route($contactCreateRoute) }}"
+            class="saas-btn border border-zinc-900 bg-white text-zinc-900 hover:bg-zinc-50 dark:border-white dark:bg-transparent dark:text-white dark:hover:bg-zinc-800"
+            wire:navigate
+        >شخص جدید</a>
+    </div>
+
     <section class="saas-hero saas-hero--accent" data-tour="customers-hub-hero">
-        <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div>
                 <p class="text-sm font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">پایگاه مشتریان</p>
                 <h1 class="text-3xl font-bold tracking-tight">شرکت‌ها و اشخاص</h1>
@@ -16,18 +30,18 @@
                     شرکت‌ها و اشخاص را جداگانه مدیریت کنید — هر بخش لیست و جستجوی مخصوص خودش را دارد.
                 </p>
             </div>
-            <div class="grid grid-cols-3 gap-3 sm:gap-4" data-tour="customers-hub-stats">
-                <div class="rounded-xl border border-white/60 bg-white/70 px-3 py-3 text-center shadow-sm dark:border-zinc-700/50 dark:bg-zinc-900/60">
+            <div class="flex w-fit shrink-0 gap-2 self-end lg:self-auto" data-tour="customers-hub-stats">
+                <div class="min-w-[4.75rem] rounded-xl border border-white/60 bg-white/70 px-3 py-2 text-center shadow-sm dark:border-zinc-700/50 dark:bg-zinc-900/60">
                     <p class="text-xs text-zinc-500">شرکت</p>
-                    <p class="text-xl font-bold tabular-nums text-indigo-600 dark:text-indigo-400">{{ number_format($stats['companies']) }}</p>
+                    <p class="text-lg font-bold tabular-nums text-indigo-600 dark:text-indigo-400">{{ number_format($stats['companies']) }}</p>
                 </div>
-                <div class="rounded-xl border border-white/60 bg-white/70 px-3 py-3 text-center shadow-sm dark:border-zinc-700/50 dark:bg-zinc-900/60">
+                <div class="min-w-[4.75rem] rounded-xl border border-white/60 bg-white/70 px-3 py-2 text-center shadow-sm dark:border-zinc-700/50 dark:bg-zinc-900/60">
                     <p class="text-xs text-zinc-500">شخص</p>
-                    <p class="text-xl font-bold tabular-nums text-violet-600 dark:text-violet-400">{{ number_format($stats['contacts']) }}</p>
+                    <p class="text-lg font-bold tabular-nums text-violet-600 dark:text-violet-400">{{ number_format($stats['contacts']) }}</p>
                 </div>
-                <div class="rounded-xl border border-white/60 bg-white/70 px-3 py-3 text-center shadow-sm dark:border-zinc-700/50 dark:bg-zinc-900/60">
+                <div class="min-w-[4.75rem] rounded-xl border border-white/60 bg-white/70 px-3 py-2 text-center shadow-sm dark:border-zinc-700/50 dark:bg-zinc-900/60">
                     <p class="text-xs text-zinc-500">تماس</p>
-                    <p class="text-xl font-bold tabular-nums text-sky-600 dark:text-sky-400">{{ number_format($stats['calls']) }}</p>
+                    <p class="text-lg font-bold tabular-nums text-sky-600 dark:text-sky-400">{{ number_format($stats['calls']) }}</p>
                 </div>
             </div>
         </div>
@@ -131,9 +145,4 @@
             @endif
         </div>
     @endif
-
-    <div class="flex flex-wrap gap-3" data-tour="customers-hub-actions">
-        <a href="{{ route($companyCreateRoute) }}" class="saas-btn-secondary text-sm" wire:navigate>شرکت جدید</a>
-        <a href="{{ route($contactListRoute) }}" class="saas-btn-secondary text-sm" wire:navigate>مشاهده همه اشخاص</a>
-    </div>
 </div>
