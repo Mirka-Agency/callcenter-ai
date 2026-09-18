@@ -6,7 +6,6 @@ use App\Application\Intelligence\Services\ReanalyzeConversationsService;
 use App\Domain\Intelligence\Enums\ReanalyzeScope;
 use App\Domain\Voip\Enums\CallDirection;
 use App\Domain\Voip\Enums\CallStatus;
-use App\Enums\ReportDatePreset;
 use App\Livewire\Employer\Intelligence\Concerns\HasAnalysisListFilters;
 use App\Models\OrganizationUser;
 use App\Services\AnalysisListQuery;
@@ -98,18 +97,6 @@ class Index extends Component
             'charts' => $query->charts($filter),
             'filter' => $filter,
             'employees' => $employees,
-            'primaryDatePresets' => [
-                ReportDatePreset::Today,
-                ReportDatePreset::Yesterday,
-                ReportDatePreset::Last7,
-                ReportDatePreset::Last30,
-                ReportDatePreset::ThisMonth,
-            ],
-            'moreDatePresets' => [
-                ReportDatePreset::PreviousMonth,
-                ReportDatePreset::CurrentQuarter,
-                ReportDatePreset::CurrentYear,
-            ],
             'callStatuses' => CallStatus::cases(),
             'directions' => CallDirection::cases(),
         ]);

@@ -239,7 +239,7 @@ class EmployeePerformanceAnalytics
             'quality_distribution' => $this->trendCalculator->qualityDistribution($data->analyses),
             'lead_distribution' => $this->leadConcerns->leadQualityDistribution($filter),
             'team_weaknesses' => $this->jsonAggregator->rankedItems($data->analyses, 'weaknesses_json'),
-            'attention_employees' => $this->employeesRequiringAttention($summaries),
+            'attention_employees' => $this->employeesRequiringAttention($summaries, $data),
             'top_performers' => array_slice($rankings['best_quality'], 0, 3),
             'progress_insights' => $this->insightFormatter->teamInsights(
                 $deltas,
@@ -452,17 +452,71 @@ class EmployeePerformanceAnalytics
     }
 
     /**
+     * Agents whose analyses show several weaknesses, with at least one pattern repeating across calls.
+     *
      * @param  list<array<string, mixed>>  $summaries
      * @return list<array<string, mixed>>
      */
-    private function employeesRequiringAttention(array $summaries): array
+    private function employeesRequiringAttention(array $summaries, LoadedPerformanceData $data): array
     {
         return collect($summaries)
-            ->filter(fn (array $row) => $row['average_score'] < 60 || $row['trend'] === 'declining')
-            ->sortBy('average_score')
-            ->take(5)
+            ->map(function (array $row) use ($data) {
+                if ((int) ($row['total_analyzed'] ?? 0) < 2) {
+                    return null;
+                }
+
+                $weaknesses = $this->jsonAggregator->rankedItems(
+                    $data->analysesForEmployee((int) $row['id']),
+                    'weaknesses_json',
+                    12,
+                );
+
+                $repeated = collect($weaknesses)
+                    ->filter(fn (array $item) => (int) ($item['count'] ?? 0) >= 2)
+                    ->values()
+                    ->all();
+
+                $analyzed = max(1, (int) $row['total_analyzed']);
+                $repeatedOccurrences = (int) collect($repeated)->sum('count');
+                $weaknessRate = $repeatedOccurrences / $analyzed;
+
+                if (! $this->hasRepeatedCoachingWeaknesses($repeated) || $weaknessRate < 0.5) {
+                    return null;
+                }
+
+                return array_merge($row, [
+                    'repeated_weaknesses' => array_slice($repeated, 0, 3),
+                    'distinct_weakness_count' => count($weaknesses),
+                    'repeated_weakness_count' => count($repeated),
+                    'repeated_weakness_occurrences' => $repeatedOccurrences,
+                    'weakness_rate' => round($weaknessRate, 2),
+                ]);
+            })
+            ->filter()
+            ->sortBy([
+                ['weakness_rate', 'desc'],
+                ['repeated_weakness_occurrences', 'desc'],
+                ['average_score', 'asc'],
+            ])
+            ->take(6)
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  list<array{item: string, count: int}>  $repeated
+     */
+    private function hasRepeatedCoachingWeaknesses(array $repeated): bool
+    {
+        if ($repeated === []) {
+            return false;
+        }
+
+        if (count($repeated) >= 2) {
+            return true;
+        }
+
+        return (int) ($repeated[0]['count'] ?? 0) >= 3;
     }
 
     /** @param  Collection<int, ConversationAnalysis>  $analyses */

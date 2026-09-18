@@ -24,8 +24,6 @@ trait HasPerformanceFilters
     #[Url(as: 'employees')]
     public array $selectedEmployeeIds = [];
 
-    public bool $showMoreDatePresets = false;
-
     public bool $showCustomDateRange = false;
 
     public ?string $draftCustomFrom = null;
@@ -117,12 +115,6 @@ trait HasPerformanceFilters
         $this->showCustomDateRange = true;
     }
 
-    #[Renderless]
-    public function toggleMoreDatePresets(): void
-    {
-        $this->showMoreDatePresets = ! $this->showMoreDatePresets;
-    }
-
     public function clearDateFilter(): void
     {
         $this->setDatePreset(ReportDatePreset::Last30->value);
@@ -139,7 +131,6 @@ trait HasPerformanceFilters
     {
         $this->setDatePreset(ReportDatePreset::Last30->value);
         $this->clearEmployeeFilter();
-        $this->showMoreDatePresets = false;
     }
 
     protected function performanceFilter(?int $employeeId = null): ReportFilter

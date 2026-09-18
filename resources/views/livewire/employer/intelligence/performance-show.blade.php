@@ -135,10 +135,7 @@
         <p class="mt-6 text-sm leading-7 text-zinc-600 dark:text-zinc-300">{{ $profile['executive_summary'] }}</p>
     </section>
 
-    @include('livewire.employer.intelligence.partials.performance-filters', [
-        'primaryDatePresets' => $primaryDatePresets,
-        'moreDatePresets' => $moreDatePresets,
-    ])
+    @include('livewire.employer.intelligence.partials.performance-filters')
 
     <div class="relative space-y-6">
         <x-saas.filter-loading-overlay scoped :target="$filterActionTargets" />

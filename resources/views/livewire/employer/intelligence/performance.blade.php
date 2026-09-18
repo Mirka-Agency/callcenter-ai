@@ -31,10 +31,7 @@
         </x-slot:actions>
     </x-saas.page-header>
 
-    @include('livewire.employer.intelligence.partials.performance-filters', [
-        'primaryDatePresets' => $primaryDatePresets,
-        'moreDatePresets' => $moreDatePresets,
-    ])
+    @include('livewire.employer.intelligence.partials.performance-filters')
 
     <div class="relative space-y-6">
         <x-saas.filter-loading-overlay scoped :target="$filterActionTargets" />
@@ -50,6 +47,11 @@
         <x-saas.stat-card label="میانگین امتیاز مکالمه" :value="$kpis['average_quality_score'] ?: '—'" :trend="$deltas['average_quality_score']" />
         <x-saas.stat-card label="میانگین رضایت مشتری" :value="$kpis['average_sentiment'] ? $kpis['average_sentiment'].'%' : '—'" :trend="$deltas['average_sentiment']" />
     </div>
+
+    @include('livewire.employer.partials.attention-agents', [
+        'attentionEmployees' => $dashboard['attention_employees'],
+        'agentProfileUrl' => $profileUrl,
+    ])
 
     @include('livewire.employer.partials.agent-performance-cards', [
         'title' => 'کارت‌های عملکرد',

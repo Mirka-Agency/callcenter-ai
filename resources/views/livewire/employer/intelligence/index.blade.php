@@ -152,8 +152,6 @@
     @endif
 
     @include('livewire.employer.intelligence.partials.analysis-filters', [
-        'primaryDatePresets' => $primaryDatePresets,
-        'moreDatePresets' => $moreDatePresets,
         'employees' => $employees,
         'callStatuses' => $callStatuses,
         'directions' => $directions,

@@ -66,6 +66,55 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $this->assertContains(ReportDatePreset::CurrentYear, ReportDatePreset::selectable());
     }
 
+    public function test_team_dashboard_flags_agents_with_repeated_weaknesses(): void
+    {
+        $organization = Organization::factory()->create();
+        $repeatedAgent = $this->seedNamedEmployee($organization, 'رضا', 'کریمی');
+        $oneOffAgent = $this->seedNamedEmployee($organization, 'سارا', 'محمدی');
+        $singleRepeatAgent = $this->seedNamedEmployee($organization, 'مینا', 'رضایی');
+
+        $this->seedAnalysisForEmployee($organization, $repeatedAgent, 55, ['پیگیری ضعیف', 'جمع‌بندی ضعیف']);
+        $this->seedAnalysisForEmployee($organization, $repeatedAgent, 58, ['پیگیری ضعیف', 'عدم تأیید نیاز']);
+        $this->seedAnalysisForEmployee($organization, $repeatedAgent, 52, ['جمع‌بندی ضعیف']);
+
+        $this->seedAnalysisForEmployee($organization, $oneOffAgent, 50, ['قطع مکالمه']);
+        $this->seedAnalysisForEmployee($organization, $oneOffAgent, 48, ['توضیح ناقص محصول']);
+        $this->seedAnalysisForEmployee($organization, $oneOffAgent, 49, ['لحن نامناسب']);
+
+        $this->seedAnalysisForEmployee($organization, $singleRepeatAgent, 60, ['عدم معرفی خود']);
+        $this->seedAnalysisForEmployee($organization, $singleRepeatAgent, 61, ['عدم معرفی خود']);
+
+        $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
+        $dashboard = app(EmployeePerformanceAnalytics::class)->teamDashboard($filter);
+        $attention = collect($dashboard['attention_employees']);
+
+        $this->assertTrue($attention->contains('id', $repeatedAgent->id));
+        $this->assertFalse($attention->contains('id', $oneOffAgent->id));
+        $this->assertFalse($attention->contains('id', $singleRepeatAgent->id));
+
+        $card = $attention->firstWhere('id', $repeatedAgent->id);
+        $this->assertEqualsCanonicalizing(['پیگیری ضعیف', 'جمع‌بندی ضعیف'], collect($card['repeated_weaknesses'])->pluck('item')->all());
+        $this->assertSame(2, $card['repeated_weakness_count']);
+        $this->assertSame(4, $card['repeated_weakness_occurrences']);
+    }
+
+    public function test_team_dashboard_flags_agent_with_one_heavily_repeated_weakness(): void
+    {
+        $organization = Organization::factory()->create();
+        $agent = $this->seedNamedEmployee($organization, 'حامد', 'نوری');
+
+        $this->seedAnalysisForEmployee($organization, $agent, 54, ['پیگیری ضعیف']);
+        $this->seedAnalysisForEmployee($organization, $agent, 51, ['پیگیری ضعیف']);
+        $this->seedAnalysisForEmployee($organization, $agent, 49, ['پیگیری ضعیف']);
+
+        $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
+        $dashboard = app(EmployeePerformanceAnalytics::class)->teamDashboard($filter);
+        $attention = collect($dashboard['attention_employees']);
+
+        $this->assertTrue($attention->contains('id', $agent->id));
+        $this->assertSame(3, $attention->firstWhere('id', $agent->id)['repeated_weaknesses'][0]['count']);
+    }
+
     /** @return array{0: Organization, 1: OrganizationUser} */
     private function seedEmployeeWithAnalysis(int $score): array
     {
@@ -115,8 +164,24 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         return [$organization, $employee];
     }
 
-    private function seedAnalysisForEmployee(Organization $organization, OrganizationUser $employee, int $score): void
+    private function seedNamedEmployee(Organization $organization, string $firstName, string $lastName): OrganizationUser
     {
+        return OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => User::factory()->create()->id,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'is_active' => true,
+        ]);
+    }
+
+    /** @param  list<string>  $weaknesses */
+    private function seedAnalysisForEmployee(
+        Organization $organization,
+        OrganizationUser $employee,
+        int $score,
+        array $weaknesses = [],
+    ): void {
         $call = Call::query()->create([
             'organization_id' => $organization->id,
             'organization_user_id' => $employee->id,
@@ -144,7 +209,7 @@ class EmployeePerformanceAnalyticsTest extends TestCase
             'summary' => 'تماس بدون مکالمه',
             'sentiment' => AnalysisSentiment::Neutral,
             'strengths_json' => [],
-            'weaknesses_json' => [],
+            'weaknesses_json' => $weaknesses,
             'next_actions_json' => [],
             'analyzed_at' => now(),
         ]);
