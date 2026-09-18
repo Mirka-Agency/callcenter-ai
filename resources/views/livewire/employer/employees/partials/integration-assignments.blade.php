@@ -6,14 +6,14 @@
                 <p class="mt-1 text-sm text-zinc-500">اتصال CRM/VoIP و شناسه‌های ارائه‌دهنده (مثل شماره داخلی) را برای این کارشناس تنظیم کنید.</p>
             @else
                 <h2 class="text-lg font-semibold">اتصال VoIP و داخلی</h2>
-                <p class="mt-1 text-sm text-zinc-500">اتصال VoIP سازمان و شماره داخلی این کارشناس را تنظیم کنید تا تماس‌ها به او نسبت داده شوند.</p>
+                <p class="mt-1 text-sm text-zinc-500">اتصال VoIP شرکت و شماره داخلی این کارشناس را تنظیم کنید تا تماس‌ها به او نسبت داده شوند.</p>
             @endif
         </div>
         <button type="button" wire:click="addIntegrationAssignment" class="saas-btn-secondary text-sm">افزودن اتصال</button>
     </div>
 
     @if ($this->integrationConnectionOptions() === [])
-        <p class="text-sm text-zinc-500">هنوز اتصال VoIP فعالی برای سازمان تعریف نشده. پس از راه‌اندازی VoIP توسط ادمین، اینجا داخلی را تنظیم کنید.</p>
+        <p class="text-sm text-zinc-500">هنوز اتصال VoIP فعالی برای شرکت تعریف نشده. پس از راه‌اندازی VoIP توسط ادمین، اینجا داخلی را تنظیم کنید.</p>
     @endif
 
     @foreach ($integration_assignments as $index => $assignment)

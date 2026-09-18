@@ -37,7 +37,7 @@
             </div>
 
             <div>
-                <label class="mb-2 block text-sm font-medium">نام سازمان</label>
+                <label class="mb-2 block text-sm font-medium">نام شرکت</label>
                 <input wire:model="organization_title" class="saas-input" required>
                 @error('organization_title') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>

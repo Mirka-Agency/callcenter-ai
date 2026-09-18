@@ -19,6 +19,15 @@ class AttentionCallsQuickFilterTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_analysis_page_shows_total_calls_stat_card(): void
+    {
+        $this->actingAsEmployer();
+
+        Livewire::test(IntelligenceIndex::class)
+            ->assertSee('تعداد کل تماس‌ها')
+            ->assertSee('تحلیل‌های فیلترشده');
+    }
+
     public function test_analysis_page_shows_attention_quick_filter_next_to_missed_calls(): void
     {
         $this->actingAsEmployer();

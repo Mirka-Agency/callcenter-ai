@@ -44,7 +44,7 @@ class CustomerProfileUpdateService
 
         if ($duplicate) {
             throw ValidationException::withMessages([
-                'phone_number' => 'مشتری دیگری با این شماره در سازمان ثبت شده است.',
+                'phone_number' => 'مشتری دیگری با این شماره در شرکت ثبت شده است.',
             ]);
         }
 
@@ -96,7 +96,7 @@ class CustomerProfileUpdateService
 
             if (! $company) {
                 throw ValidationException::withMessages([
-                    'customer_company_id' => 'سازمان انتخاب‌شده معتبر نیست.',
+                    'customer_company_id' => 'شرکت انتخاب‌شده معتبر نیست.',
                 ]);
             }
 

@@ -67,7 +67,7 @@
                     <x-saas.avatar :name="$contact->displayName()" size="sm" class="ring-2 ring-white dark:ring-zinc-900" />
                 @endforeach
             </div>
-            <span class="text-xs text-zinc-500">مشاهده مخاطبان</span>
+            <span class="text-xs text-zinc-500">مشاهده اشخاص</span>
         </div>
     @endif
 

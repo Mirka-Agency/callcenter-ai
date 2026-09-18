@@ -3,6 +3,7 @@
 namespace App\DTOs;
 
 use App\Enums\ReportDatePreset;
+use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -133,6 +134,38 @@ readonly class AnalysisListFilter
                     ->orWhere('organization_user.first_name', 'like', $term)
                     ->orWhere('organization_user.last_name', 'like', $term);
             });
+        }
+
+        return $query;
+    }
+
+    /** @param  Builder<Call>  $query */
+    public function applyToCallQuery(Builder $query): Builder
+    {
+        $query->where('organization_id', $this->organizationId)
+            ->where(function (Builder $inner) {
+                $inner->whereBetween('started_at', [$this->from, $this->to])
+                    ->orWhereBetween('created_at', [$this->from, $this->to]);
+            });
+
+        if ($this->employeeId !== null) {
+            $query->where('organization_user_id', $this->employeeId);
+        }
+
+        if ($this->statuses !== []) {
+            $query->whereIn('status', $this->statuses);
+        }
+
+        if ($this->direction !== null) {
+            $query->where('direction', $this->direction);
+        }
+
+        if ($this->minDurationSeconds !== null) {
+            $query->where('duration_seconds', '>=', $this->minDurationSeconds);
+        }
+
+        if ($this->maxDurationSeconds !== null) {
+            $query->where('duration_seconds', '<=', $this->maxDurationSeconds);
         }
 
         return $query;

@@ -16,11 +16,11 @@ return [
     'admin_email' => env('ONPREM_ADMIN_EMAIL', 'admin@example.com'),
     'admin_password' => env('ONPREM_ADMIN_PASSWORD', 'password'),
 
-    'employer_name' => env('ONPREM_EMPLOYER_NAME', 'مدیر سازمان'),
+    'employer_name' => env('ONPREM_EMPLOYER_NAME', 'مدیر شرکت'),
     'employer_email' => env('ONPREM_EMPLOYER_EMAIL', 'employer@example.com'),
     'employer_password' => env('ONPREM_EMPLOYER_PASSWORD', 'password'),
 
-    'org_title' => env('ONPREM_ORG_TITLE', 'سازمان محلی'),
+    'org_title' => env('ONPREM_ORG_TITLE', 'شرکت محلی'),
     'wallet_balance' => (float) env('ONPREM_WALLET_BALANCE', 50_000_000),
     'employer_can_manage_integrations' => filter_var(
         env('ONPREM_EMPLOYER_CAN_MANAGE_INTEGRATIONS', true),

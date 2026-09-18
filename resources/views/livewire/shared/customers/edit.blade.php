@@ -1,8 +1,6 @@
 <div class="saas-page space-y-6">
-    @include('livewire.shared.customers.partials.section-nav', ['portal' => $portal, 'active' => 'contacts'])
-
     <x-saas.page-header
-        title="ویرایش مخاطب"
+        title="ویرایش شخص"
         :description="'به‌روزرسانی اطلاعات «'.$customer->displayName().'»'"
     >
         <x-slot:actions>
@@ -14,7 +12,7 @@
         <div class="flex items-center gap-4 border-b border-zinc-200/80 pb-5 dark:border-zinc-800">
             <x-saas.avatar :name="$customer->displayName()" size="lg" ring />
             <div>
-                <p class="text-sm text-zinc-500">مخاطب</p>
+                <p class="text-sm text-zinc-500">شخص</p>
                 <p class="font-medium text-zinc-900 dark:text-white">{{ $customer->displayName() }}</p>
             </div>
         </div>
@@ -22,7 +20,7 @@
         <div class="grid gap-5 sm:grid-cols-2">
             <div>
                 <label class="mb-2 block text-sm font-medium">نام</label>
-                <input wire:model="name" class="saas-input" placeholder="نام مخاطب">
+                <input wire:model="name" class="saas-input" placeholder="نام شخص">
                 @error('name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
             <div>
@@ -33,13 +31,13 @@
         </div>
 
         <div class="rounded-xl border border-indigo-200/70 bg-indigo-50/40 p-4 dark:border-indigo-500/20 dark:bg-indigo-950/20">
-            <p class="text-sm font-medium text-indigo-900 dark:text-indigo-200">سازمان</p>
-            <p class="mt-1 text-xs text-zinc-500">مخاطب را به یک سازمان موجود متصل کنید یا نام سازمان جدید وارد کنید.</p>
+            <p class="text-sm font-medium text-indigo-900 dark:text-indigo-200">شرکت</p>
+            <p class="mt-1 text-xs text-zinc-500">شخص را به یک شرکت موجود متصل کنید یا نام شرکت جدید وارد کنید.</p>
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
                 <div>
-                    <label class="mb-2 block text-sm font-medium">سازمان موجود</label>
+                    <label class="mb-2 block text-sm font-medium">شرکت موجود</label>
                     <select wire:model.live="customer_company_id" class="saas-input">
-                        <option value="">بدون سازمان</option>
+                        <option value="">بدون شرکت</option>
                         @foreach ($companies as $company)
                             <option value="{{ $company->id }}">{{ $company->name }}</option>
                         @endforeach
@@ -47,11 +45,11 @@
                     @error('customer_company_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
                 <div>
-                    <label class="mb-2 block text-sm font-medium">یا سازمان جدید</label>
+                    <label class="mb-2 block text-sm font-medium">یا شرکت جدید</label>
                     <input
                         wire:model="company_name"
                         class="saas-input"
-                        placeholder="فقط اگر سازمان موجود انتخاب نشده"
+                        placeholder="فقط اگر شرکت موجود انتخاب نشده"
                         @disabled($customer_company_id)
                     >
                     @error('company_name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror

@@ -12,7 +12,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 #[Layout('layouts.employee')]
-#[Title('مخاطبین')]
+#[Title('اشخاص')]
 class Index extends Component
 {
     use HasCustomerListSort;

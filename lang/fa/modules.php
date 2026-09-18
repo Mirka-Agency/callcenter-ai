@@ -16,7 +16,7 @@ return [
     'voip_integration' => 'یکپارچه‌سازی VoIP',
     'wallet' => 'کیف پول',
     'impersonation' => 'ورود به حساب کاربر',
-    'organization_management' => 'مدیریت سازمان‌ها',
+    'organization_management' => 'مدیریت شرکت‌ها',
     'employee_management' => 'مدیریت کارشناسان',
     'llm_providers' => 'ارائه‌دهندگان LLM',
     'platform_billing' => 'صورتحساب پلتفرم',

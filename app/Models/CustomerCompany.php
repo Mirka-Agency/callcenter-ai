@@ -81,6 +81,6 @@ class CustomerCompany extends Model
 
     public function displayName(): string
     {
-        return $this->name ?: 'سازمان';
+        return $this->name ?: 'شرکت';
     }
 }

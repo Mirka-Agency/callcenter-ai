@@ -12,7 +12,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('layouts.employee')]
-#[Title('پروفایل سازمان')]
+#[Title('پروفایل شرکت')]
 class Show extends Component
 {
     public CustomerCompany $customerCompany;

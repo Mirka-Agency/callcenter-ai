@@ -29,7 +29,7 @@ class AudioUploadValidationService
 
         if (! $settings->is_active) {
             throw ValidationException::withMessages([
-                'audio' => 'بارگذاری دستی تماس در حال حاضر غیرفعال است. با مدیر سازمان تماس بگیرید.',
+                'audio' => 'بارگذاری دستی تماس در حال حاضر غیرفعال است. با مدیر شرکت تماس بگیرید.',
             ]);
         }
 
@@ -91,7 +91,7 @@ class AudioUploadValidationService
 
         if (! $settings->is_active) {
             throw ValidationException::withMessages([
-                'audio' => 'بارگذاری دستی تماس در حال حاضر غیرفعال است. با مدیر سازمان تماس بگیرید.',
+                'audio' => 'بارگذاری دستی تماس در حال حاضر غیرفعال است. با مدیر شرکت تماس بگیرید.',
             ]);
         }
 

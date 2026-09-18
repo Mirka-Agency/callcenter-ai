@@ -1,11 +1,7 @@
 <div class="saas-page space-y-6">
-    @isset($portal)
-        @include('livewire.shared.customers.partials.section-nav', ['portal' => $portal, 'active' => 'companies'])
-    @endisset
-
     <x-saas.page-header
-        title="سازمان جدید"
-        description="ثبت سازمان مشتری — بعداً می‌توانید مخاطبان را به آن متصل کنید."
+        title="شرکت جدید"
+        description="ثبت شرکت مشتری — بعداً می‌توانید اشخاص را به آن متصل کنید."
     >
         <x-slot:actions>
             <a href="{{ $backRoute }}" class="saas-btn-secondary text-sm" wire:navigate>انصراف</a>
@@ -15,7 +11,7 @@
     <form wire:submit="save" class="saas-card max-w-3xl space-y-5">
         <div class="grid gap-5 sm:grid-cols-2">
             <div class="sm:col-span-2">
-                <label class="mb-2 block text-sm font-medium">نام سازمان *</label>
+                <label class="mb-2 block text-sm font-medium">نام شرکت *</label>
                 <input wire:model="name" class="saas-input" required autofocus>
                 @error('name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
@@ -49,6 +45,6 @@
             </div>
         </div>
 
-        <button type="submit" class="saas-btn-primary" wire:loading.attr="disabled">ایجاد سازمان</button>
+        <button type="submit" class="saas-btn-primary" wire:loading.attr="disabled">ایجاد شرکت</button>
     </form>
 </div>

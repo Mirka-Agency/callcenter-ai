@@ -17,14 +17,14 @@
                         <div class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                             نام این تماس‌گیرنده هنوز شناسایی نشده است.
                             @unless ($hasCrm)
-                                CRM را متصل کنید تا شماره با مخاطب موجود مطابقت داده شود.
+                                CRM را متصل کنید تا شماره با شخص موجود مطابقت داده شود.
                             @else
-                                CRM متصل است — نام پس از تطبیق شماره با مخاطب نمایش داده می‌شود.
+                                CRM متصل است — نام پس از تطبیق شماره با شخص نمایش داده می‌شود.
                             @endunless
                         </div>
                     @endif
                     <div class="flex justify-between text-sm">
-                        <span class="text-zinc-500">سازمان</span>
+                        <span class="text-zinc-500">شرکت</span>
                         <span class="font-medium">{{ $incomingCall['organization_name'] ?? '—' }}</span>
                     </div>
                     <div class="flex justify-between text-sm">
@@ -127,7 +127,7 @@
                         @unless ($hasCrm)
                             <p><strong>CRM:</strong> CRM را متصل کنید تا نام تماس‌گیرنده شناسایی شود و تاریخچه مشتری بارگذاری گردد.</p>
                         @endunless
-                        <p><strong>شناسایی تماس‌گیرنده:</strong> شماره از تماس ورودی نمایش داده می‌شود و CRM در صورت تطبیق، آن را با نام مخاطب تکمیل می‌کند.</p>
+                        <p><strong>شناسایی تماس‌گیرنده:</strong> شماره از تماس ورودی نمایش داده می‌شود و CRM در صورت تطبیق، آن را با نام شخص تکمیل می‌کند.</p>
                     </div>
                 @endif
             </div>

@@ -3,11 +3,9 @@
 @endphp
 
 <div class="saas-page space-y-6">
-    @include('livewire.shared.customers.partials.section-nav', ['portal' => $portal, 'active' => 'contacts'])
-
     <x-saas.page-header
-        title="مخاطبین"
-        description="افراد و مخاطبان سازمان‌ها — با یا بدون سازمان. پروفایل از تحلیل تماس‌ها ساخته می‌شود."
+        title="اشخاص"
+        description="افراد و اشخاص شرکت‌ها — با یا بدون شرکت. پروفایل از تحلیل تماس‌ها ساخته می‌شود."
         data-tour="page-header"
     />
 
@@ -16,7 +14,7 @@
             <input
                 wire:model.live.debounce.300ms="search"
                 type="search"
-                placeholder="جستجو در نام، سازمان، شماره یا ایمیل..."
+                placeholder="جستجو در نام، شرکت، شماره یا ایمیل..."
                 class="saas-input w-full max-w-xl flex-1"
             >
             @include('livewire.shared.customers.partials.sort-select')

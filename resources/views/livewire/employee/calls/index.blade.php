@@ -102,7 +102,8 @@
     <div class="relative space-y-6">
         <x-saas.filter-loading-overlay scoped :target="$filterActionTargets" />
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6" data-tour="calls-stats">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-tour="calls-stats">
+        <x-saas.stat-card label="تعداد کل تماس‌ها" :value="number_format($overview['total_calls'])" />
         <x-saas.stat-card label="تحلیل‌های فیلترشده" :value="number_format($overview['total'])" />
         <x-saas.stat-card label="میانگین امتیاز" :value="$overview['average_score'] ?: '—'" hint="کیفیت مکالمه" />
         <x-saas.stat-card label="میانگین سرنخ" :value="$overview['average_lead_score'] ?: '—'" :hint="$overview['high_lead_count'] ? $overview['high_lead_count'].' سرنخ با کیفیت بالا' : null" />

@@ -22,7 +22,7 @@ enum CrmOperation: string
             self::CreateLead => 'ایجاد سرنخ',
             self::UpdateLead => 'به‌روزرسانی سرنخ',
             self::GetLead => 'دریافت سرنخ',
-            self::CreateContact => 'ایجاد مخاطب',
+            self::CreateContact => 'ایجاد شخص',
             self::CreateTask => 'ایجاد وظیفه',
             self::SyncData => 'همگام‌سازی داده',
             self::ListPipelines => 'فهرست کاریزها',

@@ -7,6 +7,7 @@ use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Enums\UserRole;
 use App\Livewire\Employer\Customers\Companies\Index as CompaniesIndex;
 use App\Livewire\Employer\Customers\Contacts\Index as ContactsIndex;
+use App\Livewire\Employer\Customers\Index as CustomersHub;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\Customer;
@@ -179,6 +180,26 @@ class CustomerListSortTest extends TestCase
         Livewire::withQueryParams(['sort' => 'newest'])
             ->test(ContactsIndex::class)
             ->assertSet('sort', 'newest');
+    }
+
+    public function test_customers_hub_omits_unassigned_stat(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $this->createCompany($organization, 'سازمان تست', now());
+        $this->createContact($organization, 'مخاطب بدون شرکت', '09121170001', now());
+
+        $component = Livewire::test(CustomersHub::class);
+        $html = $component->html();
+        $statsStart = strpos($html, 'data-tour="customers-hub-stats"');
+        $statsEnd = strpos($html, 'data-tour="customers-hub-cards"');
+
+        $this->assertSame(['companies', 'contacts', 'calls'], array_keys($component->viewData('stats')));
+        $this->assertNotFalse($statsStart);
+        $this->assertNotFalse($statsEnd);
+        $this->assertStringNotContainsString('بدون سازمان', substr($html, $statsStart, $statsEnd - $statsStart));
+        $this->assertStringNotContainsString('customers-section-nav', $html);
+        $this->assertStringNotContainsString('نمای کلی', $html);
+        $component->assertSee('شرکت')->assertSee('شخص')->assertSee('تماس');
     }
 
     public function test_employer_cannot_see_other_organization_customers_when_sorting(): void

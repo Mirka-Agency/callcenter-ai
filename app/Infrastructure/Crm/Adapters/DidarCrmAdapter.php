@@ -47,7 +47,7 @@ class DidarCrmAdapter extends AbstractCrmAdapter implements ProvidesEmployeeInte
             ],
             [
                 'key' => 'external_contact_id',
-                'name' => 'شناسه مخاطب خارجی',
+                'name' => 'شناسه شخص خارجی',
                 'field_type' => 'text',
                 'is_required' => false,
                 'sort_order' => 4,

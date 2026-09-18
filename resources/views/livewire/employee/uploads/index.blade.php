@@ -17,11 +17,11 @@
     @if (($wallet['balance'] ?? 0) < (($wallet['currency'] ?? 'IRR') === 'IRR' ? 1000 : 0.01))
         <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
             موجودی اعتبار تحلیل کافی نیست ({{ \App\Models\PlatformAiSettings::formatMoney($wallet['balance'] ?? 0) }}).
-            تا زمانی که سازمان اعتبار را شارژ نکند، بارگذاری تماس با خطا مواجه می‌شود.
+            تا زمانی که شرکت اعتبار را شارژ نکند، بارگذاری تماس با خطا مواجه می‌شود.
         </div>
     @elseif (($wallet['balance'] ?? 0) < (($wallet['currency'] ?? 'IRR') === 'IRR' ? 100_000 : 10))
         <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-            موجودی اعتبار کم است ({{ \App\Models\PlatformAiSettings::formatMoney($wallet['balance']) }}). قبل از بارگذاری حجم بالای تماس، شارژ اعتبار سازمان را در نظر بگیرید.
+            موجودی اعتبار کم است ({{ \App\Models\PlatformAiSettings::formatMoney($wallet['balance']) }}). قبل از بارگذاری حجم بالای تماس، شارژ اعتبار شرکت را در نظر بگیرید.
         </div>
     @endif
 

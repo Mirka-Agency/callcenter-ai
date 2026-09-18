@@ -16,7 +16,7 @@ class EmployerIntegrationGate
     public static function authorizeFullManagement(?Organization $organization = null): void
     {
         if (! self::allowsFullManagement($organization)) {
-            abort(403, 'مدیریت کامل یکپارچه‌سازی برای این سازمان فعال نیست.');
+            abort(403, 'مدیریت کامل یکپارچه‌سازی برای این شرکت فعال نیست.');
         }
     }
 }

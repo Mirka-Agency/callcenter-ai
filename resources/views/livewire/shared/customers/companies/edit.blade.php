@@ -1,8 +1,6 @@
 <div class="saas-page space-y-6">
-    @include('livewire.shared.customers.partials.section-nav', ['portal' => $portal, 'active' => 'companies'])
-
     <x-saas.page-header
-        title="ویرایش سازمان"
+        title="ویرایش شرکت"
         :description="'به‌روزرسانی اطلاعات «'.($company->displayName()).'»'"
     >
         <x-slot:actions>
@@ -16,13 +14,13 @@
                 {{ mb_substr($company->displayName(), 0, 1) }}
             </div>
             <div>
-                <p class="text-sm text-zinc-500">{{ $company->contacts_count }} مخاطب · {{ $company->total_calls }} تماس</p>
+                <p class="text-sm text-zinc-500">{{ $company->contacts_count }} شخص · {{ $company->total_calls }} تماس</p>
             </div>
         </div>
 
         <div class="grid gap-5 sm:grid-cols-2">
             <div class="sm:col-span-2">
-                <label class="mb-2 block text-sm font-medium">نام سازمان *</label>
+                <label class="mb-2 block text-sm font-medium">نام شرکت *</label>
                 <input wire:model="name" class="saas-input" required>
                 @error('name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
@@ -37,12 +35,12 @@
                 @error('website') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
             <div>
-                <label class="mb-2 block text-sm font-medium">تلفن سازمان</label>
+                <label class="mb-2 block text-sm font-medium">تلفن شرکت</label>
                 <input wire:model="phone" class="saas-input" dir="ltr">
                 @error('phone') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
             <div>
-                <label class="mb-2 block text-sm font-medium">ایمیل سازمان</label>
+                <label class="mb-2 block text-sm font-medium">ایمیل شرکت</label>
                 <input wire:model="email" type="email" class="saas-input" dir="ltr">
                 @error('email') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
@@ -53,7 +51,7 @@
             </div>
             <div class="sm:col-span-2">
                 <label class="mb-2 block text-sm font-medium">یادداشت</label>
-                <textarea wire:model="notes" rows="3" class="saas-input" placeholder="نکات داخلی درباره این سازمان"></textarea>
+                <textarea wire:model="notes" rows="3" class="saas-input" placeholder="نکات داخلی درباره این شرکت"></textarea>
                 @error('notes') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
         </div>

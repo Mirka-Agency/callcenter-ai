@@ -161,7 +161,7 @@ final class DemoCatalog
 
     public static function employerName(int $index): string
     {
-        return self::employerProfiles()[$index]['name'] ?? 'مدیر سازمان';
+        return self::employerProfiles()[$index]['name'] ?? 'مدیر شرکت';
     }
 
     /** @return list<array{first_name: string, last_name: string, email_first: string, email_last: string, gender: string, department: string, position: string}> */
