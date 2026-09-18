@@ -15,7 +15,6 @@ use App\Livewire\Employer\Customers\Show as CustomersShow;
 use App\Livewire\Employer\Dashboard\Overview as EmployerDashboard;
 use App\Livewire\Employer\Employees\Create as EmployeeCreate;
 use App\Livewire\Employer\Employees\Edit as EmployeeEdit;
-use App\Livewire\Employer\Employees\Index as EmployeesIndex;
 use App\Livewire\Employer\Intelligence\Index as IntelligenceIndex;
 use App\Livewire\Employer\Intelligence\Performance as IntelligencePerformance;
 use App\Livewire\Employer\Intelligence\PerformanceShow as IntelligencePerformanceShow;
@@ -38,8 +37,8 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth', 'employer'])->group(function () {
     Route::get('/', EmployerDashboard::class)->name('dashboard');
 
+    Route::redirect('employees', '/app/intelligence/performance');
     Route::prefix('employees')->name('employees.')->group(function () {
-        Route::get('/', EmployeesIndex::class)->name('index');
         Route::get('/create', EmployeeCreate::class)->name('create');
         Route::get('/{employee}/edit', EmployeeEdit::class)->name('edit');
     });

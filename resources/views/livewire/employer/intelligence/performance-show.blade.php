@@ -106,6 +106,9 @@
                 <div>
                     <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $employee['name'] }}</h1>
                     <p class="mt-1 text-zinc-500">{{ $employee['department'] ?? 'بدون بخش' }} · {{ $employee['position'] ?? 'کارشناس تماس' }}</p>
+                    @if (! empty($employee['email']))
+                        <p class="mt-1 text-sm text-zinc-500">{{ $employee['email'] }}</p>
+                    @endif
                     <div class="mt-3 flex flex-wrap gap-2">
                         <span @class(['rounded-md px-2.5 py-1 text-xs font-medium', AgentPerformancePresenter::trendBadgeClass($deltas['quality_trend'] ?? null)])>
                             کیفیت: {{ AgentPerformancePresenter::trendLabel($deltas['quality_trend'] ?? null) }}
@@ -123,6 +126,7 @@
             </div>
             <div class="flex flex-wrap items-center gap-4">
                 <x-saas.score-ring :score="$metrics['average_quality_score']" size="lg" label="امتیاز کلی" />
+                <a href="{{ route('employer.employees.edit', $employee['id']) }}" class="saas-btn-secondary text-sm">ویرایش</a>
                 <button
                     type="button"
                     class="js-performance-print-trigger saas-btn-secondary text-sm"

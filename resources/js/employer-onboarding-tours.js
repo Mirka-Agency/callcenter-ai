@@ -53,7 +53,7 @@ export const employerPageTours = {
             {
                 selector: '[data-tour="page-header"]',
                 title: 'عملکرد کارشناسان',
-                content: 'رتبه‌بندی، مقایسه و شناسایی فرصت‌های مربیگری تیم تماس.',
+                content: 'رتبه‌بندی، مقایسه و مربیگری تیم. از همین بالا می‌توانید کارشناس جدید اضافه کنید یا خروجی PDF بگیرید.',
             },
             {
                 selector: '[data-tour="performance-filters"]',
@@ -109,26 +109,6 @@ export const employerPageTours = {
                 selector: '[data-tour="analysis-list"]',
                 title: 'لیست تحلیل‌ها',
                 content: 'هر ردیف قابل کلیک است. جستجو، مرتب‌سازی ستون‌ها و فیلتر سریع از همین بخش.',
-            },
-        ],
-    },
-    'employer.employees.index': {
-        label: 'کارشناسان',
-        steps: [
-            {
-                selector: '[data-tour="page-header"]',
-                title: 'مدیریت کارشناسان',
-                content: 'افزودن عضو تیم، ویرایش پروفایل و کنترل وضعیت فعال/غیرفعال.',
-            },
-            {
-                selector: '[data-tour="employees-search"]',
-                title: 'جستجو',
-                content: 'جستجوی سریع بر اساس نام یا اطلاعات کارشناس.',
-            },
-            {
-                selector: '[data-tour="employees-table"]',
-                title: 'جدول کارشناسان',
-                content: 'ایمیل، بخش، تعداد تحلیل‌ها و وضعیت. از ستون عملیات می‌توانید ویرایش کنید.',
             },
         ],
     },
@@ -384,6 +364,26 @@ export const employerPageTours = {
             },
         ],
     },
+    'employer.unmatched-extensions.index': {
+        label: 'داخلی‌های بدون کارشناس',
+        steps: [
+            {
+                selector: '[data-tour="page-header"]',
+                title: 'داخلی‌های بدون کارشناس',
+                content: 'اینجا شماره‌های داخلی‌ای را می‌بینید که در تماس‌ها آمده‌اند ولی هنوز معلوم نیست مال کدام کارشناس هستند.',
+            },
+            {
+                selector: '[data-tour="unmatched-how"]',
+                title: 'چه کاری باید انجام دهید؟',
+                content: 'شماره داخلی را بشناسید، کارشناس همان خط را انتخاب کنید و وصل کنید تا تماس‌ها به او نسبت داده شود.',
+            },
+            {
+                selector: '[data-tour="unmatched-list"]',
+                title: 'کارت هر داخلی',
+                content: 'عنوان هر کارت می‌گوید کدام شماره هنوز کارشناس ندارد. کارشناس را انتخاب کنید و «وصل کردن به کارشناس» را بزنید.',
+            },
+        ],
+    },
     'employer.voip.index': {
         label: 'خطوط تلفنی',
         steps: [
@@ -480,8 +480,7 @@ const navSteps = [
     ['employer.dashboard', 'داشبورد', 'نقطه شروع مدیر: نمای کلی تیم، عملکرد کارشناسان و فعالیت اخیر.'],
     ['employer.intelligence.performance', 'عملکرد کارشناسان', 'رتبه‌بندی، مقایسه و مربیگری تیم تماس.'],
     ['employer.intelligence.index', 'تحلیل تماس‌ها', 'فهرست تمام تحلیل‌ها با فیلتر و جزئیات هر مکالمه.'],
-    ['employer.employees.index', 'کارشناسان', 'مدیریت اعضای تیم و دسترسی‌ها.'],
-    ['employer.unmatched-extensions.index', 'داخلی‌های بدون کارشناس', 'ارجاع داخلی‌های بدون کاربر به کارشناس موجود؛ تماس‌ها بعد از تخصیص وارد صف تحلیل می‌شوند.'],
+    ['employer.unmatched-extensions.index', 'داخلی‌های بدون کارشناس', 'شماره‌های داخلی که هنوز مال هیچ کارشناسی نیستند؛ کارشناس را انتخاب کنید تا تماس‌هایش به او وصل شود.'],
     ['employer.customers.index', 'مشتریان', 'سازمان‌ها و مخاطبین — پروفایل خودکار از تحلیل تماس‌ها، با آمار تجمیعی برای هر شرکت.'],
     ['employer.manual-analyses.index', 'آپلود دستی', 'تحلیل فایل صوتی بدون VoIP.'],
     ['employer.processing-queue.index', 'صف تحلیل', 'پیگیری وضعیت پردازش فایل‌های در صف.'],
@@ -545,7 +544,6 @@ export const employerRouteMatchers = [
     { pattern: /^\/app\/?$/, route: 'employer.dashboard' },
     { pattern: /^\/app\/employees\/create\/?$/, route: 'employer.employees.create' },
     { pattern: /^\/app\/employees\/\d+\/edit\/?$/, route: 'employer.employees.edit' },
-    { pattern: /^\/app\/employees\/?$/, route: 'employer.employees.index' },
     { pattern: /^\/app\/intelligence\/performance\/\d+\/?$/, route: 'employer.intelligence.performance.show' },
     { pattern: /^\/app\/intelligence\/performance\/?$/, route: 'employer.intelligence.performance' },
     { pattern: /^\/app\/intelligence\/\d+\/?$/, route: 'employer.intelligence.show' },

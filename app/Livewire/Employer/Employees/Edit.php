@@ -100,7 +100,7 @@ class Edit extends Component
 
         session()->flash('status', __('ui.success.employee_saved'));
 
-        $this->redirect(route('employer.employees.index'), navigate: true);
+        $this->redirect(route('employer.intelligence.performance.show', $this->employee), navigate: true);
     }
 
     public function render()
