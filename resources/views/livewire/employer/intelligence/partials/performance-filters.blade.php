@@ -90,27 +90,6 @@
         </div>
     </div>
 
-    @if (isset($filterEmployees) && $filterEmployees->isNotEmpty())
-        <div class="space-y-2 border-t border-zinc-200/80 pt-4 dark:border-zinc-800">
-            <span class="text-sm font-medium text-zinc-500">مشاهده پروفایل کارشناس</span>
-            <div class="flex flex-wrap items-center gap-2">
-                <x-saas.agent-chip
-                    name="همه"
-                    :show-avatar="false"
-                    wire:click="clearEmployeeFilter"
-                    :active="$selectedEmployeeIds === []"
-                />
-                @foreach ($filterEmployees as $employee)
-                    <x-saas.agent-chip
-                        :employee="$employee"
-                        :show-avatar="false"
-                        :href="route('employer.intelligence.performance.show', $employee->id).'?preset='.$datePreset.'&from='.$customFrom.'&to='.$customTo"
-                    />
-                @endforeach
-            </div>
-        </div>
-    @endif
-
     @if (! $isDefaultDate)
         <div class="flex flex-wrap items-center gap-2 border-t border-zinc-200/80 pt-4 dark:border-zinc-800">
             <span class="text-xs font-medium text-zinc-500">فیلترهای فعال:</span>

@@ -34,7 +34,6 @@
     @include('livewire.employer.intelligence.partials.performance-filters', [
         'primaryDatePresets' => $primaryDatePresets,
         'moreDatePresets' => $moreDatePresets,
-        'filterEmployees' => $filterEmployees,
     ])
 
     <div class="relative space-y-6">

@@ -45,6 +45,9 @@ class AgentPerformanceCardFeedTest extends TestCase
             ->call('setAgentCardFilter', 'invalid')
             ->assertSet('agentCardFilter', 'all')
             ->assertSee('PDF')
+            ->assertSee('فیلترها')
+            ->assertSee('بازه زمانی')
+            ->assertDontSee('مشاهده پروفایل کارشناس')
             ->assertDontSee('CSV')
             ->assertDontSee('Excel');
     }
@@ -69,6 +72,7 @@ class AgentPerformanceCardFeedTest extends TestCase
             ->assertSee('چاپ PDF')
             ->assertSeeHtml('window.print()')
             ->assertDontSeeHtml('onclick="window.print()"')
+            ->assertDontSee('مشاهده پروفایل کارشناس')
             ->assertDontSee('CSV')
             ->assertDontSee('Excel')
             ->assertDontSeeHtml('performance.show.export')

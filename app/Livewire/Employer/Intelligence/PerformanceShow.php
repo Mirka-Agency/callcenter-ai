@@ -94,17 +94,9 @@ class PerformanceShow extends Component
         $filter = $this->performanceFilter($this->employee->id);
         $profile = app(EmployeePerformanceAnalytics::class)->employeeProfile($filter, $this->employee);
 
-        $employees = OrganizationUser::query()
-            ->where('organization_id', EmployerContext::organizationId())
-            ->where('is_active', true)
-            ->with('user:id,avatar_path,name')
-            ->orderBy('first_name')
-            ->get(['id', 'user_id', 'first_name', 'last_name', 'department']);
-
         return view('livewire.employer.intelligence.performance-show', [
             'profile' => $profile,
             'filter' => $filter,
-            'filterEmployees' => $employees,
             'primaryDatePresets' => [
                 ReportDatePreset::Today,
                 ReportDatePreset::Yesterday,
