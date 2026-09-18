@@ -74,4 +74,13 @@ enum ReportDatePreset: string
             self::Custom,
         ];
     }
+
+    /** @return list<self> */
+    public static function namedPresets(): array
+    {
+        return array_values(array_filter(
+            self::selectable(),
+            fn (self $preset) => $preset !== self::Custom,
+        ));
+    }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Employer\Reports;
 
-use App\Enums\ReportDatePreset;
 use App\Livewire\Employer\Reports\Concerns\HasReportFilters;
 use App\Models\OrganizationUser;
 use App\Services\EmployerContext;
@@ -61,18 +60,6 @@ class Index extends Component
 
         return view('livewire.employer.reports.index', [
             'dashboard' => $dashboard,
-            'primaryDatePresets' => [
-                ReportDatePreset::Today,
-                ReportDatePreset::Yesterday,
-                ReportDatePreset::Last7,
-                ReportDatePreset::Last30,
-                ReportDatePreset::ThisMonth,
-            ],
-            'moreDatePresets' => [
-                ReportDatePreset::PreviousMonth,
-                ReportDatePreset::CurrentQuarter,
-                ReportDatePreset::CurrentYear,
-            ],
             'filterEmployees' => $employees,
             'employeesById' => $employees->keyBy('id'),
             'filter' => $filter,

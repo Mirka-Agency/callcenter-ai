@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Employer\Intelligence;
 
-use App\Enums\ReportDatePreset;
 use App\Livewire\Employer\Concerns\HasAgentPerformanceCardFeed;
 use App\Livewire\Employer\Concerns\HasTeamWeaknessDrilldown;
 use App\Livewire\Employer\Intelligence\Concerns\HasPerformanceFilters;
@@ -39,18 +38,6 @@ class Performance extends Component
                 : [],
             'agentCardFeed' => $this->agentCardFeed($dashboard['employees']),
             'filter' => $filter,
-            'primaryDatePresets' => [
-                ReportDatePreset::Today,
-                ReportDatePreset::Yesterday,
-                ReportDatePreset::Last7,
-                ReportDatePreset::Last30,
-                ReportDatePreset::ThisMonth,
-            ],
-            'moreDatePresets' => [
-                ReportDatePreset::PreviousMonth,
-                ReportDatePreset::CurrentQuarter,
-                ReportDatePreset::CurrentYear,
-            ],
         ]);
     }
 }

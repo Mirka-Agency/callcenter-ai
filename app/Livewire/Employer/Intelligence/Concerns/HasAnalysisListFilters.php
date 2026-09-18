@@ -45,8 +45,6 @@ trait HasAnalysisListFilters
     #[Url(as: 'dir')]
     public string $sortDir = 'desc';
 
-    public bool $showMoreDatePresets = false;
-
     public bool $showCustomDateRange = false;
 
     public ?string $draftCustomFrom = null;
@@ -187,12 +185,6 @@ trait HasAnalysisListFilters
         $this->resetPage();
     }
 
-    #[Renderless]
-    public function toggleMoreDatePresets(): void
-    {
-        $this->showMoreDatePresets = ! $this->showMoreDatePresets;
-    }
-
     public function clearDateFilter(): void
     {
         $this->setDatePreset(ReportDatePreset::Last30->value);
@@ -221,7 +213,6 @@ trait HasAnalysisListFilters
         $this->search = '';
         $this->sortBy = 'analyzed_at';
         $this->sortDir = 'desc';
-        $this->showMoreDatePresets = false;
         $this->showCustomDateRange = false;
         $this->resetPage();
     }

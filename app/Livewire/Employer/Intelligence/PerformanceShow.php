@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Employer\Intelligence;
 
-use App\Enums\ReportDatePreset;
 use App\Livewire\Employer\Intelligence\Concerns\HasPerformanceFilters;
 use App\Models\OrganizationUser;
 use App\Services\EmployerContext;
@@ -97,18 +96,6 @@ class PerformanceShow extends Component
         return view('livewire.employer.intelligence.performance-show', [
             'profile' => $profile,
             'filter' => $filter,
-            'primaryDatePresets' => [
-                ReportDatePreset::Today,
-                ReportDatePreset::Yesterday,
-                ReportDatePreset::Last7,
-                ReportDatePreset::Last30,
-                ReportDatePreset::ThisMonth,
-            ],
-            'moreDatePresets' => [
-                ReportDatePreset::PreviousMonth,
-                ReportDatePreset::CurrentQuarter,
-                ReportDatePreset::CurrentYear,
-            ],
         ]);
     }
 }

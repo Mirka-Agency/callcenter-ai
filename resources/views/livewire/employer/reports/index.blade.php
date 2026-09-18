@@ -157,8 +157,6 @@
     </x-saas.page-header>
 
     @include('livewire.employer.reports.partials.report-filters', [
-        'primaryDatePresets' => $primaryDatePresets,
-        'moreDatePresets' => $moreDatePresets,
         'filterEmployees' => $filterEmployees,
     ])
 

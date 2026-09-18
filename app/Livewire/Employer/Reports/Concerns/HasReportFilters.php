@@ -27,8 +27,6 @@ trait HasReportFilters
     #[Url(as: 'compare')]
     public bool $compareMode = false;
 
-    public bool $showMoreDatePresets = false;
-
     public bool $showCustomDateRange = false;
 
     public ?string $draftCustomFrom = null;
@@ -120,12 +118,6 @@ trait HasReportFilters
         $this->showCustomDateRange = true;
     }
 
-    #[Renderless]
-    public function toggleMoreDatePresets(): void
-    {
-        $this->showMoreDatePresets = ! $this->showMoreDatePresets;
-    }
-
     public function clearDateFilter(): void
     {
         $this->setDatePreset(ReportDatePreset::Last30->value);
@@ -143,7 +135,6 @@ trait HasReportFilters
     {
         $this->setDatePreset(ReportDatePreset::Last30->value);
         $this->clearEmployeeFilter();
-        $this->showMoreDatePresets = false;
     }
 
     public function toggleEmployee(int $employeeId): void

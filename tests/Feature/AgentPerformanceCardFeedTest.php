@@ -47,6 +47,16 @@ class AgentPerformanceCardFeedTest extends TestCase
             ->assertSee('PDF')
             ->assertSee('فیلترها')
             ->assertSee('بازه زمانی')
+            ->assertSee('امروز')
+            ->assertSee('دیروز')
+            ->assertSee('۷ روز گذشته')
+            ->assertSee('۳۰ روز گذشته')
+            ->assertSee('این ماه')
+            ->assertSee('ماه قبل')
+            ->assertSee('فصل جاری')
+            ->assertSee('سال جاری')
+            ->assertSee('بازه دلخواه')
+            ->assertDontSeeHtml("showMore ? 'بستن' : 'بیشتر'")
             ->assertDontSee('مشاهده پروفایل کارشناس')
             ->assertDontSee('CSV')
             ->assertDontSee('Excel');
@@ -146,6 +156,49 @@ class AgentPerformanceCardFeedTest extends TestCase
             ->assertSee('جمع‌بندی ضعیف انتهای تماس (2)');
     }
 
+    public function test_performance_page_shows_attention_agents_above_performance_cards(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $attentionAgent = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => User::factory()->create(['role' => UserRole::Employee])->id,
+            'first_name' => 'رضا',
+            'last_name' => 'کریمی',
+            'is_active' => true,
+        ]);
+        $otherAgent = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => User::factory()->create(['role' => UserRole::Employee])->id,
+            'first_name' => 'سارا',
+            'last_name' => 'محمدی',
+            'is_active' => true,
+        ]);
+
+        $this->seedEmployeeWeaknessAnalyses($organization, $attentionAgent, [
+            ['پیگیری ضعیف', 'جمع‌بندی ضعیف'],
+            ['پیگیری ضعیف', 'عدم تأیید نیاز'],
+            ['جمع‌بندی ضعیف'],
+        ]);
+        $this->seedEmployeeWeaknessAnalyses($organization, $otherAgent, [
+            ['قطع مکالمه'],
+            ['توضیح ناقص محصول'],
+        ]);
+
+        $html = Livewire::test(Performance::class)->html();
+        $attentionPosition = mb_strpos($html, 'data-tour="performance-attention"');
+        $cardsPosition = mb_strpos($html, 'data-tour="performance-cards"');
+
+        $this->assertNotFalse($attentionPosition);
+        $this->assertNotFalse($cardsPosition);
+        $this->assertLessThan($cardsPosition, $attentionPosition);
+        $this->assertStringContainsString('کارشناسان نیازمند توجه', $html);
+        $this->assertStringContainsString('overflow-x-auto', $html);
+        $this->assertStringContainsString('رضا کریمی', $html);
+        $this->assertStringContainsString('پیگیری ضعیف (2)', $html);
+        $this->assertStringContainsString('جمع‌بندی ضعیف (2)', $html);
+        $this->assertStringNotContainsString('سارا محمدی', explode('data-tour="performance-cards"', $html)[0]);
+    }
+
     private function actingAsEmployer(): Organization
     {
         $employer = User::factory()->create(['role' => UserRole::Employer]);
@@ -154,6 +207,47 @@ class AgentPerformanceCardFeedTest extends TestCase
         $this->actingAs($employer);
 
         return $organization;
+    }
+
+    /**
+     * @param  list<list<string>>  $calls
+     */
+    private function seedEmployeeWeaknessAnalyses(Organization $organization, OrganizationUser $employee, array $calls): void
+    {
+        foreach ($calls as $index => $weaknesses) {
+            $call = Call::query()->create([
+                'organization_id' => $organization->id,
+                'organization_user_id' => $employee->id,
+                'source' => ConversationSource::Voip,
+                'provider_code' => 'novatel',
+                'external_call_id' => 'attention-'.$employee->id.'-'.$index,
+                'direction' => 'inbound',
+                'caller_number' => '091210000'.$index,
+                'receiver_number' => '02100000000',
+                'status' => 'completed',
+                'processing_status' => 'analyzed',
+                'duration_seconds' => 120,
+                'started_at' => now()->subDay(),
+            ]);
+
+            ConversationAnalysis::query()->create([
+                'organization_id' => $organization->id,
+                'organization_user_id' => $employee->id,
+                'call_id' => $call->id,
+                'source' => ConversationSource::Voip,
+                'llm_provider' => 'openai',
+                'model_name' => 'gpt-4o-mini',
+                'score' => 55,
+                'is_evaluable' => true,
+                'summary' => 'خلاصه تست',
+                'sentiment' => AnalysisSentiment::Neutral,
+                'strengths_json' => [],
+                'weaknesses_json' => $weaknesses,
+                'next_actions_json' => [],
+                'lead_quality_json' => ['score' => 50, 'level' => 'medium', 'reason' => 'test'],
+                'analyzed_at' => now(),
+            ]);
+        }
     }
 
     /** @param  list<string>  $weaknesses */
