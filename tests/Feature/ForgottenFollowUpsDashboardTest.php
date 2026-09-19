@@ -136,6 +136,48 @@ class ForgottenFollowUpsDashboardTest extends TestCase
         $this->assertArrayHasKey('sort_due_date', $forgotten[0]);
     }
 
+    public function test_forgotten_follow_up_lookup_ignores_unrelated_outbound_volume(): void
+    {
+        $organization = Organization::factory()->create();
+
+        $this->seedFollowUp($organization, [
+            'external_id' => 'keep-overdue-volume',
+            'customer_name' => 'پیگیری معوق',
+            'customer_phone' => '09120000001',
+            'follow_up' => 'تماس پیگیری فردا',
+            'analyzed_at' => now()->subDays(5),
+            'started_at' => now()->subDays(5),
+        ]);
+
+        $employee = OrganizationUser::query()->where('organization_id', $organization->id)->firstOrFail();
+
+        for ($i = 0; $i < 80; $i++) {
+            Call::query()->create([
+                'organization_id' => $organization->id,
+                'organization_user_id' => $employee->id,
+                'source' => ConversationSource::Voip,
+                'provider_code' => 'novatel',
+                'external_call_id' => 'unrelated-out-'.$i,
+                'direction' => 'outbound',
+                'caller_number' => '02100000000',
+                'customer_name' => 'مشتری نامرتبط '.$i,
+                'customer_phone' => '0912999'.str_pad((string) $i, 4, '0', STR_PAD_LEFT),
+                'receiver_number' => '0912999'.str_pad((string) $i, 4, '0', STR_PAD_LEFT),
+                'title' => 'تماس نامرتبط',
+                'category' => 'فروش',
+                'status' => 'completed',
+                'processing_status' => 'analyzed',
+                'duration_seconds' => 60,
+                'started_at' => now()->subDays(2),
+            ]);
+        }
+
+        $forgotten = EmployerDashboardAnalytics::forOrganization($organization->id)->forgottenFollowUps();
+
+        $this->assertCount(1, $forgotten);
+        $this->assertSame('پیگیری معوق', $forgotten[0]['customer']);
+    }
+
     public function test_dashboard_sorts_forgotten_follow_ups_by_due_date_title(): void
     {
         $organization = $this->actingAsEmployer();
