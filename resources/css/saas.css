@@ -773,6 +773,14 @@ body.employee-onboarding-open {
     @apply flex flex-row-reverse items-center gap-2;
 }
 
+canvas[data-report-chart] {
+    display: block;
+    max-width: 100%;
+    user-select: none;
+    -webkit-user-drag: none;
+    touch-action: manipulation;
+}
+
 @keyframes waveform-player-spin {
     to {
         transform: rotate(360deg);

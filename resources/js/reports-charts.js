@@ -202,11 +202,36 @@ function forceCanvasLtr(canvas) {
     canvas.style.setProperty('direction', 'ltr');
 }
 
+function preventCanvasBrowserChrome(canvas) {
+    if (! canvas || canvas.dataset.chartGesturesBound === '1') {
+        return;
+    }
+
+    canvas.dataset.chartGesturesBound = '1';
+    canvas.setAttribute('draggable', 'false');
+    canvas.addEventListener('dragstart', (event) => event.preventDefault());
+    canvas.addEventListener('dblclick', (event) => event.preventDefault());
+}
+
+function isRepeatedClick(event) {
+    const native = event?.native ?? event;
+
+    return (native?.detail ?? 1) > 1;
+}
+
 function destroyChart(id) {
     if (charts.has(id)) {
         charts.get(id).destroy();
         charts.delete(id);
     }
+}
+
+function pruneDetachedCharts() {
+    charts.forEach((chart, id) => {
+        if (! chart.canvas || ! document.body.contains(chart.canvas)) {
+            destroyChart(id);
+        }
+    });
 }
 
 function baseOptions(type = 'line', datasetCount = 1) {
@@ -395,6 +420,7 @@ function initChart(canvas) {
 
     try {
         forceCanvasLtr(canvas);
+        preventCanvasBrowserChrome(canvas);
 
         const config = JSON.parse(canvas.dataset.config || '{}');
         const type = canvas.dataset.type || 'line';
@@ -421,14 +447,6 @@ function initChart(canvas) {
 
         requestAnimationFrame(() => {
             charts.get(id)?.resize();
-        });
-
-        canvas.addEventListener('chart:click', (event) => {
-            const detail = event.detail || {};
-
-            if (detail.dimension && detail.value !== undefined) {
-                window.Livewire?.dispatch('report-drilldown', detail);
-            }
         });
     } catch (error) {
         console.error(`Failed to initialize chart "${id}"`, error);
@@ -495,8 +513,10 @@ function attachDrilldown(canvas, options) {
         }
     };
 
-    options.onClick = (_event, elements, chart) => {
-        if (! elements.length) {
+    options.onClick = (event, elements, chart) => {
+        if (isRepeatedClick(event) || ! elements.length) {
+            event?.native?.preventDefault?.();
+
             return;
         }
 
@@ -539,7 +559,15 @@ function attachDrilldown(canvas, options) {
 }
 
 export function initReportCharts() {
+    pruneDetachedCharts();
+
     document.querySelectorAll('[data-report-chart]').forEach((canvas) => {
+        const existing = charts.get(canvas.id);
+
+        if (existing && existing.canvas === canvas) {
+            return;
+        }
+
         initChart(canvas);
     });
 }
