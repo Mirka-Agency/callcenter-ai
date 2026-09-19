@@ -6,7 +6,6 @@
     'selectedFileSize' => null,
     'showMetadata' => false,
     'audioReady' => false,
-    'highlightedSampleId' => null,
 ])
 
 <div {{ $attributes->merge(['class' => 'space-y-6']) }}>
@@ -88,10 +87,4 @@
         <span wire:loading.remove wire:target="submitForAnalysis">{{ __('ui.cta.start_analysis') }}</span>
         <span wire:loading wire:target="submitForAnalysis">در حال ارسال…</span>
     </button>
-
-    @if ($highlightedSampleId)
-        <p class="text-center text-xs text-zinc-500">
-            برای تحلیل سریع، از دکمه «تحلیل این نمونه» در بخش نمونه مکالمه استفاده کنید — نیازی به بارگذاری فایل نیست.
-        </p>
-    @endif
 </div>

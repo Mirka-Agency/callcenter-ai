@@ -39,7 +39,7 @@ class SimotelVoipAdapter extends AbstractVoipAdapter implements ProvidesEmployee
                 'field_type' => 'text',
                 'is_required' => true,
                 'placeholder' => '101',
-                'help_text' => 'داخلی واقعی سیموتل (مثل 101). برای کارشناس فقط تلفن فیزیکی، همان شماره فیزیکی یا مقدار نگاشت داخلی را ثبت کنید — نه DID کل سازمان مگر مالک آن خط باشد.',
+                'help_text' => 'داخلی واقعی سیموتل (مثل 101). برای کارشناس فقط تلفن فیزیکی، همان شماره فیزیکی یا مقدار نگاشت داخلی را ثبت کنید — نه DID کل شرکت مگر مالک آن خط باشد.',
                 'sort_order' => 1,
             ],
         ];

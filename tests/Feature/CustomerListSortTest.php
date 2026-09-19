@@ -7,6 +7,7 @@ use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Enums\UserRole;
 use App\Livewire\Employer\Customers\Companies\Index as CompaniesIndex;
 use App\Livewire\Employer\Customers\Contacts\Index as ContactsIndex;
+use App\Livewire\Employer\Customers\Index as CustomersHub;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\Customer;
@@ -33,10 +34,17 @@ class CustomerListSortTest extends TestCase
 
         $happyContact = $this->createContact($organization, 'مخاطب راضی', '09121110001', now()->subDay(), $older);
         $this->attachSentiment($organization, $happyContact, AnalysisSentiment::Positive);
+        $unhappyContact = $this->createContact($organization, 'مخاطب ناراضی', '09121110002', now()->subDay(), $recent);
+        $this->attachSentiment($organization, $unhappyContact, AnalysisSentiment::Negative);
 
         $component = Livewire::test(CompaniesIndex::class)
             ->assertSet('sort', 'last_contact')
-            ->assertSee('مرتب‌سازی');
+            ->assertSee('مرتب‌سازی')
+            ->assertSee('آخرین تماس')
+            ->assertSee('راضی‌ترین مشتری')
+            ->assertSee('ناراضی‌ترین مشتری')
+            ->assertSee('جدیدترین مشتری')
+            ->assertSee('قدیمی‌ترین مشتری');
 
         $this->assertSame(['سازمان تازه‌تماس', 'سازمان قدیمی‌تر'], $this->listedNames($component, 'companies'));
 
@@ -51,6 +59,10 @@ class CustomerListSortTest extends TestCase
         $this->assertSame(
             ['سازمان قدیمی‌تر', 'سازمان تازه‌تماس'],
             $this->listedNames($component->set('sort', 'satisfaction'), 'companies'),
+        );
+        $this->assertSame(
+            ['سازمان تازه‌تماس', 'سازمان قدیمی‌تر'],
+            $this->listedNames($component->set('sort', 'dissatisfaction'), 'companies'),
         );
     }
 
@@ -68,7 +80,12 @@ class CustomerListSortTest extends TestCase
 
         $component = Livewire::test(ContactsIndex::class)
             ->assertSet('sort', 'last_contact')
-            ->assertSee('مرتب‌سازی');
+            ->assertSee('مرتب‌سازی')
+            ->assertSee('آخرین تماس')
+            ->assertSee('راضی‌ترین مشتری')
+            ->assertSee('ناراضی‌ترین مشتری')
+            ->assertSee('جدیدترین مشتری')
+            ->assertSee('قدیمی‌ترین مشتری');
 
         $this->assertSame(['مخاطب تازه‌تماس', 'مخاطب قدیمی‌تر'], $this->listedNames($component, 'contacts'));
 
@@ -83,6 +100,10 @@ class CustomerListSortTest extends TestCase
         $this->assertSame(
             ['مخاطب قدیمی‌تر', 'مخاطب تازه‌تماس'],
             $this->listedNames($component->set('sort', 'satisfaction'), 'contacts'),
+        );
+        $this->assertSame(
+            ['مخاطب تازه‌تماس', 'مخاطب قدیمی‌تر'],
+            $this->listedNames($component->set('sort', 'dissatisfaction'), 'contacts'),
         );
     }
 
@@ -179,6 +200,41 @@ class CustomerListSortTest extends TestCase
         Livewire::withQueryParams(['sort' => 'newest'])
             ->test(ContactsIndex::class)
             ->assertSet('sort', 'newest');
+
+        Livewire::withQueryParams(['sort' => 'dissatisfaction'])
+            ->test(CompaniesIndex::class)
+            ->assertSet('sort', 'dissatisfaction');
+    }
+
+    public function test_customers_hub_omits_unassigned_stat(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $this->createCompany($organization, 'سازمان تست', now());
+        $this->createContact($organization, 'مخاطب بدون شرکت', '09121170001', now());
+
+        $component = Livewire::test(CustomersHub::class);
+        $html = $component->html();
+        $statsStart = strpos($html, 'data-tour="customers-hub-stats"');
+        $statsEnd = strpos($html, 'data-tour="customers-hub-cards"');
+
+        $this->assertSame(['companies', 'contacts', 'calls'], array_keys($component->viewData('stats')));
+        $this->assertNotFalse($statsStart);
+        $this->assertNotFalse($statsEnd);
+        $this->assertStringNotContainsString('بدون سازمان', substr($html, $statsStart, $statsEnd - $statsStart));
+        $this->assertStringNotContainsString('customers-section-nav', $html);
+        $this->assertStringNotContainsString('نمای کلی', $html);
+        $this->assertStringNotContainsString('مشاهده همه اشخاص', $html);
+        $heroStart = strpos($html, 'data-tour="customers-hub-hero"');
+        $this->assertNotFalse($heroStart);
+        $actions = substr($html, 0, $heroStart);
+        $this->assertStringContainsString('شرکت جدید', $actions);
+        $this->assertStringContainsString('شخص جدید', $actions);
+        $this->assertStringContainsString('saas-btn-primary', $actions);
+        $this->assertStringContainsString('border-zinc-900', $actions);
+        $cards = substr($html, (int) strpos($html, 'data-tour="customers-hub-cards"'));
+        $this->assertStringNotContainsString('شرکت جدید', $cards);
+        $this->assertStringNotContainsString('شخص جدید', $cards);
+        $component->assertSee('شرکت')->assertSee('شخص')->assertSee('تماس');
     }
 
     public function test_employer_cannot_see_other_organization_customers_when_sorting(): void

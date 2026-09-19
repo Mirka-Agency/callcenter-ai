@@ -3,6 +3,7 @@
 namespace App\DTOs;
 
 use App\Enums\ReportDatePreset;
+use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,6 +25,7 @@ readonly class AnalysisListFilter
         public string $sortBy = 'analyzed_at',
         public string $sortDir = 'desc',
         public bool $assignedEmployeesOnly = false,
+        public bool $needsAttention = false,
     ) {}
 
     public static function make(
@@ -40,6 +42,7 @@ readonly class AnalysisListFilter
         string $sortBy = 'analyzed_at',
         string $sortDir = 'desc',
         bool $assignedEmployeesOnly = false,
+        bool $needsAttention = false,
     ): self {
         [$from, $to] = $preset->resolve($customFrom, $customTo);
 
@@ -57,6 +60,7 @@ readonly class AnalysisListFilter
             sortBy: $sortBy,
             sortDir: $sortDir === 'asc' ? 'asc' : 'desc',
             assignedEmployeesOnly: $assignedEmployeesOnly,
+            needsAttention: $needsAttention,
         );
     }
 
@@ -73,7 +77,8 @@ readonly class AnalysisListFilter
             || $this->minDurationSeconds !== null
             || $this->maxDurationSeconds !== null
             || $this->search !== ''
-            || $this->preset !== ReportDatePreset::Last30;
+            || $this->preset !== ReportDatePreset::Last30
+            || $this->needsAttention;
     }
 
     /** @param  Builder<ConversationAnalysis>  $query */
@@ -116,6 +121,10 @@ readonly class AnalysisListFilter
             $query->whereRaw('COALESCE(calls.duration_seconds, voip_call_logs.duration, 0) <= ?', [$max]);
         }
 
+        if ($this->needsAttention) {
+            $query->where('conversation_analyses.needs_attention', true);
+        }
+
         if ($this->search !== '') {
             $term = '%'.$this->search.'%';
             $query->where(function (Builder $inner) use ($term) {
@@ -125,6 +134,38 @@ readonly class AnalysisListFilter
                     ->orWhere('organization_user.first_name', 'like', $term)
                     ->orWhere('organization_user.last_name', 'like', $term);
             });
+        }
+
+        return $query;
+    }
+
+    /** @param  Builder<Call>  $query */
+    public function applyToCallQuery(Builder $query): Builder
+    {
+        $query->where('organization_id', $this->organizationId)
+            ->where(function (Builder $inner) {
+                $inner->whereBetween('started_at', [$this->from, $this->to])
+                    ->orWhereBetween('created_at', [$this->from, $this->to]);
+            });
+
+        if ($this->employeeId !== null) {
+            $query->where('organization_user_id', $this->employeeId);
+        }
+
+        if ($this->statuses !== []) {
+            $query->whereIn('status', $this->statuses);
+        }
+
+        if ($this->direction !== null) {
+            $query->where('direction', $this->direction);
+        }
+
+        if ($this->minDurationSeconds !== null) {
+            $query->where('duration_seconds', '>=', $this->minDurationSeconds);
+        }
+
+        if ($this->maxDurationSeconds !== null) {
+            $query->where('duration_seconds', '<=', $this->maxDurationSeconds);
         }
 
         return $query;

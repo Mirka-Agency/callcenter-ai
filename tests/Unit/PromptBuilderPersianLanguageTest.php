@@ -28,6 +28,18 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $this->assertStringContainsString('"intent": "استعلام هزینه و شرایط تمدید اشتراک"', $sample);
         $this->assertStringContainsString('"sentiment": "neutral"', $sample);
         $this->assertStringContainsString('"level": "medium"', $sample);
+        $this->assertStringContainsString('"needs_attention"', $sample);
+        $this->assertStringContainsString('"needed": false', $sample);
+    }
+
+    public function test_attention_policy_requires_complaint_detection(): void
+    {
+        $policy = PromptBuilder::attentionPolicy();
+
+        $this->assertStringContainsString('needs_attention', $policy);
+        $this->assertStringContainsString('اعتراض به عملکرد کارشناس', $policy);
+        $this->assertStringContainsString('اعتراض به محصول', $policy);
+        $this->assertStringContainsString('اعتراض به سرویس', $policy);
     }
 
     public function test_instructional_policies_do_not_contain_english_sentences(): void
@@ -38,6 +50,8 @@ class PromptBuilderPersianLanguageTest extends TestCase
             PromptBuilder::summaryPolicy(),
             PromptBuilder::organizationDomainPolicy(),
             PromptBuilder::weaknessEvaluationPolicy(),
+            PromptBuilder::leadAnalysisPolicy(),
+            PromptBuilder::attentionPolicy(),
             PromptBuilder::customerIdentityPolicy(),
             PromptBuilder::persianStrictRetryPolicy(),
         ]);

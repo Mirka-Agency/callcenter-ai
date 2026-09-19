@@ -51,6 +51,9 @@
                     <span @class(['saas-badge', AnalysisInsightPresenter::sentimentBadgeClass($analysis->sentiment)])>
                         احساس: {{ $analysis->sentiment->label() }}
                     </span>
+                    @if ($analysis->needs_attention)
+                        <span class="saas-badge bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">نیازمند توجه</span>
+                    @endif
                     @if ($callStatus)
                         <span @class(['saas-badge', AnalysisCallPresenter::statusBadgeClass($callStatus)])>{{ $callStatus->label() }}</span>
                     @endif
@@ -84,6 +87,27 @@
             </div>
         </div>
     </section>
+
+    @if ($analysis->needs_attention)
+        @php
+            $attention = $analysis->attention_json ?? [];
+            $attentionReason = trim((string) ($attention['reason'] ?? ''));
+            $attentionCategories = is_array($attention['categories'] ?? null) ? $attention['categories'] : [];
+        @endphp
+        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-950/30">
+            <div class="flex flex-wrap items-center gap-2">
+                <h2 class="text-sm font-semibold text-amber-900 dark:text-amber-200">تماس نیازمند توجه</h2>
+                @foreach ($attentionCategories as $category)
+                    <span class="rounded-md bg-white/80 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                        {{ \App\Support\NeedsAttention::categoryLabel((string) $category) }}
+                    </span>
+                @endforeach
+            </div>
+            @if ($attentionReason !== '')
+                <p class="mt-2 text-sm leading-relaxed text-amber-950/90 dark:text-amber-100/90">{{ $attentionReason }}</p>
+            @endif
+        </div>
+    @endif
 
     <div class="grid gap-6 xl:grid-cols-3">
         <div class="space-y-6 xl:col-span-2">

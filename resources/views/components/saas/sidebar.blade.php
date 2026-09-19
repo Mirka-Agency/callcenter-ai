@@ -49,7 +49,6 @@
         @foreach ($navItems as $item)
             @php
                 $isActive = request()->routeIs($item['route'].'*') || request()->routeIs($item['route']);
-                $highlightedSample = request()->query('sample');
             @endphp
             <a
                 href="{{ route($item['route']) }}"
@@ -65,29 +64,6 @@
                 </span>
                 <span class="truncate">{{ $item['label'] }}</span>
             </a>
-
-            @if (! empty($item['children']))
-                <div class="me-1 space-y-1 border-e-2 border-indigo-100 pe-2 dark:border-indigo-900/40">
-                    <p class="px-3 py-1.5 text-[11px] font-semibold tracking-wide text-indigo-500/80 dark:text-indigo-400/80">نمونه مکالمه</p>
-                    @foreach ($item['children'] as $child)
-                        @php
-                            $childSampleId = $child['query']['sample'] ?? null;
-                            $childActive = $isActive && $highlightedSample === $childSampleId;
-                        @endphp
-                        <a
-                            href="{{ route($child['route'], $child['query'] ?? []) }}#sample-conversations"
-                            @class([
-                                'saas-nav-subitem max-lg:min-h-10 max-lg:px-4 max-lg:py-2.5 max-lg:text-sm',
-                                'saas-nav-subitem-active' => $childActive,
-                                'opacity-50' => ! ($child['available'] ?? true),
-                            ])
-                            @click="$store.layout.closeSidebar()"
-                        >
-                            {{ $child['label'] }}
-                        </a>
-                    @endforeach
-                </div>
-            @endif
         @endforeach
     </nav>
 

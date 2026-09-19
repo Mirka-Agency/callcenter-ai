@@ -124,6 +124,8 @@ class UnmatchedVoipExtensionServiceTest extends TestCase
         $this->assertSame(2, $rows[0]['call_count']);
         $this->assertSame('09121111111', $rows[0]['last_source_number']);
         $this->assertSame('982191093492', $rows[0]['last_destination_number']);
+        $this->assertSame('inbound', $rows[0]['last_direction']);
+        $this->assertSame('09121111111', $rows[0]['last_customer_number']);
     }
 
     public function test_list_unmatched_excludes_mapped_extensions(): void

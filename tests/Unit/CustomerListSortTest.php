@@ -22,6 +22,18 @@ class CustomerListSortTest extends TestCase
         $this->assertSame(CustomerListSort::LastContact, CustomerListSort::fromInput('drop table'));
         $this->assertSame(CustomerListSort::LastContact, CustomerListSort::fromInput(null));
         $this->assertSame(CustomerListSort::Satisfaction, CustomerListSort::fromInput('satisfaction'));
+        $this->assertSame(CustomerListSort::Dissatisfaction, CustomerListSort::fromInput('dissatisfaction'));
+    }
+
+    public function test_sort_labels_match_person_and_company_lists(): void
+    {
+        $this->assertSame([
+            'آخرین تماس',
+            'راضی‌ترین مشتری',
+            'ناراضی‌ترین مشتری',
+            'جدیدترین مشتری',
+            'قدیمی‌ترین مشتری',
+        ], array_map(fn (CustomerListSort $sort) => $sort->label(), CustomerListSort::cases()));
     }
 
     public function test_contacts_sort_by_newest_and_oldest_created_at(): void
@@ -56,11 +68,15 @@ class CustomerListSortTest extends TestCase
         $this->attachSentiment($organization, $happyOlder, AnalysisSentiment::Positive);
         $this->attachSentiment($organization, $unhappy, AnalysisSentiment::Negative);
 
-        $names = CustomerListSort::apply(Customer::query()->forOrganization($organization->id), 'satisfaction', 'contact', $organization->id)
+        $happiest = CustomerListSort::apply(Customer::query()->forOrganization($organization->id), 'satisfaction', 'contact', $organization->id)
+            ->pluck('name')
+            ->all();
+        $unhappiest = CustomerListSort::apply(Customer::query()->forOrganization($organization->id), 'dissatisfaction', 'contact', $organization->id)
             ->pluck('name')
             ->all();
 
-        $this->assertSame(['راضی تازه', 'راضی قدیمی', 'ناراضی', 'بدون تحلیل'], $names);
+        $this->assertSame(['راضی تازه', 'راضی قدیمی', 'ناراضی', 'بدون تحلیل'], $happiest);
+        $this->assertSame(['ناراضی', 'راضی تازه', 'راضی قدیمی', 'بدون تحلیل'], $unhappiest);
     }
 
     public function test_companies_sort_by_satisfaction_across_contacts(): void
@@ -76,11 +92,15 @@ class CustomerListSortTest extends TestCase
         $this->attachSentiment($organization, $happyContact, AnalysisSentiment::Positive);
         $this->attachSentiment($organization, $unhappyContact, AnalysisSentiment::Negative);
 
-        $names = CustomerListSort::apply(CustomerCompany::query()->forOrganization($organization->id), 'satisfaction', 'company', $organization->id)
+        $happiest = CustomerListSort::apply(CustomerCompany::query()->forOrganization($organization->id), 'satisfaction', 'company', $organization->id)
+            ->pluck('name')
+            ->all();
+        $unhappiest = CustomerListSort::apply(CustomerCompany::query()->forOrganization($organization->id), 'dissatisfaction', 'company', $organization->id)
             ->pluck('name')
             ->all();
 
-        $this->assertSame(['سازمان راضی', 'سازمان ناراضی', 'سازمان بدون داده'], $names);
+        $this->assertSame(['سازمان راضی', 'سازمان ناراضی', 'سازمان بدون داده'], $happiest);
+        $this->assertSame(['سازمان ناراضی', 'سازمان راضی', 'سازمان بدون داده'], $unhappiest);
     }
 
     public function test_satisfaction_sort_does_not_include_other_organization_records(): void

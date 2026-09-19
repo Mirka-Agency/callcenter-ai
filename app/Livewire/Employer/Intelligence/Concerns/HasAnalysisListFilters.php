@@ -36,6 +36,9 @@ trait HasAnalysisListFilters
     #[Url]
     public ?int $durationMax = null;
 
+    #[Url(as: 'attention')]
+    public bool $needsAttention = false;
+
     #[Url]
     public string $search = '';
 
@@ -97,6 +100,11 @@ trait HasAnalysisListFilters
         $this->resetPage();
     }
 
+    public function updatedNeedsAttention(): void
+    {
+        $this->resetPage();
+    }
+
     public function updatedSearch(): void
     {
         $this->resetPage();
@@ -108,6 +116,12 @@ trait HasAnalysisListFilters
 
         if ($preset === 'missed') {
             $this->callStatus = CallStatus::Missed->value;
+
+            return;
+        }
+
+        if ($preset === 'attention') {
+            $this->needsAttention = true;
 
             return;
         }
@@ -210,6 +224,7 @@ trait HasAnalysisListFilters
         $this->directionFilter = null;
         $this->durationMin = null;
         $this->durationMax = null;
+        $this->needsAttention = false;
         $this->search = '';
         $this->sortBy = 'analyzed_at';
         $this->sortDir = 'desc';
@@ -253,6 +268,7 @@ trait HasAnalysisListFilters
             sortBy: $this->sortBy,
             sortDir: $this->sortDir,
             assignedEmployeesOnly: true,
+            needsAttention: $this->needsAttention,
         );
     }
 }

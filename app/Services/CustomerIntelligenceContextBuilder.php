@@ -6,7 +6,7 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\CrmPipelineSync;
 use App\Models\Organization;
-use Carbon\Carbon;
+use App\Support\CustomerNextActionAggregator;
 use Illuminate\Support\Str;
 
 class CustomerIntelligenceContextBuilder
@@ -68,20 +68,7 @@ class CustomerIntelligenceContextBuilder
     /** @return list<string> */
     private function collectRecommendedActions($analyses): array
     {
-        $actions = [];
-
-        foreach ($analyses as $analysis) {
-            foreach ($analysis->next_actions_json ?? [] as $action) {
-                $actions[] = is_string($action) ? $action : ($action['action'] ?? $action['title'] ?? null);
-            }
-            foreach ($analysis->operational_insights_json['follow_up_suggestions'] ?? [] as $suggestion) {
-                $actions[] = is_string($suggestion) ? $suggestion : ($suggestion['action'] ?? null);
-            }
-        }
-
-        $unique = array_values(array_unique(array_filter($actions)));
-
-        return array_slice($unique, 0, 5);
+        return CustomerNextActionAggregator::prioritized($analyses);
     }
 
     /** @return list<array{action: string, date: ?string}> */

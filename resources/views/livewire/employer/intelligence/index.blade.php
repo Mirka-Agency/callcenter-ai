@@ -136,7 +136,6 @@
                 </div>
             </div>
             <a href="{{ route('employer.intelligence.performance') }}" class="saas-btn-secondary">عملکرد کارشناسان</a>
-            <a href="{{ route('employer.reports.index') }}" class="saas-btn-secondary">گزارش‌های مدیریتی</a>
         </x-slot:actions>
     </x-saas.page-header>
 
@@ -161,10 +160,12 @@
     <div class="relative space-y-6">
         <x-saas.filter-loading-overlay scoped :target="$filterActionTargets" />
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6" data-tour="analysis-stats">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-tour="analysis-stats">
+        <x-saas.stat-card label="تعداد کل تماس‌ها" :value="number_format($overview['total_calls'])" />
         <x-saas.stat-card label="تحلیل‌های فیلترشده" :value="number_format($overview['total'])" />
         <x-saas.stat-card label="میانگین امتیاز" :value="$overview['average_score'] ?: '—'" hint="کیفیت مکالمه" />
         <x-saas.stat-card label="میانگین لید" :value="$overview['average_lead_score'] ?: '—'" :hint="$overview['high_lead_count'] ? $overview['high_lead_count'].' لید بالا' : null" />
+        <x-saas.stat-card label="کل لیدها" :value="number_format($overview['total_leads'])" />
         <x-saas.stat-card label="رضایت مشتری" :value="$overview['average_sentiment'] ? $overview['average_sentiment'].'%' : '—'" :hint="$overview['dominant_sentiment']" />
         <x-saas.stat-card label="میانگین مدت تماس" :value="$overview['average_duration_label']" />
         <x-saas.stat-card
@@ -368,7 +369,12 @@
 
                                     <div class="min-w-0">
                                         <p class="line-clamp-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">{{ $analysis->summary }}</p>
-                                        <p class="mt-1 text-xs text-zinc-400">{{ $analysis->source?->label() ?? 'VoIP' }}</p>
+                                        <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                                            <p class="text-xs text-zinc-400">{{ $analysis->source?->label() ?? 'VoIP' }}</p>
+                                            @if ($analysis->needs_attention)
+                                                <span class="rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">نیازمند توجه</span>
+                                            @endif
+                                        </div>
                                     </div>
 
                                     <div class="whitespace-nowrap tabular-nums text-sm text-zinc-600 dark:text-zinc-400">

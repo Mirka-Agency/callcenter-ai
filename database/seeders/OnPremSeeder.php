@@ -49,7 +49,7 @@ class OnPremSeeder extends Seeder
         $employer = User::query()->updateOrCreate(
             ['email' => $employerEmail],
             [
-                'name' => $this->setting('ONPREM_EMPLOYER_NAME', 'onprem.employer_name', 'مدیر سازمان'),
+                'name' => $this->setting('ONPREM_EMPLOYER_NAME', 'onprem.employer_name', 'مدیر شرکت'),
                 'password' => $employerPassword,
                 'role' => UserRole::Employer,
                 'email_verified_at' => now(),
@@ -59,7 +59,7 @@ class OnPremSeeder extends Seeder
         $organization = Organization::query()->updateOrCreate(
             ['user_id' => $employer->id],
             [
-                'title' => $this->setting('ONPREM_ORG_TITLE', 'onprem.org_title', 'سازمان محلی'),
+                'title' => $this->setting('ONPREM_ORG_TITLE', 'onprem.org_title', 'شرکت محلی'),
                 'disabled' => false,
                 'is_demo' => false,
                 'employer_can_manage_integrations' => filter_var(

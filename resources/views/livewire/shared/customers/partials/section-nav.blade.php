@@ -10,11 +10,11 @@
             'route' => $portal === 'employee' ? 'employee.customers.index' : 'employer.customers.index',
         ],
         'companies' => [
-            'label' => 'سازمان‌ها',
+            'label' => 'شرکت‌ها',
             'route' => $portal === 'employee' ? 'employee.customers.companies.index' : 'employer.customers.companies.index',
         ],
         'contacts' => [
-            'label' => 'مخاطبین',
+            'label' => 'اشخاص',
             'route' => $portal === 'employee' ? 'employee.customers.contacts.index' : 'employer.customers.contacts.index',
         ],
     ];

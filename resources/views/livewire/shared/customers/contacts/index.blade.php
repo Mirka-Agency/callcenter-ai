@@ -1,22 +1,26 @@
 @php
     $contactShowRoute = $portal === 'employee' ? 'employee.customers.show' : 'employer.customers.show';
+    $contactCreateRoute = $portal === 'employee' ? 'employee.customers.contacts.create' : 'employer.customers.contacts.create';
 @endphp
 
 <div class="saas-page space-y-6">
-    @include('livewire.shared.customers.partials.section-nav', ['portal' => $portal, 'active' => 'contacts'])
-
     <x-saas.page-header
-        title="مخاطبین"
-        description="افراد و مخاطبان سازمان‌ها — با یا بدون سازمان. پروفایل از تحلیل تماس‌ها ساخته می‌شود."
+        title="اشخاص"
+        description="افراد و اشخاص شرکت‌ها — با یا بدون شرکت. پروفایل از تحلیل تماس‌ها ساخته می‌شود."
         data-tour="page-header"
-    />
+    >
+        <x-slot:actions>
+            <a href="{{ route($contactCreateRoute) }}" class="saas-btn-primary text-sm" wire:navigate>شخص جدید</a>
+            <x-saas.customer-list-export :portal="$portal" entity="contacts" :search="$search" :sort="$sort" />
+        </x-slot:actions>
+    </x-saas.page-header>
 
     <div class="saas-card p-4" data-tour="customers-contacts-search">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
             <input
                 wire:model.live.debounce.300ms="search"
                 type="search"
-                placeholder="جستجو در نام، سازمان، شماره یا ایمیل..."
+                placeholder="جستجو در نام، شرکت، شماره یا ایمیل..."
                 class="saas-input w-full max-w-xl flex-1"
             >
             @include('livewire.shared.customers.partials.sort-select')
@@ -35,10 +39,12 @@
                 <x-saas.empty-state
                     title="{{ __('ui.empty.no_contacts.title') }}"
                     description="{{ __('ui.empty.no_contacts.description') }}"
-                />
+                >
+                    <a href="{{ route($contactCreateRoute) }}" class="saas-btn-primary mt-4 text-sm" wire:navigate>ثبت اولین شخص</a>
+                </x-saas.empty-state>
             </div>
         @endforelse
     </div>
 
-    {{ $contacts->links() }}
+    {{ $contacts->onEachSide(1)->links('livewire.shared.customers.partials.contacts-pagination') }}
 </div>

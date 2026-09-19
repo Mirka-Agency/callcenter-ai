@@ -11,6 +11,7 @@ enum CustomerListSort: string
 {
     case LastContact = 'last_contact';
     case Satisfaction = 'satisfaction';
+    case Dissatisfaction = 'dissatisfaction';
     case Newest = 'newest';
     case Oldest = 'oldest';
 
@@ -18,9 +19,10 @@ enum CustomerListSort: string
     {
         return match ($this) {
             self::LastContact => 'آخرین تماس',
-            self::Satisfaction => 'راضی‌ترین',
-            self::Newest => 'جدیدترین',
-            self::Oldest => 'قدیمی‌ترین',
+            self::Satisfaction => 'راضی‌ترین مشتری',
+            self::Dissatisfaction => 'ناراضی‌ترین مشتری',
+            self::Newest => 'جدیدترین مشتری',
+            self::Oldest => 'قدیمی‌ترین مشتری',
         };
     }
 
@@ -43,7 +45,8 @@ enum CustomerListSort: string
         return match ($resolved) {
             self::Newest => $query->orderByDesc($table.'.created_at')->orderBy($table.'.id'),
             self::Oldest => $query->orderBy($table.'.created_at')->orderBy($table.'.id'),
-            self::Satisfaction => self::applySatisfaction($query, $entity, $organizationId),
+            self::Satisfaction => self::applySatisfaction($query, $entity, $organizationId, descending: true),
+            self::Dissatisfaction => self::applySatisfaction($query, $entity, $organizationId, descending: false),
             self::LastContact => self::applyLastContact($query, $entity),
         };
     }
@@ -71,7 +74,7 @@ enum CustomerListSort: string
      * @param  'company'|'contact'  $entity
      * @return Builder<Model>
      */
-    private static function applySatisfaction(Builder $query, string $entity, int $organizationId): Builder
+    private static function applySatisfaction(Builder $query, string $entity, int $organizationId, bool $descending): Builder
     {
         $table = $query->getModel()->getTable();
         $weightSql = SentimentScoreCalculator::weightExpression('conversation_analyses.sentiment');
@@ -100,11 +103,18 @@ enum CustomerListSort: string
                 fn (Builder $inner) => $inner->groupBy('calls.customer_id'),
             );
 
-        return $query
+        $query
             ->select($table.'.*')
             ->leftJoinSub($subquery, 'customer_list_satisfaction', 'customer_list_satisfaction.subject_id', '=', $table.'.id')
-            ->orderByRaw('customer_list_satisfaction.satisfaction_score IS NULL')
-            ->orderByDesc('customer_list_satisfaction.satisfaction_score')
+            ->orderByRaw('customer_list_satisfaction.satisfaction_score IS NULL');
+
+        if ($descending) {
+            $query->orderByDesc('customer_list_satisfaction.satisfaction_score');
+        } else {
+            $query->orderBy('customer_list_satisfaction.satisfaction_score');
+        }
+
+        return $query
             ->orderByDesc($table.'.last_contact_at')
             ->orderBy($table.'.id');
     }

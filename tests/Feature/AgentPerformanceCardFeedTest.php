@@ -45,6 +45,7 @@ class AgentPerformanceCardFeedTest extends TestCase
             ->call('setAgentCardFilter', 'invalid')
             ->assertSet('agentCardFilter', 'all')
             ->assertSee('PDF')
+            ->assertSee('افزودن کارشناس')
             ->assertSee('فیلترها')
             ->assertSee('بازه زمانی')
             ->assertSee('امروز')
@@ -66,11 +67,13 @@ class AgentPerformanceCardFeedTest extends TestCase
     {
         $employer = User::factory()->create(['role' => UserRole::Employer]);
         $organization = Organization::factory()->create(['user_id' => $employer->id]);
+        $agentUser = User::factory()->create(['role' => UserRole::Employee]);
         $employee = OrganizationUser::query()->create([
             'organization_id' => $organization->id,
-            'user_id' => User::factory()->create(['role' => UserRole::Employee])->id,
+            'user_id' => $agentUser->id,
             'first_name' => 'Ali',
             'last_name' => 'Agent',
+            'position' => 'کارشناس فروش',
             'is_active' => true,
         ]);
 
@@ -78,6 +81,9 @@ class AgentPerformanceCardFeedTest extends TestCase
 
         Livewire::test(PerformanceShow::class, ['employee' => $employee])
             ->assertSee('PDF')
+            ->assertSee('کارشناس فروش')
+            ->assertSee($agentUser->email)
+            ->assertSee('ویرایش')
             ->assertSee('بازه زمانی گزارش')
             ->assertSee('چاپ PDF')
             ->assertSeeHtml('window.print()')

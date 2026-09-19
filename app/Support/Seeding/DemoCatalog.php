@@ -18,7 +18,7 @@ final class DemoCatalog
 
     public const EMPLOYEES_PER_ORGANIZATION = 4;
 
-    public const CUSTOMERS_PER_ORGANIZATION = 12;
+    public const CUSTOMERS_PER_ORGANIZATION = 48;
 
     public const CALLS_PER_ORGANIZATION = 150;
 
@@ -161,7 +161,7 @@ final class DemoCatalog
 
     public static function employerName(int $index): string
     {
-        return self::employerProfiles()[$index]['name'] ?? 'مدیر سازمان';
+        return self::employerProfiles()[$index]['name'] ?? 'مدیر شرکت';
     }
 
     /** @return list<array{first_name: string, last_name: string, email_first: string, email_last: string, gender: string, department: string, position: string}> */
@@ -232,12 +232,30 @@ final class DemoCatalog
     }
 
     /** @return list<string> */
+    public static function personNames(): array
+    {
+        return [
+            'علی رضایی', 'مریم احمدی', 'حسین کریمی', 'زهرا موسوی', 'رضا نوری',
+            'فاطمه حسینی', 'مهدی جعفری', 'سارا محمدی', 'امیر صادقی', 'نرگس قاسمی',
+            'پویا اکبری', 'لیلا فرهادی', 'کامران بهرامی', 'شیما توکلی', 'بهروز یوسفی',
+            'ندا شریفی', 'سعید کاظمی', 'مینا رستمی', 'حامد نجفی', 'پریسا مرادی',
+            'کیانوش عباسی', 'هانیه سلیمی', 'فرزاد محمدپور', 'آرزو حیدری', 'بابک اسماعیلی',
+            'گلاره ناصری', 'شهاب کریمی', 'یاسمن علوی', 'نیما فتحی', 'سمانه رضوی',
+            'اردشیر زمانی', 'مهسا طاهری', 'پیمان کاویانی', 'الناز رحمانیان', 'سیاوش امیری',
+            'حدیثه باقری', 'رامین شفیعی', 'نسترن جلالی', 'کیوان احمدیان', 'فروغ صالحی',
+            'مازیار خسروی', 'شقایق نعمتی', 'بهنام پناهی', 'مرجان داوودی', 'آرش کیانی',
+            'سحر محمودی', 'داریوش تقوی', 'پگاه ابراهیمی',
+        ];
+    }
+
+    /** @return list<string> */
     public static function customerNames(): array
     {
         return [
             'شرکت آفتاب', 'فروشگاه رایان', 'کلینیک سلامت', 'آژانس سفر نور', 'گروه صنعتی البرز',
             'استودیو طراحی ماه', 'رستوران سنتی باغ', 'مجتمع مسکونی پارس', 'مؤسسه آموزشی دانا',
             'کارگاه تولیدی آریا', 'داروخانه مهر', 'دفتر حقوقی عدل', 'باشگاه ورزشی پیکر',
+            'شرکت حمل‌ونقل سپهر', 'فروشگاه زنجیره‌ای نسیم', 'هلدینگ فناوری ویرا',
         ];
     }
 
@@ -313,6 +331,9 @@ final class DemoCatalog
                 'intent' => 'اعتراض به کیفیت پاسخگویی قبلی و درخواست راه‌حل فوری',
                 'concern_type' => 'trust',
                 'concern_text' => 'کاهش اعتماد به پشتیبانی پس از تجربه نامطلوب',
+                'needs_attention' => true,
+                'attention_categories' => ['service'],
+                'attention_reason' => 'مشتری به کیفیت پشتیبانی و تأخیر در رسیدگی اعتراض دارد.',
                 'lead_reason' => 'ریسک ریزش مشتری در صورت عدم پیگیری سریع',
                 'buying_signals' => [],
                 'keywords' => ['شکایت', 'تیکت باز', 'پیگیری فوری'],

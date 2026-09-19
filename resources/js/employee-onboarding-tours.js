@@ -78,7 +78,7 @@ export const employeePageTours = {
             {
                 selector: '[data-tour="calls-stats"]',
                 title: 'خلاصه فیلترشده',
-                content: 'تعداد تحلیل، میانگین امتیاز، سرنخ، رضایت و آمار تماس در بازه فعلی.',
+                content: 'تعداد کل تماس‌ها، تعداد تحلیل، میانگین امتیاز، سرنخ، رضایت و آمار تماس در بازه فعلی.',
             },
             {
                 selector: '[data-tour="calls-charts"]',
@@ -104,11 +104,6 @@ export const employeePageTours = {
                 selector: '[data-tour="upload-zone"]',
                 title: 'آپلود فایل',
                 content: 'فایل MP3 یا WAV را بکشید و رها کنید یا انتخاب کنید. در صورت نیاز اطلاعات تماس را تکمیل کنید.',
-            },
-            {
-                selector: '[data-tour="upload-samples"]',
-                title: 'نمونه مکالمات',
-                content: 'برای آشنایی با سیستم، یک نمونه فروش را بارگذاری کنید تا تحلیل واقعی ببینید.',
             },
             {
                 selector: '[data-tour="upload-history"]',
@@ -188,144 +183,119 @@ export const employeePageTours = {
             {
                 center: true,
                 title: 'پایگاه مشتریان',
-                content: 'این بخش به سه قسمت تقسیم شده: نمای کلی، سازمان‌ها و مخاطبین. در ادامه هر کدام را می‌بینیم.',
-            },
-            {
-                selector: '[data-tour="customers-section-nav"]',
-                title: 'ناوبری بخش‌ها',
-                content: 'با این تب‌ها بین نمای کلی، لیست سازمان‌ها و لیست مخاطبین جابه‌جا شوید.',
+                content: 'این بخش شرکت‌ها و اشخاص را جداگانه نشان می‌دهد. در ادامه هر کدام را می‌بینیم.',
             },
             {
                 selector: '[data-tour="customers-hub-stats"]',
                 title: 'آمار کلی',
-                content: 'تعداد سازمان‌ها، مخاطبین و تماس‌های مرتبط با تماس‌های تحلیل‌شده شما.',
+                content: 'تعداد شرکت‌ها، اشخاص و تماس‌های مرتبط با تماس‌های تحلیل‌شده شما.',
             },
             {
                 selector: '[data-tour="customers-hub-companies"]',
-                title: 'ورود به سازمان‌ها',
-                content: 'سازمان‌های مشتری که از تماس‌های شما شناسایی شده‌اند.',
+                title: 'ورود به شرکت‌ها',
+                content: 'شرکت‌های مشتری که از تماس‌های شما شناسایی شده‌اند.',
             },
             {
                 selector: '[data-tour="customers-hub-contacts"]',
-                title: 'ورود به مخاطبین',
-                content: 'افراد مرتبط با تماس‌های تحلیل‌شده — با یا بدون سازمان.',
+                title: 'ورود به اشخاص',
+                content: 'افراد مرتبط با تماس‌های تحلیل‌شده — با یا بدون شرکت.',
             },
             {
                 center: true,
-                title: 'لیست سازمان‌ها',
-                content: 'حالا بخش سازمان‌ها را باز می‌کنیم.',
+                title: 'لیست شرکت‌ها',
+                content: 'حالا بخش شرکت‌ها را باز می‌کنیم.',
                 route: 'employee.customers.companies.index',
             },
             {
-                selector: '[data-tour="customers-section-nav"]',
-                title: 'تب سازمان‌ها',
-                content: 'سازمان‌های مرتبط با تماس‌های شما را اینجا می‌بینید.',
-            },
-            {
                 selector: '[data-tour="customers-companies-search"]',
-                title: 'جستجوی سازمان',
+                title: 'جستجوی شرکت',
                 content: 'جستجو بر اساس نام، صنعت، تلفن یا ایمیل.',
             },
             {
                 selector: '[data-tour="customers-companies-grid"]',
-                title: 'کارت‌های سازمان',
-                content: 'برای دیدن مخاطبان و آمار هر سازمان روی کارت کلیک کنید.',
+                title: 'کارت‌های شرکت',
+                content: 'برای دیدن اشخاص و آمار هر شرکت روی کارت کلیک کنید.',
             },
             {
                 center: true,
-                title: 'لیست مخاطبین',
-                content: 'حالا بخش مخاطبین را می‌بینیم.',
+                title: 'لیست اشخاص',
+                content: 'حالا بخش اشخاص را می‌بینیم.',
                 route: 'employee.customers.contacts.index',
             },
             {
-                selector: '[data-tour="customers-section-nav"]',
-                title: 'تب مخاطبین',
-                content: 'همه مخاطبین تماس‌های شما — چه به سازمانی متصل باشند چه نباشند.',
-            },
-            {
                 selector: '[data-tour="customers-contacts-search"]',
-                title: 'جستجوی مخاطب',
-                content: 'جستجو بر اساس نام، سازمان یا شماره تماس.',
+                title: 'جستجوی شخص',
+                content: 'جستجو بر اساس نام، شرکت یا شماره تماس.',
             },
             {
                 selector: '[data-tour="customers-contacts-grid"]',
-                title: 'کارت‌های مخاطب',
+                title: 'کارت‌های شخص',
                 content: 'برای تاریخچه تماس و بینش‌ها روی هر کارت کلیک کنید.',
             },
         ],
     },
     'employee.customers.companies.index': {
-        label: 'سازمان‌ها',
+        label: 'شرکت‌ها',
         steps: [
             {
-                selector: '[data-tour="customers-section-nav"]',
-                title: 'ناوبری بخش‌ها',
-                content: 'سه تب: نمای کلی، سازمان‌ها و مخاطبین.',
-            },
-            {
                 selector: '[data-tour="page-header"]',
-                title: 'لیست سازمان‌ها',
-                content: 'سازمان‌های شناسایی‌شده از تماس‌های تحلیل‌شده شما.',
+                title: 'لیست شرکت‌ها',
+                content: 'شرکت‌های شناسایی‌شده از تماس‌های تحلیل‌شده شما.',
             },
             {
                 selector: '[data-tour="customers-companies-search"]',
                 title: 'جستجو',
-                content: 'فیلتر سریع سازمان‌ها.',
+                content: 'فیلتر سریع شرکت‌ها.',
             },
             {
                 selector: '[data-tour="customers-companies-grid"]',
-                title: 'کارت‌های سازمان',
-                content: 'مخاطبان و آمار تجمیعی هر سازمان.',
+                title: 'کارت‌های شرکت',
+                content: 'اشخاص و آمار تجمیعی هر شرکت.',
             },
         ],
     },
     'employee.customers.contacts.index': {
-        label: 'مخاطبین',
+        label: 'اشخاص',
         steps: [
             {
-                selector: '[data-tour="customers-section-nav"]',
-                title: 'ناوبری بخش‌ها',
-                content: 'سه تب: نمای کلی، سازمان‌ها و مخاطبین.',
-            },
-            {
                 selector: '[data-tour="page-header"]',
-                title: 'لیست مخاطبین',
+                title: 'لیست اشخاص',
                 content: 'افراد مرتبط با تماس‌های تحلیل‌شده شما.',
             },
             {
                 selector: '[data-tour="customers-contacts-search"]',
                 title: 'جستجو',
-                content: 'جستجو بر اساس نام، سازمان یا شماره.',
+                content: 'جستجو بر اساس نام، شرکت یا شماره.',
             },
             {
                 selector: '[data-tour="customers-contacts-grid"]',
-                title: 'کارت‌های مخاطب',
+                title: 'کارت‌های شخص',
                 content: 'برای جزئیات تماس و بینش‌ها روی کارت کلیک کنید.',
             },
         ],
     },
     'employee.customers.companies.show': {
-        label: 'جزئیات سازمان',
+        label: 'جزئیات شرکت',
         steps: [
             {
                 selector: '[data-tour="company-profile"]',
-                title: 'پروفایل سازمان',
-                content: 'اطلاعات و وضعیت کلی این سازمان.',
+                title: 'پروفایل شرکت',
+                content: 'اطلاعات و وضعیت کلی این شرکت.',
             },
             {
                 selector: '[data-tour="company-stats"]',
-                title: 'آمار سازمان',
-                content: 'مخاطبان، تماس‌ها و میانگین امتیاز.',
+                title: 'آمار شرکت',
+                content: 'اشخاص، تماس‌ها و میانگین امتیاز.',
             },
             {
                 selector: '[data-tour="company-contacts"]',
-                title: 'مخاطبان سازمان',
-                content: 'افراد متصل به این سازمان.',
+                title: 'اشخاص شرکت',
+                content: 'افراد متصل به این شرکت.',
             },
             {
                 selector: '[data-tour="company-analytics"]',
                 title: 'تحلیل تجمیعی',
-                content: 'نمودارهای امتیاز و احساسات بر اساس تماس‌های مخاطبان.',
+                content: 'نمودارهای امتیاز و احساسات بر اساس تماس‌های اشخاص.',
             },
         ],
     },
@@ -360,7 +330,7 @@ const navSteps = [
     ['employee.dashboard', 'داشبورد', 'نقطه شروع کارشناس: عملکرد شخصی، روند و پیشنهادهای مربیگری.'],
     ['employee.performance', 'عملکرد من', 'جزئیات امتیاز، نمودارها و مقایسه با دوره قبل.'],
     ['employee.calls', 'تماس‌های من', 'فهرست تمام تحلیل‌ها با فیلتر و جزئیات هر مکالمه.'],
-    ['employee.customers.index', 'مشتریان', 'سازمان‌ها و مخاطبین — پروفایل خودکار از تماس‌های تحلیل‌شده شما.'],
+    ['employee.customers.index', 'مشتریان', 'شرکت‌ها و اشخاص — پروفایل خودکار از تماس‌های تحلیل‌شده شما.'],
     ['employee.uploads', 'آپلود تماس', 'بارگذاری فایل صوتی برای تحلیل هوش مصنوعی.'],
     ['employee.processing-queue.index', 'صف تحلیل', 'پیگیری وضعیت پردازش فایل‌های در صف.'],
     ['employee.coaching', 'مربیگری فروش', 'برنامه رشد و اقدامات عملی بر اساس تماس‌ها.'],
@@ -486,17 +456,17 @@ export function tourForRoute(route) {
 
     if (route === 'employee.customers.show') {
         return {
-            label: 'جزئیات مخاطب',
+            label: 'جزئیات شخص',
             steps: [
                 {
                     selector: '[data-tour="customer-profile"]',
-                    title: 'پروفایل مخاطب',
-                    content: 'اطلاعات تماس، سازمان مرتبط و بینش‌های جمع‌آوری‌شده از مکالمات.',
+                    title: 'پروفایل شخص',
+                    content: 'اطلاعات تماس، شرکت مرتبط و بینش‌های جمع‌آوری‌شده از مکالمات.',
                 },
                 {
                     selector: '[data-tour="customer-timeline"]',
                     title: 'تاریخچه تعامل',
-                    content: 'تماس‌ها و تحلیل‌های مرتبط با این مخاطب.',
+                    content: 'تماس‌ها و تحلیل‌های مرتبط با این شخص.',
                 },
             ],
         };

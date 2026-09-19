@@ -122,6 +122,7 @@ return [
         'name' => 'نام',
         'phone' => 'شماره تماس',
         'organization_user_id' => 'کارشناس',
+        'thresholdInput' => 'آستانه هشدار',
     ],
 
 ];

@@ -41,6 +41,8 @@ class DemoConversationContentBuilderTest extends TestCase
         $this->assertNotEmpty($payload['customer_insights_json']['intent']);
         $this->assertNotEmpty($payload['operational_insights_json']['follow_up_suggestions']);
         $this->assertArrayHasKey('buying_intent_signals', $payload['lead_quality_json']);
+        $this->assertArrayHasKey('needs_attention', $payload);
+        $this->assertArrayHasKey('needed', $payload['attention_json']);
         $this->assertContains($payload['metadata']['outcome'], ['success', 'follow_up', 'escalated', 'failed']);
     }
 }

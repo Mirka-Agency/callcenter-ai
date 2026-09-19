@@ -20,6 +20,8 @@ class EloquentConversationAnalysisRepository implements ConversationAnalysisRepo
             'prompt_version' => $data->promptVersion,
             'score' => $data->score,
             'is_evaluable' => $data->isEvaluable,
+            'needs_attention' => $data->needsAttention,
+            'attention_json' => $data->attention ?: null,
             'summary' => $data->summary,
             'transcript' => $data->transcript,
             'sentiment' => $data->sentiment,
@@ -112,6 +114,8 @@ class EloquentConversationAnalysisRepository implements ConversationAnalysisRepo
             cachedInputPriceSnapshot: $analysis->cached_input_price_snapshot !== null ? (float) $analysis->cached_input_price_snapshot : null,
             reasoningPriceSnapshot: $analysis->reasoning_price_snapshot !== null ? (float) $analysis->reasoning_price_snapshot : null,
             isEvaluable: $analysis->isEvaluable(),
+            needsAttention: (bool) $analysis->needs_attention,
+            attention: $analysis->attention_json ?? [],
         );
     }
 }

@@ -41,6 +41,7 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $profile = app(EmployeePerformanceAnalytics::class)->employeeProfile($filter, $employee);
 
         $this->assertSame($employee->id, $profile['employee']['id']);
+        $this->assertSame($employee->user?->email, $profile['employee']['email']);
         $this->assertGreaterThan(0, $profile['metrics']['total_analyzed']);
         $this->assertNotEmpty($profile['recent_calls']);
         $this->assertArrayHasKey('training_areas', $profile['coaching']);

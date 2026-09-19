@@ -43,6 +43,8 @@ readonly class AnalysisResultData
         public ?float $cachedInputPriceSnapshot = null,
         public ?float $reasoningPriceSnapshot = null,
         public bool $isEvaluable = true,
+        public bool $needsAttention = false,
+        public array $attention = [],
     ) {}
 
     public function totalTokens(): int
@@ -88,6 +90,8 @@ readonly class AnalysisResultData
             cachedInputPriceSnapshot: $this->cachedInputPriceSnapshot,
             reasoningPriceSnapshot: $this->reasoningPriceSnapshot,
             isEvaluable: $this->isEvaluable,
+            needsAttention: $this->needsAttention,
+            attention: $this->attention,
         );
     }
 
@@ -119,6 +123,7 @@ readonly class AnalysisResultData
         $leadQuality = (array) ($response['lead_quality'] ?? []);
         $concerns = (array) ($response['concerns'] ?? []);
         $customerIdentity = (array) ($response['customer_identity'] ?? []);
+        $attention = (array) ($response['needs_attention'] ?? []);
         $score = (int) ($response['score'] ?? $performance['overall_score'] ?? 0);
         $isEvaluable = (bool) ($response['evaluable'] ?? true) && $score > 0;
 
@@ -157,6 +162,8 @@ readonly class AnalysisResultData
             cachedInputPriceSnapshot: $cachedInputPriceSnapshot,
             reasoningPriceSnapshot: $reasoningPriceSnapshot,
             isEvaluable: $isEvaluable,
+            needsAttention: (bool) ($attention['needed'] ?? false),
+            attention: $attention,
         );
     }
 }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Domain\Voip\Enums\CallStatus;
 use App\DTOs\AnalysisListFilter;
+use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
 use App\Services\Reports\CallMetricsAnalytics;
@@ -52,6 +53,7 @@ class AnalysisListQuery
         $query = $this->filteredQuery($filter);
 
         $total = (clone $query)->count();
+        $totalCalls = $filter->applyToCallQuery(Call::query())->count();
         $avgScore = round((float) (clone $query)->evaluable()->avg('conversation_analyses.score'), 1);
 
         $avgDuration = (int) round((float) (clone $query)
@@ -108,6 +110,7 @@ class AnalysisListQuery
 
         return [
             'total' => $total,
+            'total_calls' => $totalCalls,
             'average_score' => $avgScore,
             'average_duration_seconds' => $avgDuration,
             'average_duration_label' => $this->callMetrics->formatDuration($avgDuration),
@@ -115,6 +118,7 @@ class AnalysisListQuery
             'inbound_count' => $inboundCount,
             'outbound_count' => $outboundCount,
             'average_lead_score' => $lead['average_score'] ?: null,
+            'total_leads' => $lead['total'],
             'high_lead_count' => $lead['high'],
             'average_sentiment' => $averageSentiment,
             'dominant_sentiment' => collect($sentiment)->sortByDesc('count')->first()['label'] ?? null,

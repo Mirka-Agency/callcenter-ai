@@ -79,12 +79,10 @@
     <nav class="text-sm text-zinc-500">
         <a href="{{ $hubRoute ?? $indexRoute }}" class="hover:text-indigo-600" wire:navigate>مشتریان</a>
         <span class="mx-2">/</span>
-        <a href="{{ $indexRoute }}" class="hover:text-indigo-600" wire:navigate>سازمان‌ها</a>
+        <a href="{{ $indexRoute }}" class="hover:text-indigo-600" wire:navigate>شرکت‌ها</a>
         <span class="mx-2">/</span>
         <span class="text-zinc-800 dark:text-zinc-200">{{ $company->displayName() }}</span>
     </nav>
-
-    @include('livewire.shared.customers.partials.section-nav', ['portal' => $portal, 'active' => 'companies'])
 
     <section class="saas-hero saas-hero--accent" data-tour="company-profile">
         <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -93,7 +91,7 @@
                     {{ mb_substr($company->displayName(), 0, 1) }}
                 </div>
                 <div class="min-w-0">
-                    <p class="text-sm font-medium text-indigo-600 dark:text-indigo-400">سازمان مشتری</p>
+                    <p class="text-sm font-medium text-indigo-600 dark:text-indigo-400">شرکت مشتری</p>
                     <h1 class="text-3xl font-semibold tracking-tight">{{ $company->displayName() }}</h1>
                     <p class="mt-1 text-zinc-500">{{ CustomerCompanyPresenter::subtitle($company) }}</p>
                     <div class="mt-3 flex flex-wrap gap-2">
@@ -111,14 +109,14 @@
                 </div>
             </div>
             <div class="flex flex-wrap gap-2">
-                <a href="{{ $companyEditRoute }}" class="saas-btn-primary text-sm" wire:navigate>ویرایش سازمان</a>
+                <a href="{{ $companyEditRoute }}" class="saas-btn-primary text-sm" wire:navigate>ویرایش شرکت</a>
                 <a href="{{ $indexRoute }}" class="saas-btn-secondary text-sm" wire:navigate>بازگشت</a>
             </div>
         </div>
     </section>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="company-stats">
-        <x-saas.stat-card label="مخاطبان" :value="$summary['contacts']" hint="افراد متصل به این سازمان" />
+        <x-saas.stat-card label="اشخاص" :value="$summary['contacts']" hint="افراد متصل به این شرکت" />
         <x-saas.stat-card label="کل تماس‌ها" :value="$summary['total_calls']" />
         <x-saas.stat-card label="تماس‌های تحلیل‌شده" :value="$analytics['analyzed_calls']" />
         <x-saas.stat-card label="میانگین امتیاز" :value="$analytics['average_score'] ?: '—'" />
@@ -127,8 +125,8 @@
     <section class="space-y-4" data-tour="company-contacts">
         <div class="flex items-center justify-between gap-4">
             <div>
-                <h2 class="text-xl font-semibold">مخاطبان سازمان</h2>
-                <p class="mt-1 text-sm text-zinc-500">افراد مرتبط با این سازمان — برای جزئیات روی هر کارت کلیک کنید</p>
+                <h2 class="text-xl font-semibold">اشخاص شرکت</h2>
+                <p class="mt-1 text-sm text-zinc-500">افراد مرتبط با این شرکت — برای جزئیات روی هر کارت کلیک کنید</p>
             </div>
         </div>
 
@@ -142,8 +140,8 @@
             @empty
                 <div class="col-span-full">
                     <x-saas.empty-state
-                        title="هنوز مخاطبی ثبت نشده"
-                        description="با تحلیل تماس‌ها یا ویرایش مخاطبان، افراد به این سازمان متصل می‌شوند."
+                        title="هنوز شخصی ثبت نشده"
+                        description="با تحلیل تماس‌ها یا ویرایش اشخاص، افراد به این شرکت متصل می‌شوند."
                     />
                 </div>
             @endforelse
@@ -152,8 +150,8 @@
 
     <div class="grid gap-6 lg:grid-cols-2" data-tour="company-analytics">
         <div class="saas-card">
-            <h2 class="text-lg font-semibold">روند امتیاز سازمان</h2>
-            <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز تماس‌های همه مخاطبان</p>
+            <h2 class="text-lg font-semibold">روند امتیاز شرکت</h2>
+            <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز تماس‌های همه اشخاص</p>
             @if ($hasScoreSeries)
                 <div class="mt-4 h-56" wire:ignore>
                     <canvas id="company-score-trend" data-report-chart data-type="line" data-config='@json($scoreChart)'></canvas>
@@ -191,13 +189,13 @@
             @endif
 
             @if (! empty($nextActions))
-                <x-saas.analysis-insight-list title="اقدامات پیشنهادی" :items="$nextActions" tone="warning" />
+                <x-saas.analysis-insight-list title="اقدامات بعدی" :items="$nextActions" tone="warning" />
             @endif
         </div>
 
         <div class="space-y-6">
             <div class="saas-card">
-                <h2 class="text-lg font-semibold">اطلاعات سازمان</h2>
+                <h2 class="text-lg font-semibold">اطلاعات شرکت</h2>
                 <dl class="mt-4 space-y-3 text-sm">
                     <div class="flex justify-between gap-4"><dt class="text-zinc-500">تلفن</dt><dd class="font-medium">{{ $company->phone ?: '—' }}</dd></div>
                     <div class="flex justify-between gap-4"><dt class="text-zinc-500">ایمیل</dt><dd class="font-medium">{{ $company->email ?: '—' }}</dd></div>
@@ -224,8 +222,8 @@
     </div>
 
     <div class="saas-card">
-        <h2 class="text-lg font-semibold">تاریخچه تماس‌های سازمان</h2>
-        <p class="mt-1 text-sm text-zinc-500">{{ count($timeline) }} تماس از همه مخاطبان</p>
+        <h2 class="text-lg font-semibold">تاریخچه تماس‌های شرکت</h2>
+        <p class="mt-1 text-sm text-zinc-500">{{ count($timeline) }} تماس از همه اشخاص</p>
         <div class="mt-6 space-y-4">
             @forelse ($timeline as $item)
                 <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800" wire:key="company-timeline-{{ $item['call_id'] }}">
@@ -246,7 +244,7 @@
                     @endif
                 </div>
             @empty
-                <x-saas.empty-state title="{{ __('ui.empty.no_calls.title') }}" description="تماس‌های این سازمان پس از تحلیل اینجا نمایش داده می‌شوند." />
+                <x-saas.empty-state title="{{ __('ui.empty.no_calls.title') }}" description="تماس‌های این شرکت پس از تحلیل اینجا نمایش داده می‌شوند." />
             @endforelse
         </div>
     </div>

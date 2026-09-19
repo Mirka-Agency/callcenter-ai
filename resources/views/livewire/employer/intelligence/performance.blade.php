@@ -27,6 +27,7 @@
         description="مقایسه، رتبه‌بندی و شناسایی فرصت‌های مربیگری تیم تماس."
     >
         <x-slot:actions>
+            <a href="{{ route('employer.employees.create') }}" class="saas-btn-primary">@lang('ui.cta.add_employee')</a>
             <x-saas.export-actions route-name="employer.intelligence.performance.export" :formats="['pdf']" />
         </x-slot:actions>
     </x-saas.page-header>

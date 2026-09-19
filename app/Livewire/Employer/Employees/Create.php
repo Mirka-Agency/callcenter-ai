@@ -95,7 +95,7 @@ class Create extends Component
 
         session()->flash('status', __('ui.success.employee_created'));
 
-        $this->redirect(route('employer.employees.index'), navigate: true);
+        $this->redirect(route('employer.intelligence.performance.show', $membership), navigate: true);
     }
 
     public function render()

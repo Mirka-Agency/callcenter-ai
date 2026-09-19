@@ -2,7 +2,7 @@
     <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
             <h1 class="text-3xl font-semibold tracking-tight">مدیریت اتصالات VoIP</h1>
-            <p class="mt-2 text-zinc-500">اتصال‌های VoIP سازمان خود را بسازید، ویرایش و تست کنید.</p>
+            <p class="mt-2 text-zinc-500">اتصال‌های VoIP شرکت خود را بسازید، ویرایش و تست کنید.</p>
         </div>
         <div class="flex gap-2">
             <a href="{{ route('employer.voip.index') }}" class="saas-btn-secondary">بازگشت به VoIP</a>

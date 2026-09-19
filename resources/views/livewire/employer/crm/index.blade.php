@@ -13,8 +13,8 @@
 
     @unless ($isComplete)
         @include('livewire.shared.integration-setup-pending', [
-            'title' => 'CRM برای این سازمان فعال نیست',
-            'description' => 'فقط ادمین می‌تواند CRM را برای سازمان فعال یا غیرفعال کند. پس از فعال‌سازی و تأیید اتصال توسط ادمین، می‌توانید کاریز و مرحله معامله را اینجا تنظیم کنید.',
+            'title' => 'CRM برای این شرکت فعال نیست',
+            'description' => 'فقط ادمین می‌تواند CRM را برای شرکت فعال یا غیرفعال کند. پس از فعال‌سازی و تأیید اتصال توسط ادمین، می‌توانید کاریز و مرحله معامله را اینجا تنظیم کنید.',
         ])
     @else
         <div class="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-100">

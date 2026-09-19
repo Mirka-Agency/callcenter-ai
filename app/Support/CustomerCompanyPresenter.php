@@ -19,7 +19,7 @@ class CustomerCompanyPresenter
     public static function metaLine(CustomerCompany $company): string
     {
         return collect([
-            $company->contacts_count.' مخاطب',
+            $company->contacts_count.' شخص',
             $company->total_calls.' تماس',
             $company->last_contact_at ? JalaliDate::ago($company->last_contact_at) : null,
         ])->filter()->implode(' · ');

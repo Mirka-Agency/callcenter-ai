@@ -2,7 +2,7 @@
     <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
             <h1 class="text-3xl font-semibold tracking-tight">مدیریت اتصالات CRM</h1>
-            <p class="mt-2 text-zinc-500">اتصال‌های CRM سازمان خود را بسازید، ویرایش و تست کنید.</p>
+            <p class="mt-2 text-zinc-500">اتصال‌های CRM شرکت خود را بسازید، ویرایش و تست کنید.</p>
         </div>
         <div class="flex gap-2">
             <a href="{{ route('employer.crm.index') }}" class="saas-btn-secondary">بازگشت به CRM</a>

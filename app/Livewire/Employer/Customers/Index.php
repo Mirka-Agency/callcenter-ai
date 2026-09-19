@@ -20,7 +20,6 @@ class Index extends Component
         $stats = [
             'companies' => CustomerCompany::query()->forOrganization($organizationId)->count(),
             'contacts' => Customer::query()->forOrganization($organizationId)->count(),
-            'unassigned' => Customer::query()->forOrganization($organizationId)->whereNull('customer_company_id')->count(),
             'calls' => (int) Customer::query()->forOrganization($organizationId)->sum('total_calls'),
         ];
 

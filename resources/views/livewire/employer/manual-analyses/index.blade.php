@@ -14,36 +14,31 @@
         <a href="{{ route('employer.processing-queue.index') }}" class="saas-btn-secondary shrink-0">@lang('ui.cta.view_queue')</a>
     </div>
 
-    @if (($wallet['balance'] ?? 0) < (($wallet['currency'] ?? 'IRR') === 'IRR' ? 1000 : 0.01))
+    @php
+        $lowBalanceThreshold = $wallet['low_balance_threshold']
+            ?? (($wallet['currency'] ?? 'IRR') === 'IRR' ? 100_000 : 10);
+        $insufficientThreshold = ($wallet['currency'] ?? 'IRR') === 'IRR' ? 1000 : 0.01;
+    @endphp
+    @if (($wallet['balance'] ?? 0) < $insufficientThreshold)
         <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
             @lang('ui.wallet.insufficient') <a href="{{ route('employer.wallet.index') }}" class="font-medium underline">شارژ اعتبار تحلیل</a>
         </div>
-    @elseif (($wallet['balance'] ?? 0) < (($wallet['currency'] ?? 'IRR') === 'IRR' ? 100_000 : 10))
+    @elseif (($wallet['balance'] ?? 0) < $lowBalanceThreshold)
         <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
             اعتبار تحلیل کم است ({{ \App\Models\PlatformAiSettings::formatMoney($wallet['balance']) }}). قبل از بارگذاری تماس‌های بیشتر، موجودی را شارژ کنید.
         </div>
     @endif
 
-    <div class="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <div class="saas-card border-indigo-200/50 shadow-md shadow-indigo-500/5 dark:border-indigo-500/20" data-tour="manual-upload-panel">
-            <x-saas.manual-upload-panel
-                :employees="$employees"
-                :show-employee-assign="true"
-                :upload-zone-state="$uploadZoneState"
-                :selected-file-name="$selectedFileName"
-                :selected-file-size="$selectedFileSize"
-                :show-metadata="$showMetadata"
-                :audio-ready="$audioReady"
-                :highlighted-sample-id="$highlightedSampleId"
-            />
-        </div>
-
-        <div data-tour="manual-samples">
-            <x-saas.sample-conversations
-                :samples="$sampleConversations"
-                :highlighted-id="$highlightedSampleId"
-            />
-        </div>
+    <div class="saas-card border-indigo-200/50 shadow-md shadow-indigo-500/5 dark:border-indigo-500/20" data-tour="manual-upload-panel">
+        <x-saas.manual-upload-panel
+            :employees="$employees"
+            :show-employee-assign="true"
+            :upload-zone-state="$uploadZoneState"
+            :selected-file-name="$selectedFileName"
+            :selected-file-size="$selectedFileSize"
+            :show-metadata="$showMetadata"
+            :audio-ready="$audioReady"
+        />
     </div>
 
     <div class="space-y-4" data-tour="manual-history">

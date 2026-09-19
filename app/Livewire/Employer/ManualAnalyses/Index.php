@@ -13,7 +13,6 @@ use App\Models\Call;
 use App\Models\OrganizationUser;
 use App\Services\AiBillingService;
 use App\Services\EmployerContext;
-use App\Support\SampleConversations;
 use App\Support\UserFacingError;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -63,16 +62,8 @@ class Index extends Component
 
     public ?string $draftCustomTo = null;
 
-    public ?string $highlightedSampleId = null;
-
     public function mount(): void
     {
-        $sampleId = request()->string('sample')->toString();
-
-        if ($sampleId !== '' && SampleConversations::find($sampleId) !== null) {
-            $this->highlightedSampleId = $sampleId;
-        }
-
         $this->draftCustomFrom = $this->dateFrom;
         $this->draftCustomTo = $this->dateUntil;
     }
@@ -106,9 +97,7 @@ class Index extends Component
             $this->selectedFileName = null;
             $this->selectedFileSize = null;
 
-            $message = $this->highlightedSampleId
-                ? __('ui.upload.audio_required')
-                : __('validation.required', ['attribute' => __('validation.attributes.audio')]);
+            $message = __('validation.required', ['attribute' => __('validation.attributes.audio')]);
 
             $this->addError('audio', $message);
             $this->dispatchUploadErrorToast($message);
@@ -193,96 +182,6 @@ class Index extends Component
         $this->redirect(route('employer.manual-analyses.show', $callId), navigate: true);
     }
 
-    public function submitSampleForAnalysis(string $sampleId, ManualAudioUploadService $uploadService): void
-    {
-        $sample = SampleConversations::find($sampleId);
-
-        if ($sample === null || ! ($sample['available'] ?? false)) {
-            $message = 'فایل مکالمه نمونه در دسترس نیست. لطفاً کمی بعد دوباره تلاش کنید.';
-            $this->addError('audio', $message);
-            $this->dispatchUploadErrorToast($message);
-
-            return;
-        }
-
-        try {
-            $this->validate([
-                'title' => 'nullable|string|max:255',
-                'customerName' => 'nullable|string|max:255',
-                'customerPhone' => 'nullable|string|max:50',
-                'notes' => 'nullable|string|max:5000',
-                'category' => 'nullable|string|max:100',
-                'tags' => 'nullable|string|max:500',
-                'conversationDate' => 'nullable|date',
-                'employeeId' => 'nullable|integer|exists:organization_user,id',
-            ]);
-        } catch (ValidationException $e) {
-            $message = $e->validator->errors()->first()
-                ?: __('ui.upload.validation_failed');
-
-            $this->addError('audio', $message);
-            $this->dispatchUploadErrorToast($message);
-
-            return;
-        }
-
-        $organizationId = EmployerContext::organizationId();
-
-        if ($this->employeeId) {
-            abort_unless(
-                OrganizationUser::query()
-                    ->where('organization_id', $organizationId)
-                    ->whereKey($this->employeeId)
-                    ->exists(),
-                422,
-            );
-        }
-
-        try {
-            $callId = $uploadService->uploadFromSample(
-                organizationId: $organizationId,
-                uploaderUserId: auth()->id(),
-                uploaderType: UploaderType::Employer,
-                organizationUserId: $this->employeeId,
-                sampleId: $sampleId,
-                absolutePath: $sample['absolute_path'],
-                displayFilename: $sample['filename'],
-                metadata: new ManualUploadMetadata(
-                    title: $this->title ?: $sample['title'],
-                    customerName: $this->customerName ?: null,
-                    customerPhone: $this->customerPhone ?: null,
-                    notes: $this->notes ?: null,
-                    category: $this->category ?: $sample['category'],
-                    tags: $this->parseTags($this->tags) ?? ['مکالمه نمونه'],
-                    conversationDate: $this->conversationDate ? new \DateTimeImmutable($this->conversationDate) : null,
-                ),
-            );
-        } catch (InsufficientWalletBalanceException|ValidationException $e) {
-            $message = $e instanceof ValidationException
-                ? ($e->validator->errors()->first('audio') ?: $e->validator->errors()->first() ?: __('ui.upload.sample_failed'))
-                : $e->getMessage();
-
-            $this->addError('audio', $message);
-            $this->dispatchUploadErrorToast($message);
-
-            return;
-        } catch (\Throwable $e) {
-            $message = UserFacingError::upload();
-
-            Log::error('Sample conversation upload exception', [
-                'sample_id' => $sampleId,
-                'message' => $e->getMessage(),
-                'class' => $e::class,
-            ]);
-            $this->addError('audio', $message);
-            $this->dispatchUploadErrorToast($message);
-
-            return;
-        }
-
-        $this->redirect(route('employer.manual-analyses.show', $callId), navigate: true);
-    }
-
     #[On('processing-job-updated')]
     public function onProcessingJobUpdated(): void {}
 
@@ -319,7 +218,6 @@ class Index extends Component
             'employees' => $employees,
             'wallet' => $wallet,
             'organizationId' => $organizationId,
-            'sampleConversations' => SampleConversations::all(),
         ]);
     }
 

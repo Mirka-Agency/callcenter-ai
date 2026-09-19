@@ -274,6 +274,8 @@ class EmployeePerformanceAnalytics
         $improvementAreas = $this->jsonAggregator->rankedImprovementAreas($data->analyses, 5);
         $weaknesses = collect($improvementAreas['items'])->pluck('item')->all();
 
+        $employee->loadMissing('user');
+
         $profile = [
             'employee' => [
                 'id' => $employee->id,
@@ -281,6 +283,7 @@ class EmployeePerformanceAnalytics
                 'avatar_url' => $employee->avatarUrl(),
                 'department' => $employee->department,
                 'position' => $employee->position,
+                'email' => $employee->user?->email,
             ],
             'metrics' => array_merge($metrics, [
                 'sentiment_trend' => $deltas['sentiment_trend'],

@@ -25,7 +25,7 @@ class CustomerCompanyUpdateService
 
         if ($duplicate) {
             throw ValidationException::withMessages([
-                'name' => 'سازمانی با این نام قبلاً ثبت شده است.',
+                'name' => 'شرکتی با این نام قبلاً ثبت شده است.',
             ]);
         }
 
@@ -62,7 +62,7 @@ class CustomerCompanyUpdateService
 
             if ($duplicate) {
                 throw ValidationException::withMessages([
-                    'name' => 'سازمانی با این نام قبلاً ثبت شده است.',
+                    'name' => 'شرکتی با این نام قبلاً ثبت شده است.',
                 ]);
             }
 

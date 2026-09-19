@@ -4,15 +4,14 @@
 @endphp
 
 <div class="saas-page space-y-6">
-    @include('livewire.shared.customers.partials.section-nav', ['portal' => $portal, 'active' => 'companies'])
-
     <x-saas.page-header
         data-tour="page-header"
-        title="سازمان‌ها"
-        description="شرکت‌ها و سازمان‌های مشتری — هر سازمان می‌تواند چند مخاطب داشته باشد."
+        title="شرکت‌ها"
+        description="شرکت‌های مشتری — هر شرکت می‌تواند چند شخص داشته باشد."
     >
         <x-slot:actions>
-            <a href="{{ route($companyCreateRoute) }}" class="saas-btn-primary text-sm" wire:navigate>سازمان جدید</a>
+            <a href="{{ route($companyCreateRoute) }}" class="saas-btn-primary text-sm" wire:navigate>شرکت جدید</a>
+            <x-saas.customer-list-export :portal="$portal" entity="companies" :search="$search" :sort="$sort" />
         </x-slot:actions>
     </x-saas.page-header>
 
@@ -21,7 +20,7 @@
             <input
                 wire:model.live.debounce.300ms="search"
                 type="search"
-                placeholder="جستجو در نام، صنعت، تلفن یا ایمیل سازمان..."
+                placeholder="جستجو در نام، صنعت، تلفن یا ایمیل شرکت..."
                 class="saas-input w-full max-w-xl flex-1"
             >
             @include('livewire.shared.customers.partials.sort-select')
@@ -41,7 +40,7 @@
                     title="{{ __('ui.empty.no_companies.title') }}"
                     description="{{ __('ui.empty.no_companies.description') }}"
                 >
-                    <a href="{{ route($companyCreateRoute) }}" class="saas-btn-primary mt-4 text-sm" wire:navigate>ثبت اولین سازمان</a>
+                    <a href="{{ route($companyCreateRoute) }}" class="saas-btn-primary mt-4 text-sm" wire:navigate>ثبت اولین شرکت</a>
                 </x-saas.empty-state>
             </div>
         @endforelse

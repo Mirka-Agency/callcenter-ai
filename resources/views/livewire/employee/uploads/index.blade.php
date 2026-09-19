@@ -14,35 +14,30 @@
         <a href="{{ route('employee.processing-queue.index') }}" class="saas-btn-secondary shrink-0">@lang('ui.cta.view_queue')</a>
     </div>
 
-    @if (($wallet['balance'] ?? 0) < (($wallet['currency'] ?? 'IRR') === 'IRR' ? 1000 : 0.01))
+    @php
+        $lowBalanceThreshold = $wallet['low_balance_threshold']
+            ?? (($wallet['currency'] ?? 'IRR') === 'IRR' ? 100_000 : 10);
+        $insufficientThreshold = ($wallet['currency'] ?? 'IRR') === 'IRR' ? 1000 : 0.01;
+    @endphp
+    @if (($wallet['balance'] ?? 0) < $insufficientThreshold)
         <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
             موجودی اعتبار تحلیل کافی نیست ({{ \App\Models\PlatformAiSettings::formatMoney($wallet['balance'] ?? 0) }}).
-            تا زمانی که سازمان اعتبار را شارژ نکند، بارگذاری تماس با خطا مواجه می‌شود.
+            تا زمانی که شرکت اعتبار را شارژ نکند، بارگذاری تماس با خطا مواجه می‌شود.
         </div>
-    @elseif (($wallet['balance'] ?? 0) < (($wallet['currency'] ?? 'IRR') === 'IRR' ? 100_000 : 10))
+    @elseif (($wallet['balance'] ?? 0) < $lowBalanceThreshold)
         <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-            موجودی اعتبار کم است ({{ \App\Models\PlatformAiSettings::formatMoney($wallet['balance']) }}). قبل از بارگذاری حجم بالای تماس، شارژ اعتبار سازمان را در نظر بگیرید.
+            موجودی اعتبار کم است ({{ \App\Models\PlatformAiSettings::formatMoney($wallet['balance']) }}). قبل از بارگذاری حجم بالای تماس، شارژ اعتبار شرکت را در نظر بگیرید.
         </div>
     @endif
 
-    <div class="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <div class="saas-card border-indigo-200/50 shadow-md shadow-indigo-500/5 dark:border-indigo-500/20" data-tour="upload-zone">
-            <x-saas.manual-upload-panel
-                :upload-zone-state="$uploadZoneState"
-                :selected-file-name="$selectedFileName"
-                :selected-file-size="$selectedFileSize"
-                :show-metadata="$showMetadata"
-                :audio-ready="$audioReady"
-                :highlighted-sample-id="$highlightedSampleId"
-            />
-        </div>
-
-        <div data-tour="upload-samples">
-        <x-saas.sample-conversations
-            :samples="$sampleConversations"
-            :highlighted-id="$highlightedSampleId"
+    <div class="saas-card border-indigo-200/50 shadow-md shadow-indigo-500/5 dark:border-indigo-500/20" data-tour="upload-zone">
+        <x-saas.manual-upload-panel
+            :upload-zone-state="$uploadZoneState"
+            :selected-file-name="$selectedFileName"
+            :selected-file-size="$selectedFileSize"
+            :show-metadata="$showMetadata"
+            :audio-ready="$audioReady"
         />
-        </div>
     </div>
 
     <div class="space-y-4" data-tour="upload-history">

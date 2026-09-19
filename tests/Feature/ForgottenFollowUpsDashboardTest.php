@@ -51,7 +51,7 @@ class ForgottenFollowUpsDashboardTest extends TestCase
 
         $html = Livewire::test(Overview::class)
             ->assertSee('پیگیری‌های فراموش‌شده')
-            ->assertSee('نام سازمان یا مشتری')
+            ->assertSee('نام شرکت یا مشتری')
             ->assertSee('شماره تماس')
             ->assertSee('نام کارشناس')
             ->assertSee('اقدام فراموش‌شده')

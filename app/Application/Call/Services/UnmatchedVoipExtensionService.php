@@ -3,6 +3,7 @@
 namespace App\Application\Call\Services;
 
 use App\Application\Intelligence\Services\CallAnalysisQueueService;
+use App\Domain\Voip\Enums\CallDirection;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\Organization;
@@ -28,7 +29,9 @@ class UnmatchedVoipExtensionService
      *     call_count: int,
      *     last_call_at: ?Carbon,
      *     last_source_number: ?string,
-     *     last_destination_number: ?string
+     *     last_destination_number: ?string,
+     *     last_direction: ?string,
+     *     last_customer_number: ?string
      * }>
      */
     public function listUnmatched(Organization $organization, ?int $days = null): array
@@ -53,7 +56,7 @@ class UnmatchedVoipExtensionService
             $query->where('started_at', '>=', now()->subDays($days));
         }
 
-        /** @var array<string, array{extension: string, connection_id: int, connection_name: string, call_count: int, last_call_at: ?Carbon, last_source_number: ?string, last_destination_number: ?string}> $aggregated */
+        /** @var array<string, array{extension: string, connection_id: int, connection_name: string, call_count: int, last_call_at: ?Carbon, last_source_number: ?string, last_destination_number: ?string, last_direction: ?string, last_customer_number: ?string}> $aggregated */
         $aggregated = [];
 
         foreach ($query->lazy(500) as $log) {
@@ -78,6 +81,8 @@ class UnmatchedVoipExtensionService
                     'last_call_at' => null,
                     'last_source_number' => null,
                     'last_destination_number' => null,
+                    'last_direction' => null,
+                    'last_customer_number' => null,
                 ];
             }
 
@@ -92,6 +97,8 @@ class UnmatchedVoipExtensionService
                 $aggregated[$key]['last_call_at'] = $startedAt;
                 $aggregated[$key]['last_source_number'] = $log->source_number;
                 $aggregated[$key]['last_destination_number'] = $log->destination_number;
+                $aggregated[$key]['last_direction'] = $log->direction?->value;
+                $aggregated[$key]['last_customer_number'] = $this->customerNumberFromLog($log, $extension);
             }
         }
 
@@ -225,5 +232,22 @@ class UnmatchedVoipExtensionService
         $candidates = $this->resolver->extensionCandidates($log);
 
         return $candidates[0] ?? null;
+    }
+
+    private function customerNumberFromLog(VoipCallLog $log, string $extension): ?string
+    {
+        $source = $log->source_number;
+        $destination = $log->destination_number;
+        $preferred = $log->direction === CallDirection::Outbound
+            ? [$destination, $source]
+            : [$source, $destination];
+
+        foreach ($preferred as $number) {
+            if ($number !== null && $number !== '' && $number !== $extension) {
+                return $number;
+            }
+        }
+
+        return $source ?: $destination;
     }
 }
