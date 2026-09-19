@@ -8,6 +8,7 @@ use App\Filament\Resources\OrganizationWallets\Pages\ViewOrganizationWallet;
 use App\Filament\Resources\OrganizationWallets\RelationManagers\WalletTransactionsRelationManager;
 use App\Filament\Resources\OrganizationWallets\Tables\OrganizationWalletsTable;
 use App\Models\OrganizationWallet;
+use App\Support\OnPrem;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -30,6 +31,11 @@ class OrganizationWalletResource extends Resource
     public static function getNavigationLabel(): string
     {
         return __('filament.navigation.organization_wallets');
+    }
+
+    protected static function isAvailableInCurrentDeployment(): bool
+    {
+        return ! OnPrem::billingHidden();
     }
 
     public static function getNavigationGroup(): string|UnitEnum|null

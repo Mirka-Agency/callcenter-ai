@@ -4,6 +4,7 @@ namespace App\Filament\Pages\AiBilling;
 
 use App\Filament\Concerns\OnlySuperAdmin;
 use App\Models\PlatformAiSettings;
+use App\Support\OnPrem;
 use BackedEnum;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -14,7 +15,6 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use UnitEnum;
 
 class PlatformAiSettingsPage extends Page implements HasForms
 {
@@ -34,6 +34,11 @@ class PlatformAiSettingsPage extends Page implements HasForms
     public static function getNavigationLabel(): string
     {
         return __('filament.navigation.platform_billing');
+    }
+
+    protected static function isAvailableInCurrentDeployment(): bool
+    {
+        return ! OnPrem::billingHidden();
     }
 
     public static function getNavigationGroup(): ?string

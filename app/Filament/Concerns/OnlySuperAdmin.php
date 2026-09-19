@@ -8,7 +8,8 @@ trait OnlySuperAdmin
 {
     public static function canAccess(): bool
     {
-        return auth()->user()?->role === UserRole::SuperAdmin;
+        return static::isAvailableInCurrentDeployment()
+            && auth()->user()?->role === UserRole::SuperAdmin;
     }
 
     public static function canViewAny(): bool
@@ -19,5 +20,10 @@ trait OnlySuperAdmin
     public static function shouldRegisterNavigation(): bool
     {
         return static::canAccess();
+    }
+
+    protected static function isAvailableInCurrentDeployment(): bool
+    {
+        return true;
     }
 }

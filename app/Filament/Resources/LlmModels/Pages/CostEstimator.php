@@ -7,6 +7,7 @@ use App\Filament\Resources\LlmModels\LlmModelResource;
 use App\Models\LlmModel;
 use App\Models\PlatformAiSettings;
 use App\Services\AiCostEstimatorService;
+use App\Support\OnPrem;
 use BackedEnum;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -16,6 +17,7 @@ use Filament\Resources\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Collection;
 
 class CostEstimator extends Page implements HasForms
 {
@@ -34,6 +36,16 @@ class CostEstimator extends Page implements HasForms
     public static function getNavigationLabel(): string
     {
         return __('filament.navigation.cost_estimator');
+    }
+
+    public static function shouldRegisterNavigation(array $parameters = []): bool
+    {
+        return ! OnPrem::billingHidden() && parent::shouldRegisterNavigation($parameters);
+    }
+
+    public static function canAccess(array $parameters = []): bool
+    {
+        return ! OnPrem::billingHidden() && parent::canAccess($parameters);
     }
 
     public function getTitle(): string
@@ -122,7 +134,7 @@ class CostEstimator extends Page implements HasForms
         return app(AiCostEstimatorService::class)->estimateCost($model, $minutes, $type, $customRatio);
     }
 
-    /** @return \Illuminate\Support\Collection<int, array<string, mixed>> */
+    /** @return Collection<int, array<string, mixed>> */
     public function getModelSummaries()
     {
         $type = $this->getConversationType();
@@ -143,7 +155,7 @@ class CostEstimator extends Page implements HasForms
             ]);
     }
 
-    /** @return \Illuminate\Support\Collection<int, array<string, mixed>> */
+    /** @return Collection<int, array<string, mixed>> */
     public function getSimulationTable()
     {
         $type = $this->getConversationType();

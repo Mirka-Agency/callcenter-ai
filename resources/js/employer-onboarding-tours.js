@@ -280,7 +280,7 @@ export const employerPageTours = {
             {
                 selector: '[data-tour="manual-upload-panel"]',
                 title: 'آپلود فایل',
-                content: 'فایل را بکشید یا انتخاب کنید، کارشناس را مشخص کنید و برای تحلیل ارسال کنید. موجودی کیف پول باید کافی باشد.',
+                content: 'فایل را بکشید یا انتخاب کنید، کارشناس را مشخص کنید و برای تحلیل ارسال کنید.',
             },
             {
                 selector: '[data-tour="manual-history"]',
@@ -424,6 +424,10 @@ const navSteps = [
     ['employer.wallet.index', 'اعتبار هوش مصنوعی', 'موجودی و مصرف اعتبار تحلیل AI.'],
 ];
 
+function billingHidden() {
+    return Boolean(window.__employerOnboarding?.hideBilling);
+}
+
 /** @returns {TourStep[]} */
 export function buildFullEmployerTour() {
     /** @type {TourStep[]} */
@@ -446,6 +450,10 @@ export function buildFullEmployerTour() {
     ];
 
     navSteps.forEach(([route, title, content]) => {
+        if (route === 'employer.wallet.index' && billingHidden()) {
+            return;
+        }
+
         steps.push({
             selector: `[data-tour-nav="${route}"]`,
             title,
@@ -512,6 +520,10 @@ export function resolveEmployerRoute(pathname) {
 
 export function tourForRoute(route) {
     if (! route) {
+        return null;
+    }
+
+    if (route === 'employer.wallet.index' && billingHidden()) {
         return null;
     }
 

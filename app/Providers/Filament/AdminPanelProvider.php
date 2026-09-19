@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Support\OnPrem;
 use Filament\Enums\ThemeMode;
 use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
@@ -43,7 +44,11 @@ class AdminPanelProvider extends PanelProvider
             ->navigationGroups(
                 array_map(
                     fn (string $label): NavigationGroup => NavigationGroup::make($label)->collapsed(),
-                    array_values(__('filament.navigation.groups')),
+                    array_values(array_filter(
+                        __('filament.navigation.groups'),
+                        fn (string $key): bool => $key !== 'ai_billing' || ! OnPrem::billingHidden(),
+                        ARRAY_FILTER_USE_KEY,
+                    )),
                 ),
             )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')

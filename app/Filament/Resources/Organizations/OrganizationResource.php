@@ -13,6 +13,7 @@ use App\Filament\Resources\Organizations\RelationManagers\WalletTransactionsRela
 use App\Filament\Resources\Organizations\Schemas\OrganizationForm;
 use App\Filament\Resources\Organizations\Tables\OrganizationsTable;
 use App\Models\Organization;
+use App\Support\OnPrem;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -59,13 +60,18 @@ class OrganizationResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            WalletTransactionsRelationManager::class,
+        $relations = [
             EmployeesRelationManager::class,
             EmployeeMembershipsRelationManager::class,
             CrmConnectionsRelationManager::class,
             VoipConnectionsRelationManager::class,
         ];
+
+        if (! OnPrem::billingHidden()) {
+            array_unshift($relations, WalletTransactionsRelationManager::class);
+        }
+
+        return $relations;
     }
 
     public static function getPages(): array

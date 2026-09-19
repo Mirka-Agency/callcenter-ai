@@ -10,6 +10,7 @@ use App\Services\AiUsageAnalyticsService;
 use App\Services\EmployerContext;
 use App\Services\WalletService;
 use App\Support\AiInfrastructure;
+use App\Support\OnPrem;
 use App\Support\PersianNumber;
 use Illuminate\Support\Number;
 use Livewire\Attributes\Layout;
@@ -23,6 +24,11 @@ class Index extends Component
     public bool $editingThreshold = false;
 
     public string $thresholdInput = '';
+
+    public function mount(): void
+    {
+        abort_if(OnPrem::billingHidden(), 404);
+    }
 
     public function startEditingThreshold(): void
     {

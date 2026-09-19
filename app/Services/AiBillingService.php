@@ -9,6 +9,7 @@ use App\Domain\Llm\Contracts\ConversationAnalysisRepositoryInterface;
 use App\Domain\Llm\DTOs\AnalysisResultData;
 use App\Models\ConversationAnalysis;
 use App\Models\LlmModel;
+use App\Support\OnPrem;
 use Illuminate\Support\Facades\DB;
 
 class AiBillingService
@@ -21,6 +22,10 @@ class AiBillingService
 
     public function assertCanAnalyze(int $organizationId): void
     {
+        if (OnPrem::billingHidden()) {
+            return;
+        }
+
         $this->wallets->assertSufficientBalance($organizationId);
     }
 
@@ -82,7 +87,9 @@ class AiBillingService
             $analysisId = $repository->store($data);
             $analysis = ConversationAnalysis::query()->findOrFail($analysisId);
 
-            $this->wallets->chargeForAnalysis($analysis, (float) $analysis->cost);
+            if (! OnPrem::billingHidden()) {
+                $this->wallets->chargeForAnalysis($analysis, (float) $analysis->cost);
+            }
 
             return $data->withId($analysisId);
         });

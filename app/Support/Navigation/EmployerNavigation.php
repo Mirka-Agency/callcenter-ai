@@ -2,11 +2,13 @@
 
 namespace App\Support\Navigation;
 
+use App\Support\OnPrem;
+
 class EmployerNavigation
 {
     public static function items(): array
     {
-        return [
+        $items = [
             ['label' => 'داشبورد', 'route' => 'employer.dashboard', 'icon' => 'home'],
             ['label' => 'عملکرد کارشناسان', 'route' => 'employer.intelligence.performance', 'icon' => 'chart'],
             ['label' => 'تحلیل تماس‌ها', 'route' => 'employer.intelligence.index', 'icon' => 'sparkles'],
@@ -16,7 +18,12 @@ class EmployerNavigation
             ['label' => 'صف تحلیل تماس', 'route' => 'employer.processing-queue.index', 'icon' => 'cloud'],
             ['label' => 'CRM', 'route' => 'employer.crm.index', 'icon' => 'cloud'],
             ['label' => 'خطوط تلفنی', 'route' => 'employer.voip.index', 'icon' => 'phone'],
-            ['label' => 'اعتبار هوش مصنوعی', 'route' => 'employer.wallet.index', 'icon' => 'wallet'],
         ];
+
+        if (! OnPrem::billingHidden()) {
+            $items[] = ['label' => 'اعتبار هوش مصنوعی', 'route' => 'employer.wallet.index', 'icon' => 'wallet'];
+        }
+
+        return $items;
     }
 }

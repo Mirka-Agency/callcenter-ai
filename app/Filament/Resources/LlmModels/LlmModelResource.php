@@ -10,6 +10,7 @@ use App\Filament\Resources\LlmModels\Pages\ListLlmModels;
 use App\Filament\Resources\LlmModels\Schemas\LlmModelForm;
 use App\Filament\Resources\LlmModels\Tables\LlmModelsTable;
 use App\Models\LlmModel;
+use App\Support\OnPrem;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -36,7 +37,7 @@ class LlmModelResource extends Resource
 
     public static function getNavigationGroup(): string|UnitEnum|null
     {
-        return __('filament.navigation.groups.ai_billing');
+        return OnPrem::llmNavigationGroup();
     }
 
     public static function form(Schema $schema): Schema
