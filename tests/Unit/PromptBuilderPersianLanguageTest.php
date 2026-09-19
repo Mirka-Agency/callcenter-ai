@@ -42,6 +42,27 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $this->assertStringContainsString('اعتراض به سرویس', $policy);
     }
 
+    public function test_follow_up_policy_requires_phone_callback_only(): void
+    {
+        $policy = PromptBuilder::followUpPolicy();
+
+        $this->assertStringContainsString('follow_up_suggestions فقط برای تماس تلفنی برگشتی', $policy);
+        $this->assertStringContainsString('کارشناس باید دوباره با همان مشتری تلفنی تماس بگیرد', $policy);
+        $this->assertStringContainsString('ارسال فایل، سند، کاتالوگ، پیش‌فاکتور', $policy);
+        $this->assertStringContainsString('واتساپ، تلگرام، اینستاگرام', $policy);
+        $this->assertStringContainsString('ثبت تیکت، پیگیری مشکل سیستمی', $policy);
+        $this->assertStringContainsString('آرایه خالی بگذارید', $policy);
+    }
+
+    public function test_system_prompt_includes_follow_up_policy(): void
+    {
+        $prompt = (new PromptBuilder)->systemPrompt();
+
+        $this->assertStringContainsString(PromptBuilder::followUpPolicy(), $prompt);
+        $this->assertStringContainsString('فقط تماس تلفنی برگشتی با مشتری', $prompt);
+        $this->assertStringContainsString('"follow_up_suggestions": ["تماس پیگیری در روز بعد برای اعلام تصمیم مشتری"]', $prompt);
+    }
+
     public function test_sentiment_policy_requires_brand_product_or_service_dissatisfaction(): void
     {
         $policy = PromptBuilder::sentimentPolicy();
@@ -75,6 +96,7 @@ class PromptBuilderPersianLanguageTest extends TestCase
             PromptBuilder::leadAnalysisPolicy(),
             PromptBuilder::sentimentPolicy(),
             PromptBuilder::attentionPolicy(),
+            PromptBuilder::followUpPolicy(),
             PromptBuilder::customerIdentityPolicy(),
             PromptBuilder::persianStrictRetryPolicy(),
         ]);

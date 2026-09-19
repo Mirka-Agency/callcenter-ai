@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Customer;
 use App\Models\OrganizationUser;
+use App\Support\ForgottenCallbackMatcher;
 use App\Support\Seeding\DemoConversationContentBuilder;
 use Tests\TestCase;
 
@@ -39,7 +40,12 @@ class DemoConversationContentBuilderTest extends TestCase
         $this->assertGreaterThan(120, mb_strlen($payload['summary']));
         $this->assertArrayHasKey('communication_skills', $payload['performance_dimensions_json']);
         $this->assertNotEmpty($payload['customer_insights_json']['intent']);
-        $this->assertNotEmpty($payload['operational_insights_json']['follow_up_suggestions']);
+        foreach ($payload['operational_insights_json']['follow_up_suggestions'] as $suggestion) {
+            $this->assertTrue(
+                ForgottenCallbackMatcher::matches($suggestion),
+                $suggestion,
+            );
+        }
         $this->assertArrayHasKey('buying_intent_signals', $payload['lead_quality_json']);
         $this->assertArrayHasKey('needs_attention', $payload);
         $this->assertArrayHasKey('needed', $payload['attention_json']);

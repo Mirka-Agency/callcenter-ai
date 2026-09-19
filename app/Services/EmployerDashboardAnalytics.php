@@ -8,6 +8,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\OrganizationActivity;
 use App\Services\Reports\OrganizationCallMetrics;
 use App\Support\FollowUpDueDateParser;
+use App\Support\ForgottenCallbackMatcher;
 use App\Support\JalaliDate;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -204,7 +205,7 @@ class EmployerDashboardAnalytics
     }
 
     /**
-     * AI-assigned follow-ups whose due date has passed and the agent never called back.
+     * Phone callbacks the agent promised after a customer request, now overdue with no later outbound call.
      *
      * @return list<array{
      *     analysis_id: int,
@@ -440,32 +441,19 @@ class EmployerDashboardAnalytics
         $seen = [];
         $actions = [];
 
-        foreach ($suggestions as $raw) {
-            $text = $this->actionText($raw);
-            if ($text === null || isset($seen[$text])) {
-                continue;
+        foreach ([$suggestions, $nextActions] as $items) {
+            foreach ($items as $raw) {
+                $text = $this->actionText($raw);
+                if ($text === null || isset($seen[$text]) || ! ForgottenCallbackMatcher::matches($text)) {
+                    continue;
+                }
+
+                $seen[$text] = true;
+                $actions[] = ['raw' => $raw, 'text' => $text];
             }
-
-            $seen[$text] = true;
-            $actions[] = ['raw' => $raw, 'text' => $text];
-        }
-
-        foreach ($nextActions as $raw) {
-            $text = $this->actionText($raw);
-            if ($text === null || isset($seen[$text]) || ! $this->looksLikeCustomerFollowUp($text)) {
-                continue;
-            }
-
-            $seen[$text] = true;
-            $actions[] = ['raw' => $raw, 'text' => $text];
         }
 
         return $actions;
-    }
-
-    private function looksLikeCustomerFollowUp(string $action): bool
-    {
-        return (bool) preg_match('/پیگیری|تماس\s*مجدد|تماس\s*فردا|ارسال|هماهنگی|پیش\s*فاکتور|نوبت|یادآور|چک\s*لیست/u', $action);
     }
 
     private function actionText(mixed $action): ?string

@@ -33,7 +33,7 @@ export const employerPageTours = {
             {
                 selector: '[data-tour="dashboard-forgotten-followups"]',
                 title: 'پیگیری‌های فراموش‌شده',
-                content: 'پیگیری‌هایی که هوش مصنوعی تعیین کرده، موعدشان گذشته و کارشناس هنوز انجام نداده است.',
+                content: 'فقط تماس‌هایی که مشتری درخواست داشته و کارشناس باید دوباره زنگ می‌زده، ولی هنوز تماس نگرفته است.',
             },
             {
                 selector: '[data-tour="dashboard-quality"]',

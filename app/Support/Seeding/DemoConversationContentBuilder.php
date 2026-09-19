@@ -6,6 +6,7 @@ use App\Application\Llm\Services\PromptBuilder;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Customer;
 use App\Models\OrganizationUser;
+use App\Support\ForgottenCallbackMatcher;
 use App\Support\NeedsAttention;
 use Faker\Generator;
 use Illuminate\Support\Arr;
@@ -120,7 +121,10 @@ final class DemoConversationContentBuilder
                 : [],
             'compliance_issues' => [],
             'important_keywords' => $scenario['keywords'],
-            'follow_up_suggestions' => $nextActions,
+            'follow_up_suggestions' => array_values(array_filter(
+                $nextActions,
+                fn (string $action) => ForgottenCallbackMatcher::matches($action),
+            )),
         ];
 
         $attention = ! empty($scenario['needs_attention'])
