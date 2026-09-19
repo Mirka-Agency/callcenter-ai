@@ -34,7 +34,7 @@ class LlmProviderSeeder extends Seeder
                 'code' => LlmProviderCode::Gemini->value,
                 'config' => [
                     'default_api_url' => 'https://generativelanguage.googleapis.com/v1beta',
-                    'default_model' => 'gemini-2.0-flash',
+                    'default_model' => 'gemini-3.8-flash',
                 ],
             ],
             [

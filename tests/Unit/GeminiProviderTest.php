@@ -38,6 +38,7 @@ class GeminiProviderTest extends TestCase
                 'usageMetadata' => [
                     'promptTokenCount' => 1200,
                     'candidatesTokenCount' => 300,
+                    'thoughtsTokenCount' => 80,
                 ],
             ]),
         ]);
@@ -57,7 +58,7 @@ class GeminiProviderTest extends TestCase
         $result = $provider->analyzeAudio(new AudioAnalysisRequestData(
             callId: 99,
             recordingUrl: 'https://example.com/recording.mp3',
-            model: 'gemini-2.0-flash',
+            model: 'gemini-3.8-flash',
             sendAudioFile: true,
             mimeType: 'audio/mpeg',
         ));
@@ -65,7 +66,7 @@ class GeminiProviderTest extends TestCase
         $this->assertTrue($result->success);
         $this->assertSame(82, $result->data['score']);
         $this->assertSame(1200, $result->inputTokens);
-        $this->assertSame(300, $result->outputTokens);
+        $this->assertSame(380, $result->outputTokens);
 
         Http::assertSent(function ($request) {
             if (! str_contains($request->url(), 'generativelanguage.googleapis.com')) {
@@ -74,9 +75,13 @@ class GeminiProviderTest extends TestCase
 
             $body = $request->data();
             $parts = $body['contents'][0]['parts'] ?? [];
+            $generationConfig = $body['generationConfig'] ?? [];
 
-            return str_contains($request->url(), 'key=test-gemini-key')
-                && ($body['generationConfig']['responseMimeType'] ?? null) === 'application/json'
+            return str_contains($request->url(), 'models/gemini-3.8-flash:generateContent')
+                && str_contains($request->url(), 'key=test-gemini-key')
+                && ($generationConfig['responseMimeType'] ?? null) === 'application/json'
+                && ($generationConfig['thinkingConfig']['thinkingLevel'] ?? null) === 'medium'
+                && ! array_key_exists('temperature', $generationConfig)
                 && ($parts[1]['inline_data']['mime_type'] ?? null) === 'audio/mpeg'
                 && ($parts[1]['inline_data']['data'] ?? null) === base64_encode('audio-bytes');
         });
@@ -130,6 +135,9 @@ class GeminiProviderTest extends TestCase
 
         $this->assertTrue($result->success);
         $this->assertSame('The customer asked about pricing and next steps.', $result->data['summary']);
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'models/gemini-3.8-flash:generateContent');
+        });
         Http::assertSentCount(2);
     }
 

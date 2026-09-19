@@ -643,7 +643,7 @@ return [
         'llm_settings_override_helper' => 'جایگزینی‌های اختیاری: default_model، transcription_model، prompt_version',
         'cost_forecast_description' => 'بر اساس مدل انتخاب‌شده و مصرف ۳۰ روز گذشته. فقط برای برنامه‌ریزی — صورتحساب واقعی از تعداد توکن واقعی استفاده می‌کند.',
         'platform_default_helper' => 'فقط یک مدل می‌تواند پیش‌فرض پلتفرم باشد. همان ارائه‌دهنده و کلید API این مدل برای درخواست‌های LLM استفاده می‌شود.',
-        'model_key_helper' => 'شناسه مدل API، مثلاً gpt-5 یا claude-3-5-sonnet-latest',
+        'model_key_helper' => 'شناسه مدل API، مثلاً gemini-3.8-flash یا gpt-5',
         'sends_audio_file_helper' => 'فعال: فایل صوتی به Base64 تبدیل و داخل پیام مولتی‌مدیال (input_audio.data + format/mime_type) در chat/completions ارسال می‌شود — سازگار با واسط‌های OpenAI. غیرفعال: فقط آدرس موقت فایل (signed URL) ارسال می‌شود.',
         'estimator_description' => 'مصرف توکن و هزینه را قبل از اجرای تحلیل برآورد کنید. مقادیر تقریبی هستند.',
         'custom_output_ratio_helper' => 'توکن خروجی ÷ توکن ورودی. زمانی که نوع گفتگو سفارشی است استفاده می‌شود.',

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Application\Llm\Actions\SetGemini38FlashAsDefaultAction;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Models\LlmModel;
 use App\Models\LlmProvider;
@@ -22,16 +23,16 @@ class LlmModelSeeder extends Seeder
                 'model_key' => 'gpt-5',
                 'input_price_per_million_tokens' => 1.25,
                 'output_price_per_million_tokens' => 10.00,
-                'is_default' => true,
+                'is_default' => false,
                 'is_active' => true,
             ],
             [
                 'provider_id' => $gemini->id,
-                'name' => 'Gemini Pro',
-                'model_key' => 'gemini-1.5-pro',
-                'input_price_per_million_tokens' => 0.35,
-                'output_price_per_million_tokens' => 2.50,
-                'is_default' => false,
+                'name' => SetGemini38FlashAsDefaultAction::MODEL_KEY,
+                'model_key' => SetGemini38FlashAsDefaultAction::MODEL_KEY,
+                'input_price_per_million_tokens' => 0.75,
+                'output_price_per_million_tokens' => 3.75,
+                'is_default' => true,
                 'is_active' => true,
             ],
             [
@@ -52,14 +53,6 @@ class LlmModelSeeder extends Seeder
             );
         }
 
-        $defaultModel = LlmModel::query()->where('is_default', true)->first()
-            ?? LlmModel::query()->first();
-
-        if ($defaultModel) {
-            \App\Models\PlatformAiSettings::current()->update([
-                'default_llm_provider_id' => $defaultModel->provider_id,
-                'default_llm_model_id' => $defaultModel->id,
-            ]);
-        }
+        app(SetGemini38FlashAsDefaultAction::class)->execute();
     }
 }
