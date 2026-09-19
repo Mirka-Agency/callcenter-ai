@@ -6,6 +6,7 @@ use App\Domain\Crm\Contracts\CrmAdapterInterface;
 use App\Domain\Crm\Enums\CrmProviderCode;
 use App\Domain\Crm\Exceptions\CrmAdapterNotFoundException;
 use App\Infrastructure\Crm\Adapters\DidarCrmAdapter;
+use App\Infrastructure\Crm\Adapters\DynamicsCrmAdapter;
 
 class CrmAdapterRegistry
 {
@@ -15,6 +16,7 @@ class CrmAdapterRegistry
     public function __construct()
     {
         $this->register(CrmProviderCode::Didar, DidarCrmAdapter::class);
+        $this->register(CrmProviderCode::Dynamics, DynamicsCrmAdapter::class);
     }
 
     public function register(CrmProviderCode|string $provider, string $adapterClass): void

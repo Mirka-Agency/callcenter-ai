@@ -3,6 +3,7 @@
 .env
 .env.backup
 .env.caprover
+pass
 .env.production
 .phpactor.json
 .phpunit.result.cache

@@ -3,6 +3,7 @@
 namespace App\Livewire\Employer\Crm\Connections;
 
 use App\Application\Crm\Services\CrmConnectionLifecycleService;
+use App\Domain\Crm\Enums\CrmProviderCode;
 use App\Models\CrmProvider;
 use App\Services\EmployerContext;
 use App\Services\EmployerIntegrationGate;
@@ -28,6 +29,8 @@ class Create extends Component
 
     public string $api_token = '';
 
+    public string $tenant_id = '';
+
     public string $username = '';
 
     public string $password = '';
@@ -48,13 +51,22 @@ class Create extends Component
     {
         EmployerIntegrationGate::authorizeFullManagement();
 
-        $firstProvider = CrmProvider::query()->where('is_active', true)->value('id');
-        $this->crm_provider_id = (int) ($firstProvider ?? 0);
+        $firstProvider = CrmProvider::query()->where('is_active', true)->orderBy('name')->first();
+        $this->crm_provider_id = (int) ($firstProvider?->id ?? 0);
+        $this->applyProviderDefaults($firstProvider?->code);
+    }
+
+    public function updatedCrmProviderId(): void
+    {
+        $code = CrmProvider::query()->whereKey($this->crm_provider_id)->value('code');
+        $this->applyProviderDefaults(is_string($code) ? $code : null);
     }
 
     public function save(): void
     {
         EmployerIntegrationGate::authorizeFullManagement();
+
+        $isDynamics = $this->isDynamicsProvider();
 
         $data = $this->validate([
             'crm_provider_id' => ['required', 'exists:crm_providers,id'],
@@ -62,8 +74,9 @@ class Create extends Component
             'is_default' => ['boolean'],
             'is_active' => ['boolean'],
             'api_url' => ['required', 'url'],
-            'api_key' => ['nullable', 'string'],
-            'api_token' => ['nullable', 'string'],
+            'api_key' => [$isDynamics ? 'required' : 'nullable', 'string'],
+            'api_token' => [$isDynamics ? 'required' : 'nullable', 'string'],
+            'tenant_id' => [$isDynamics ? 'required' : 'nullable', 'string', 'max:255'],
             'username' => ['nullable', 'string'],
             'password' => ['nullable', 'string'],
             'webhook_url' => ['nullable', 'url'],
@@ -85,6 +98,7 @@ class Create extends Component
                     'api_url' => $data['api_url'],
                     'api_key' => $data['api_key'] ?: null,
                     'api_token' => $data['api_token'] ?: null,
+                    'tenant_id' => $data['tenant_id'] ?: null,
                     'username' => $data['username'] ?: null,
                     'password' => $data['password'] ?: null,
                 ],
@@ -109,6 +123,29 @@ class Create extends Component
         return view('livewire.employer.crm.connections.form', [
             'connection' => null,
             'providers' => CrmProvider::query()->where('is_active', true)->orderBy('name')->get(),
+            'isDynamics' => $this->isDynamicsProvider(),
         ]);
+    }
+
+    public function isDynamicsProvider(): bool
+    {
+        $code = CrmProvider::query()->whereKey($this->crm_provider_id)->value('code');
+
+        return $code === CrmProviderCode::Dynamics->value;
+    }
+
+    private function applyProviderDefaults(?string $code): void
+    {
+        if ($code === CrmProviderCode::Dynamics->value) {
+            if ($this->api_url === '' || str_contains($this->api_url, 'didar.me')) {
+                $this->api_url = 'https://yourorg.crm.dynamics.com';
+            }
+
+            return;
+        }
+
+        if ($this->api_url === '' || str_contains($this->api_url, 'dynamics.com')) {
+            $this->api_url = CrmProviderCode::Didar->defaultApiUrl() ?? 'https://app.didar.me/api';
+        }
     }
 }

@@ -10,6 +10,7 @@ readonly class CrmCredentials
         public ?string $apiToken = null,
         public ?string $username = null,
         public ?string $password = null,
+        public ?string $tenantId = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -20,6 +21,7 @@ readonly class CrmCredentials
             apiToken: $data['api_token'] ?? $data['apiToken'] ?? null,
             username: $data['username'] ?? null,
             password: $data['password'] ?? null,
+            tenantId: self::nullableString($data['tenant_id'] ?? $data['tenantId'] ?? null),
         );
     }
 
@@ -31,7 +33,24 @@ readonly class CrmCredentials
             'api_token' => $this->apiToken,
             'username' => $this->username,
             'password' => $this->password,
+            'tenant_id' => $this->tenantId,
         ], fn ($value) => $value !== null && $value !== '');
+    }
+
+    public function directoryId(): ?string
+    {
+        return $this->tenantId ?: $this->username;
+    }
+
+    private static function nullableString(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $string = trim((string) $value);
+
+        return $string !== '' ? $string : null;
     }
 
     public function authKey(): ?string
