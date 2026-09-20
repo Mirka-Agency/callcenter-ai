@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\Organization;
 use App\Models\PlatformAiSettings;
 use App\Services\WalletService;
+use App\Support\OnPrem;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -17,7 +18,7 @@ class OrganizationWalletStats extends StatsOverviewWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->role === UserRole::SuperAdmin;
+        return ! OnPrem::billingHidden() && auth()->user()?->role === UserRole::SuperAdmin;
     }
 
     protected function getStats(): array

@@ -8,6 +8,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\OrganizationWallet;
 use App\Models\PlatformAiSettings;
 use App\Models\WalletTransaction;
+use App\Support\OnPrem;
 use Illuminate\Support\Facades\DB;
 
 class WalletService
@@ -24,6 +25,10 @@ class WalletService
 
     public function hasSufficientBalance(int $organizationId, float $requiredAmount): bool
     {
+        if (OnPrem::billingHidden()) {
+            return true;
+        }
+
         $wallet = $this->forOrganization($organizationId);
         $settings = PlatformAiSettings::current();
 

@@ -88,10 +88,11 @@
             <h2 class="text-lg font-semibold">روند کیفیت تیم</h2>
             <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز مکالمه در بازه ۳۰ روز اخیر. برای دیدن دلیل تغییر، روی یک نقطه کلیک کنید.</p>
             <div data-drilldown-selected="{{ $selectedQualityTrendPeriod ?? '' }}" :data-drilldown-selected="selected">
-                <div class="mt-4 h-56" wire:ignore>
+                <div class="relative mt-4 h-56" wire:ignore>
                     <canvas
                         id="dashboard-quality-trend"
-                        class="h-full w-full cursor-pointer"
+                        class="cursor-pointer"
+                        draggable="false"
                         data-report-chart
                         data-type="line"
                         data-config='@json($qualityChart)'

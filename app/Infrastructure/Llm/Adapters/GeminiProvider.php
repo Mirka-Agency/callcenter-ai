@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Log;
 
 class GeminiProvider extends AbstractLlmProvider
 {
+    public const DEFAULT_MODEL = 'gemini-3.8-flash';
+
     public function getProviderCode(): LlmProviderCode
     {
         return LlmProviderCode::Gemini;
@@ -21,6 +23,13 @@ class GeminiProvider extends AbstractLlmProvider
     public function supportedModels(): array
     {
         return [
+            'gemini-3.8-flash',
+            'gemini-3.7-flash',
+            'gemini-3.6-flash',
+            'gemini-3.5-flash',
+            'gemini-3.5-flash-lite',
+            'gemini-3.1-pro-preview',
+            'gemini-3.1-flash-lite',
             'gemini-2.5-flash',
             'gemini-2.0-flash',
             'gemini-2.0-flash-lite',
@@ -36,7 +45,7 @@ class GeminiProvider extends AbstractLlmProvider
             return LlmOperationResult::success(message: 'Gemini configured in demo mode (no API key).');
         }
 
-        $model = $this->resolveModel(null, 'gemini-2.0-flash');
+        $model = $this->resolveModel(null, self::DEFAULT_MODEL);
         $response = Http::timeout(30)->get(
             $this->modelsEndpoint($model),
             ['key' => $this->config->credentials->apiKey],
@@ -103,12 +112,14 @@ class GeminiProvider extends AbstractLlmProvider
         }
 
         $usage = $body['usageMetadata'] ?? [];
+        $outputTokens = (int) ($usage['candidatesTokenCount'] ?? $parsed['output_tokens'] ?? 0)
+            + (int) ($usage['thoughtsTokenCount'] ?? 0);
 
         return LlmOperationResult::success(
             data: $parsed,
             message: 'Audio analysis completed.',
             inputTokens: (int) ($usage['promptTokenCount'] ?? $parsed['input_tokens'] ?? 0),
-            outputTokens: (int) ($usage['candidatesTokenCount'] ?? $parsed['output_tokens'] ?? 0),
+            outputTokens: $outputTokens,
             cost: 0,
             durationMs: (int) ((microtime(true) - $started) * 1000),
             model: (string) ($parsed['model'] ?? $model),
@@ -151,11 +162,7 @@ class GeminiProvider extends AbstractLlmProvider
                         'parts' => $userParts,
                     ],
                 ],
-                'generationConfig' => [
-                    'temperature' => $this->config->settings->temperature ?? 0.3,
-                    'maxOutputTokens' => $this->config->settings->maxOutputTokens ?? 8192,
-                    'responseMimeType' => 'application/json',
-                ],
+                'generationConfig' => $this->generationConfig($model),
             ]);
     }
 
@@ -263,12 +270,38 @@ class GeminiProvider extends AbstractLlmProvider
 
     private function resolveAudioAnalysisModel(?string $requestedModel): string
     {
-        $model = $this->resolveModel($requestedModel, 'gemini-2.0-flash');
+        $model = $this->resolveModel($requestedModel, self::DEFAULT_MODEL);
 
-        if (in_array($model, $this->supportedModels(), true)) {
+        if (in_array($model, $this->supportedModels(), true) || str_starts_with($model, 'gemini-')) {
             return $model;
         }
 
-        return 'gemini-2.0-flash';
+        return self::DEFAULT_MODEL;
+    }
+
+    /** @return array<string, mixed> */
+    private function generationConfig(string $model): array
+    {
+        $config = [
+            'maxOutputTokens' => $this->config->settings->maxOutputTokens ?? ($this->isGemini3($model) ? 16384 : 8192),
+            'responseMimeType' => 'application/json',
+        ];
+
+        if ($this->isGemini3($model)) {
+            $config['thinkingConfig'] = [
+                'thinkingLevel' => 'medium',
+            ];
+
+            return $config;
+        }
+
+        $config['temperature'] = $this->config->settings->temperature ?? 0.3;
+
+        return $config;
+    }
+
+    private function isGemini3(string $model): bool
+    {
+        return str_starts_with($model, 'gemini-3');
     }
 }

@@ -42,6 +42,49 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $this->assertStringContainsString('اعتراض به سرویس', $policy);
     }
 
+    public function test_follow_up_policy_requires_phone_callback_only(): void
+    {
+        $policy = PromptBuilder::followUpPolicy();
+
+        $this->assertStringContainsString('follow_up_suggestions فقط برای تماس تلفنی برگشتی', $policy);
+        $this->assertStringContainsString('کارشناس باید دوباره با همان مشتری تلفنی تماس بگیرد', $policy);
+        $this->assertStringContainsString('ارسال فایل، سند، کاتالوگ، پیش‌فاکتور', $policy);
+        $this->assertStringContainsString('واتساپ، تلگرام، اینستاگرام', $policy);
+        $this->assertStringContainsString('ثبت تیکت، پیگیری مشکل سیستمی', $policy);
+        $this->assertStringContainsString('آرایه خالی بگذارید', $policy);
+    }
+
+    public function test_system_prompt_includes_follow_up_policy(): void
+    {
+        $prompt = (new PromptBuilder)->systemPrompt();
+
+        $this->assertStringContainsString(PromptBuilder::followUpPolicy(), $prompt);
+        $this->assertStringContainsString('فقط تماس تلفنی برگشتی با مشتری', $prompt);
+        $this->assertStringContainsString('"follow_up_suggestions": ["تماس پیگیری در روز بعد برای اعلام تصمیم مشتری"]', $prompt);
+    }
+
+    public function test_sentiment_policy_requires_brand_product_or_service_dissatisfaction(): void
+    {
+        $policy = PromptBuilder::sentimentPolicy();
+
+        $this->assertStringContainsString('احساس مشتری نسبت به برند، محصول و خدمات', $policy);
+        $this->assertStringContainsString('negative را فقط و فقط وقتی بگذارید', $policy);
+        $this->assertStringContainsString('اگر مشتری اعتراضی نسبت به محصول یا برند ما دارد، حتماً negative بگذارید', $policy);
+        $this->assertStringContainsString('نارضایتی از لحن یا عملکرد کارشناس', $policy);
+        $this->assertStringContainsString('استعلام قیمت', $policy);
+        $this->assertStringContainsString('مقدار را neutral بگذارید', $policy);
+        $this->assertStringNotContainsString('overall emotional tone', $policy);
+    }
+
+    public function test_system_prompt_includes_sentiment_policy(): void
+    {
+        $prompt = (new PromptBuilder)->systemPrompt();
+
+        $this->assertStringContainsString(PromptBuilder::sentimentPolicy(), $prompt);
+        $this->assertStringContainsString('احساس مشتری نسبت به برند، محصول و خدمات سازمان', $prompt);
+        $this->assertStringContainsString('negative فقط در صورت نارضایتی یا اعتراض به برند/محصول/خدمات', $prompt);
+    }
+
     public function test_instructional_policies_do_not_contain_english_sentences(): void
     {
         $prompt = implode("\n", [
@@ -51,7 +94,9 @@ class PromptBuilderPersianLanguageTest extends TestCase
             PromptBuilder::organizationDomainPolicy(),
             PromptBuilder::weaknessEvaluationPolicy(),
             PromptBuilder::leadAnalysisPolicy(),
+            PromptBuilder::sentimentPolicy(),
             PromptBuilder::attentionPolicy(),
+            PromptBuilder::followUpPolicy(),
             PromptBuilder::customerIdentityPolicy(),
             PromptBuilder::persianStrictRetryPolicy(),
         ]);

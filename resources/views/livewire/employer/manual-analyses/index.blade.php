@@ -19,15 +19,17 @@
             ?? (($wallet['currency'] ?? 'IRR') === 'IRR' ? 100_000 : 10);
         $insufficientThreshold = ($wallet['currency'] ?? 'IRR') === 'IRR' ? 1000 : 0.01;
     @endphp
-    @if (($wallet['balance'] ?? 0) < $insufficientThreshold)
-        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-            @lang('ui.wallet.insufficient') <a href="{{ route('employer.wallet.index') }}" class="font-medium underline">شارژ اعتبار تحلیل</a>
-        </div>
-    @elseif (($wallet['balance'] ?? 0) < $lowBalanceThreshold)
-        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
-            اعتبار تحلیل کم است ({{ \App\Models\PlatformAiSettings::formatMoney($wallet['balance']) }}). قبل از بارگذاری تماس‌های بیشتر، موجودی را شارژ کنید.
-        </div>
-    @endif
+    @unless (\App\Support\OnPrem::billingHidden())
+        @if (($wallet['balance'] ?? 0) < $insufficientThreshold)
+            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+                @lang('ui.wallet.insufficient') <a href="{{ route('employer.wallet.index') }}" class="font-medium underline">شارژ اعتبار تحلیل</a>
+            </div>
+        @elseif (($wallet['balance'] ?? 0) < $lowBalanceThreshold)
+            <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                اعتبار تحلیل کم است ({{ \App\Models\PlatformAiSettings::formatMoney($wallet['balance']) }}). قبل از بارگذاری تماس‌های بیشتر، موجودی را شارژ کنید.
+            </div>
+        @endif
+    @endunless
 
     <div class="saas-card border-indigo-200/50 shadow-md shadow-indigo-500/5 dark:border-indigo-500/20" data-tour="manual-upload-panel">
         <x-saas.manual-upload-panel

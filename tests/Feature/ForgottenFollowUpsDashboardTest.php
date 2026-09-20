@@ -136,6 +136,48 @@ class ForgottenFollowUpsDashboardTest extends TestCase
         $this->assertArrayHasKey('sort_due_date', $forgotten[0]);
     }
 
+    public function test_forgotten_follow_up_lookup_ignores_unrelated_outbound_volume(): void
+    {
+        $organization = Organization::factory()->create();
+
+        $this->seedFollowUp($organization, [
+            'external_id' => 'keep-overdue-volume',
+            'customer_name' => 'پیگیری معوق',
+            'customer_phone' => '09120000001',
+            'follow_up' => 'تماس پیگیری فردا',
+            'analyzed_at' => now()->subDays(5),
+            'started_at' => now()->subDays(5),
+        ]);
+
+        $employee = OrganizationUser::query()->where('organization_id', $organization->id)->firstOrFail();
+
+        for ($i = 0; $i < 80; $i++) {
+            Call::query()->create([
+                'organization_id' => $organization->id,
+                'organization_user_id' => $employee->id,
+                'source' => ConversationSource::Voip,
+                'provider_code' => 'novatel',
+                'external_call_id' => 'unrelated-out-'.$i,
+                'direction' => 'outbound',
+                'caller_number' => '02100000000',
+                'customer_name' => 'مشتری نامرتبط '.$i,
+                'customer_phone' => '0912999'.str_pad((string) $i, 4, '0', STR_PAD_LEFT),
+                'receiver_number' => '0912999'.str_pad((string) $i, 4, '0', STR_PAD_LEFT),
+                'title' => 'تماس نامرتبط',
+                'category' => 'فروش',
+                'status' => 'completed',
+                'processing_status' => 'analyzed',
+                'duration_seconds' => 60,
+                'started_at' => now()->subDays(2),
+            ]);
+        }
+
+        $forgotten = EmployerDashboardAnalytics::forOrganization($organization->id)->forgottenFollowUps();
+
+        $this->assertCount(1, $forgotten);
+        $this->assertSame('پیگیری معوق', $forgotten[0]['customer']);
+    }
+
     public function test_dashboard_sorts_forgotten_follow_ups_by_due_date_title(): void
     {
         $organization = $this->actingAsEmployer();
@@ -174,7 +216,59 @@ class ForgottenFollowUpsDashboardTest extends TestCase
         Livewire::test(Overview::class)
             ->assertSee('پیگیری‌های فراموش‌شده')
             ->assertSee('پیگیری فراموش‌شده‌ای نیست')
-            ->assertSee('اگر موعد پیگیری پیشنهادی هوش مصنوعی بگذرد و کارشناس تماس نگیرد، اینجا دیده می‌شود.');
+            ->assertSee('اگر مشتری درخواست داشته، کارشناس باید دوباره زنگ می‌زده و تماس نگرفته باشد، اینجا دیده می‌شود.');
+    }
+
+    public function test_analytics_keeps_only_promised_phone_callbacks(): void
+    {
+        $organization = Organization::factory()->create();
+
+        $this->seedFollowUp($organization, [
+            'external_id' => 'keep-callback',
+            'customer_name' => 'تماس برگشتی',
+            'customer_phone' => '09120000011',
+            'follow_up' => 'تماس پیگیری فردا برای اعلام نتیجه',
+            'analyzed_at' => now()->subDays(5),
+            'started_at' => now()->subDays(5),
+        ]);
+        $this->seedFollowUp($organization, [
+            'external_id' => 'skip-invoice',
+            'customer_name' => 'ارسال پیش‌فاکتور',
+            'customer_phone' => '09120000012',
+            'follow_up' => 'ارسال پیش‌فاکتور امروز',
+            'analyzed_at' => now()->subDays(5),
+            'started_at' => now()->subDays(5),
+        ]);
+        $this->seedFollowUp($organization, [
+            'external_id' => 'skip-whatsapp',
+            'customer_name' => 'ارسال واتساپ',
+            'customer_phone' => '09120000013',
+            'follow_up' => 'ارسال فایل کاتالوگ در واتساپ',
+            'analyzed_at' => now()->subDays(5),
+            'started_at' => now()->subDays(5),
+        ]);
+        $this->seedFollowUp($organization, [
+            'external_id' => 'skip-ticket',
+            'customer_name' => 'تیکت سیستمی',
+            'customer_phone' => '09120000014',
+            'follow_up' => 'ثبت تیکت برای مشکل سیستمی',
+            'analyzed_at' => now()->subDays(5),
+            'started_at' => now()->subDays(5),
+        ]);
+        $this->seedFollowUp($organization, [
+            'external_id' => 'skip-instagram',
+            'customer_name' => 'پیام اینستاگرام',
+            'customer_phone' => '09120000015',
+            'follow_up' => 'ارسال پیام در اینستاگرام',
+            'analyzed_at' => now()->subDays(5),
+            'started_at' => now()->subDays(5),
+        ]);
+
+        $forgotten = EmployerDashboardAnalytics::forOrganization($organization->id)->forgottenFollowUps();
+
+        $this->assertCount(1, $forgotten);
+        $this->assertSame('تماس برگشتی', $forgotten[0]['customer']);
+        $this->assertSame('تماس پیگیری فردا برای اعلام نتیجه', $forgotten[0]['forgotten_action']);
     }
 
     /**

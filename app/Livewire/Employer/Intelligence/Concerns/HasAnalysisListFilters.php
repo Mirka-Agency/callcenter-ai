@@ -115,13 +115,23 @@ trait HasAnalysisListFilters
         $this->resetPage();
 
         if ($preset === 'missed') {
-            $this->callStatus = CallStatus::Missed->value;
+            $this->callStatus = $this->callStatus === CallStatus::Missed->value
+                ? null
+                : CallStatus::Missed->value;
+
+            if ($this->callStatus === CallStatus::Missed->value) {
+                $this->focusAnalysisListUnderFilters();
+            }
 
             return;
         }
 
         if ($preset === 'attention') {
-            $this->needsAttention = true;
+            $this->needsAttention = ! $this->needsAttention;
+
+            if ($this->needsAttention) {
+                $this->focusAnalysisListUnderFilters();
+            }
 
             return;
         }
@@ -133,6 +143,18 @@ trait HasAnalysisListFilters
         }
 
         $this->setDatePreset($preset);
+    }
+
+    protected function focusAnalysisListUnderFilters(): void
+    {
+        $this->js(<<<'JS'
+            requestAnimationFrame(() => {
+                document.querySelector('[data-tour="analysis-filters"]')?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                });
+            });
+        JS);
     }
 
     public function setDatePreset(string $preset): void

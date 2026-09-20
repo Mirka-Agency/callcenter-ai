@@ -4,18 +4,25 @@ namespace App\Filament\Resources\Organizations\RelationManagers;
 
 use App\Domain\Billing\Enums\WalletTransactionType;
 use App\Models\PlatformAiSettings;
+use App\Support\OnPrem;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class WalletTransactionsRelationManager extends RelationManager
 {
     protected static string $relationship = 'walletTransactions';
 
-    public static function getTitle(\Illuminate\Database\Eloquent\Model $ownerRecord, string $pageClass): string
+    public static function getTitle(Model $ownerRecord, string $pageClass): string
     {
         return __('filament.relation_managers.wallet_transactions');
+    }
+
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+    {
+        return ! OnPrem::billingHidden() && parent::canViewForRecord($ownerRecord, $pageClass);
     }
 
     public function form(Schema $schema): Schema

@@ -3,7 +3,7 @@
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
                 <h1 class="text-3xl font-semibold tracking-tight">یکپارچه‌سازی CRM</h1>
-                <p class="mt-2 text-zinc-500">کاریز، مرحله کاریز و مالک معامله پیش‌فرض را تنظیم کنید تا معاملات دیدار از روی تحلیل تماس ساخته شوند.</p>
+                <p class="mt-2 text-zinc-500">{{ __('ui.crm.index_subtitle') }}</p>
             </div>
             @if (\App\Services\EmployerIntegrationGate::allowsFullManagement())
                 <a href="{{ route('employer.crm.connections.index') }}" class="saas-btn-primary">مدیریت اتصالات CRM</a>
@@ -18,9 +18,9 @@
         ])
     @else
         <div class="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-100">
-            <p class="font-medium">تنظیم مسیر فروش در دیدار</p>
+            <p class="font-medium">{{ __('ui.crm.deal_path_title') }}</p>
             <p class="mt-1 text-indigo-800/90 dark:text-indigo-200/90">
-                فعال یا غیرفعال کردن CRM فقط توسط ادمین انجام می‌شود. شما کاریز، مرحله کاریز و در صورت نیاز مالک معامله را برای معاملات ساخته‌شده از تحلیل تماس تنظیم می‌کنید.
+                {{ __('ui.crm.deal_path_body') }}
             </p>
         </div>
 
@@ -44,11 +44,11 @@
         <div class="saas-card space-y-6" data-tour="crm-settings">
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h2 class="text-lg font-semibold">تنظیمات معامله دیدار</h2>
-                    <p class="mt-1 text-sm text-zinc-500">این مقادیر هنگام ایجاد معامله از تحلیل تماس استفاده می‌شوند.</p>
+                    <h2 class="text-lg font-semibold">{{ __('ui.crm.deal_settings_title') }}</h2>
+                    <p class="mt-1 text-sm text-zinc-500">{{ __('ui.crm.deal_settings_hint') }}</p>
                 </div>
                 <button type="button" wire:click="refreshOptions" class="saas-btn-secondary text-sm" wire:loading.attr="disabled">
-                    <span wire:loading.remove wire:target="refreshOptions">بروزرسانی از دیدار</span>
+                    <span wire:loading.remove wire:target="refreshOptions">{{ __('ui.crm.refresh_options') }}</span>
                     <span wire:loading wire:target="refreshOptions">در حال دریافت…</span>
                 </button>
             </div>
@@ -97,7 +97,7 @@
                 <div class="md:col-span-2">
                     <label class="mb-1 block text-sm font-medium">مالک معامله <span class="text-zinc-400">(اختیاری)</span></label>
                     <select wire:model="dealOwnerId" class="saas-input">
-                        <option value="">بدون مالک مشخص (پیش‌فرض دیدار)</option>
+                        <option value="">{{ __('ui.crm.owner_placeholder') }}</option>
                         @foreach ($users as $user)
                             <option value="{{ $user['id'] }}">
                                 {{ $user['name'] }}@if (! empty($user['email'])) — {{ $user['email'] }}@endif

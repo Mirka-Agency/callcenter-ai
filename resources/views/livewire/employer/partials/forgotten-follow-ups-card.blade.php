@@ -2,7 +2,7 @@
     <div class="flex flex-wrap items-start justify-between gap-3 px-4 py-4 sm:px-6 sm:pt-6">
         <div>
             <h2 class="text-lg font-semibold">پیگیری‌های فراموش‌شده</h2>
-            <p class="mt-1 text-sm text-zinc-500">پیگیری‌های پیشنهادی هوش مصنوعی که موعدشان گذشته و کارشناس هنوز اقدامی نکرده است</p>
+            <p class="mt-1 text-sm text-zinc-500">فقط تماس‌هایی که مشتری درخواست داشته، کارشناس باید دوباره زنگ می‌زد، ولی هنوز تماس نگرفته است</p>
         </div>
         @if (! empty($forgottenFollowUps))
             <span class="rounded-lg bg-red-50 px-2.5 py-1 text-sm font-medium tabular-nums text-red-700 dark:bg-red-500/10 dark:text-red-400">

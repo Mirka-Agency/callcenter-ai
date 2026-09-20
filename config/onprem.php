@@ -10,7 +10,12 @@ return [
     | Used when installing one organization on a customer LAN.
     | See docs/on-prem.md and .env.onprem.example.
     |
+    | docker-compose.onprem.yml sets ONPREM_ENABLED=true. When enabled,
+    | SaaS wallet/billing UI is hidden and analysis is not blocked by credits.
+    |
     */
+
+    'enabled' => filter_var(env('ONPREM_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
 
     'admin_name' => env('ONPREM_ADMIN_NAME', 'Super Admin'),
     'admin_email' => env('ONPREM_ADMIN_EMAIL', 'admin@example.com'),

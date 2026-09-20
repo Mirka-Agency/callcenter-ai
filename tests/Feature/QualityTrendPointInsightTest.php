@@ -58,6 +58,12 @@ class QualityTrendPointInsightTest extends TestCase
             ->assertSee('گوش دادن فعال')
             ->assertSee('کارشناسانی که باعث افزایش روند شدند');
 
+        $this->assertStringContainsString('id="dashboard-quality-trend"', $component->html());
+        $this->assertDoesNotMatchRegularExpression(
+            '/id="dashboard-quality-trend"[^>]*\bh-full\b/',
+            $component->html(),
+        );
+
         $agentsSection = mb_substr($component->html(), (int) mb_strpos($component->html(), 'کارشناسانی که باعث افزایش روند شدند'));
         $this->assertStringContainsString('سارا کریمی', $agentsSection);
         $this->assertStringNotContainsString('رضا نوری', $agentsSection);

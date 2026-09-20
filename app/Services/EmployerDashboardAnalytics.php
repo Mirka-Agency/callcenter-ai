@@ -8,11 +8,13 @@ use App\Models\ConversationAnalysis;
 use App\Models\OrganizationActivity;
 use App\Services\Reports\OrganizationCallMetrics;
 use App\Support\FollowUpDueDateParser;
+use App\Support\ForgottenCallbackMatcher;
 use App\Support\JalaliDate;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class EmployerDashboardAnalytics
 {
@@ -203,7 +205,7 @@ class EmployerDashboardAnalytics
     }
 
     /**
-     * AI-assigned follow-ups whose due date has passed and the agent never called back.
+     * Phone callbacks the agent promised after a customer request, now overdue with no later outbound call.
      *
      * @return list<array{
      *     analysis_id: int,
@@ -222,12 +224,41 @@ class EmployerDashboardAnalytics
     public function forgottenFollowUps(int $days = 90): array
     {
         $days = max(1, min(180, $days));
+
+        return Cache::remember(
+            "dashboard:forgotten:{$this->organizationId}:{$days}",
+            120,
+            fn () => $this->buildForgottenFollowUps($days),
+        );
+    }
+
+    /**
+     * @return list<array{
+     *     analysis_id: int,
+     *     customer: string,
+     *     phone: ?string,
+     *     company: ?string,
+     *     employee: string,
+     *     forgotten_action: string,
+     *     due_date: string,
+     *     sort_due_date: int,
+     *     days_overdue: int,
+     *     forgotten_actions: list<string>,
+     *     summary: ?string
+     * }>
+     */
+    private function buildForgottenFollowUps(int $days): array
+    {
         $today = now()->startOfDay();
 
         $analyses = ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId)
             ->evaluable()
             ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay())
+            ->where(function ($query) {
+                $query->whereNotNull('next_actions_json')
+                    ->orWhereNotNull('operational_insights_json');
+            })
             ->with([
                 'employee:id,first_name,last_name,user_id',
                 'call:id,customer_id,customer_name,customer_phone,caller_number,started_at',
@@ -245,7 +276,7 @@ class EmployerDashboardAnalytics
                 'analyzed_at',
             ]);
 
-        $laterCalls = $this->laterCallsByCustomer($analyses);
+        $laterCalls = $this->indexLaterCalls($this->laterCallsByCustomer($analyses));
 
         return $analyses
             ->map(fn (ConversationAnalysis $analysis) => $this->mapForgottenFollowUp($analysis, $today, $laterCalls))
@@ -302,6 +333,35 @@ class EmployerDashboardAnalytics
 
     /**
      * @param  Collection<int, Call>  $laterCalls
+     * @return array{by_customer_id: array<int, list<Call>>, by_phone: array<string, list<Call>>}
+     */
+    private function indexLaterCalls(Collection $laterCalls): array
+    {
+        $byCustomerId = [];
+        $byPhone = [];
+
+        foreach ($laterCalls as $call) {
+            if ($call->customer_id) {
+                $byCustomerId[(int) $call->customer_id][] = $call;
+            }
+
+            foreach ([$call->customer_phone, $call->caller_number, $call->receiver_number] as $candidate) {
+                $phone = $this->normalizedPhone($candidate);
+
+                if ($phone !== null) {
+                    $byPhone[$phone][] = $call;
+                }
+            }
+        }
+
+        return [
+            'by_customer_id' => $byCustomerId,
+            'by_phone' => $byPhone,
+        ];
+    }
+
+    /**
+     * @param  array{by_customer_id: array<int, list<Call>>, by_phone: array<string, list<Call>>}  $laterCalls
      * @return array{
      *     analysis_id: int,
      *     customer: string,
@@ -316,7 +376,7 @@ class EmployerDashboardAnalytics
      *     summary: ?string
      * }|null
      */
-    private function mapForgottenFollowUp(ConversationAnalysis $analysis, CarbonInterface $today, Collection $laterCalls): ?array
+    private function mapForgottenFollowUp(ConversationAnalysis $analysis, CarbonInterface $today, array $laterCalls): ?array
     {
         $actions = $this->overdueFollowUpActions($analysis, $today);
 
@@ -381,32 +441,19 @@ class EmployerDashboardAnalytics
         $seen = [];
         $actions = [];
 
-        foreach ($suggestions as $raw) {
-            $text = $this->actionText($raw);
-            if ($text === null || isset($seen[$text])) {
-                continue;
+        foreach ([$suggestions, $nextActions] as $items) {
+            foreach ($items as $raw) {
+                $text = $this->actionText($raw);
+                if ($text === null || isset($seen[$text]) || ! ForgottenCallbackMatcher::matches($text)) {
+                    continue;
+                }
+
+                $seen[$text] = true;
+                $actions[] = ['raw' => $raw, 'text' => $text];
             }
-
-            $seen[$text] = true;
-            $actions[] = ['raw' => $raw, 'text' => $text];
-        }
-
-        foreach ($nextActions as $raw) {
-            $text = $this->actionText($raw);
-            if ($text === null || isset($seen[$text]) || ! $this->looksLikeCustomerFollowUp($text)) {
-                continue;
-            }
-
-            $seen[$text] = true;
-            $actions[] = ['raw' => $raw, 'text' => $text];
         }
 
         return $actions;
-    }
-
-    private function looksLikeCustomerFollowUp(string $action): bool
-    {
-        return (bool) preg_match('/پیگیری|تماس\s*مجدد|تماس\s*فردا|ارسال|هماهنگی|پیش\s*فاکتور|نوبت|یادآور|چک\s*لیست/u', $action);
     }
 
     private function actionText(mixed $action): ?string
@@ -453,9 +500,9 @@ class EmployerDashboardAnalytics
     }
 
     /**
-     * @param  Collection<int, Call>  $laterCalls
+     * @param  array{by_customer_id: array<int, list<Call>>, by_phone: array<string, list<Call>>}  $laterCalls
      */
-    private function wasFollowedUp(ConversationAnalysis $analysis, Collection $laterCalls): bool
+    private function wasFollowedUp(ConversationAnalysis $analysis, array $laterCalls): bool
     {
         $originalCallId = $analysis->call_id;
         $originalAt = $analysis->call?->started_at ?? $analysis->analyzed_at;
@@ -466,32 +513,39 @@ class EmployerDashboardAnalytics
             return false;
         }
 
-        return $laterCalls->contains(function (Call $call) use ($originalCallId, $originalAt, $customerId, $phone) {
+        $candidates = [];
+        $seen = [];
+
+        if ($customerId) {
+            foreach ($laterCalls['by_customer_id'][(int) $customerId] ?? [] as $call) {
+                if (! isset($seen[$call->id])) {
+                    $seen[$call->id] = true;
+                    $candidates[] = $call;
+                }
+            }
+        }
+
+        if ($phone !== null) {
+            foreach ($laterCalls['by_phone'][$phone] ?? [] as $call) {
+                if (! isset($seen[$call->id])) {
+                    $seen[$call->id] = true;
+                    $candidates[] = $call;
+                }
+            }
+        }
+
+        foreach ($candidates as $call) {
             if ($originalCallId && $call->id === $originalCallId) {
-                return false;
+                continue;
             }
 
             $callAt = $call->started_at ?? $call->created_at;
-            if (! $callAt || $callAt->lte($originalAt)) {
-                return false;
-            }
-
-            if ($customerId && $call->customer_id === $customerId) {
+            if ($callAt && $callAt->gt($originalAt)) {
                 return true;
             }
+        }
 
-            if ($phone === null) {
-                return false;
-            }
-
-            foreach ([$call->customer_phone, $call->caller_number, $call->receiver_number] as $candidate) {
-                if ($this->normalizedPhone($candidate) === $phone) {
-                    return true;
-                }
-            }
-
-            return false;
-        });
+        return false;
     }
 
     /**

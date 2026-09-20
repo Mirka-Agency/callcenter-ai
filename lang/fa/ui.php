@@ -65,6 +65,33 @@ return [
         'voip_sync_queued' => 'همگام‌سازی داخلی‌ها به صف اضافه شد.',
     ],
 
+    'crm' => [
+        'index_subtitle' => 'کاریز، مرحله فروش و مالک معامله را تنظیم کنید تا از روی تحلیل تماس در CRM معامله ساخته شود.',
+        'deal_path_title' => 'تنظیم مسیر فروش',
+        'deal_path_body' => 'فعال یا غیرفعال کردن CRM فقط توسط ادمین انجام می‌شود. شما کاریز، مرحله و در صورت نیاز مالک معامله را برای معاملات ساخته‌شده از تحلیل تماس تنظیم می‌کنید.',
+        'deal_settings_title' => 'تنظیمات معامله CRM',
+        'deal_settings_hint' => 'این مقادیر هنگام ایجاد معامله از تحلیل تماس استفاده می‌شوند.',
+        'refresh_options' => 'بروزرسانی از CRM',
+        'refreshing' => 'در حال دریافت…',
+        'owner_placeholder' => 'بدون مالک مشخص (پیش‌فرض CRM)',
+        'dynamics_guide_title' => 'راه‌اندازی Microsoft Dynamics 365',
+        'dynamics_step_1' => 'در Azure Portal یک App registration بسازید (Entra ID).',
+        'dynamics_step_2' => 'یک Client secret بسازید و Tenant ID و Application (client) ID را کپی کنید.',
+        'dynamics_step_3' => 'به اپ دسترسی Dynamics CRM / Dataverse بدهید (Application permission: user_impersonation) و Admin consent بزنید.',
+        'dynamics_step_4' => 'در Dynamics یک Application User با همین Client ID بسازید و نقش امنیتی Sales بدهید.',
+        'dynamics_step_5' => 'آدرس محیط Dataverse را اینجا بگذارید، ذخیره کنید، سپس «تست اتصال» بزنید.',
+        'dynamics_credentials_title' => 'اعتبارنامه Azure / Dataverse',
+        'dynamics_environment_url' => 'آدرس محیط Dataverse',
+        'dynamics_environment_url_hint' => 'مثال: https://yourorg.crm4.dynamics.com — پسوند /api/data لازم نیست.',
+        'dynamics_tenant_id' => 'شناسه مستأجر (Tenant ID)',
+        'dynamics_tenant_id_hint' => 'Directory (tenant) ID از صفحه Overview اپ در Azure Portal.',
+        'dynamics_client_id' => 'Application (client) ID',
+        'dynamics_client_secret' => 'Client secret',
+        'dynamics_pipeline_id' => 'شناسه فرآیند فروش (BPF)',
+        'dynamics_pipeline_stage_id' => 'شناسه مرحله فرآیند',
+        'dynamics_owner_id' => 'مالک (systemuserid)',
+    ],
+
     'voip' => [
         'webhook_guide_title' => 'راهنمای وب‌هوک VoIP',
         'webhook_guide_body' => 'آدرس زیر را در پنل ارائه‌دهنده VoIP (مثلاً سیموتل) یا در dialplan سرور Asterisk برای رویداد پایان تماس (CDR) تنظیم کنید. این آدرس شامل کد امنیتی یکتا است — آن را محرمانه نگه دارید.',
@@ -248,7 +275,7 @@ return [
         ],
         'no_forgotten_followups' => [
             'title' => 'پیگیری فراموش‌شده‌ای نیست',
-            'description' => 'اگر موعد پیگیری پیشنهادی هوش مصنوعی بگذرد و کارشناس تماس نگیرد، اینجا دیده می‌شود.',
+            'description' => 'اگر مشتری درخواست داشته، کارشناس باید دوباره زنگ می‌زده و تماس نگرفته باشد، اینجا دیده می‌شود.',
         ],
         'no_satisfied_customers' => [
             'title' => 'هنوز مشتری راضی‌ای نیست',
