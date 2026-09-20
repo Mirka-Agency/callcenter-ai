@@ -46,5 +46,5 @@
         @endforelse
     </div>
 
-    {{ $contacts->onEachSide(1)->links('livewire.shared.customers.partials.contacts-pagination') }}
+    {{ $contacts->links('livewire.shared.customers.partials.contacts-pagination') }}
 </div>

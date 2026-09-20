@@ -17,68 +17,57 @@ class CustomerContactPaginationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_contacts_default_to_ten_per_page_with_editable_range(): void
+    public function test_contacts_always_show_fifty_per_page_without_range_input(): void
     {
         $this->actingAsEmployer();
-        $this->createContacts(16);
+        $this->createContacts(55);
 
         $component = Livewire::test(EmployerContactsIndex::class)
-            ->assertSet('perPage', 10)
-            ->assertSee('1 تا')
-            ->assertDontSee('Showing');
+            ->assertDontSee('1 تا')
+            ->assertDontSee('Showing')
+            ->assertDontSeeHtml('wire:model.blur="perPage"');
 
-        $this->assertCount(10, $component->viewData('contacts'));
-        $this->assertSame(16, $component->viewData('contacts')->total());
+        $this->assertCount(50, $component->viewData('contacts'));
+        $this->assertSame(55, $component->viewData('contacts')->total());
         $this->assertTrue($component->viewData('contacts')->hasPages());
-        $component->assertSeeHtml('wire:model.blur="perPage"');
+        $this->assertSame(2, $component->viewData('contacts')->lastPage());
     }
 
-    public function test_user_can_change_how_many_contacts_appear_on_the_page(): void
+    public function test_page_numbers_use_first_pages_ellipsis_and_last_pages(): void
     {
         $this->actingAsEmployer();
-        $this->createContacts(25);
+        $this->createContacts(50 * 12);
 
-        $component = Livewire::test(EmployerContactsIndex::class)
-            ->call('gotoPage', 2)
-            ->assertSet('paginators.page', 2)
-            ->set('perPage', 20)
-            ->assertSet('perPage', 20)
-            ->assertSet('paginators.page', 1);
+        $component = Livewire::test(EmployerContactsIndex::class);
 
-        $this->assertCount(20, $component->viewData('contacts'));
-        $this->assertTrue($component->viewData('contacts')->hasPages());
+        $component->assertSeeHtml('aria-current="page"');
+        $component->assertSeeHtml('gotoPage(2,');
+        $component->assertSeeHtml('gotoPage(3,');
+        $component->assertSeeHtml('>...</span>');
+        $component->assertSeeHtml('gotoPage(10,');
+        $component->assertSeeHtml('gotoPage(11,');
+        $component->assertSeeHtml('gotoPage(12,');
+        $component->assertDontSeeHtml('gotoPage(6,');
+
+        $component->call('gotoPage', 6);
+
+        $component->assertSeeHtml('gotoPage(1,');
+        $component->assertSeeHtml('gotoPage(12,');
+        $component->assertDontSeeHtml('gotoPage(6,');
+        $this->assertSame(6, $component->viewData('contacts')->currentPage());
+        $this->assertCount(50, $component->viewData('contacts'));
     }
 
-    public function test_invalid_per_page_falls_back_and_url_hydrates_known_value(): void
-    {
-        $this->actingAsEmployer();
-        $this->createContacts(12);
-
-        Livewire::test(EmployerContactsIndex::class)
-            ->set('perPage', 0)
-            ->assertSet('perPage', 10);
-
-        Livewire::test(EmployerContactsIndex::class)
-            ->set('perPage', 1000)
-            ->assertSet('perPage', 100);
-
-        Livewire::withQueryParams(['per_page' => '25'])
-            ->test(EmployerContactsIndex::class)
-            ->assertSet('perPage', 25);
-    }
-
-    public function test_employee_contacts_use_the_same_per_page_control(): void
+    public function test_employee_contacts_use_the_same_fixed_page_size(): void
     {
         $this->actingAsEmployee();
-        $this->createContacts(14);
+        $this->createContacts(53);
 
         $component = Livewire::test(EmployeeContactsIndex::class)
-            ->assertSet('perPage', 10)
-            ->assertSee('1 تا')
-            ->set('perPage', 14);
+            ->assertDontSee('1 تا');
 
-        $this->assertCount(14, $component->viewData('contacts'));
-        $this->assertFalse($component->viewData('contacts')->hasPages());
+        $this->assertCount(50, $component->viewData('contacts'));
+        $this->assertTrue($component->viewData('contacts')->hasPages());
     }
 
     private function actingAsEmployer(): Organization
@@ -116,14 +105,26 @@ class CustomerContactPaginationTest extends TestCase
             ? Organization::query()->where('user_id', auth()->id())->firstOrFail()
             : OrganizationUser::query()->where('user_id', auth()->id())->firstOrFail()->organization;
 
+        $now = now();
+        $rows = [];
+
         for ($i = 1; $i <= $count; $i++) {
-            Customer::query()->create([
+            $rows[] = [
                 'organization_id' => $organization->id,
                 'normalized_phone' => sprintf('0912999%04d', $i),
                 'phone_number' => sprintf('0912999%04d', $i),
-                'name' => sprintf('مخاطب صفحه %02d', $i),
-                'last_contact_at' => now()->subDays($i),
-            ]);
+                'name' => sprintf('مخاطب صفحه %03d', $i),
+                'identity_confidence' => 0,
+                'total_calls' => 0,
+                'total_answered_calls' => 0,
+                'last_contact_at' => $now->copy()->subDays($i),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        foreach (array_chunk($rows, 100) as $chunk) {
+            Customer::query()->insert($chunk);
         }
     }
 }
