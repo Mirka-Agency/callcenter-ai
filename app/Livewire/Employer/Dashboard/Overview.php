@@ -7,6 +7,7 @@ use App\Enums\ReportDatePreset;
 use App\Livewire\Employer\Concerns\HasAgentPerformanceCardFeed;
 use App\Livewire\Employer\Concerns\HasQualityTrendDrilldown;
 use App\Livewire\Employer\Concerns\HasTeamWeaknessDrilldown;
+use App\Services\Demo\DemoAnalyticsClock;
 use App\Services\EmployerContext;
 use App\Services\EmployerDashboardAnalytics;
 use App\Services\Performance\EmployeePerformanceAnalytics;
@@ -26,6 +27,11 @@ class Overview extends Component
     {
         $organization = EmployerContext::organization();
         $organizationId = $organization->id;
+
+        if ($organization->is_demo) {
+            app(DemoAnalyticsClock::class)->refreshIfStale($organization);
+        }
+
         $analytics = EmployerDashboardAnalytics::forOrganization($organizationId);
 
         $performanceFilter = ReportFilter::make(

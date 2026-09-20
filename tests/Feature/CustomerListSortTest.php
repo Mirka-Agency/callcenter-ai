@@ -261,15 +261,52 @@ class CustomerListSortTest extends TestCase
             ->assertDontSee('مخاطب خارجی محرمانه');
     }
 
+    public function test_own_organization_is_hidden_from_company_list(): void
+    {
+        $organization = $this->actingAsEmployer('میرکو');
+        $this->createCompany($organization, 'شرکت میرکو', now()->subDay());
+        $this->createCompany($organization, 'آلفا', now());
+
+        $component = Livewire::test(CompaniesIndex::class);
+        $this->assertSame(['آلفا'], $this->listedNames($component, 'companies'));
+        $component->assertSee('آلفا');
+
+        $hub = Livewire::test(CustomersHub::class);
+        $this->assertSame(1, $hub->viewData('stats')['companies']);
+        $this->assertSame(['آلفا'], $hub->viewData('recentCompanies')->pluck('name')->all());
+    }
+
+    public function test_company_cards_show_up_to_three_contact_names_without_avatars(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $company = $this->createCompany($organization, 'شرکت همراه', now());
+        $this->createContact($organization, 'علی رضایی', '09121180001', now(), $company);
+        $this->createContact($organization, 'سارا محمدی', '09121180002', now()->subHour(), $company);
+        $this->createContact($organization, 'مهدی احمدی', '09121180003', now()->subHours(2), $company);
+        $this->createContact($organization, 'نفر چهارم', '09121180004', now()->subHours(3), $company);
+
+        $html = Livewire::test(CompaniesIndex::class)->html();
+
+        $this->assertStringContainsString('علی رضایی', $html);
+        $this->assertStringContainsString('سارا محمدی', $html);
+        $this->assertStringContainsString('مهدی احمدی', $html);
+        $this->assertStringNotContainsString('نفر چهارم', $html);
+        $this->assertStringNotContainsString('saas-avatar', $html);
+        $this->assertStringNotContainsString('مشاهده اشخاص', $html);
+    }
+
     private function listedNames(Testable $component, string $key): array
     {
         return $component->viewData($key)->pluck('name')->all();
     }
 
-    private function actingAsEmployer(): Organization
+    private function actingAsEmployer(?string $organizationTitle = null): Organization
     {
         $employer = User::factory()->create(['role' => UserRole::Employer]);
-        $organization = Organization::factory()->create(['user_id' => $employer->id]);
+        $organization = Organization::factory()->create([
+            'user_id' => $employer->id,
+            ...($organizationTitle ? ['title' => $organizationTitle] : []),
+        ]);
 
         $this->actingAs($employer);
 

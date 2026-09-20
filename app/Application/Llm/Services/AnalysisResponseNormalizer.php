@@ -2,6 +2,7 @@
 
 namespace App\Application\Llm\Services;
 
+use App\Support\CompanyName;
 use App\Support\NeedsAttention;
 
 class AnalysisResponseNormalizer
@@ -71,7 +72,7 @@ class AnalysisResponseNormalizer
         }
 
         $personName = trim((string) ($customerIdentity['person_name'] ?? ''));
-        $companyName = trim((string) ($customerIdentity['company_name'] ?? ''));
+        $companyName = CompanyName::display((string) ($customerIdentity['company_name'] ?? ''));
         $email = trim((string) ($customerIdentity['email'] ?? ''));
         $jobTitle = trim((string) ($customerIdentity['job_title'] ?? ''));
         $phoneNumber = trim((string) ($customerIdentity['phone_number'] ?? ''));
@@ -86,12 +87,12 @@ class AnalysisResponseNormalizer
         $currentUserName = trim((string) ($crmContext['current_user_name'] ?? ''));
         $currentCompanyName = trim((string) ($crmContext['current_company_name'] ?? ''));
 
-        if ($this->matchesExcluded($personName, $currentUserName)) {
+        if ($this->matchesExcludedPerson($personName, $currentUserName)) {
             $personName = '';
             $confidence = min($confidence, 0.3);
         }
 
-        if ($this->matchesExcluded($companyName, $currentCompanyName)) {
+        if ($this->matchesExcludedCompany($companyName, $currentCompanyName)) {
             $companyName = '';
             $confidence = min($confidence, 0.3);
         }
@@ -165,13 +166,22 @@ class AnalysisResponseNormalizer
         return (int) $response['score'] > 0;
     }
 
-    private function matchesExcluded(string $value, string $excluded): bool
+    private function matchesExcludedPerson(string $value, string $excluded): bool
     {
         if ($value === '' || $excluded === '') {
             return false;
         }
 
         return mb_strtolower($value) === mb_strtolower($excluded);
+    }
+
+    private function matchesExcludedCompany(string $value, string $excluded): bool
+    {
+        if ($value === '' || $excluded === '') {
+            return false;
+        }
+
+        return CompanyName::matches($value, $excluded);
     }
 
     private function levelFromScore(int $score): string

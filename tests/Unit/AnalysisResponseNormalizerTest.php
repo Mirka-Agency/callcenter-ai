@@ -98,6 +98,39 @@ class AnalysisResponseNormalizerTest extends TestCase
         $this->assertSame(0.92, $result['customer_identity']['confidence']);
     }
 
+    public function test_excludes_own_company_when_prefixed_or_arabic_spelled(): void
+    {
+        $result = $this->normalizer->apply([
+            'customer_identity' => [
+                'person_name' => 'مهدی بشیرپور',
+                'company_name' => 'شركت ميركو',
+                'confidence' => 0.9,
+                'evidence' => 'از شرکت میرکو تماس می‌گیریم',
+            ],
+        ], [
+            'current_user_name' => 'علی رضایی',
+            'current_company_name' => 'میرکو',
+        ]);
+
+        $this->assertSame('مهدی بشیرپور', $result['customer_identity']['person_name']);
+        $this->assertSame('', $result['customer_identity']['company_name']);
+    }
+
+    public function test_rewrites_company_name_with_correct_persian_letters(): void
+    {
+        $result = $this->normalizer->apply([
+            'customer_identity' => [
+                'person_name' => 'سارا محمدی',
+                'company_name' => 'شركت  آلفا',
+                'confidence' => 0.8,
+            ],
+        ], [
+            'current_company_name' => 'میرکو',
+        ]);
+
+        $this->assertSame('شرکت آلفا', $result['customer_identity']['company_name']);
+    }
+
     public function test_zero_score_without_evaluable_flag_is_not_evaluable(): void
     {
         $result = $this->normalizer->apply(['score' => 0, 'summary' => 'سکوت']);

@@ -295,10 +295,18 @@ class DemoAnalyticsBuilder
     private function startedAtForDemoCall(int $organizationId, int $callIndex, Generator $faker): Carbon
     {
         if ($callIndex <= DemoCatalog::CALLS_TODAY_PER_ORGANIZATION) {
-            return now()->startOfDay()
+            $started = now()->copy()->startOfDay()
                 ->addHours($faker->numberBetween(8, 18))
                 ->addMinutes($faker->numberBetween(0, 59))
                 ->addSeconds($faker->numberBetween(0, 59));
+
+            if ($started->greaterThan(now())) {
+                $started = now()->copy()->subMinutes(
+                    5 + (($callIndex - 1) * 11) + $faker->numberBetween(0, 8),
+                );
+            }
+
+            return $started;
         }
 
         $pastDaySpan = max(1, DemoCatalog::DEMO_CALL_RECENT_DAYS - 1);

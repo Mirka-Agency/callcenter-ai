@@ -16,3 +16,4 @@ Artisan::command('integrations:sync-meta-definitions', function () {
 })->purpose('Sync employee integration fields declared by provider adapters');
 
 Schedule::command('recordings:purge-expired')->daily();
+Schedule::command('demo:refresh-analytics-clock')->daily();

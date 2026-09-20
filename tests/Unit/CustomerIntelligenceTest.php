@@ -90,6 +90,47 @@ class CustomerIntelligenceTest extends TestCase
         $this->assertSame($customer->id, $call->fresh()->customer_id);
     }
 
+    public function test_sync_does_not_create_own_organization_as_customer_company(): void
+    {
+        $organization = Organization::factory()->create(['title' => 'میرکو']);
+        $analysis = $this->makeIdentityAnalysis($organization, [
+            'company_name' => 'شرکت میرکو',
+            'person_name' => 'علی رضایی',
+            'confidence' => 0.95,
+        ], direction: 'outbound');
+
+        $customer = app(CustomerIntelligenceService::class)->syncFromAnalysis($analysis);
+
+        $this->assertInstanceOf(Customer::class, $customer);
+        $this->assertNull($customer->customer_company_id);
+        $this->assertNull($customer->company_name);
+        $this->assertSame(0, CustomerCompany::query()->where('organization_id', $organization->id)->count());
+    }
+
+    public function test_sync_corrects_company_spelling_and_merges_prefixed_duplicates(): void
+    {
+        $organization = Organization::factory()->create(['title' => 'میرکو']);
+        $first = $this->makeIdentityAnalysis($organization, [
+            'company_name' => 'شركت آلفا',
+            'person_name' => 'علی رضایی',
+            'confidence' => 0.7,
+        ], callerNumber: '09121234567');
+
+        $customer = app(CustomerIntelligenceService::class)->syncFromAnalysis($first);
+        $this->assertSame('شرکت آلفا', $customer->company?->name);
+
+        $second = $this->makeIdentityAnalysis($organization, [
+            'company_name' => 'آلفا',
+            'person_name' => 'علی رضایی',
+            'confidence' => 0.7,
+        ], callerNumber: '09121234567', externalCallId: 'test-call-2');
+
+        $customer = app(CustomerIntelligenceService::class)->syncFromAnalysis($second);
+
+        $this->assertSame('آلفا', $customer->fresh()->company?->name);
+        $this->assertSame(1, CustomerCompany::query()->where('organization_id', $organization->id)->count());
+    }
+
     public function test_employee_cannot_view_other_employee_performance(): void
     {
         $organization = Organization::factory()->create();
@@ -260,6 +301,62 @@ class CustomerIntelligenceTest extends TestCase
             'next_actions_json' => $data['next_actions_json'],
             'customer_insights_json' => $data['customer_insights_json'] ?? [],
             'analyzed_at' => $data['analyzed_at'],
+        ]);
+    }
+
+    /**
+     * @param  array{company_name: string, person_name?: string, confidence?: float}  $identity
+     */
+    private function makeIdentityAnalysis(
+        Organization $organization,
+        array $identity,
+        string $direction = 'inbound',
+        string $callerNumber = '09121234567',
+        string $externalCallId = 'test-call-1',
+    ): ConversationAnalysis {
+        $user = User::factory()->create();
+        $employee = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $user->id,
+            'first_name' => 'Sara',
+            'last_name' => 'Agent',
+            'is_active' => true,
+        ]);
+
+        $call = Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $employee->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => $externalCallId,
+            'direction' => $direction,
+            'caller_number' => $callerNumber,
+            'receiver_number' => '02100000000',
+            'status' => 'completed',
+            'processing_status' => 'analyzed',
+            'started_at' => now()->subDay(),
+        ]);
+
+        return ConversationAnalysis::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $employee->id,
+            'call_id' => $call->id,
+            'source' => ConversationSource::Voip,
+            'llm_provider' => 'openai',
+            'model_name' => 'gpt-4o-mini',
+            'score' => 85,
+            'summary' => 'خلاصه',
+            'sentiment' => AnalysisSentiment::Positive,
+            'strengths_json' => [],
+            'weaknesses_json' => [],
+            'next_actions_json' => [],
+            'lead_quality_json' => ['score' => 80, 'level' => 'high', 'reason' => 'test'],
+            'customer_identity_json' => [
+                'person_name' => $identity['person_name'] ?? 'علی رضایی',
+                'company_name' => $identity['company_name'],
+                'confidence' => $identity['confidence'] ?? 0.9,
+            ],
+            'analyzed_at' => now(),
         ]);
     }
 }
