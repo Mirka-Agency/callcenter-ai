@@ -6,6 +6,7 @@ use App\Application\Intelligence\Services\CallAnalysisQueueService;
 use App\Domain\Voip\Enums\CallDirection;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
+use App\Models\EmployeeIntegrationMeta;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\OrganizationVoipConnection;
@@ -13,6 +14,8 @@ use App\Models\VoipCallLog;
 use App\Services\EmployeeIntegrationMetaService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class UnmatchedVoipExtensionService
 {
@@ -20,6 +23,60 @@ class UnmatchedVoipExtensionService
         private CallEmployeeResolver $resolver,
         private CallIngestionService $ingestion,
     ) {}
+
+    /**
+     * @return list<array{
+     *     extension: string,
+     *     connection_id: int,
+     *     connection_name: string,
+     *     employee_id: int,
+     *     employee_name: string,
+     *     employee_is_active: bool
+     * }>
+     */
+    public function listAssigned(Organization $organization): array
+    {
+        $connectionIds = OrganizationVoipConnection::query()
+            ->where('organization_id', $organization->id)
+            ->pluck('id');
+
+        if ($connectionIds->isEmpty()) {
+            return [];
+        }
+
+        $rows = EmployeeIntegrationMeta::query()
+            ->where('integratable_type', OrganizationVoipConnection::class)
+            ->whereIn('integratable_id', $connectionIds)
+            ->where('key', 'extension')
+            ->whereNotNull('value')
+            ->where('value', '!=', '')
+            ->with(['employee', 'integratable'])
+            ->get();
+
+        return $rows
+            ->map(function (EmployeeIntegrationMeta $meta): ?array {
+                $extension = $this->normalizeExtension((string) $meta->value);
+
+                if ($extension === '') {
+                    return null;
+                }
+
+                $employee = $meta->employee;
+
+                return [
+                    'extension' => $extension,
+                    'connection_id' => (int) $meta->integratable_id,
+                    'connection_name' => $meta->integratable?->name ?? '—',
+                    'employee_id' => (int) $meta->organization_user_id,
+                    'employee_name' => $employee?->full_name ?: '—',
+                    'employee_is_active' => (bool) ($employee?->is_active ?? false),
+                ];
+            })
+            ->filter()
+            ->sortBy(fn (array $row) => [$row['connection_name'], $row['extension']])
+            ->values()
+            ->all();
+    }
 
     /**
      * @return list<array{
@@ -108,6 +165,68 @@ class UnmatchedVoipExtensionService
             ->all();
     }
 
+    public function createExtension(
+        Organization $organization,
+        string $extension,
+        int $connectionId,
+        int $organizationUserId,
+    ): int {
+        $extension = $this->normalizeExtension($extension);
+        $connection = $this->connectionForOrganization($organization, $connectionId);
+        $employee = $this->activeEmployeeForOrganization($organization, $organizationUserId);
+
+        $this->assertEmployeeHasNoExtensionOnConnection($employee, $connection, errorKey: 'newEmployeeId');
+
+        return $this->assignExtensionToEmployee(
+            organization: $organization,
+            extension: $extension,
+            connectionId: $connectionId,
+            organizationUserId: $organizationUserId,
+        );
+    }
+
+    public function reassignExtension(
+        Organization $organization,
+        string $extension,
+        int $connectionId,
+        int $organizationUserId,
+    ): int {
+        $extension = $this->normalizeExtension($extension);
+        $connection = $this->connectionForOrganization($organization, $connectionId);
+        $employee = $this->activeEmployeeForOrganization($organization, $organizationUserId);
+
+        $current = $this->extensionMeta($organization, $extension, $connectionId);
+
+        if ($current && (int) $current->organization_user_id === (int) $employee->id) {
+            return 0;
+        }
+
+        $this->assertEmployeeHasNoExtensionOnConnection($employee, $connection, $extension, 'employee');
+
+        return DB::transaction(function () use ($organization, $extension, $connectionId, $employee, $current): int {
+            $current?->delete();
+
+            return $this->assignExtensionToEmployee(
+                organization: $organization,
+                extension: $extension,
+                connectionId: $connectionId,
+                organizationUserId: (int) $employee->id,
+            );
+        });
+    }
+
+    public function removeExtension(
+        Organization $organization,
+        string $extension,
+        int $connectionId,
+    ): void {
+        $extension = $this->normalizeExtension($extension);
+
+        $this->connectionForOrganization($organization, $connectionId);
+
+        $this->extensionMeta($organization, $extension, $connectionId)?->delete();
+    }
+
     public function assignExtensionToEmployee(
         Organization $organization,
         string $extension,
@@ -115,16 +234,10 @@ class UnmatchedVoipExtensionService
         int $organizationUserId,
         ?int $days = null,
     ): int {
-        $connection = OrganizationVoipConnection::query()
-            ->where('organization_id', $organization->id)
-            ->whereKey($connectionId)
-            ->firstOrFail();
+        $extension = $this->normalizeExtension($extension);
 
-        $employee = OrganizationUser::query()
-            ->where('organization_id', $organization->id)
-            ->whereKey($organizationUserId)
-            ->where('is_active', true)
-            ->firstOrFail();
+        $connection = $this->connectionForOrganization($organization, $connectionId);
+        $employee = $this->activeEmployeeForOrganization($organization, $organizationUserId);
 
         EmployeeIntegrationMetaService::assignVoipExtension($employee, $connection, $extension);
 
@@ -149,7 +262,7 @@ class UnmatchedVoipExtensionService
         ?int $days = null,
         ?int $organizationUserId = null,
     ): int {
-        $extension = trim($extension);
+        $extension = $this->normalizeExtension($extension);
 
         if ($extension === '') {
             return 0;
@@ -232,6 +345,74 @@ class UnmatchedVoipExtensionService
         $candidates = $this->resolver->extensionCandidates($log);
 
         return $candidates[0] ?? null;
+    }
+
+    public static function normalizeExtension(string $extension): string
+    {
+        $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        $arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        $english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+        return trim(str_replace($arabic, $english, str_replace($persian, $english, $extension)));
+    }
+
+    private function connectionForOrganization(Organization $organization, int $connectionId): OrganizationVoipConnection
+    {
+        return OrganizationVoipConnection::query()
+            ->where('organization_id', $organization->id)
+            ->whereKey($connectionId)
+            ->firstOrFail();
+    }
+
+    private function activeEmployeeForOrganization(Organization $organization, int $organizationUserId): OrganizationUser
+    {
+        return OrganizationUser::query()
+            ->where('organization_id', $organization->id)
+            ->whereKey($organizationUserId)
+            ->where('is_active', true)
+            ->firstOrFail();
+    }
+
+    private function extensionMeta(
+        Organization $organization,
+        string $extension,
+        int $connectionId,
+    ): ?EmployeeIntegrationMeta {
+        return EmployeeIntegrationMeta::query()
+            ->where('integratable_type', OrganizationVoipConnection::class)
+            ->where('integratable_id', $connectionId)
+            ->where('key', 'extension')
+            ->where('value', $extension)
+            ->whereHas('employee', fn ($query) => $query->where('organization_id', $organization->id))
+            ->first();
+    }
+
+    private function assertEmployeeHasNoExtensionOnConnection(
+        OrganizationUser $employee,
+        OrganizationVoipConnection $connection,
+        ?string $exceptExtension = null,
+        string $errorKey = 'newEmployeeId',
+    ): void {
+        $existing = EmployeeIntegrationMeta::query()
+            ->where('organization_user_id', $employee->id)
+            ->where('integratable_type', OrganizationVoipConnection::class)
+            ->where('integratable_id', $connection->id)
+            ->where('key', 'extension')
+            ->first();
+
+        if (! $existing) {
+            return;
+        }
+
+        $existingExtension = $this->normalizeExtension((string) $existing->value);
+
+        if ($exceptExtension !== null && $existingExtension === $exceptExtension) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            $errorKey => __('ui.voip.extensions_employee_has_other', ['extension' => $existingExtension]),
+        ]);
     }
 
     private function customerNumberFromLog(VoipCallLog $log, string $extension): ?string

@@ -14,8 +14,7 @@ use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Enums\UserRole;
 use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
 use App\Livewire\Employer\Intelligence\Show as IntelligenceShow;
-use App\Livewire\Employer\Voip\Index;
-use App\Livewire\Employer\Voip\UnmatchedExtensions;
+use App\Livewire\Employer\Voip\Extensions;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\EmployeeIntegrationMeta;
@@ -149,9 +148,11 @@ class UnmatchedVoipExtensionTest extends TestCase
 
         $this->actingAs($employer);
 
-        Livewire::test(Index::class)
-            ->set('unmatchedSelections.101__'.$connection->id, $employee->id)
-            ->call('assignUnmatchedExtension', '101', $connection->id)
+        Livewire::test(Extensions::class)
+            ->set('newExtension', '101')
+            ->set('newConnectionId', $connection->id)
+            ->set('newEmployeeId', $employee->id)
+            ->call('addExtension')
             ->assertHasNoErrors()
             ->assertSuccessful();
 
@@ -198,9 +199,11 @@ class UnmatchedVoipExtensionTest extends TestCase
 
         $this->actingAs($employer);
 
-        Livewire::test(Index::class)
-            ->set('unmatchedSelections.101__'.$connection->id, $employee->id)
-            ->call('assignUnmatchedExtension', '101', $connection->id)
+        Livewire::test(Extensions::class)
+            ->set('newExtension', '101')
+            ->set('newConnectionId', $connection->id)
+            ->set('newEmployeeId', $employee->id)
+            ->call('addExtension')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('calls', [
@@ -413,7 +416,7 @@ class UnmatchedVoipExtensionTest extends TestCase
         ]);
     }
 
-    public function test_unmatched_extensions_page_assigns_existing_employee(): void
+    public function test_extensions_page_adds_and_assigns_employee(): void
     {
         [$organization, $connection, $employer, $employee] = $this->setupOrganization();
 
@@ -432,40 +435,114 @@ class UnmatchedVoipExtensionTest extends TestCase
 
         $this->actingAs($employer);
 
-        Livewire::test(UnmatchedExtensions::class)
-            ->assertSee('شماره داخلی 101 هنوز کارشناس ندارد')
-            ->assertSee('این داخلی مال کدام کارشناس است؟')
-            ->assertSee('وصل کردن به کارشناس')
-            ->assertSee('چه کاری باید انجام دهید؟')
-            ->assertSee('شماره داخلی را بشناسید')
-            ->assertSee('تماس ورودی از')
-            ->assertSee('09120000000')
-            ->assertSee('خط تلفنی')
-            ->assertSee('Asterisk')
-            ->assertDontSee('از / به')
-            ->assertDontSee('اختصاص و ورود به صف')
-            ->assertDontSee('نگاشت')
-            ->set('unmatchedSelections.101__'.$connection->id, $employee->id)
-            ->call('assignUnmatchedExtension', '101', $connection->id)
+        Livewire::test(Extensions::class)
+            ->assertSee('داخلی‌ها')
+            ->assertSee('افزودن داخلی')
+            ->assertDontSee('ثبت داخلی')
+            ->assertSee('هنوز داخلی‌ای ثبت نشده')
+            ->assertDontSee('شماره داخلی 101 هنوز کارشناس ندارد')
+            ->assertDontSee('این داخلی مال کدام کارشناس است؟')
+            ->assertDontSee('چه کاری باید انجام دهید؟')
+            ->call('toggleAddForm')
+            ->assertSee('ثبت داخلی')
+            ->set('newExtension', '101')
+            ->set('newConnectionId', $connection->id)
+            ->set('newEmployeeId', $employee->id)
+            ->call('addExtension')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('employee_integration_meta', [
             'organization_user_id' => $employee->id,
             'value' => '101',
         ]);
+
+        Livewire::test(Extensions::class)
+            ->assertSee('101')
+            ->assertSee('Ali Agent')
+            ->assertSee('Asterisk')
+            ->assertDontSee('هنوز داخلی‌ای ثبت نشده');
     }
 
-    public function test_unmatched_extensions_empty_state_is_plain_language(): void
+    public function test_extensions_empty_state_is_plain_language(): void
     {
         [, , $employer] = $this->setupOrganization();
 
         $this->actingAs($employer);
 
-        Livewire::test(UnmatchedExtensions::class)
-            ->assertSee('فعلاً داخلی بدون کارشناس نیست')
-            ->assertSee('اگر تماسی برسد که شماره داخلی‌اش هنوز مال هیچ کارشناسی نباشد')
-            ->assertSee('مشاهده خطوط تلفنی')
+        Livewire::test(Extensions::class)
+            ->assertSee('هنوز داخلی‌ای ثبت نشده')
+            ->assertSee('اولین شماره داخلی را وارد کنید')
+            ->assertDontSee('فعلاً داخلی بدون کارشناس نیست')
             ->assertDontSee('نگاشت شده‌اند');
+    }
+
+    public function test_extensions_page_does_not_auto_detect_from_voip_logs(): void
+    {
+        [$organization, $connection, $employer] = $this->setupOrganization();
+
+        VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'call-auto-1',
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '101',
+            'status' => 'completed',
+            'started_at' => now()->subDay(),
+            'raw_payload' => ['resolved_extension' => '101'],
+        ]);
+
+        $this->actingAs($employer);
+
+        Livewire::test(Extensions::class)
+            ->assertSee('هنوز داخلی‌ای ثبت نشده')
+            ->assertDontSee('101');
+    }
+
+    public function test_extensions_page_can_reassign_and_delete(): void
+    {
+        [$organization, $connection, $employer, $employee] = $this->setupOrganization();
+        $otherEmployee = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => User::factory()->create(['role' => UserRole::Employee])->id,
+            'first_name' => 'Sara',
+            'last_name' => 'Agent',
+            'is_active' => true,
+        ]);
+
+        EmployeeIntegrationMeta::query()->create([
+            'organization_user_id' => $employee->id,
+            'integratable_type' => OrganizationVoipConnection::class,
+            'integratable_id' => $connection->id,
+            'key' => 'extension',
+            'value' => '101',
+        ]);
+
+        $this->actingAs($employer);
+
+        Livewire::test(Extensions::class)
+            ->set('employeeSelections.101__'.$connection->id, $otherEmployee->id)
+            ->call('updateEmployee', '101', $connection->id)
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('employee_integration_meta', [
+            'organization_user_id' => $otherEmployee->id,
+            'value' => '101',
+        ]);
+        $this->assertDatabaseMissing('employee_integration_meta', [
+            'organization_user_id' => $employee->id,
+            'value' => '101',
+        ]);
+
+        Livewire::test(Extensions::class)
+            ->call('deleteExtension', '101', $connection->id)
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseMissing('employee_integration_meta', [
+            'value' => '101',
+            'integratable_id' => $connection->id,
+        ]);
     }
 
     public function test_assign_extension_queues_recorded_calls_for_analysis(): void
