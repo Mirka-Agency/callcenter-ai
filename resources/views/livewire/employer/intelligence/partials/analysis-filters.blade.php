@@ -8,7 +8,7 @@
 @endphp
 
 <div
-    class="saas-card space-y-5"
+    class="saas-card scroll-mt-20 space-y-5"
     data-tour="analysis-filters"
     wire:key="analysis-date-filters-{{ $datePreset }}-{{ $customFrom }}-{{ $customTo }}"
     x-data="{ showCustom: @js($showCustomDateRange || $datePreset === 'custom') }"

@@ -70,6 +70,96 @@ class AttentionCallsQuickFilterTest extends TestCase
             ->assertSee('نیازمند توجه ×');
     }
 
+    public function test_attention_quick_filter_toggles_off_on_second_click(): void
+    {
+        $this->actingAsEmployer();
+
+        $component = Livewire::test(IntelligenceIndex::class)
+            ->call('applyQuickFilter', 'attention')
+            ->assertSet('needsAttention', true)
+            ->call('applyQuickFilter', 'attention')
+            ->assertSet('needsAttention', false)
+            ->assertDontSee('نیازمند توجه ×');
+
+        $this->assertListOrder($component->html(), afterCharts: true);
+    }
+
+    public function test_missed_quick_filter_toggles_off_on_second_click(): void
+    {
+        $this->actingAsEmployer();
+
+        $component = Livewire::test(IntelligenceIndex::class)
+            ->call('applyQuickFilter', 'missed')
+            ->assertSet('callStatus', 'missed')
+            ->call('applyQuickFilter', 'missed')
+            ->assertSet('callStatus', null);
+
+        $this->assertListOrder($component->html(), afterCharts: true);
+    }
+
+    public function test_analysis_list_starts_below_charts_until_a_quick_filter_is_applied(): void
+    {
+        $this->actingAsEmployer();
+
+        $html = Livewire::test(IntelligenceIndex::class)->html();
+
+        $this->assertListOrder($html, afterCharts: true);
+    }
+
+    public function test_attention_quick_filter_moves_analysis_list_under_filters(): void
+    {
+        $this->actingAsEmployer();
+
+        $html = Livewire::test(IntelligenceIndex::class)
+            ->call('applyQuickFilter', 'attention')
+            ->html();
+
+        $this->assertListOrder($html, afterCharts: false);
+    }
+
+    public function test_missed_quick_filter_moves_analysis_list_under_filters(): void
+    {
+        $this->actingAsEmployer();
+
+        $html = Livewire::test(IntelligenceIndex::class)
+            ->call('applyQuickFilter', 'missed')
+            ->html();
+
+        $this->assertListOrder($html, afterCharts: false);
+    }
+
+    public function test_clearing_filters_returns_analysis_list_below_charts(): void
+    {
+        $this->actingAsEmployer();
+
+        $html = Livewire::test(IntelligenceIndex::class)
+            ->call('applyQuickFilter', 'attention')
+            ->call('clearFilters')
+            ->html();
+
+        $this->assertListOrder($html, afterCharts: true);
+    }
+
+    private function assertListOrder(string $html, bool $afterCharts): void
+    {
+        $filterPos = mb_strpos($html, 'فیلتر سریع');
+        $listPos = mb_strpos($html, 'لیست تحلیل مکالمات');
+        $chartPos = mb_strpos($html, 'روند کیفیت مکالمه');
+
+        $this->assertNotFalse($filterPos);
+        $this->assertNotFalse($listPos);
+        $this->assertNotFalse($chartPos);
+        $this->assertLessThan($listPos, $filterPos);
+
+        if ($afterCharts) {
+            $this->assertLessThan($listPos, $chartPos);
+
+            return;
+        }
+
+        $this->assertLessThan($chartPos, $listPos);
+    }
+
     private function actingAsEmployer(): Organization
     {
         $employer = User::factory()->create(['role' => UserRole::Employer]);
