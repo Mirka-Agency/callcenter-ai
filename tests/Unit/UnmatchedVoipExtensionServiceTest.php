@@ -54,6 +54,37 @@ class UnmatchedVoipExtensionServiceTest extends TestCase
         $this->assertSame(['101', '982191093492', '09120000000'], $candidates);
     }
 
+    public function test_extension_candidates_include_exten_from_recording_filename(): void
+    {
+        $log = VoipCallLog::query()->make([
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '41909000',
+            'recording_url' => 'http://192.168.2.16/mirka-call-recordings/2026/09/20/exten-116-09120000000.wav',
+            'raw_payload' => [],
+        ]);
+
+        $candidates = app(CallEmployeeResolver::class)->extensionCandidates($log);
+
+        $this->assertSame(['116', '41909000', '09120000000'], $candidates);
+    }
+
+    public function test_extension_candidates_ignore_queue_id_in_recording_filename(): void
+    {
+        $log = VoipCallLog::query()->make([
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '41909000',
+            'recording_url' => 'http://192.168.2.16/mirka-call-recordings/2026/09/20/q-5001-09120000000.wav',
+            'raw_payload' => [],
+        ]);
+
+        $candidates = app(CallEmployeeResolver::class)->extensionCandidates($log);
+
+        $this->assertSame(['41909000', '09120000000'], $candidates);
+        $this->assertNotContains('5001', $candidates);
+    }
+
     public function test_resolver_matches_employee_using_raw_extension_without_resolved_extension(): void
     {
         [$organization, $connection] = $this->createOrganizationWithConnection();

@@ -78,10 +78,16 @@ class Index extends Component
             'recentCallsHint' => $recentCallsHint,
             'canManageIntegrations' => EmployerIntegrationGate::allowsFullManagement($organization),
             'todayCalls' => $isComplete
-                ? VoipCallLog::query()->where('organization_id', $organizationId)->whereDate('started_at', today())->count()
+                ? VoipCallLog::query()
+                    ->where('organization_id', $organizationId)
+                    ->occurredBetween(now()->startOfDay(), now()->endOfDay())
+                    ->count()
                 : 0,
             'monthCalls' => $isComplete
-                ? VoipCallLog::query()->where('organization_id', $organizationId)->whereMonth('started_at', now()->month)->count()
+                ? VoipCallLog::query()
+                    ->where('organization_id', $organizationId)
+                    ->occurredBetween(now()->startOfMonth()->startOfDay(), now()->endOfDay())
+                    ->count()
                 : 0,
             'missedCalls' => $isComplete
                 ? VoipCallLog::query()

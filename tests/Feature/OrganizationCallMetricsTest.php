@@ -69,4 +69,32 @@ class OrganizationCallMetricsTest extends TestCase
 
         $this->assertSame(0, app(OrganizationCallMetrics::class)->countToday($organization->id));
     }
+
+    public function test_counts_todays_calls_when_voip_webhook_omitted_started_at(): void
+    {
+        $this->seed(PlatformFoundationSeeder::class);
+
+        $employer = User::factory()->employer()->create();
+        $organization = Organization::factory()->create(['user_id' => $employer->id]);
+
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'external_call_id' => 'metrics-test-null-start',
+            'provider_code' => 'custom',
+            'source' => ConversationSource::Voip,
+            'direction' => 'inbound',
+            'caller_number' => '09121234567',
+            'receiver_number' => '41909000',
+            'status' => 'completed',
+            'processing_status' => CallProcessingStatus::Pending,
+            'started_at' => null,
+            'duration_seconds' => 180,
+        ]);
+
+        $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
+        $this->assertSame(
+            1,
+            EmployerDashboardAnalytics::forOrganization($organization->id)->cockpit()['calls_today'],
+        );
+    }
 }

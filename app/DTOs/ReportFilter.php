@@ -107,7 +107,7 @@ readonly class ReportFilter
     public function applyToVoipQuery(Builder $query): Builder
     {
         $query->where('organization_id', $this->organizationId)
-            ->whereBetween('started_at', [$this->from, $this->to]);
+            ->occurredBetween($this->from, $this->to);
 
         return $query;
     }

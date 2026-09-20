@@ -143,10 +143,7 @@ readonly class AnalysisListFilter
     public function applyToCallQuery(Builder $query): Builder
     {
         $query->where('organization_id', $this->organizationId)
-            ->where(function (Builder $inner) {
-                $inner->whereBetween('started_at', [$this->from, $this->to])
-                    ->orWhereBetween('created_at', [$this->from, $this->to]);
-            });
+            ->occurredBetween($this->from, $this->to);
 
         if ($this->employeeId !== null) {
             $query->where('organization_user_id', $this->employeeId);
