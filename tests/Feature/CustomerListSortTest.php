@@ -234,6 +234,10 @@ class CustomerListSortTest extends TestCase
         $cards = substr($html, (int) strpos($html, 'data-tour="customers-hub-cards"'));
         $this->assertStringNotContainsString('شرکت جدید', $cards);
         $this->assertStringNotContainsString('شخص جدید', $cards);
+        $this->assertStringContainsString('bg-indigo-600', $cards);
+        $this->assertStringContainsString('bg-violet-600', $cards);
+        $this->assertStringContainsString('M3.75 21h16.5M4.5 3h15', $cards);
+        $this->assertStringContainsString('M15.75 6a3.75 3.75 0 11-7.5 0', $cards);
         $component->assertSee('شرکت')->assertSee('شخص')->assertSee('تماس');
     }
 
