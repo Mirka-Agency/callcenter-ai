@@ -2,8 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\Customer;
 use App\Models\CustomerCompany;
-use App\Support\JalaliDate;
 
 class CustomerCompanyPresenter
 {
@@ -23,6 +23,15 @@ class CustomerCompanyPresenter
             $company->total_calls.' تماس',
             $company->last_contact_at ? JalaliDate::ago($company->last_contact_at) : null,
         ])->filter()->implode(' · ');
+    }
+
+    public static function contactPreview(CustomerCompany $company, int $limit = 3): string
+    {
+        return $company->contacts
+            ->take($limit)
+            ->map(fn (Customer $contact) => $contact->displayName())
+            ->filter()
+            ->implode('، ');
     }
 
     public static function trendBadgeClass(?string $trend): string

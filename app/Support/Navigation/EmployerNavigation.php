@@ -12,7 +12,7 @@ class EmployerNavigation
             ['label' => 'داشبورد', 'route' => 'employer.dashboard', 'icon' => 'home'],
             ['label' => 'عملکرد کارشناسان', 'route' => 'employer.intelligence.performance', 'icon' => 'chart'],
             ['label' => 'تحلیل تماس‌ها', 'route' => 'employer.intelligence.index', 'icon' => 'sparkles'],
-            ['label' => 'داخلی‌های بدون کارشناس', 'route' => 'employer.unmatched-extensions.index', 'icon' => 'phone'],
+            ['label' => 'داخلی‌ها', 'route' => 'employer.extensions.index', 'icon' => 'phone'],
             ['label' => 'مشتریان', 'route' => 'employer.customers.index', 'icon' => 'users'],
             ['label' => 'آپلود دستی تماس', 'route' => 'employer.manual-analyses.index', 'icon' => 'upload'],
             ['label' => 'صف تحلیل تماس', 'route' => 'employer.processing-queue.index', 'icon' => 'cloud'],

@@ -163,7 +163,7 @@ class EmployeeIntegrationMetaService
         OrganizationVoipConnection $connection,
         string $extension,
     ): void {
-        $extension = trim($extension);
+        $extension = UnmatchedVoipExtensionService::normalizeExtension($extension);
 
         if ($extension === '') {
             throw ValidationException::withMessages([
@@ -260,7 +260,7 @@ class EmployeeIntegrationMetaService
     }
 
     /**
-     * @param list<array{connection: OrganizationVoipConnection, extension: string}> $voipExtensions
+     * @param  list<array{connection: OrganizationVoipConnection, extension: string}>  $voipExtensions
      */
     private static function backfillVoipExtensions(
         OrganizationUser $employee,

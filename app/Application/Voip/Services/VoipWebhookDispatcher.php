@@ -57,8 +57,8 @@ class VoipWebhookDispatcher
             sourceNumber: $event->sourceNumber ?? '',
             destinationNumber: $event->destinationNumber ?? '',
             status: $event->status ?? $this->statusFromEvent($event->type),
-            startedAt: $event->startedAt,
-            endedAt: $event->endedAt,
+            startedAt: $this->startedAtFor($event),
+            endedAt: $this->endedAtFor($event),
             duration: $event->duration,
             recordingUrl: $event->recordingUrl,
             rawPayload: $rawPayload,
@@ -73,6 +73,41 @@ class VoipWebhookDispatcher
             VoipWebhookEventType::CallEnded => CallStatus::Completed,
             VoipWebhookEventType::CallMissed => CallStatus::Missed,
             default => CallStatus::Initiated,
+        };
+    }
+
+    /**
+     * Issabel/Asterisk CDR webhooks often omit started_at and only send duration
+     * on hangup. Infer the window so dashboard "today" counts match ingested calls.
+     */
+    private function startedAtFor(NormalizedWebhookEvent $event): string
+    {
+        if (filled($event->startedAt)) {
+            return $event->startedAt;
+        }
+
+        if ($event->type === VoipWebhookEventType::CallStarted) {
+            return now()->toDateTimeString();
+        }
+
+        if ($event->duration !== null && $event->duration > 0) {
+            return now()->subSeconds($event->duration)->toDateTimeString();
+        }
+
+        return now()->toDateTimeString();
+    }
+
+    private function endedAtFor(NormalizedWebhookEvent $event): ?string
+    {
+        if (filled($event->endedAt)) {
+            return $event->endedAt;
+        }
+
+        return match ($event->type) {
+            VoipWebhookEventType::CallEnded,
+            VoipWebhookEventType::CallMissed,
+            VoipWebhookEventType::RecordingCreated => now()->toDateTimeString(),
+            default => null,
         };
     }
 }

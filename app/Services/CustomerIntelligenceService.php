@@ -8,6 +8,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
 use App\Models\OrganizationUser;
+use App\Support\CompanyName;
 use App\Support\CustomerNextActionAggregator;
 use App\Support\CustomerPresenter;
 use App\Support\CustomerTenantGuard;
@@ -48,8 +49,9 @@ class CustomerIntelligenceService
 
         $this->linkCallsByPhone($customer);
 
+        $customer->loadMissing('organization');
         $this->mergeIdentity($customer, $analysis, $phone);
-        $this->refreshAggregates($customer);
+        $this->refreshAggregates($customer->fresh() ?? $customer);
 
         return $customer->fresh();
     }
@@ -247,6 +249,12 @@ class CustomerIntelligenceService
         $confidence = (float) ($identity['confidence'] ?? 0);
         $currentConfidence = (float) ($customer->identity_confidence ?? 0);
         $call = $analysis->call;
+        $organizationTitle = (string) ($customer->organization?->title ?? '');
+
+        $incomingCompany = CompanyName::display((string) ($identity['company_name'] ?? ''));
+        if ($incomingCompany !== '' && CompanyName::isOwnOrganization($incomingCompany, $organizationTitle)) {
+            $incomingCompany = '';
+        }
 
         $updates = [];
 
@@ -263,8 +271,8 @@ class CustomerIntelligenceService
                 $updates['name'] = trim((string) $identity['person_name']);
             }
 
-            if ($this->shouldReplaceField($customer->company_name, $identity['company_name'] ?? '', $confidence, $currentConfidence)) {
-                $updates['company_name'] = trim((string) $identity['company_name']);
+            if ($this->shouldReplaceCompanyName($customer->company_name, $incomingCompany, $confidence, $currentConfidence)) {
+                $updates['company_name'] = $incomingCompany;
             }
 
             if ($this->shouldReplaceField($customer->email, $identity['email'] ?? '', $confidence, $currentConfidence)) {
@@ -280,23 +288,67 @@ class CustomerIntelligenceService
             }
         }
 
+        if (
+            $incomingCompany === ''
+            && $customer->company_name
+            && CompanyName::isOwnOrganization($customer->company_name, $organizationTitle)
+        ) {
+            $updates['company_name'] = null;
+            $updates['customer_company_id'] = null;
+        }
+
+        $previousCompanyId = $customer->customer_company_id;
+
         if ($updates !== []) {
             $customer->update($updates);
             $customer->refresh();
         }
 
-        $this->syncCompanyFromIdentity($customer, $identity);
+        $this->syncCompanyFromIdentity($customer, $incomingCompany);
+
+        if (
+            $previousCompanyId
+            && $customer->customer_company_id !== $previousCompanyId
+        ) {
+            $previous = CustomerCompany::query()->find($previousCompanyId);
+            if ($previous) {
+                $this->companyService->refreshAggregates($previous);
+            }
+        }
     }
 
-    private function syncCompanyFromIdentity(Customer $customer, array $identity): void
+    private function syncCompanyFromIdentity(Customer $customer, string $incomingCompany): void
     {
-        $companyName = trim((string) ($customer->company_name ?? $identity['company_name'] ?? ''));
+        $companyName = trim($incomingCompany !== '' ? $incomingCompany : (string) ($customer->company_name ?? ''));
 
         if ($companyName === '') {
             return;
         }
 
-        $company = $this->companyResolver->findOrCreate($customer->organization_id, $companyName);
+        $organizationTitle = (string) ($customer->organization?->title ?? '');
+        if (CompanyName::isOwnOrganization($companyName, $organizationTitle)) {
+            if ($customer->customer_company_id || $customer->company_name) {
+                $customer->update([
+                    'customer_company_id' => null,
+                    'company_name' => null,
+                ]);
+            }
+
+            return;
+        }
+
+        $company = $this->companyResolver->findOrCreate($customer->organization_id, $companyName, excludeOwnOrganization: true);
+
+        if (! $company) {
+            if ($customer->customer_company_id || $customer->company_name) {
+                $customer->update([
+                    'customer_company_id' => null,
+                    'company_name' => null,
+                ]);
+            }
+
+            return;
+        }
 
         if ($customer->customer_company_id !== $company->id || $customer->company_name !== $company->name) {
             $customer->update([
@@ -318,6 +370,27 @@ class CustomerIntelligenceService
 
         if ($current === null || $current === '') {
             return true;
+        }
+
+        return $newConfidence > $currentConfidence;
+    }
+
+    private function shouldReplaceCompanyName(?string $current, string $incoming, float $newConfidence, float $currentConfidence): bool
+    {
+        $incoming = CompanyName::display($incoming);
+
+        if ($incoming === '') {
+            return false;
+        }
+
+        if ($current === null || $current === '') {
+            return true;
+        }
+
+        $preferred = CompanyName::preferDisplay($current, $incoming);
+
+        if (CompanyName::matches($current, $incoming)) {
+            return $preferred !== $current || $newConfidence > $currentConfidence;
         }
 
         return $newConfidence > $currentConfidence;

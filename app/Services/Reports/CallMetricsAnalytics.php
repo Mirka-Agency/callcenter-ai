@@ -28,13 +28,18 @@ class CallMetricsAnalytics
     {
         $granularity = $filter->granularity();
         $voipCalls = $filter->applyToVoipQuery(VoipCallLog::query())
-            ->whereNotNull('started_at')
-            ->get(['started_at']);
+            ->get(['started_at', 'created_at']);
 
         $buckets = [];
 
         foreach ($voipCalls as $call) {
-            $key = $this->periodKey($call->started_at, $granularity);
+            $occurredAt = $call->started_at ?? $call->created_at;
+
+            if ($occurredAt === null) {
+                continue;
+            }
+
+            $key = $this->periodKey($occurredAt, $granularity);
             $buckets[$key] = ($buckets[$key] ?? 0) + 1;
         }
 

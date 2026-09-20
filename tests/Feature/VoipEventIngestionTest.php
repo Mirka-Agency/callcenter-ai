@@ -65,6 +65,45 @@ class VoipEventIngestionTest extends TestCase
         Event::assertDispatched(CallEnded::class);
     }
 
+    public function test_ingestion_infers_started_at_from_duration_when_webhook_omits_it(): void
+    {
+        Event::fake([CallEnded::class]);
+        $this->travelTo('2026-09-20 10:00:00');
+
+        $organization = Organization::factory()->create();
+        $connection = $this->createConnection($organization->id);
+
+        $config = new VoipConnectionConfig(
+            connectionId: $connection->id,
+            organizationId: $organization->id,
+            providerCode: VoipProviderCode::Novatel,
+            name: 'Primary',
+            credentials: new VoipCredentials(apiUrl: 'https://example.com', apiKey: 'test'),
+            settings: new VoipSettings,
+            isActive: true,
+        );
+
+        $event = new NormalizedWebhookEvent(
+            type: VoipWebhookEventType::CallEnded,
+            callId: 'call-no-start',
+            direction: CallDirection::Inbound,
+            sourceNumber: '09120000000',
+            destinationNumber: '41909000',
+            status: CallStatus::Completed,
+            duration: 180,
+            recordingUrl: 'https://example.com/q-5001.wav',
+            source: VoipEventSource::Webhook,
+        );
+
+        app(VoipEventIngestionService::class)->ingest($config, $event);
+
+        $log = VoipCallLog::query()->where('external_call_id', 'call-no-start')->first();
+
+        $this->assertNotNull($log);
+        $this->assertSame('2026-09-20 09:57:00', $log->started_at?->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-09-20 10:00:00', $log->ended_at?->format('Y-m-d H:i:s'));
+    }
+
     public function test_duplicate_events_are_filtered(): void
     {
         Event::fake([CallEnded::class]);

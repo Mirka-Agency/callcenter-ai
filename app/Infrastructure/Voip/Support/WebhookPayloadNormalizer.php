@@ -15,7 +15,9 @@ class WebhookPayloadNormalizer
         $eventRaw = $this->value($payload, 'event', $fieldMapping)
             ?? $this->inferEventTypeFromPayload($payload, $fieldMapping);
 
-        $recordingUrl = $this->stringValue($payload, 'recording_url', $fieldMapping);
+        $recordingUrl = DatedMonitorRecordingUrl::normalize(
+            $this->stringValue($payload, 'recording_url', $fieldMapping),
+        );
         $statusRaw = $this->stringValue($payload, 'status', $fieldMapping);
         $directionRaw = $this->stringValue($payload, 'direction', $fieldMapping);
 

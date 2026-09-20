@@ -106,11 +106,11 @@
 
         <div class="saas-card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h2 class="text-lg font-semibold">{{ __('ui.voip.unmatched_extensions_title') }}</h2>
-                <p class="mt-1 text-sm text-zinc-500">{{ trans_choice('ui.voip.unmatched_extensions_voip_hint', $unmatchedExtensionCount, ['count' => $unmatchedExtensionCount]) }}</p>
+                <h2 class="text-lg font-semibold">{{ __('ui.voip.extensions_title') }}</h2>
+                <p class="mt-1 text-sm text-zinc-500">{{ trans_choice('ui.voip.extensions_voip_card_hint', $assignedExtensionCount, ['count' => $assignedExtensionCount]) }}</p>
             </div>
-            <a href="{{ route('employer.unmatched-extensions.index') }}" class="saas-btn-primary whitespace-nowrap text-sm">
-                {{ __('ui.voip.unmatched_extensions_open_page') }}
+            <a href="{{ route('employer.extensions.index') }}" class="saas-btn-primary whitespace-nowrap text-sm">
+                {{ __('ui.voip.extensions_open_page') }}
             </a>
         </div>
 

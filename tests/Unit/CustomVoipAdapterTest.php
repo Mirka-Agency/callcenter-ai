@@ -116,6 +116,10 @@ class CustomVoipAdapterTest extends TestCase
         return [
             'phone alias' => [['phone' => '09123334444', 'call_id' => '1'], 'from', '09123334444'],
             'audio_link alias' => [['audio_link' => 'https://x.test/a.mp3', 'call_id' => '1'], 'recording_url', 'https://x.test/a.mp3'],
+            'mixmonitor missing date folders' => [[
+                'record' => 'http://192.168.2.16/mirka-call-recordings/exten-116-09309194604-20260920-092247-1789879949.32755.wav',
+                'call_id' => '1',
+            ], 'recording_url', 'http://192.168.2.16/mirka-call-recordings/2026/09/20/exten-116-09309194604-20260920-092247-1789879949.32755.wav'],
         ];
     }
 

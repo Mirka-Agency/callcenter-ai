@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Domain\Voip\Enums\CallDirection;
 use App\Domain\Voip\Enums\CallStatus;
+use App\Models\Concerns\OccurredBetween;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,6 +26,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class VoipCallLog extends Model
 {
+    use OccurredBetween;
+
     protected function casts(): array
     {
         return [

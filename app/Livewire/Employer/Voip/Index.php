@@ -6,7 +6,6 @@ use App\Application\Call\Services\CallEmployeeResolver;
 use App\Application\Call\Services\UnmatchedVoipExtensionService;
 use App\Domain\Voip\Enums\CallStatus;
 use App\Enums\IntegrationSetupStatus;
-use App\Livewire\Employer\Voip\Concerns\AssignsUnmatchedVoipExtensions;
 use App\Models\VoipCallLog;
 use App\Services\EmployerContext;
 use App\Services\EmployerIntegrationGate;
@@ -18,8 +17,6 @@ use Livewire\Component;
 #[Title('VoIP')]
 class Index extends Component
 {
-    use AssignsUnmatchedVoipExtensions;
-
     public function regenerateWebhookToken(int $connectionId): void
     {
         $connection = EmployerContext::organization()
@@ -70,8 +67,8 @@ class Index extends Component
             ];
         });
 
-        $unmatchedExtensions = $isComplete
-            ? $unmatchedService->listUnmatched($organization)
+        $assignedExtensions = $isComplete
+            ? $unmatchedService->listAssigned($organization)
             : [];
 
         return view('livewire.employer.voip.index', [
@@ -81,10 +78,16 @@ class Index extends Component
             'recentCallsHint' => $recentCallsHint,
             'canManageIntegrations' => EmployerIntegrationGate::allowsFullManagement($organization),
             'todayCalls' => $isComplete
-                ? VoipCallLog::query()->where('organization_id', $organizationId)->whereDate('started_at', today())->count()
+                ? VoipCallLog::query()
+                    ->where('organization_id', $organizationId)
+                    ->occurredBetween(now()->startOfDay(), now()->endOfDay())
+                    ->count()
                 : 0,
             'monthCalls' => $isComplete
-                ? VoipCallLog::query()->where('organization_id', $organizationId)->whereMonth('started_at', now()->month)->count()
+                ? VoipCallLog::query()
+                    ->where('organization_id', $organizationId)
+                    ->occurredBetween(now()->startOfMonth()->startOfDay(), now()->endOfDay())
+                    ->count()
                 : 0,
             'missedCalls' => $isComplete
                 ? VoipCallLog::query()
@@ -93,7 +96,7 @@ class Index extends Component
                     ->count()
                 : 0,
             'recentCallRows' => $recentCallRows,
-            'unmatchedExtensionCount' => count($unmatchedExtensions),
+            'assignedExtensionCount' => count($assignedExtensions),
             'incomingCallEndpoint' => url('/api/voip/incoming-call'),
         ]);
     }

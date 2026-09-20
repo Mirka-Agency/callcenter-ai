@@ -56,8 +56,7 @@
         >
             <div class="flex items-start justify-between gap-4">
                 <div>
-                    <p class="text-sm font-medium text-indigo-600 dark:text-indigo-400">بخش اول</p>
-                    <h2 class="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">شرکت‌ها</h2>
+                    <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">شرکت‌ها</h2>
                     <p class="mt-2 text-sm leading-7 text-zinc-600 dark:text-zinc-300">
                         شرکت‌های مشتری — با چند شخص، آمار تجمیعی و تاریخچه تماس.
                     </p>
@@ -65,8 +64,8 @@
                         ورود به لیست شرکت‌ها ({{ number_format($stats['companies']) }})
                     </p>
                 </div>
-                <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-2xl font-bold text-white shadow-lg shadow-indigo-500/30">
-                    ش
+                <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/30" aria-hidden="true">
+                    <x-saas.icon name="building" class="h-7 w-7" />
                 </div>
             </div>
         </a>
@@ -79,8 +78,7 @@
         >
             <div class="flex items-start justify-between gap-4">
                 <div>
-                    <p class="text-sm font-medium text-violet-600 dark:text-violet-400">بخش اشخاص</p>
-                    <h2 class="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">اشخاص</h2>
+                    <h2 class="text-2xl font-bold text-zinc-900 dark:text-white">اشخاص</h2>
                     <p class="mt-2 text-sm leading-7 text-zinc-600 dark:text-zinc-300">
                         افراد حقیقی — پروفایل تماس، امتیاز لید و اتصال به شرکت مربوطه.
                     </p>
@@ -88,8 +86,8 @@
                         ورود به لیست اشخاص ({{ number_format($stats['contacts']) }})
                     </p>
                 </div>
-                <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-violet-600 text-2xl font-bold text-white shadow-lg shadow-violet-500/30">
-                    ا
+                <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-violet-600 text-white shadow-lg shadow-violet-500/30" aria-hidden="true">
+                    <x-saas.icon name="user" class="h-7 w-7" />
                 </div>
             </div>
         </a>

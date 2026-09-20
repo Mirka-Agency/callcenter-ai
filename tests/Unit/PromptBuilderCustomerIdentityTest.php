@@ -33,6 +33,8 @@ class PromptBuilderCustomerIdentityTest extends TestCase
     {
         $policy = PromptBuilder::customerIdentityPolicy();
 
+        $this->assertStringContainsString('در تماس خروجی', $policy);
+        $this->assertStringContainsString('املای درست فارسی', $policy);
         $this->assertStringContainsString('customer_identity', $policy);
         $this->assertStringContainsString('این مقدارها را هویت مشتری ندانید', $policy);
         $this->assertStringContainsString('نام کارشناس فعلی', $policy);

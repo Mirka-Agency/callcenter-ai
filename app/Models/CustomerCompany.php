@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\CompanyName;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -37,7 +38,7 @@ class CustomerCompany extends Model
             }
 
             if ($company->name) {
-                $company->name = trim($company->name);
+                $company->name = CompanyName::display($company->name);
                 $company->normalized_name = self::normalizeName($company->name);
             }
 
@@ -57,9 +58,24 @@ class CustomerCompany extends Model
 
     public static function normalizeName(string $name): string
     {
-        $name = trim(preg_replace('/\s+/u', ' ', $name) ?? '');
+        return CompanyName::key($name);
+    }
 
-        return mb_strtolower($name, 'UTF-8');
+    /** @param  Builder<CustomerCompany>  $query */
+    public function scopeExcludingOwnOrganization(Builder $query, Organization|string|null $organization): Builder
+    {
+        $title = $organization instanceof Organization ? $organization->title : $organization;
+
+        if (! is_string($title) || trim($title) === '') {
+            return $query;
+        }
+
+        $keys = CompanyName::identityKeys($title);
+        $names = CompanyName::identityNames($title);
+
+        return $query
+            ->when($keys !== [], fn (Builder $inner) => $inner->whereNotIn('normalized_name', $keys))
+            ->when($names !== [], fn (Builder $inner) => $inner->whereNotIn('name', $names));
     }
 
     public function organization(): BelongsTo

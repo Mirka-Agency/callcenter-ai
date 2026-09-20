@@ -102,6 +102,7 @@ class CallEmployeeResolver
             $payload['agent_extension'] ?? null,
             $payload['internal_number'] ?? null,
             $payload['exten'] ?? null,
+            ...$this->extensionsFromRecordingUrl($log),
             $log->direction?->value === 'inbound' ? $log->destination_number : $log->source_number,
             $log->destination_number,
             $log->source_number,
@@ -140,6 +141,31 @@ class CallEmployeeResolver
         $normalized = trim((string) $value);
 
         return $normalized !== '' ? $normalized : null;
+    }
+
+    /**
+     * Asterisk MixMonitor names often include the answering extension
+     * (exten-116-...) even when the webhook extension field is empty.
+     * Queue filenames (q-5001-...) are queue IDs, not agent extensions.
+     *
+     * @return list<string>
+     */
+    private function extensionsFromRecordingUrl(VoipCallLog $log): array
+    {
+        $payload = is_array($log->raw_payload) ? $log->raw_payload : [];
+        $url = $log->recording_url ?? $payload['recording_url'] ?? null;
+
+        if (! is_string($url) || $url === '') {
+            return [];
+        }
+
+        if (preg_match('/(?:^|[\\/_-])exten-(\d+)/i', $url, $matches) !== 1) {
+            return [];
+        }
+
+        $normalized = $this->normalizeCandidate($matches[1]);
+
+        return $normalized !== null ? [$normalized] : [];
     }
 
     /** @return array<string, mixed> */

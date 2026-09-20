@@ -38,14 +38,12 @@ class OrganizationCallMetrics
 
         $callCount = Call::query()
             ->where('organization_id', $organizationId)
-            ->whereNotNull('started_at')
-            ->whereBetween('started_at', [$from, $to])
+            ->occurredBetween($from, $to)
             ->count();
 
         $orphanVoipCount = VoipCallLog::query()
             ->where('organization_id', $organizationId)
-            ->whereNotNull('started_at')
-            ->whereBetween('started_at', [$from, $to])
+            ->occurredBetween($from, $to)
             ->when(
                 $linkedVoipLogIds->isNotEmpty(),
                 fn ($query) => $query->whereNotIn('id', $linkedVoipLogIds),

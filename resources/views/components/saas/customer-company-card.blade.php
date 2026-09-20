@@ -60,15 +60,13 @@
         {{ CustomerCompanyPresenter::metaLine($company) }}
     </p>
 
-    @if ($company->contacts->isNotEmpty())
-        <div class="mt-4 flex items-center justify-between gap-3">
-            <div class="flex -space-x-2 space-x-reverse">
-                @foreach ($company->contacts->take(4) as $contact)
-                    <x-saas.avatar :name="$contact->displayName()" size="sm" class="ring-2 ring-white dark:ring-zinc-900" />
-                @endforeach
-            </div>
-            <span class="text-xs text-zinc-500">مشاهده اشخاص</span>
-        </div>
+    @php
+        $contactPreview = CustomerCompanyPresenter::contactPreview($company);
+    @endphp
+    @if ($contactPreview !== '')
+        <p class="mt-4 truncate text-sm text-zinc-600 dark:text-zinc-400">
+            {{ $contactPreview }}
+        </p>
     @endif
 
     @if ($company->recommended_next_action)

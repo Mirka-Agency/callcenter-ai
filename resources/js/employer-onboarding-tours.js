@@ -334,23 +334,23 @@ export const employerPageTours = {
             },
         ],
     },
-    'employer.unmatched-extensions.index': {
-        label: 'داخلی‌های بدون کارشناس',
+    'employer.extensions.index': {
+        label: 'داخلی‌ها',
         steps: [
             {
                 selector: '[data-tour="page-header"]',
-                title: 'داخلی‌های بدون کارشناس',
-                content: 'اینجا شماره‌های داخلی‌ای را می‌بینید که در تماس‌ها آمده‌اند ولی هنوز معلوم نیست مال کدام کارشناس هستند.',
+                title: 'داخلی‌ها',
+                content: 'اینجا شماره داخلی را خودتان ثبت می‌کنید و به کارشناس وصل می‌کنید. سیستم دیگر داخلی را از تماس‌ها تشخیص نمی‌دهد.',
             },
             {
-                selector: '[data-tour="unmatched-how"]',
-                title: 'چه کاری باید انجام دهید؟',
-                content: 'شماره داخلی را بشناسید، کارشناس همان خط را انتخاب کنید و وصل کنید تا تماس‌ها به او نسبت داده شود.',
+                selector: '[data-tour="extensions-add-button"]',
+                title: 'افزودن داخلی',
+                content: 'روی این دکمه بزنید تا فرم ثبت داخلی باز شود. شماره داخلی، خط تلفن و کارشناس را انتخاب کنید.',
             },
             {
-                selector: '[data-tour="unmatched-list"]',
-                title: 'کارت هر داخلی',
-                content: 'عنوان هر کارت می‌گوید کدام شماره هنوز کارشناس ندارد. کارشناس را انتخاب کنید و «وصل کردن به کارشناس» را بزنید.',
+                selector: '[data-tour="extensions-list"]',
+                title: 'فهرست داخلی‌ها',
+                content: 'داخلی‌های ثبت‌شده را ببینید، کارشناس را عوض کنید یا در صورت نیاز حذف کنید.',
             },
         ],
     },
@@ -415,7 +415,7 @@ const navSteps = [
     ['employer.dashboard', 'داشبورد', 'نقطه شروع مدیر: نمای کلی تیم، عملکرد کارشناسان و فعالیت اخیر.'],
     ['employer.intelligence.performance', 'عملکرد کارشناسان', 'رتبه‌بندی، مقایسه و مربیگری تیم تماس.'],
     ['employer.intelligence.index', 'تحلیل تماس‌ها', 'فهرست تمام تحلیل‌ها با فیلتر و جزئیات هر مکالمه.'],
-    ['employer.unmatched-extensions.index', 'داخلی‌های بدون کارشناس', 'شماره‌های داخلی که هنوز مال هیچ کارشناسی نیستند؛ کارشناس را انتخاب کنید تا تماس‌هایش به او وصل شود.'],
+    ['employer.extensions.index', 'داخلی‌ها', 'شماره داخلی را دستی ثبت کنید و به کارشناس وصل کنید تا تماس‌هایش به او نسبت داده شود.'],
     ['employer.customers.index', 'مشتریان', 'شرکت‌ها و اشخاص — پروفایل خودکار از تحلیل تماس‌ها، با آمار تجمیعی برای هر شرکت.'],
     ['employer.manual-analyses.index', 'آپلود دستی', 'تحلیل فایل صوتی بدون VoIP.'],
     ['employer.processing-queue.index', 'صف تحلیل', 'پیگیری وضعیت پردازش فایل‌های در صف.'],
@@ -501,7 +501,8 @@ export const employerRouteMatchers = [
     { pattern: /^\/app\/customers\/\d+\/?$/, route: 'employer.customers.show' },
     { pattern: /^\/app\/customers\/?$/, route: 'employer.customers.index' },
     { pattern: /^\/app\/crm\/?$/, route: 'employer.crm.index' },
-    { pattern: /^\/app\/unmatched-extensions\/?$/, route: 'employer.unmatched-extensions.index' },
+    { pattern: /^\/app\/extensions\/?$/, route: 'employer.extensions.index' },
+    { pattern: /^\/app\/unmatched-extensions\/?$/, route: 'employer.extensions.index' },
     { pattern: /^\/app\/voip\/?$/, route: 'employer.voip.index' },
     { pattern: /^\/app\/wallet\/?$/, route: 'employer.wallet.index' },
 ];

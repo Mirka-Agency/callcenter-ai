@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Customer;
 use App\Models\CustomerCompany;
+use App\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
 
 class CustomerListQuery
@@ -43,10 +44,11 @@ class CustomerListQuery
     ): Builder {
         $query = CustomerCompany::query()
             ->forOrganization($organizationId)
+            ->excludingOwnOrganization(Organization::query()->find($organizationId))
             ->when(
                 $withContactPreview,
                 fn (Builder $query) => $query->with([
-                    'contacts' => fn ($contacts) => $contacts->orderByDesc('last_contact_at')->limit(4),
+                    'contacts' => fn ($contacts) => $contacts->orderByDesc('last_contact_at')->limit(3),
                 ]),
             )
             ->when($search !== '', function (Builder $query) use ($search): void {
