@@ -62,6 +62,33 @@ function resolveColor(dataset, index) {
         || seriesColors[index % seriesColors.length];
 }
 
+function isSolidCssColor(value) {
+    return typeof value === 'string' && value.length > 0;
+}
+
+function colorAtIndex(value, index) {
+    if (Array.isArray(value)) {
+        return isSolidCssColor(value[index]) ? value[index] : null;
+    }
+
+    return isSolidCssColor(value) ? value : null;
+}
+
+function resolveTooltipColor(ctx) {
+    const dataset = ctx.dataset || {};
+    const dataIndex = ctx.dataIndex ?? 0;
+    const sliceColor = colorAtIndex(dataset.backgroundColor, dataIndex);
+    const elementFill = colorAtIndex(ctx.element?.options?.backgroundColor, dataIndex);
+
+    if (Array.isArray(dataset.backgroundColor)) {
+        return sliceColor || elementFill || palette.indigo;
+    }
+
+    return colorAtIndex(dataset.borderColor, dataIndex)
+        || sliceColor
+        || palette.indigo;
+}
+
 function makeVerticalGradient(ctx, chartArea, color, topAlpha = 0.28, bottomAlpha = 0) {
     const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
     gradient.addColorStop(0, withAlpha(color, topAlpha));
@@ -324,14 +351,11 @@ function baseOptions(type = 'line', datasetCount = 1) {
                 },
                 callbacks: {
                     labelColor(ctx) {
-                        const dataset = ctx.dataset || {};
-                        const solid = typeof dataset.borderColor === 'string'
-                            ? dataset.borderColor
-                            : resolveColor(dataset, ctx.datasetIndex ?? 0);
+                        const solid = resolveTooltipColor(ctx);
 
                         return {
-                            borderColor: typeof solid === 'string' ? solid : palette.indigo,
-                            backgroundColor: typeof solid === 'string' ? solid : palette.indigo,
+                            borderColor: solid,
+                            backgroundColor: solid,
                             borderWidth: 0,
                             borderRadius: 3,
                         };
