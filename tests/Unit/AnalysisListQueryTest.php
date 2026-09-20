@@ -133,6 +133,59 @@ class AnalysisListQueryTest extends TestCase
         $this->assertSame(2, $overview['total_calls']);
     }
 
+    public function test_overview_counts_unanalyzed_missed_calls(): void
+    {
+        $organization = Organization::factory()->create();
+        $user = User::factory()->create();
+        $agent = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $user->id,
+            'first_name' => 'Ali',
+            'last_name' => 'One',
+            'is_active' => true,
+        ]);
+
+        $this->seedAnalysis($organization, $agent, 'completed', 300, 90);
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09121111111',
+            'receiver_number' => '02100000000',
+            'status' => CallStatus::Missed->value,
+            'processing_status' => 'pending',
+            'duration_seconds' => 0,
+            'started_at' => now(),
+        ]);
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => null,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09122222222',
+            'receiver_number' => '101',
+            'status' => CallStatus::Missed->value,
+            'processing_status' => 'pending',
+            'duration_seconds' => 0,
+            'started_at' => now(),
+        ]);
+
+        $overview = app(AnalysisListQuery::class)->overview(AnalysisListFilter::make(
+            organizationId: $organization->id,
+            preset: ReportDatePreset::Last30,
+            assignedEmployeesOnly: true,
+        ));
+
+        $this->assertSame(1, $overview['total']);
+        $this->assertSame(3, $overview['total_calls']);
+        $this->assertSame(2, $overview['missed_count']);
+    }
+
     public function test_assigned_employees_only_excludes_unassigned_analyses(): void
     {
         $organization = Organization::factory()->create();
