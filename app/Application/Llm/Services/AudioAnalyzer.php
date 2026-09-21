@@ -12,6 +12,7 @@ use App\Domain\Llm\DTOs\PromptContextData;
 use App\Domain\Llm\Events\AnalysisFailed;
 use App\Domain\Llm\Events\ConversationAnalyzed;
 use App\Domain\Llm\Exceptions\LlmTransientException;
+use App\Infrastructure\Llm\LlmOutboundGuard;
 use App\Models\Call;
 use App\Models\OrganizationUser;
 use App\Models\VoipCallLog;
@@ -31,6 +32,8 @@ class AudioAnalyzer
         LlmProviderInterface $provider,
         ?string $model = null,
     ): AnalysisResultData {
+        app(LlmOutboundGuard::class)->assertRemoteAnalysisEnabled();
+
         $call = Call::query()->with(['recording', 'organization'])->findOrFail($callId);
 
         $this->billing->assertCanAnalyze($call->organization_id);

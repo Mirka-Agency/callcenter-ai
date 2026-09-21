@@ -4,6 +4,10 @@ namespace App\Services\QueueMonitoring;
 
 class QueueJobInspector
 {
+    public function __construct(
+        private FailedQueueJobReasonClassifier $reasonClassifier,
+    ) {}
+
     public function inspect(?string $payloadJson, ?string $exception = null): QueueJobInspection
     {
         $payload = is_string($payloadJson) ? json_decode($payloadJson, true) : null;
@@ -12,10 +16,12 @@ class QueueJobInspector
             return new QueueJobInspection(
                 exceptionMessage: $this->exceptionMessage($exception),
                 exceptionFull: $exception,
+                failureReason: $this->classify($exception),
             );
         }
 
         $displayName = $payload['displayName'] ?? null;
+        $jobClass = is_string($displayName) ? class_basename($displayName) : null;
         $properties = [];
         $chainedJobs = [];
 
@@ -27,7 +33,7 @@ class QueueJobInspector
 
         return new QueueJobInspection(
             displayName: is_string($displayName) ? $displayName : null,
-            jobClass: is_string($displayName) ? class_basename($displayName) : null,
+            jobClass: $jobClass,
             jobUuid: $payload['uuid'] ?? null,
             maxTries: isset($payload['maxTries']) ? (int) $payload['maxTries'] : null,
             timeout: isset($payload['timeout']) ? (int) $payload['timeout'] : null,
@@ -35,7 +41,13 @@ class QueueJobInspector
             chainedJobs: $chainedJobs,
             exceptionMessage: $this->exceptionMessage($exception),
             exceptionFull: $exception,
+            failureReason: $this->classify($exception, $jobClass),
         );
+    }
+
+    private function classify(?string $exception, ?string $jobClass = null): ?string
+    {
+        return $this->reasonClassifier->classify($exception, $jobClass);
     }
 
     /** @return array{0: array<string, mixed>, 1: list<string>} */

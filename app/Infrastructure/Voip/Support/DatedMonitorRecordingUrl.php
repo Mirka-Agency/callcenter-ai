@@ -71,6 +71,107 @@ final class DatedMonitorRecordingUrl
         return array_values(array_unique(array_filter([$normalized, $url], fn (string $candidate) => $candidate !== '')));
     }
 
+    public static function isDirectoryOnly(?string $url): bool
+    {
+        if ($url === null || $url === '') {
+            return true;
+        }
+
+        $path = (string) (parse_url($url, PHP_URL_PATH) ?? '');
+        $filename = basename($path);
+
+        return $filename === '' || $filename === '/' || ! self::isAudioFilename($filename);
+    }
+
+    public static function isAudioFilename(string $name): bool
+    {
+        return preg_match('/\.(wav|mp3|gsm|ogg|m4a|mp4)$/i', $name) === 1;
+    }
+
+    public static function publicBase(?string $url): ?string
+    {
+        if ($url === null || $url === '') {
+            $configured = rtrim((string) config('voip.recordings_public_base', ''), '/');
+
+            return $configured !== '' ? $configured : null;
+        }
+
+        $parts = parse_url($url);
+
+        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'], $parts['path'])) {
+            return null;
+        }
+
+        $path = (string) $parts['path'];
+        $directory = self::isAudioFilename(basename($path))
+            ? rtrim(dirname($path), '/')
+            : rtrim($path, '/');
+
+        if (preg_match('#/\d{4}/\d{2}/\d{2}$#', $directory)) {
+            $directory = preg_replace('#/\d{4}/\d{2}/\d{2}$#', '', $directory) ?? $directory;
+        }
+
+        return self::rebuild($parts, $directory === '' ? '/' : $directory);
+    }
+
+    public static function listingUrl(?string $url, \DateTimeInterface $at): ?string
+    {
+        $base = self::publicBase($url);
+
+        if ($base === null) {
+            return null;
+        }
+
+        return rtrim($base, '/').'/'.$at->format('Y/m/d').'/';
+    }
+
+    public static function filenameForUniqueId(string $listingHtml, string $uniqueId): ?string
+    {
+        $uniqueId = trim($uniqueId);
+
+        if ($uniqueId === '' || ! preg_match_all('/href="([^"]+)"/i', $listingHtml, $matches)) {
+            return null;
+        }
+
+        foreach ($matches[1] as $href) {
+            $name = basename(urldecode((string) $href));
+
+            if (self::isAudioFilename($name) && str_contains($name, $uniqueId)) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
+
+    public static function joinListingUrl(string $listingUrl, string $filename): string
+    {
+        return rtrim($listingUrl, '/').'/'.ltrim($filename, '/');
+    }
+
+    public static function fromSpoolPath(string $path, ?string $publicBase = null): ?string
+    {
+        $path = trim($path);
+
+        if ($path === '') {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return self::normalize($path);
+        }
+
+        $base = rtrim((string) ($publicBase ?: config('voip.recordings_public_base', '')), '/');
+
+        if ($base === '') {
+            return null;
+        }
+
+        $relative = preg_replace('#^/var/spool/asterisk/monitor/?#', '', $path) ?? $path;
+
+        return self::normalize($base.'/'.ltrim((string) $relative, '/'));
+    }
+
     private static function isValidStamp(string $ymd, string $hms): bool
     {
         $year = (int) substr($ymd, 0, 4);

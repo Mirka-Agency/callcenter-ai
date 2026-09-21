@@ -8,6 +8,7 @@ use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
 use App\Services\PersianOutputGuard;
 use App\Services\RecordingStorage;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -41,6 +42,10 @@ class GeminiProvider extends AbstractLlmProvider
 
     public function testConnection(): LlmOperationResult
     {
+        if ($refused = $this->refuseIfRemoteDisabled()) {
+            return $refused;
+        }
+
         if (! $this->hasApiKey()) {
             return LlmOperationResult::success(message: 'Gemini configured in demo mode (no API key).');
         }
@@ -68,6 +73,10 @@ class GeminiProvider extends AbstractLlmProvider
             return $this->demoAudioAnalysis($request, $model);
         }
 
+        if ($refused = $this->refuseIfRemoteDisabled()) {
+            return $refused;
+        }
+
         $started = microtime(true);
         $promptBuilder = app(PromptBuilder::class);
         $audioFormat = $this->resolveAudioFormat($request);
@@ -88,13 +97,7 @@ class GeminiProvider extends AbstractLlmProvider
         );
 
         if (! $response->successful()) {
-            $status = $response->status();
-
-            if (in_array($status, [429, 502, 503, 504], true)) {
-                return $this->failure('Gemini API error (HTTP '.$status.'): '.$response->body());
-            }
-
-            return $this->failure('Gemini API error: '.$response->body());
+            return $this->failure('Gemini API error (HTTP '.$response->status().'): '.$response->body());
         }
 
         $body = $response->json();
@@ -132,7 +135,7 @@ class GeminiProvider extends AbstractLlmProvider
         AudioAnalysisRequestData $request,
         ?string $audioBase64,
         string $mimeType,
-    ): \Illuminate\Http\Client\Response {
+    ): Response {
         $systemPrompt = $promptBuilder->systemPrompt($request->promptVersion);
 
         $userParts = [

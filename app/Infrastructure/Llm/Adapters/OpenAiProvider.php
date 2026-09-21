@@ -2,11 +2,16 @@
 
 namespace App\Infrastructure\Llm\Adapters;
 
+use App\Application\Llm\Services\PromptBuilder;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
+use App\Infrastructure\Llm\Clients\OpenAiApiClient;
+use App\Services\PersianOutputGuard;
 use App\Services\RecordingStorage;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class OpenAiProvider extends AbstractLlmProvider
 {
@@ -22,11 +27,15 @@ class OpenAiProvider extends AbstractLlmProvider
 
     public function testConnection(): LlmOperationResult
     {
+        if ($refused = $this->refuseIfRemoteDisabled()) {
+            return $refused;
+        }
+
         if (! $this->hasApiKey()) {
             return LlmOperationResult::success(message: 'OpenAI configured in demo mode (no API key).');
         }
 
-        $client = new \App\Infrastructure\Llm\Clients\OpenAiApiClient(
+        $client = new OpenAiApiClient(
             apiKey: $this->config->credentials->apiKey,
             baseUrl: $this->config->credentials->baseUrl,
         );
@@ -46,8 +55,12 @@ class OpenAiProvider extends AbstractLlmProvider
             return $this->demoAudioAnalysis($request, $model);
         }
 
+        if ($refused = $this->refuseIfRemoteDisabled()) {
+            return $refused;
+        }
+
         $started = microtime(true);
-        $promptBuilder = app(\App\Application\Llm\Services\PromptBuilder::class);
+        $promptBuilder = app(PromptBuilder::class);
 
         $audioFormat = $this->resolveAudioFormat($request);
         [$audioBase64, $audioFormat, $mimeType] = $request->sendAudioFile
@@ -62,7 +75,7 @@ class OpenAiProvider extends AbstractLlmProvider
             return $this->failure('آدرس قابل‌دسترس فایل صوتی برای تحلیل یافت نشد.');
         }
 
-        $guard = app(\App\Services\PersianOutputGuard::class);
+        $guard = app(PersianOutputGuard::class);
         $messages = $promptBuilder->buildAudioMessages(
             $request,
             $audioFormat,
@@ -75,13 +88,7 @@ class OpenAiProvider extends AbstractLlmProvider
         $response = $this->postChatCompletion($messages, $model);
 
         if (! $response->successful()) {
-            $status = $response->status();
-
-            if (in_array($status, [429, 502, 503, 504], true)) {
-                return $this->failure('OpenAI API error (HTTP '.$status.'): '.$response->body());
-            }
-
-            return $this->failure('OpenAI API error: '.$response->body());
+            return $this->failure('OpenAI API error (HTTP '.$response->status().'): '.$response->body());
         }
 
         $body = $response->json();
@@ -93,7 +100,7 @@ class OpenAiProvider extends AbstractLlmProvider
         }
 
         if ($guard->containsEnglish($parsed)) {
-            \Illuminate\Support\Facades\Log::warning('AI analysis contains English and was stored without a second model request', [
+            Log::warning('AI analysis contains English and was stored without a second model request', [
                 'call_id' => $request->callId,
             ]);
         }
@@ -148,7 +155,7 @@ class OpenAiProvider extends AbstractLlmProvider
     }
 
     /** @param  list<array{role: string, content: mixed}>  $messages */
-    private function postChatCompletion(array $messages, string $model): \Illuminate\Http\Client\Response
+    private function postChatCompletion(array $messages, string $model): Response
     {
         return Http::withToken($this->config->credentials->apiKey)
             ->timeout(300)

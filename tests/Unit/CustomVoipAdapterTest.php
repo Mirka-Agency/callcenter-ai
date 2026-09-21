@@ -61,6 +61,24 @@ class CustomVoipAdapterTest extends TestCase
         $this->assertSame(CallDirection::Outbound, $event->direction);
     }
 
+    public function test_normalize_converts_issabel_spool_recordingfile(): void
+    {
+        config(['voip.recordings_public_base' => 'http://192.168.2.16/mirka-call-recordings']);
+
+        $event = (new WebhookPayloadNormalizer)->normalize([
+            'event' => 'call.ended',
+            'call_id' => '1789898636.33122',
+            'from' => '111',
+            'to' => '909123438047',
+            'recordingfile' => '/var/spool/asterisk/monitor/2026/09/20/out-909123438047-111-20260920-143356-1789898636.33122.wav',
+        ], provider: 'custom');
+
+        $this->assertSame(
+            'http://192.168.2.16/mirka-call-recordings/2026/09/20/out-909123438047-111-20260920-143356-1789898636.33122.wav',
+            $event->recordingUrl,
+        );
+    }
+
     public function test_normalize_uses_configurable_field_mapping(): void
     {
         $adapter = new CustomVoipAdapter;

@@ -12,10 +12,12 @@ use App\Domain\Llm\Contracts\LlmConnectionRepositoryInterface;
 use App\Domain\Llm\Contracts\LlmLogRepositoryInterface;
 use App\Domain\Llm\Events\ConversationAnalyzed;
 use App\Infrastructure\Llm\LlmAdapterRegistry;
+use App\Infrastructure\Llm\LlmOutboundGuard;
 use App\Infrastructure\Llm\Repositories\EloquentConversationAnalysisRepository;
 use App\Infrastructure\Llm\Repositories\EloquentLlmConnectionRepository;
 use App\Infrastructure\Llm\Repositories\EloquentLlmLogRepository;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 
 class LlmServiceProvider extends ServiceProvider
@@ -41,6 +43,12 @@ class LlmServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Http::globalRequestMiddleware(function ($request) {
+            app(LlmOutboundGuard::class)->assertUrlAllowed((string) $request->getUri());
+
+            return $request;
+        });
+
         Event::listen(ConversationAnalyzed::class, RecordAiUsageSnapshot::class);
         Event::listen(ConversationAnalyzed::class, SyncCustomerFromAnalysis::class);
     }

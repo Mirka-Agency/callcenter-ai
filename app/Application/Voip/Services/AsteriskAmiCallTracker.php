@@ -2,6 +2,8 @@
 
 namespace App\Application\Voip\Services;
 
+use App\Infrastructure\Voip\Support\DatedMonitorRecordingUrl;
+
 class AsteriskAmiCallTracker
 {
     /** @var array<string, array<string, mixed>> */
@@ -165,6 +167,11 @@ class AsteriskAmiCallTracker
             $extension = $destination;
         }
 
+        $recordingFile = $this->firstNonEmpty($event, ['recordingfile', 'Recordingfile', 'UserField', 'userfield']);
+        $recordingUrl = $recordingFile
+            ? DatedMonitorRecordingUrl::fromSpoolPath($recordingFile)
+            : null;
+
         return [
             'event' => 'call.ended',
             'call_id' => $callId,
@@ -179,6 +186,8 @@ class AsteriskAmiCallTracker
             'started_at' => $call['started_at'] ?? null,
             'ended_at' => $call['ended_at'] ?? null,
             'ami_event' => $event['Event'] ?? null,
+            'recordingfile' => $recordingFile,
+            'recording_url' => $recordingUrl,
         ];
     }
 

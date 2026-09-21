@@ -21,6 +21,10 @@ class AnthropicProvider extends AbstractLlmProvider
 
     public function testConnection(): LlmOperationResult
     {
+        if ($refused = $this->refuseIfRemoteDisabled()) {
+            return $refused;
+        }
+
         if (! $this->hasApiKey()) {
             return LlmOperationResult::success(message: 'Anthropic configured in demo mode (no API key).');
         }

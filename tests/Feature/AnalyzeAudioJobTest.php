@@ -22,6 +22,7 @@ use App\Models\PlatformAiSettings;
 use App\Models\User;
 use App\Services\RecordingStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -100,6 +101,32 @@ class AnalyzeAudioJobTest extends TestCase
         $this->assertSame(CallProcessingStatus::Failed, $call->processing_status);
         $this->assertSame(ProcessingJobStatus::Failed, $processingJob->status);
         $this->assertDatabaseMissing('conversation_analyses', ['call_id' => $call->id]);
+    }
+
+    public function test_skips_remote_llm_and_does_not_call_avalai_when_disabled(): void
+    {
+        Storage::fake('local');
+        Http::fake();
+        config(['llm.remote_enabled' => false]);
+
+        [$call, $processingJob] = $this->seedCallWithRecording();
+
+        $this->mock(AudioAnalyzer::class, function ($mock) {
+            $mock->shouldNotReceive('analyze');
+        });
+
+        $job = (new AnalyzeAudioJob($call->id))->withFakeQueueInteractions();
+        $this->app->call([$job, 'handle']);
+
+        $job->assertNotFailed();
+        $call->refresh();
+        $processingJob->refresh();
+
+        $this->assertSame(CallProcessingStatus::Failed, $call->processing_status);
+        $this->assertStringContainsString('AvalAI', (string) $call->processing_error);
+        $this->assertSame(ProcessingJobStatus::Failed, $processingJob->status);
+        $this->assertDatabaseMissing('conversation_analyses', ['call_id' => $call->id]);
+        Http::assertNothingSent();
     }
 
     /** @return array{0: Call, 1: CallProcessingJob} */

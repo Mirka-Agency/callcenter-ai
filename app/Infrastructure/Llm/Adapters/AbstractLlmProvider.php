@@ -6,6 +6,7 @@ use App\Domain\Llm\Contracts\LlmProviderInterface;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\DTOs\LlmConnectionConfig;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
+use App\Infrastructure\Llm\LlmOutboundGuard;
 
 abstract class AbstractLlmProvider implements LlmProviderInterface
 {
@@ -19,6 +20,17 @@ abstract class AbstractLlmProvider implements LlmProviderInterface
     protected function hasApiKey(): bool
     {
         return filled($this->config->credentials->apiKey);
+    }
+
+    protected function refuseIfRemoteDisabled(): ?LlmOperationResult
+    {
+        $guard = app(LlmOutboundGuard::class);
+
+        if ($guard->remoteAnalysisEnabled()) {
+            return null;
+        }
+
+        return $this->failure($guard->disabledMessage());
     }
 
     protected function resolveModel(?string $model, string $fallback): string

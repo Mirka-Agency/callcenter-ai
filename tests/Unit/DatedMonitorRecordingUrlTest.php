@@ -56,4 +56,31 @@ class DatedMonitorRecordingUrlTest extends TestCase
             $original,
         ], DatedMonitorRecordingUrl::downloadCandidates($original));
     }
+
+    public function test_directory_only_urls_are_detected(): void
+    {
+        $this->assertTrue(DatedMonitorRecordingUrl::isDirectoryOnly('http://192.168.2.16/mirka-call-recordings/'));
+        $this->assertTrue(DatedMonitorRecordingUrl::isDirectoryOnly('http://192.168.2.16/mirka-call-recordings'));
+        $this->assertFalse(DatedMonitorRecordingUrl::isDirectoryOnly('http://192.168.2.16/mirka-call-recordings/out-1-111-20260920-143356-1.2.wav'));
+    }
+
+    public function test_from_spool_path_uses_public_base(): void
+    {
+        config(['voip.recordings_public_base' => 'http://192.168.2.16/mirka-call-recordings']);
+
+        $this->assertSame(
+            'http://192.168.2.16/mirka-call-recordings/2026/09/20/out-909123438047-111-20260920-143356-1789898636.33122.wav',
+            DatedMonitorRecordingUrl::fromSpoolPath('/var/spool/asterisk/monitor/2026/09/20/out-909123438047-111-20260920-143356-1789898636.33122.wav'),
+        );
+    }
+
+    public function test_filename_for_unique_id_reads_directory_listing(): void
+    {
+        $html = '<html><a href="out-909123438047-111-20260920-143356-1789898636.33122.wav">wav</a></html>';
+
+        $this->assertSame(
+            'out-909123438047-111-20260920-143356-1789898636.33122.wav',
+            DatedMonitorRecordingUrl::filenameForUniqueId($html, '1789898636.33122'),
+        );
+    }
 }

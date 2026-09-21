@@ -8,7 +8,9 @@ use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Domain\Recording\Contracts\RecordingDownloaderInterface;
 use App\Domain\Recording\Contracts\RecordingRepositoryInterface;
 use App\Domain\Recording\DTOs\RecordingData;
+use App\Infrastructure\Llm\LlmOutboundGuard;
 use App\Models\Call;
+use App\Models\CallProcessingJob;
 use App\Models\CallRecording;
 use App\Models\VoipCallLog;
 use App\Services\CallProcessingTracker;
@@ -18,11 +20,12 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Foundation\Bus\PendingChain;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Bus;
 
-class AnalyzeAudioJob implements ShouldQueue, ShouldBeUnique
+class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -65,6 +68,12 @@ class AnalyzeAudioJob implements ShouldQueue, ShouldBeUnique
         try {
             $this->ensureRecording($call, $recordings, $downloader, $recordingStorage);
 
+            if (! app(LlmOutboundGuard::class)->remoteAnalysisEnabled()) {
+                $this->skipRemoteAnalysis($call, $job, $tracker);
+
+                return;
+            }
+
             $call->update(['processing_status' => CallProcessingStatus::Analyzing]);
 
             if ($job) {
@@ -103,6 +112,23 @@ class AnalyzeAudioJob implements ShouldQueue, ShouldBeUnique
         $this->markPermanentFailure($call, $job, $tracker, $exception);
     }
 
+    private function skipRemoteAnalysis(
+        Call $call,
+        ?CallProcessingJob $job,
+        CallProcessingTracker $tracker,
+    ): void {
+        $message = app(LlmOutboundGuard::class)->disabledMessage();
+
+        $call->update([
+            'processing_status' => CallProcessingStatus::Failed,
+            'processing_error' => $message,
+        ]);
+
+        if ($job && $job->status !== ProcessingJobStatus::Failed) {
+            $tracker->markFailed($job, $message);
+        }
+    }
+
     private function failWithoutRetry(\Throwable $e): void
     {
         if ($this->job) {
@@ -116,7 +142,7 @@ class AnalyzeAudioJob implements ShouldQueue, ShouldBeUnique
 
     private function markPermanentFailure(
         Call $call,
-        ?\App\Models\CallProcessingJob $job,
+        ?CallProcessingJob $job,
         CallProcessingTracker $tracker,
         \Throwable $e,
     ): void {
@@ -138,7 +164,7 @@ class AnalyzeAudioJob implements ShouldQueue, ShouldBeUnique
     ): void {
         $existing = $recordings->findByCallId($call->id);
 
-        if ($existing?->status === 'completed' && $existing->storagePath) {
+        if ($existing?->status === 'completed' && $existing->storagePath && $this->recordingLooksPlayable($existing)) {
             $recordingStorage->assertExists($existing->storagePath, $existing->storageDisk);
 
             return;
@@ -184,6 +210,22 @@ class AnalyzeAudioJob implements ShouldQueue, ShouldBeUnique
         $recordingStorage->assertExists($result->storagePath, $result->storageDisk ?? config('recordings.disk', 'local'));
     }
 
+    private function recordingLooksPlayable(RecordingData $recording): bool
+    {
+        $mime = strtolower((string) $recording->mimeType);
+        $size = (int) ($recording->fileSizeBytes ?? 0);
+
+        if ($size > 0 && $size < 2048) {
+            return false;
+        }
+
+        if ($mime !== '' && (str_contains($mime, 'html') || str_contains($mime, 'text/plain'))) {
+            return false;
+        }
+
+        return true;
+    }
+
     private function scheduleRetentionAfterAnalysis(int $callId, RecordingRetentionService $retention): void
     {
         $recording = CallRecording::query()->where('call_id', $callId)->latest()->first();
@@ -205,7 +247,7 @@ class AnalyzeAudioJob implements ShouldQueue, ShouldBeUnique
         SyncCrmJob::dispatchSync($callId);
     }
 
-    private static function buildChain(int $callId, ?string $recordingUrl = null): \Illuminate\Foundation\Bus\PendingChain
+    private static function buildChain(int $callId, ?string $recordingUrl = null): PendingChain
     {
         return Bus::chain([
             new self($callId, $recordingUrl),
