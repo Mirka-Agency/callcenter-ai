@@ -40,4 +40,9 @@ class FailedQueueJob extends Model
     {
         return $this->inspection()->exceptionMessage;
     }
+
+    public function failureReason(): ?string
+    {
+        return $this->inspection()->failureReason ?: $this->exceptionSummary();
+    }
 }

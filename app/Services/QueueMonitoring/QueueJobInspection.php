@@ -18,6 +18,7 @@ class QueueJobInspection
         public array $chainedJobs = [],
         public ?string $exceptionMessage = null,
         public ?string $exceptionFull = null,
+        public ?string $failureReason = null,
     ) {}
 
     public function shortLabel(): string

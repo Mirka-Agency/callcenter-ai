@@ -100,9 +100,9 @@ class ViewFailedQueueJob extends ViewRecord
                     ->visible($inspection->properties !== [] || $inspection->chainedJobs !== []),
                 Section::make(__('filament.sections.error_details'))
                     ->schema([
-                        TextEntry::make('exception_message')
-                            ->label(__('filament.fields.error'))
-                            ->state($inspection->exceptionMessage)
+                        TextEntry::make('failure_reason')
+                            ->label(__('filament.fields.failure_reason'))
+                            ->state($inspection->failureReason ?: $inspection->exceptionMessage)
                             ->color('danger')
                             ->columnSpanFull(),
                         TextEntry::make('exception')

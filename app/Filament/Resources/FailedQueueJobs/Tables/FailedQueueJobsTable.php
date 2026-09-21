@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\FailedQueueJobs\Tables;
 
-use App\Filament\Resources\FailedQueueJobs\FailedQueueJobResource;
 use App\Models\FailedQueueJob;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
@@ -34,12 +33,16 @@ class FailedQueueJobsTable
                     ->sortable(),
                 TextColumn::make('connection')
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('exception_summary')
-                    ->label(__('filament.fields.error'))
-                    ->getStateUsing(fn (FailedQueueJob $record) => $record->exceptionSummary())
-                    ->limit(80)
-                    ->tooltip(fn (FailedQueueJob $record) => $record->exceptionSummary())
-                    ->wrap(),
+                TextColumn::make('failure_reason')
+                    ->label(__('filament.fields.failure_reason'))
+                    ->getStateUsing(fn (FailedQueueJob $record) => $record->failureReason())
+                    ->limit(120)
+                    ->tooltip(fn (FailedQueueJob $record) => $record->failureReason())
+                    ->wrap()
+                    ->color('danger')
+                    ->searchable(query: function ($query, string $search) {
+                        $query->where('exception', 'like', '%'.$search.'%');
+                    }),
                 TextColumn::make('failed_at')
                     ->jalaliDateTime()
                     ->sortable(),

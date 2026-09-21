@@ -97,13 +97,7 @@ class GeminiProvider extends AbstractLlmProvider
         );
 
         if (! $response->successful()) {
-            $status = $response->status();
-
-            if (in_array($status, [429, 502, 503, 504], true)) {
-                return $this->failure('Gemini API error (HTTP '.$status.'): '.$response->body());
-            }
-
-            return $this->failure('Gemini API error: '.$response->body());
+            return $this->failure('Gemini API error (HTTP '.$response->status().'): '.$response->body());
         }
 
         $body = $response->json();

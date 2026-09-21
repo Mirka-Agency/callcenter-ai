@@ -88,13 +88,7 @@ class OpenAiProvider extends AbstractLlmProvider
         $response = $this->postChatCompletion($messages, $model);
 
         if (! $response->successful()) {
-            $status = $response->status();
-
-            if (in_array($status, [429, 502, 503, 504], true)) {
-                return $this->failure('OpenAI API error (HTTP '.$status.'): '.$response->body());
-            }
-
-            return $this->failure('OpenAI API error: '.$response->body());
+            return $this->failure('OpenAI API error (HTTP '.$response->status().'): '.$response->body());
         }
 
         $body = $response->json();

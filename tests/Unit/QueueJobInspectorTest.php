@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Application\Intelligence\Jobs\AnalyzeAudioJob;
+use App\Application\Voip\Jobs\ProcessVoipWebhookJob;
 use App\Services\QueueMonitoring\QueueJobInspector;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -26,7 +27,7 @@ class QueueJobInspectorTest extends TestCase
 
         $inspection = app(QueueJobInspector::class)->inspect(
             $payload,
-            "RuntimeException: API returned 503\n#0 /app/AnalyzeAudioJob.php(120)",
+            "RuntimeException: OpenAI API error (HTTP 503): {\"error\":{\"code\":\"service_unavailable\"}}\n#0 /app/AnalyzeAudioJob.php(120)",
         );
 
         $this->assertSame('AnalyzeAudioJob', $inspection->jobClass);
@@ -34,8 +35,36 @@ class QueueJobInspectorTest extends TestCase
         $this->assertSame($recordingUrl, $inspection->properties['recordingUrl']);
         $this->assertSame(5, $inspection->maxTries);
         $this->assertSame(600, $inspection->timeout);
-        $this->assertSame('RuntimeException: API returned 503', $inspection->exceptionMessage);
+        $this->assertSame('RuntimeException: OpenAI API error (HTTP 503): {"error":{"code":"service_unavailable"}}', $inspection->exceptionMessage);
         $this->assertStringContainsString('503', $inspection->exceptionFull ?? '');
+        $this->assertSame(
+            __('filament.failed_job_reasons.service_unavailable'),
+            $inspection->failureReason,
+        );
+    }
+
+    public function test_classifies_avalai_quota_errors_for_admin_panel(): void
+    {
+        $payload = json_encode([
+            'uuid' => (string) Str::uuid(),
+            'displayName' => AnalyzeAudioJob::class,
+            'job' => 'Illuminate\\Queue\\CallQueuedHandler@call',
+            'data' => [
+                'commandName' => AnalyzeAudioJob::class,
+                'command' => serialize(new AnalyzeAudioJob(42)),
+            ],
+        ]);
+
+        $inspection = app(QueueJobInspector::class)->inspect(
+            $payload,
+            'RuntimeException: OpenAI API error (HTTP 429): {"error":{"code":"insufficient_quota","message":"You exceeded your current quota"}}',
+        );
+
+        $this->assertSame(42, $inspection->callId());
+        $this->assertSame(
+            __('filament.failed_job_reasons.avalai_credits_depleted'),
+            $inspection->failureReason,
+        );
     }
 
     public function test_returns_empty_inspection_for_invalid_payload(): void
@@ -49,17 +78,17 @@ class QueueJobInspectorTest extends TestCase
 
     public function test_inspect_tolerates_legacy_jobs_missing_newer_properties(): void
     {
-        $reflection = new \ReflectionClass(\App\Application\Voip\Jobs\ProcessVoipWebhookJob::class);
+        $reflection = new \ReflectionClass(ProcessVoipWebhookJob::class);
         $legacyJob = $reflection->newInstanceWithoutConstructor();
         $reflection->getProperty('connectionId')->setValue($legacyJob, 1);
         $reflection->getProperty('payload')->setValue($legacyJob, ['event_name' => 'Cdr']);
 
         $payload = json_encode([
             'uuid' => (string) Str::uuid(),
-            'displayName' => \App\Application\Voip\Jobs\ProcessVoipWebhookJob::class,
+            'displayName' => ProcessVoipWebhookJob::class,
             'job' => 'Illuminate\\Queue\\CallQueuedHandler@call',
             'data' => [
-                'commandName' => \App\Application\Voip\Jobs\ProcessVoipWebhookJob::class,
+                'commandName' => ProcessVoipWebhookJob::class,
                 'command' => serialize($legacyJob),
             ],
         ]);
