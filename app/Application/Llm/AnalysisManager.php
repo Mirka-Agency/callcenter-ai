@@ -5,11 +5,14 @@ namespace App\Application\Llm;
 use App\Application\Llm\Services\AudioAnalyzer;
 use App\Application\Llm\Services\LlmConnectionResolver;
 use App\Domain\Llm\Contracts\LlmLogRepositoryInterface;
+use App\Domain\Llm\Contracts\LlmProviderInterface;
 use App\Domain\Llm\DTOs\AnalysisResultData;
+use App\Domain\Llm\DTOs\LlmConnectionConfig;
+use App\Domain\Llm\Enums\LlmLogStatus;
 use App\Domain\Llm\Enums\LlmOperation;
 use App\Domain\Llm\Exceptions\LlmConnectionNotFoundException;
-use App\Domain\Llm\Contracts\LlmProviderInterface;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
+use App\Infrastructure\Llm\LlmOutboundGuard;
 
 class AnalysisManager
 {
@@ -51,6 +54,12 @@ class AnalysisManager
 
     public function testConnection(): LlmOperationResult
     {
+        $guard = app(LlmOutboundGuard::class);
+
+        if (! $guard->remoteAnalysisEnabled()) {
+            return LlmOperationResult::failure($guard->disabledMessage());
+        }
+
         return $this->execute(LlmOperation::TestConnection, fn (LlmProviderInterface $provider) => $provider->testConnection());
     }
 
@@ -68,7 +77,7 @@ class AnalysisManager
         $this->logs->logOperation(
             connectionId: $config->connectionId,
             operation: LlmOperation::AnalyzeAudio,
-            status: \App\Domain\Llm\Enums\LlmLogStatus::Success,
+            status: LlmLogStatus::Success,
             request: ['call_id' => $callId],
             response: ['score' => $result->score, 'sentiment' => $result->sentiment->value],
             inputTokens: $result->inputTokens,
@@ -81,7 +90,7 @@ class AnalysisManager
         return $result;
     }
 
-    /** @return array{0: \App\Domain\Llm\DTOs\LlmConnectionConfig, 1: LlmProviderInterface} */
+    /** @return array{0: LlmConnectionConfig, 1: LlmProviderInterface} */
     private function resolveContext(): array
     {
         if ($this->organizationId === null) {

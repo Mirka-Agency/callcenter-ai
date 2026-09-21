@@ -8,6 +8,7 @@ use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
 use App\Services\PersianOutputGuard;
 use App\Services\RecordingStorage;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -41,6 +42,10 @@ class GeminiProvider extends AbstractLlmProvider
 
     public function testConnection(): LlmOperationResult
     {
+        if ($refused = $this->refuseIfRemoteDisabled()) {
+            return $refused;
+        }
+
         if (! $this->hasApiKey()) {
             return LlmOperationResult::success(message: 'Gemini configured in demo mode (no API key).');
         }
@@ -66,6 +71,10 @@ class GeminiProvider extends AbstractLlmProvider
 
         if (! $this->hasApiKey()) {
             return $this->demoAudioAnalysis($request, $model);
+        }
+
+        if ($refused = $this->refuseIfRemoteDisabled()) {
+            return $refused;
         }
 
         $started = microtime(true);
@@ -132,7 +141,7 @@ class GeminiProvider extends AbstractLlmProvider
         AudioAnalysisRequestData $request,
         ?string $audioBase64,
         string $mimeType,
-    ): \Illuminate\Http\Client\Response {
+    ): Response {
         $systemPrompt = $promptBuilder->systemPrompt($request->promptVersion);
 
         $userParts = [

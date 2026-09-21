@@ -15,6 +15,7 @@ use Tests\TestCase;
 class OpenAiProviderAudioAnalysisTest extends TestCase
 {
     use RefreshDatabase;
+
     public function test_refuses_demo_analysis_when_real_audio_exists_without_api_key(): void
     {
         $provider = new OpenAiProvider;
@@ -70,7 +71,7 @@ class OpenAiProviderAudioAnalysisTest extends TestCase
                 apiKey: 'test-key',
                 baseUrl: 'https://api.avalai.ir/v1',
             ),
-            settings: new LlmSettings(),
+            settings: new LlmSettings,
             isDefault: true,
             isActive: true,
         ));
@@ -120,7 +121,7 @@ class OpenAiProviderAudioAnalysisTest extends TestCase
             providerCode: LlmProviderCode::OpenAi,
             name: 'OpenAI',
             credentials: new LlmCredentials(apiKey: 'test-key'),
-            settings: new LlmSettings(),
+            settings: new LlmSettings,
             isDefault: true,
             isActive: true,
         ));
@@ -135,5 +136,38 @@ class OpenAiProviderAudioAnalysisTest extends TestCase
         $this->assertTrue($result->success);
         $this->assertSame('The customer asked about pricing and next steps.', $result->data['summary']);
         Http::assertSentCount(2);
+    }
+
+    public function test_does_not_call_avalai_when_remote_analysis_is_disabled(): void
+    {
+        config(['llm.remote_enabled' => false]);
+        Http::fake();
+
+        $provider = new OpenAiProvider;
+        $provider->configure(new LlmConnectionConfig(
+            connectionId: 1,
+            organizationId: 1,
+            providerCode: LlmProviderCode::OpenAi,
+            name: 'AvalAI',
+            credentials: new LlmCredentials(
+                apiKey: 'sk-live-should-not-be-used',
+                baseUrl: 'https://api.avalai.ir/v1',
+            ),
+            settings: new LlmSettings,
+            isDefault: true,
+            isActive: true,
+        ));
+
+        $result = $provider->analyzeAudio(new AudioAnalysisRequestData(
+            callId: 1,
+            recordingUrl: 'https://example.com/recording.mp3',
+            model: 'google/gemini-3.8-flash',
+            sendAudioFile: true,
+            mimeType: 'audio/mpeg',
+        ));
+
+        $this->assertFalse($result->success);
+        $this->assertStringContainsString('AvalAI', $result->error ?? '');
+        Http::assertNothingSent();
     }
 }

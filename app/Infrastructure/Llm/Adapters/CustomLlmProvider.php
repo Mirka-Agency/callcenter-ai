@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Llm\Adapters;
 
+use App\Application\Llm\Services\PromptBuilder;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
@@ -21,6 +22,10 @@ class CustomLlmProvider extends AbstractLlmProvider
 
     public function testConnection(): LlmOperationResult
     {
+        if ($refused = $this->refuseIfRemoteDisabled()) {
+            return $refused;
+        }
+
         $baseUrl = $this->config->credentials->baseUrl;
 
         if (! $baseUrl) {
@@ -48,8 +53,12 @@ class CustomLlmProvider extends AbstractLlmProvider
             return $this->demoAudioAnalysis($request, $model);
         }
 
+        if ($refused = $this->refuseIfRemoteDisabled()) {
+            return $refused;
+        }
+
         $started = microtime(true);
-        $promptBuilder = app(\App\Application\Llm\Services\PromptBuilder::class);
+        $promptBuilder = app(PromptBuilder::class);
 
         $response = Http::withToken($this->config->credentials->apiKey)
             ->timeout(300)
