@@ -39,4 +39,7 @@ return [
     // AMI requires outbound TCP to the customer's Asterisk (port 5038). Enable on LAN/on-prem only.
     'ami_enabled' => filter_var(env('VOIP_AMI_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
 
+    // HTTP root that maps to /var/spool/asterisk/monitor on the PBX.
+    'recordings_public_base' => rtrim((string) env('VOIP_RECORDINGS_PUBLIC_BASE', ''), '/'),
+
 ];

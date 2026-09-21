@@ -115,6 +115,29 @@ class AsteriskAmiCallTrackerTest extends TestCase
     }
 
     #[Test]
+    public function it_maps_cdr_recordingfile_to_http_url(): void
+    {
+        config(['voip.recordings_public_base' => 'http://192.168.2.16/mirka-call-recordings']);
+
+        $payload = $this->tracker->handle([
+            'Event' => 'Cdr',
+            'UniqueID' => '1789898636.33122',
+            'LinkedID' => '1789898636.33122',
+            'Source' => '111',
+            'Destination' => '909123438047',
+            'Disposition' => 'ANSWERED',
+            'Billsec' => '40',
+            'recordingfile' => '/var/spool/asterisk/monitor/2026/09/20/out-909123438047-111-20260920-143356-1789898636.33122.wav',
+        ]);
+
+        $this->assertNotNull($payload);
+        $this->assertSame(
+            'http://192.168.2.16/mirka-call-recordings/2026/09/20/out-909123438047-111-20260920-143356-1789898636.33122.wav',
+            $payload['recording_url'],
+        );
+    }
+
+    #[Test]
     public function it_does_not_ingest_twice_for_same_call(): void
     {
         $hangup = [

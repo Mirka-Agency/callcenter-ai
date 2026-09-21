@@ -138,7 +138,7 @@ class AnalyzeAudioJob implements ShouldQueue, ShouldBeUnique
     ): void {
         $existing = $recordings->findByCallId($call->id);
 
-        if ($existing?->status === 'completed' && $existing->storagePath) {
+        if ($existing?->status === 'completed' && $existing->storagePath && $this->recordingLooksPlayable($existing)) {
             $recordingStorage->assertExists($existing->storagePath, $existing->storageDisk);
 
             return;
@@ -182,6 +182,22 @@ class AnalyzeAudioJob implements ShouldQueue, ShouldBeUnique
         ));
 
         $recordingStorage->assertExists($result->storagePath, $result->storageDisk ?? config('recordings.disk', 'local'));
+    }
+
+    private function recordingLooksPlayable(RecordingData $recording): bool
+    {
+        $mime = strtolower((string) $recording->mimeType);
+        $size = (int) ($recording->fileSizeBytes ?? 0);
+
+        if ($size > 0 && $size < 2048) {
+            return false;
+        }
+
+        if ($mime !== '' && (str_contains($mime, 'html') || str_contains($mime, 'text/plain'))) {
+            return false;
+        }
+
+        return true;
     }
 
     private function scheduleRetentionAfterAnalysis(int $callId, RecordingRetentionService $retention): void

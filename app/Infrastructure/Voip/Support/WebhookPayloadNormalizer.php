@@ -15,18 +15,27 @@ class WebhookPayloadNormalizer
         $eventRaw = $this->value($payload, 'event', $fieldMapping)
             ?? $this->inferEventTypeFromPayload($payload, $fieldMapping);
 
-        $recordingUrl = DatedMonitorRecordingUrl::normalize(
-            $this->stringValue($payload, 'recording_url', $fieldMapping),
-        );
         $statusRaw = $this->stringValue($payload, 'status', $fieldMapping);
         $directionRaw = $this->stringValue($payload, 'direction', $fieldMapping);
+        $callId = $this->stringValue($payload, 'call_id', $fieldMapping);
+        $sourceNumber = $this->stringValue($payload, 'from', $fieldMapping);
+        $destinationNumber = $this->stringValue($payload, 'to', $fieldMapping);
+        $recordingUrl = DatedMonitorRecordingUrl::normalize(
+            $this->spoolOrHttpRecordingUrl($payload, $fieldMapping),
+        );
+
+        if (DatedMonitorRecordingUrl::isDirectoryOnly($recordingUrl)) {
+            $recordingUrl = DatedMonitorRecordingUrl::fromSpoolPath(
+                (string) ($this->stringValue($payload, 'recordingfile', $fieldMapping) ?? ''),
+            ) ?? $recordingUrl;
+        }
 
         return new NormalizedWebhookEvent(
             type: $this->mapEventType((string) $eventRaw),
-            callId: $this->stringValue($payload, 'call_id', $fieldMapping),
+            callId: $callId,
             direction: $this->mapDirection($directionRaw),
-            sourceNumber: $this->stringValue($payload, 'from', $fieldMapping),
-            destinationNumber: $this->stringValue($payload, 'to', $fieldMapping),
+            sourceNumber: $sourceNumber,
+            destinationNumber: $destinationNumber,
             status: $this->mapStatus($statusRaw, $eventRaw),
             recordingUrl: $recordingUrl,
             extension: $this->stringValue($payload, 'extension', $fieldMapping),
@@ -91,6 +100,11 @@ class WebhookPayloadNormalizer
                 ?? $payload['recording_link']
                 ?? $payload['audio_link']
                 ?? null,
+            'recordingfile' => $payload['recordingfile']
+                ?? $payload['recording_file']
+                ?? $payload['UserField']
+                ?? $payload['userfield']
+                ?? null,
             'extension' => $payload['extension']
                 ?? $payload['agent_extension']
                 ?? $payload['internal_number']
@@ -116,6 +130,19 @@ class WebhookPayloadNormalizer
     }
 
     /** @param array<string, string> $fieldMapping */
+    private function spoolOrHttpRecordingUrl(array $payload, array $fieldMapping): ?string
+    {
+        $raw = $this->stringValue($payload, 'recording_url', $fieldMapping);
+        $file = $this->stringValue($payload, 'recordingfile', $fieldMapping);
+
+        if ($raw !== null && ! DatedMonitorRecordingUrl::isDirectoryOnly($raw)
+            && (str_starts_with($raw, 'http://') || str_starts_with($raw, 'https://'))) {
+            return $raw;
+        }
+
+        return DatedMonitorRecordingUrl::fromSpoolPath((string) ($file ?? $raw ?? '')) ?? $raw;
+    }
+
     private function stringValue(array $payload, string $field, array $fieldMapping): ?string
     {
         $value = $this->value($payload, $field, $fieldMapping);
