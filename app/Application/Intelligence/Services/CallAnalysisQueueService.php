@@ -4,6 +4,7 @@ namespace App\Application\Intelligence\Services;
 
 use App\Application\Intelligence\Jobs\AnalyzeAudioJob;
 use App\Domain\Call\Enums\CallProcessingStatus;
+use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Domain\Voip\Enums\CallStatus;
 use App\Exceptions\InsufficientWalletBalanceException;
@@ -48,7 +49,7 @@ class CallAnalysisQueueService
             return false;
         }
 
-        if (! $forceReanalyze && $this->shouldSkipAnalysis($call)) {
+        if ($this->shouldSkipAnalysis($call)) {
             $this->markSkipped($call);
 
             return false;
@@ -101,6 +102,10 @@ class CallAnalysisQueueService
 
     public function shouldSkipAnalysis(Call $call): bool
     {
+        if ($call->source !== ConversationSource::Voip) {
+            return false;
+        }
+
         $status = strtolower((string) ($call->status ?? $call->voipCallLog?->status ?? ''));
 
         if (in_array($status, self::NON_ANALYZABLE_STATUSES, true)) {

@@ -15,12 +15,14 @@
             'analyzed' => $analysis ? 'تحلیل‌شده' : 'تکمیل‌شده',
             'analyzing', 'downloading' => 'در حال پردازش',
             'failed' => 'ناموفق',
+            'skipped' => 'رد شده',
             default => $analysis ? 'تحلیل‌شده' : 'در انتظار',
         };
         $badge = match ($status) {
             'analyzed' => 'completed',
             'analyzing', 'downloading' => 'processing',
             'failed' => 'failed',
+            'skipped' => 'pending',
             default => $analysis ? 'completed' : 'pending',
         };
     }

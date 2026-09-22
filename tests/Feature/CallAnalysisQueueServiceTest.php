@@ -68,6 +68,100 @@ class CallAnalysisQueueServiceTest extends TestCase
         ]);
     }
 
+    public function test_does_not_queue_short_calls_without_conversation(): void
+    {
+        Bus::fake();
+        PlatformAiSettings::current()->update(['allow_negative_balance' => true]);
+
+        $call = $this->seedCall([
+            'duration_seconds' => 4,
+            'status' => 'completed',
+        ]);
+
+        $queued = app(CallAnalysisQueueService::class)->dispatchForCall($call);
+
+        $this->assertFalse($queued);
+        Bus::assertNothingDispatched();
+        $this->assertSame(CallProcessingStatus::Skipped, $call->fresh()->processing_status);
+        $this->assertNotNull($call->fresh()->processing_error);
+    }
+
+    public function test_does_not_queue_missed_calls_even_with_recording(): void
+    {
+        Bus::fake();
+        PlatformAiSettings::current()->update(['allow_negative_balance' => true]);
+
+        $call = $this->seedCall([
+            'duration_seconds' => 25,
+            'status' => 'missed',
+        ]);
+
+        $queued = app(CallAnalysisQueueService::class)->dispatchForCall($call);
+
+        $this->assertFalse($queued);
+        Bus::assertNothingDispatched();
+        $this->assertSame(CallProcessingStatus::Skipped, $call->fresh()->processing_status);
+    }
+
+    public function test_does_not_skip_short_manual_uploads(): void
+    {
+        Bus::fake();
+        PlatformAiSettings::current()->update(['allow_negative_balance' => true]);
+
+        $call = $this->seedCall([
+            'source' => ConversationSource::ManualUpload,
+            'duration_seconds' => 3,
+            'status' => 'completed',
+        ]);
+
+        $queued = app(CallAnalysisQueueService::class)->dispatchForCall($call);
+
+        $this->assertTrue($queued);
+        Bus::assertChained([
+            AnalyzeAudioJob::class,
+            UpdateEmployeeMetricsJob::class,
+            SyncCrmJob::class,
+        ]);
+    }
+
+    public function test_queues_calls_at_or_above_minimum_duration(): void
+    {
+        Bus::fake();
+        PlatformAiSettings::current()->update(['allow_negative_balance' => true]);
+
+        $call = $this->seedCall([
+            'duration_seconds' => 10,
+            'status' => 'completed',
+        ]);
+
+        $queued = app(CallAnalysisQueueService::class)->dispatchForCall($call);
+
+        $this->assertTrue($queued);
+        Bus::assertChained([
+            AnalyzeAudioJob::class,
+            UpdateEmployeeMetricsJob::class,
+            SyncCrmJob::class,
+        ]);
+    }
+
+    public function test_force_reanalyze_does_not_bypass_short_call_skip(): void
+    {
+        Bus::fake();
+        PlatformAiSettings::current()->update(['allow_negative_balance' => true]);
+
+        $call = $this->seedCall([
+            'duration_seconds' => 3,
+            'status' => 'completed',
+            'processing_status' => CallProcessingStatus::Skipped,
+        ]);
+
+        $queued = app(CallAnalysisQueueService::class)->dispatchForCall($call, forceReanalyze: true);
+
+        $this->assertFalse($queued);
+        Bus::assertNothingDispatched();
+        $this->assertSame(CallProcessingStatus::Skipped, $call->fresh()->processing_status);
+    }
+
     /** @param  array<string, mixed>  $overrides */
     private function seedCall(array $overrides = []): Call
     {
@@ -91,6 +185,7 @@ class CallAnalysisQueueServiceTest extends TestCase
             'caller_number' => '09120000000',
             'receiver_number' => '101',
             'status' => 'completed',
+            'duration_seconds' => 120,
             'processing_status' => CallProcessingStatus::Pending,
             'started_at' => now(),
         ], $overrides));
