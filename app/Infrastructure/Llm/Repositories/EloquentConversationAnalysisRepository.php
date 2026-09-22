@@ -47,7 +47,8 @@ class EloquentConversationAnalysisRepository implements ConversationAnalysisRepo
             'cached_input_price_snapshot' => $data->cachedInputPriceSnapshot,
             'reasoning_price_snapshot' => $data->reasoningPriceSnapshot,
             'processing_duration_ms' => $data->processingDurationMs,
-            'analyzed_at' => $data->analyzedAt ?? now(),
+            // Always stamp "now" so re-analyses enter insight lists after a dashboard reset cutoff.
+            'analyzed_at' => now(),
         ];
 
         $existing = $data->callId

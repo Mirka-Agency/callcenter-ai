@@ -171,9 +171,9 @@ class TradingOpportunitiesDashboardTest extends TestCase
             ->assertSee('وقتی لید باکیفیتی اخیراً تماس بگیرد، برای پیگیری فروش اینجا دیده می‌شود.');
     }
 
-    public function test_insight_lists_cutoff_hides_historical_and_demo_seed_leads(): void
+    public function test_insight_lists_cutoff_hides_historical_leads_but_keeps_reanalyzed_rows(): void
     {
-        config(['dashboard.insight_lists_since' => now()->subHour()->toIso8601String()]);
+        config(['dashboard.insight_lists_since' => now()->subHour()->utc()->toIso8601String()]);
 
         $organization = Organization::factory()->create();
 
@@ -192,18 +192,20 @@ class TradingOpportunitiesDashboardTest extends TestCase
             'analyzed_at' => now()->subHours(3),
         ]);
         $this->seedOpportunity($organization, [
-            'external_id' => 'skip-demo',
-            'customer_name' => 'فرصت دمو',
-            'provider_code' => 'demo',
+            'external_id' => 'keep-reanalyzed',
+            'customer_name' => 'فرصت بازتحلیل‌شده',
             'lead_level' => 'high',
-            'lead_score' => 99,
-            'analyzed_at' => now()->subMinutes(5),
+            'lead_score' => 88,
+            'analyzed_at' => now()->subHours(5),
+            'updated_at' => now()->subMinutes(5),
         ]);
 
         $opportunities = EmployerDashboardAnalytics::forOrganization($organization->id)->tradingOpportunities();
+        $names = collect($opportunities)->pluck('customer')->all();
 
-        $this->assertCount(1, $opportunities);
-        $this->assertSame('فرصت تازه', $opportunities[0]['customer']);
+        $this->assertContains('فرصت تازه', $names);
+        $this->assertContains('فرصت بازتحلیل‌شده', $names);
+        $this->assertNotContains('فرصت قبل از ریست', $names);
     }
 
     /**
@@ -259,7 +261,7 @@ class TradingOpportunitiesDashboardTest extends TestCase
             'started_at' => $data['analyzed_at'],
         ]);
 
-        ConversationAnalysis::query()->create([
+        $analysis = ConversationAnalysis::query()->create([
             'organization_id' => $organization->id,
             'organization_user_id' => $employee->id,
             'call_id' => $call->id,
@@ -293,6 +295,11 @@ class TradingOpportunitiesDashboardTest extends TestCase
                 'phone_number' => $data['customer_phone'] ?? '09120000000',
             ],
             'analyzed_at' => $data['analyzed_at'],
+        ]);
+
+        ConversationAnalysis::query()->whereKey($analysis->id)->update([
+            'analyzed_at' => $data['analyzed_at'],
+            'updated_at' => $data['updated_at'] ?? $data['analyzed_at'],
         ]);
     }
 }

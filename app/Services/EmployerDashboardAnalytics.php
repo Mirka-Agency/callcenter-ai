@@ -625,8 +625,8 @@ class EmployerDashboardAnalytics
     }
 
     /**
-     * Insight lists start empty of historical/demo seed data and only show
-     * real analyses that match each list's detection rules after the cutoff.
+     * Insight lists ignore historical rows before the reset cutoff.
+     * Match on analyzed_at or updated_at so a re-analysis always qualifies.
      *
      * @param  \Illuminate\Database\Eloquent\Builder<ConversationAnalysis>  $query
      */
@@ -634,15 +634,13 @@ class EmployerDashboardAnalytics
     {
         $since = $this->insightListsSince();
 
-        if ($since !== null) {
-            $query->where('analyzed_at', '>=', $since);
+        if ($since === null) {
+            return;
         }
 
-        $query->whereHas('call', function ($callQuery): void {
-            $callQuery->where(function ($inner): void {
-                $inner->whereNull('provider_code')
-                    ->orWhere('provider_code', '!=', 'demo');
-            });
+        $query->where(function ($inner) use ($since): void {
+            $inner->where('analyzed_at', '>=', $since)
+                ->orWhere('updated_at', '>=', $since);
         });
     }
 
@@ -654,7 +652,7 @@ class EmployerDashboardAnalytics
             return null;
         }
 
-        return Carbon::parse($value);
+        return Carbon::parse($value)->utc();
     }
 
     /**
@@ -835,7 +833,12 @@ class EmployerDashboardAnalytics
 
     private function callOccurredAt(ConversationAnalysis $analysis): ?CarbonInterface
     {
-        return $analysis->call?->occurredAt() ?? $analysis->analyzed_at;
+        $call = $analysis->call;
+
+        return $call?->conversation_date
+            ?? $call?->started_at
+            ?? $call?->created_at
+            ?? $analysis->analyzed_at;
     }
 
     private function sellableProduct(?string $title, ?string $category, string $intent, mixed $keywords): ?string

@@ -13,6 +13,6 @@ return [
     |
     */
 
-    'insight_lists_since' => env('DASHBOARD_INSIGHT_LISTS_SINCE', '2026-09-22T00:00:00+03:30'),
+    'insight_lists_since' => env('DASHBOARD_INSIGHT_LISTS_SINCE', '2026-09-22T12:31:16+03:30'),
 
 ];
