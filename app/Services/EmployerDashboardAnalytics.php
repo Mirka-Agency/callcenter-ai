@@ -138,11 +138,15 @@ class EmployerDashboardAnalytics
     {
         $days = max(1, min(90, $days));
 
-        return ConversationAnalysis::query()
+        $query = ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId)
             ->evaluable()
             ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay())
-            ->whereNotNull('lead_quality_json')
+            ->whereNotNull('lead_quality_json');
+
+        $this->constrainInsightListQuery($query);
+
+        return $query
             ->with([
                 'employee:id,first_name,last_name,user_id',
                 'call:id,customer_id,customer_name,customer_phone,caller_number,title,category,tags',
@@ -225,8 +229,10 @@ class EmployerDashboardAnalytics
     {
         $days = max(1, min(180, $days));
 
+        $sinceKey = $this->insightListsSince()?->getTimestamp() ?? 'none';
+
         return Cache::remember(
-            "dashboard:forgotten:{$this->organizationId}:{$days}",
+            "dashboard:forgotten:{$this->organizationId}:{$days}:{$sinceKey}",
             120,
             fn () => $this->buildForgottenFollowUps($days),
         );
@@ -251,14 +257,18 @@ class EmployerDashboardAnalytics
     {
         $today = now()->startOfDay();
 
-        $analyses = ConversationAnalysis::query()
+        $query = ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId)
             ->evaluable()
             ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay())
             ->where(function ($query) {
                 $query->whereNotNull('next_actions_json')
                     ->orWhereNotNull('operational_insights_json');
-            })
+            });
+
+        $this->constrainInsightListQuery($query);
+
+        $analyses = $query
             ->with([
                 'employee:id,first_name,last_name,user_id',
                 'call:id,customer_id,customer_name,customer_phone,caller_number,started_at',
@@ -564,11 +574,15 @@ class EmployerDashboardAnalytics
     {
         $seen = [];
 
-        return ConversationAnalysis::query()
+        $query = ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId)
             ->evaluable()
             ->where('sentiment', $sentiment)
-            ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay())
+            ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay());
+
+        $this->constrainInsightListQuery($query);
+
+        return $query
             ->with([
                 'employee:id,first_name,last_name,user_id',
                 'call:id,customer_id,customer_name,customer_phone,caller_number',
@@ -607,6 +621,39 @@ class EmployerDashboardAnalytics
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Insight lists start empty of historical/demo seed data and only show
+     * real analyses that match each list's detection rules after the cutoff.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<ConversationAnalysis>  $query
+     */
+    private function constrainInsightListQuery($query): void
+    {
+        $since = $this->insightListsSince();
+
+        if ($since !== null) {
+            $query->where('analyzed_at', '>=', $since);
+        }
+
+        $query->whereHas('call', function ($callQuery): void {
+            $callQuery->where(function ($inner): void {
+                $inner->whereNull('provider_code')
+                    ->orWhere('provider_code', '!=', 'demo');
+            });
+        });
+    }
+
+    private function insightListsSince(): ?CarbonInterface
+    {
+        $value = config('dashboard.insight_lists_since');
+
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        return Carbon::parse($value);
     }
 
     /**

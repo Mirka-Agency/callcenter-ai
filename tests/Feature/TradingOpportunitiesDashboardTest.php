@@ -171,6 +171,41 @@ class TradingOpportunitiesDashboardTest extends TestCase
             ->assertSee('وقتی لید باکیفیتی اخیراً تماس بگیرد، برای پیگیری فروش اینجا دیده می‌شود.');
     }
 
+    public function test_insight_lists_cutoff_hides_historical_and_demo_seed_leads(): void
+    {
+        config(['dashboard.insight_lists_since' => now()->subHour()->toIso8601String()]);
+
+        $organization = Organization::factory()->create();
+
+        $this->seedOpportunity($organization, [
+            'external_id' => 'keep-fresh',
+            'customer_name' => 'فرصت تازه',
+            'lead_level' => 'high',
+            'lead_score' => 92,
+            'analyzed_at' => now()->subMinutes(10),
+        ]);
+        $this->seedOpportunity($organization, [
+            'external_id' => 'skip-old',
+            'customer_name' => 'فرصت قبل از ریست',
+            'lead_level' => 'high',
+            'lead_score' => 95,
+            'analyzed_at' => now()->subHours(3),
+        ]);
+        $this->seedOpportunity($organization, [
+            'external_id' => 'skip-demo',
+            'customer_name' => 'فرصت دمو',
+            'provider_code' => 'demo',
+            'lead_level' => 'high',
+            'lead_score' => 99,
+            'analyzed_at' => now()->subMinutes(5),
+        ]);
+
+        $opportunities = EmployerDashboardAnalytics::forOrganization($organization->id)->tradingOpportunities();
+
+        $this->assertCount(1, $opportunities);
+        $this->assertSame('فرصت تازه', $opportunities[0]['customer']);
+    }
+
     /**
      * @return list<string>
      */
@@ -208,7 +243,7 @@ class TradingOpportunitiesDashboardTest extends TestCase
             'organization_id' => $organization->id,
             'organization_user_id' => $employee->id,
             'source' => ConversationSource::Voip,
-            'provider_code' => 'novatel',
+            'provider_code' => $data['provider_code'] ?? 'novatel',
             'external_call_id' => $data['external_id'],
             'direction' => 'inbound',
             'caller_number' => $data['customer_phone'] ?? '09120000000',

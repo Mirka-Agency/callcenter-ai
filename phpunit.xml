@@ -35,5 +35,6 @@
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="LLM_REMOTE_ENABLED" value="true" force="true"/>
         <env name="LLM_BLOCK_AVALAI" value="false" force="true"/>
+        <env name="DASHBOARD_INSIGHT_LISTS_SINCE" value="" force="true"/>
     </php>
 </phpunit>

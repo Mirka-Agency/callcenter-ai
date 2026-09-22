@@ -92,10 +92,19 @@ class OpenAiProvider extends AbstractLlmProvider
         }
 
         $body = $response->json();
-        $content = $body['choices'][0]['message']['content'] ?? '';
+        $choice = $body['choices'][0] ?? [];
+        $content = is_array($choice) ? (string) ($choice['message']['content'] ?? '') : '';
         $parsed = $this->parseJsonResponse($content);
 
         if (! $parsed) {
+            Log::warning('OpenAI audio analysis JSON parse failed', [
+                'call_id' => $request->callId,
+                'model' => $model,
+                'finish_reason' => is_array($choice) ? ($choice['finish_reason'] ?? null) : null,
+                'usage' => $body['usage'] ?? null,
+                'content_head' => mb_substr($content, 0, 500),
+            ]);
+
             return $this->failure('Failed to parse OpenAI audio analysis response.');
         }
 
@@ -163,9 +172,32 @@ class OpenAiProvider extends AbstractLlmProvider
                 'model' => $model,
                 'messages' => $messages,
                 'temperature' => $this->config->settings->temperature ?? 0.3,
-                'max_tokens' => $this->config->settings->maxOutputTokens ?? 2000,
+                'max_tokens' => $this->resolveMaxOutputTokens($model),
                 'response_format' => ['type' => 'json_object'],
             ]);
+    }
+
+    /**
+     * Gemini (especially via AvalAI) spends many completion tokens on reasoning.
+     * A 2000 cap truncates JSON mid-object and surfaces as parse failures.
+     */
+    private function resolveMaxOutputTokens(string $model): int
+    {
+        if ($this->config->settings->maxOutputTokens !== null) {
+            return max(1, (int) $this->config->settings->maxOutputTokens);
+        }
+
+        $normalized = strtolower($model);
+
+        if (str_contains($normalized, 'gemini-3') || str_contains($normalized, 'gemini/3')) {
+            return 16384;
+        }
+
+        if (str_contains($normalized, 'gemini') || $this->usesIntermediaryEndpoint()) {
+            return 8192;
+        }
+
+        return 4096;
     }
 
     private function mimeTypeForFormat(string $format): string

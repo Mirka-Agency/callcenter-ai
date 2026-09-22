@@ -87,10 +87,69 @@ class OpenAiProviderAudioAnalysisTest extends TestCase
         $this->assertTrue($result->success);
 
         Http::assertSent(function ($request) {
+            $data = $request->data();
+
             return str_contains($request->url(), 'api.avalai.ir')
-                && ($request->data()['model'] ?? null) === 'google/gemini-3.1-flash-lite';
+                && ($data['model'] ?? null) === 'google/gemini-3.1-flash-lite'
+                && ($data['max_tokens'] ?? null) === 16384;
         });
         Http::assertSentCount(2);
+    }
+
+    public function test_uses_higher_max_tokens_for_gemini_3_via_openai_compatible_endpoint(): void
+    {
+        $analysisJson = json_encode([
+            'score' => 80,
+            'summary' => 'خلاصه',
+            'sentiment' => 'positive',
+            'strengths' => [],
+            'weaknesses' => [],
+            'next_actions' => [],
+        ], JSON_UNESCAPED_UNICODE);
+
+        Http::fake([
+            'https://example.com/recording.mp3' => Http::response('audio-bytes'),
+            'https://api.avalai.ir/*' => Http::response([
+                'choices' => [[
+                    'message' => ['content' => $analysisJson],
+                    'finish_reason' => 'stop',
+                ]],
+                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5],
+            ]),
+        ]);
+
+        $provider = new OpenAiProvider;
+        $provider->configure(new LlmConnectionConfig(
+            connectionId: 1,
+            organizationId: 1,
+            providerCode: LlmProviderCode::OpenAi,
+            name: 'AvalAI',
+            credentials: new LlmCredentials(
+                apiKey: 'test-key',
+                baseUrl: 'https://api.avalai.ir/v1',
+            ),
+            settings: new LlmSettings,
+            isDefault: true,
+            isActive: true,
+        ));
+
+        $result = $provider->analyzeAudio(new AudioAnalysisRequestData(
+            callId: 1,
+            recordingUrl: 'https://example.com/recording.mp3',
+            model: 'gemini-3.8-flash',
+            sendAudioFile: true,
+            mimeType: 'audio/mpeg',
+        ));
+
+        $this->assertTrue($result->success);
+
+        Http::assertSent(function ($request) {
+            $data = $request->data();
+
+            return str_contains($request->url(), 'chat/completions')
+                && ($data['model'] ?? null) === 'gemini-3.8-flash'
+                && ($data['max_tokens'] ?? null) === 16384;
+        });
     }
 
     public function test_english_analysis_is_accepted_without_a_second_model_request(): void
