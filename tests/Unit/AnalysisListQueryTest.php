@@ -174,6 +174,34 @@ class AnalysisListQueryTest extends TestCase
             'duration_seconds' => 0,
             'started_at' => now(),
         ]);
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09123333333',
+            'receiver_number' => '102',
+            'status' => CallStatus::Busy->value,
+            'processing_status' => 'pending',
+            'duration_seconds' => 0,
+            'started_at' => now(),
+        ]);
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09124444444',
+            'receiver_number' => '103',
+            'status' => CallStatus::Cancelled->value,
+            'processing_status' => 'pending',
+            'duration_seconds' => 0,
+            'started_at' => now(),
+        ]);
 
         $overview = app(AnalysisListQuery::class)->overview(AnalysisListFilter::make(
             organizationId: $organization->id,
@@ -182,8 +210,8 @@ class AnalysisListQueryTest extends TestCase
         ));
 
         $this->assertSame(1, $overview['total']);
-        $this->assertSame(3, $overview['total_calls']);
-        $this->assertSame(2, $overview['missed_count']);
+        $this->assertSame(5, $overview['total_calls']);
+        $this->assertSame(4, $overview['missed_count']);
     }
 
     public function test_assigned_employees_only_excludes_unassigned_analyses(): void

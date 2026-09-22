@@ -65,7 +65,7 @@
     ];
 
     $filterActionTargets = 'applyCustomDateRange,applyQuickFilter,setDatePreset,closeCustomDateRangePanel,clearDateFilter,clearFilters,sortByColumn,filterByAgent';
-    $pinAnalysisListUnderFilters = $callStatus === 'missed' || $needsAttention;
+    $pinAnalysisListUnderFilters = $callStatus === 'lost' || $needsAttention;
 @endphp
 
 <div class="saas-page space-y-6">

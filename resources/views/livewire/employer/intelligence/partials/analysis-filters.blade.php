@@ -73,8 +73,8 @@
             wire:click="applyQuickFilter('missed')"
             @class([
                 'rounded-md px-3 py-1.5 text-xs font-medium transition',
-                'bg-red-600 text-white' => $callStatus === 'missed',
-                'bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400' => $callStatus !== 'missed',
+                'bg-red-600 text-white' => $callStatus === 'lost',
+                'bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400' => $callStatus !== 'lost',
             ])
         >تماس‌های از دست رفته</button>
         <button
@@ -151,7 +151,7 @@
             @endif
             @if ($callStatus)
                 <button type="button" wire:click="$set('callStatus', null)" class="rounded-md bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                    وضعیت: {{ \App\Domain\Voip\Enums\CallStatus::tryFrom($callStatus)?->label() }} ×
+                    وضعیت: {{ $callStatus === 'lost' ? 'از دست رفته' : (\App\Domain\Voip\Enums\CallStatus::tryFrom($callStatus)?->label() ?? $callStatus) }} ×
                 </button>
             @endif
             @if ($needsAttention)

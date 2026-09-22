@@ -26,4 +26,29 @@ enum CallStatus: string
             self::Cancelled => 'لغو شده',
         };
     }
+
+    /**
+     * Call outcomes that never produced a connected conversation.
+     * Used for "تماس از دست رفته" stats (not only status=missed).
+     *
+     * @return list<self>
+     */
+    public static function lost(): array
+    {
+        return [
+            self::Missed,
+            self::Busy,
+            self::Failed,
+            self::Cancelled,
+        ];
+    }
+
+    /** @return list<string> */
+    public static function lostValues(): array
+    {
+        return array_map(
+            static fn (self $status): string => $status->value,
+            self::lost(),
+        );
+    }
 }

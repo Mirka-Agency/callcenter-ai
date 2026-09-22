@@ -115,11 +115,11 @@ trait HasAnalysisListFilters
         $this->resetPage();
 
         if ($preset === 'missed') {
-            $this->callStatus = $this->callStatus === CallStatus::Missed->value
+            $this->callStatus = $this->callStatus === 'lost'
                 ? null
-                : CallStatus::Missed->value;
+                : 'lost';
 
-            if ($this->callStatus === CallStatus::Missed->value) {
+            if ($this->callStatus === 'lost') {
                 $this->focusAnalysisListUnderFilters();
             }
 
@@ -282,7 +282,7 @@ trait HasAnalysisListFilters
             customFrom: $this->customFrom ? Carbon::parse($this->customFrom) : null,
             customTo: $this->customTo ? Carbon::parse($this->customTo) : null,
             employeeId: $this->filterEmployeeId,
-            statuses: $this->callStatus ? [$this->callStatus] : [],
+            statuses: $this->resolvedCallStatuses(),
             direction: $this->directionFilter ?: null,
             minDurationSeconds: $this->durationMin ? $this->durationMin * 60 : null,
             maxDurationSeconds: $this->durationMax ? $this->durationMax * 60 : null,
@@ -292,5 +292,19 @@ trait HasAnalysisListFilters
             assignedEmployeesOnly: true,
             needsAttention: $this->needsAttention,
         );
+    }
+
+    /** @return list<string> */
+    protected function resolvedCallStatuses(): array
+    {
+        if ($this->callStatus === null || $this->callStatus === '') {
+            return [];
+        }
+
+        if ($this->callStatus === 'lost') {
+            return CallStatus::lostValues();
+        }
+
+        return [$this->callStatus];
     }
 }
