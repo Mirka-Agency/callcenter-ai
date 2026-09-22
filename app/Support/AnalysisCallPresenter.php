@@ -6,9 +6,18 @@ use App\Domain\Voip\Enums\CallDirection;
 use App\Domain\Voip\Enums\CallStatus;
 use App\Models\ConversationAnalysis;
 use App\Services\Reports\CallMetricsAnalytics;
+use Carbon\CarbonInterface;
 
 class AnalysisCallPresenter
 {
+    /**
+     * Day the call took place (not when it was analyzed).
+     */
+    public static function callOccurredAt(ConversationAnalysis $analysis): ?CarbonInterface
+    {
+        return $analysis->call?->occurredAt();
+    }
+
     public static function status(ConversationAnalysis $analysis): ?CallStatus
     {
         $raw = $analysis->call?->status ?? $analysis->callLog?->status?->value;

@@ -7,6 +7,7 @@ use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Call\Enums\UploaderType;
 use App\Models\CallProcessingJob;
 use App\Models\Concerns\OccurredBetween;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -126,6 +127,14 @@ class Call extends Model
         return $this->title
             ?? $this->customer_name
             ?? 'Upload #'.$this->id;
+    }
+
+    /**
+     * When the conversation actually happened (manual upload date, VoIP start, or create time).
+     */
+    public function occurredAt(): ?CarbonInterface
+    {
+        return $this->conversation_date ?? $this->started_at ?? $this->created_at;
     }
 
     /** @param Builder<Call> $query */

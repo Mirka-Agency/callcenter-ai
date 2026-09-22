@@ -200,7 +200,7 @@ trait HasEmployeeCallListFilters
 
     public function sortByColumn(string $column): void
     {
-        $allowed = ['analyzed_at', 'duration', 'status', 'score'];
+        $allowed = ['analyzed_at', 'call_at', 'duration', 'status', 'score'];
 
         if (! in_array($column, $allowed, true)) {
             return;
@@ -210,7 +210,7 @@ trait HasEmployeeCallListFilters
             $this->sortDir = $this->sortDir === 'asc' ? 'desc' : 'asc';
         } else {
             $this->sortBy = $column;
-            $this->sortDir = $column === 'analyzed_at' ? 'desc' : 'asc';
+            $this->sortDir = in_array($column, ['analyzed_at', 'call_at'], true) ? 'desc' : 'asc';
         }
 
         $this->resetPage();

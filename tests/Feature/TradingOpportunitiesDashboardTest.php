@@ -52,7 +52,7 @@ class TradingOpportunitiesDashboardTest extends TestCase
             ->assertSee('نام شخص/شرکت')
             ->assertSee('شماره تماس')
             ->assertSee('نام کارشناس')
-            ->assertSee('تاریخ')
+            ->assertSee('تاریخ تماس')
             ->assertSee('محصول/سرویس قابل فروش')
             ->assertSee('کیفیت لید')
             ->assertSee('احتمال خرید')
