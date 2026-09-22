@@ -65,6 +65,7 @@ class CallRecording extends Model
                         ->orWhereIn('processing_status', [
                             CallProcessingStatus::Analyzed->value,
                             CallProcessingStatus::Failed->value,
+                            CallProcessingStatus::Skipped->value,
                         ]);
                 })->whereDoesntHave('processingJobs', function (Builder $jobs) {
                     $jobs->whereIn('status', [
