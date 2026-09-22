@@ -45,7 +45,7 @@
                         <th>نام شخص/شرکت</th>
                         <th>شماره تماس</th>
                         <th>نام کارشناس</th>
-                        <x-saas.sort-header column="date" label="تاریخ" />
+                        <x-saas.sort-header column="date" label="تاریخ تماس" />
                         <th>محصول/سرویس قابل فروش</th>
                         <x-saas.sort-header column="lead_quality" label="کیفیت لید" />
                         <x-saas.sort-header column="purchase_probability" label="احتمال خرید" />
@@ -83,7 +83,7 @@
                             </td>
                             <td><span dir="ltr">{{ $opportunity['phone'] ?? '—' }}</span></td>
                             <td class="truncate">{{ $opportunity['employee'] }}</td>
-                            <td class="truncate">{{ $opportunity['date'] }}</td>
+                            <td class="truncate">{{ $opportunity['call_date'] }}</td>
                             <td class="truncate">{{ $opportunity['product'] ?? '—' }}</td>
                             <td class="saas-lead-quality-cell">
                                 @if ($opportunity['lead_score'] !== null)

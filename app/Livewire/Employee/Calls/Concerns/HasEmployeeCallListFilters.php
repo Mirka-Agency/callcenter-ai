@@ -99,7 +99,9 @@ trait HasEmployeeCallListFilters
         $this->resetPage();
 
         if ($preset === 'missed') {
-            $this->callStatus = CallStatus::Missed->value;
+            $this->callStatus = $this->callStatus === 'lost'
+                ? null
+                : 'lost';
 
             return;
         }
@@ -200,7 +202,7 @@ trait HasEmployeeCallListFilters
 
     public function sortByColumn(string $column): void
     {
-        $allowed = ['analyzed_at', 'duration', 'status', 'score'];
+        $allowed = ['analyzed_at', 'call_at', 'duration', 'status', 'score'];
 
         if (! in_array($column, $allowed, true)) {
             return;
@@ -210,7 +212,7 @@ trait HasEmployeeCallListFilters
             $this->sortDir = $this->sortDir === 'asc' ? 'desc' : 'asc';
         } else {
             $this->sortBy = $column;
-            $this->sortDir = $column === 'analyzed_at' ? 'desc' : 'asc';
+            $this->sortDir = in_array($column, ['analyzed_at', 'call_at'], true) ? 'desc' : 'asc';
         }
 
         $this->resetPage();
@@ -226,7 +228,7 @@ trait HasEmployeeCallListFilters
             customFrom: $this->customFrom ? \Carbon\Carbon::parse($this->customFrom) : null,
             customTo: $this->customTo ? \Carbon\Carbon::parse($this->customTo) : null,
             employeeId: EmployeeContext::membership()->id,
-            statuses: $this->callStatus ? [$this->callStatus] : [],
+            statuses: $this->resolvedCallStatuses(),
             direction: $this->directionFilter ?: null,
             minDurationSeconds: $this->durationMin ? $this->durationMin * 60 : null,
             maxDurationSeconds: $this->durationMax ? $this->durationMax * 60 : null,
@@ -234,5 +236,19 @@ trait HasEmployeeCallListFilters
             sortBy: $this->sortBy,
             sortDir: $this->sortDir,
         );
+    }
+
+    /** @return list<string> */
+    protected function resolvedCallStatuses(): array
+    {
+        if ($this->callStatus === null || $this->callStatus === '') {
+            return [];
+        }
+
+        if ($this->callStatus === 'lost') {
+            return CallStatus::lostValues();
+        }
+
+        return [$this->callStatus];
     }
 }

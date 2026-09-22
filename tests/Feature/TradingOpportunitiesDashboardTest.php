@@ -52,7 +52,7 @@ class TradingOpportunitiesDashboardTest extends TestCase
             ->assertSee('نام شخص/شرکت')
             ->assertSee('شماره تماس')
             ->assertSee('نام کارشناس')
-            ->assertSee('تاریخ')
+            ->assertSee('تاریخ تماس')
             ->assertSee('محصول/سرویس قابل فروش')
             ->assertSee('کیفیت لید')
             ->assertSee('احتمال خرید')
@@ -171,6 +171,43 @@ class TradingOpportunitiesDashboardTest extends TestCase
             ->assertSee('وقتی لید باکیفیتی اخیراً تماس بگیرد، برای پیگیری فروش اینجا دیده می‌شود.');
     }
 
+    public function test_insight_lists_cutoff_hides_historical_leads_but_keeps_reanalyzed_rows(): void
+    {
+        config(['dashboard.insight_lists_since' => now()->subHour()->utc()->toIso8601String()]);
+
+        $organization = Organization::factory()->create();
+
+        $this->seedOpportunity($organization, [
+            'external_id' => 'keep-fresh',
+            'customer_name' => 'فرصت تازه',
+            'lead_level' => 'high',
+            'lead_score' => 92,
+            'analyzed_at' => now()->subMinutes(10),
+        ]);
+        $this->seedOpportunity($organization, [
+            'external_id' => 'skip-old',
+            'customer_name' => 'فرصت قبل از ریست',
+            'lead_level' => 'high',
+            'lead_score' => 95,
+            'analyzed_at' => now()->subHours(3),
+        ]);
+        $this->seedOpportunity($organization, [
+            'external_id' => 'keep-reanalyzed',
+            'customer_name' => 'فرصت بازتحلیل‌شده',
+            'lead_level' => 'high',
+            'lead_score' => 88,
+            'analyzed_at' => now()->subHours(5),
+            'updated_at' => now()->subMinutes(5),
+        ]);
+
+        $opportunities = EmployerDashboardAnalytics::forOrganization($organization->id)->tradingOpportunities();
+        $names = collect($opportunities)->pluck('customer')->all();
+
+        $this->assertContains('فرصت تازه', $names);
+        $this->assertContains('فرصت بازتحلیل‌شده', $names);
+        $this->assertNotContains('فرصت قبل از ریست', $names);
+    }
+
     /**
      * @return list<string>
      */
@@ -208,7 +245,7 @@ class TradingOpportunitiesDashboardTest extends TestCase
             'organization_id' => $organization->id,
             'organization_user_id' => $employee->id,
             'source' => ConversationSource::Voip,
-            'provider_code' => 'novatel',
+            'provider_code' => $data['provider_code'] ?? 'novatel',
             'external_call_id' => $data['external_id'],
             'direction' => 'inbound',
             'caller_number' => $data['customer_phone'] ?? '09120000000',
@@ -224,7 +261,7 @@ class TradingOpportunitiesDashboardTest extends TestCase
             'started_at' => $data['analyzed_at'],
         ]);
 
-        ConversationAnalysis::query()->create([
+        $analysis = ConversationAnalysis::query()->create([
             'organization_id' => $organization->id,
             'organization_user_id' => $employee->id,
             'call_id' => $call->id,
@@ -258,6 +295,11 @@ class TradingOpportunitiesDashboardTest extends TestCase
                 'phone_number' => $data['customer_phone'] ?? '09120000000',
             ],
             'analyzed_at' => $data['analyzed_at'],
+        ]);
+
+        ConversationAnalysis::query()->whereKey($analysis->id)->update([
+            'analyzed_at' => $data['analyzed_at'],
+            'updated_at' => $data['updated_at'] ?? $data['analyzed_at'],
         ]);
     }
 }

@@ -45,11 +45,16 @@
             </div>
         @else
             <div class="saas-analysis-list-scroll overflow-x-auto lg:overflow-x-auto">
-                <div class="saas-analysis-list-table min-w-[58rem] lg:min-w-[58rem]">
+                <div class="saas-analysis-list-table min-w-[66rem] lg:min-w-[66rem]">
                     <div class="saas-analysis-list-header saas-analysis-list-grid">
                         <div>
+                            <button type="button" wire:click="sortByColumn('call_at')" class="inline-flex items-center gap-1 transition hover:text-zinc-900 dark:hover:text-white">
+                                تاریخ تماس <x-saas.sort-icon :active="$sortBy === 'call_at'" :dir="$sortDir" />
+                            </button>
+                        </div>
+                        <div>
                             <button type="button" wire:click="sortByColumn('analyzed_at')" class="inline-flex items-center gap-1 transition hover:text-zinc-900 dark:hover:text-white">
-                                تاریخ و زمان <x-saas.sort-icon :active="$sortBy === 'analyzed_at'" :dir="$sortDir" />
+                                تاریخ تحلیل <x-saas.sort-icon :active="$sortBy === 'analyzed_at'" :dir="$sortDir" />
                             </button>
                         </div>
                         <div>
@@ -81,6 +86,7 @@
                             @php
                                 $status = AnalysisCallPresenter::status($analysis);
                                 $direction = AnalysisCallPresenter::direction($analysis);
+                                $callOccurredAt = AnalysisCallPresenter::callOccurredAt($analysis);
                             @endphp
                             <div
                                 wire:key="analysis-{{ $analysis->id }}"
@@ -90,6 +96,15 @@
                                 aria-label="مشاهده جزئیات تحلیل {{ shamsi($analysis->analyzed_at) }}"
                                 class="saas-analysis-row saas-analysis-list-grid group"
                             >
+                                <div class="min-w-0 whitespace-nowrap">
+                                    @if ($callOccurredAt)
+                                        <p class="font-medium text-zinc-900 dark:text-white">{{ shamsi($callOccurredAt) }}</p>
+                                        <p class="text-xs text-zinc-500">{{ shamsi($callOccurredAt, 'time') }}</p>
+                                    @else
+                                        <p class="font-medium text-zinc-400">—</p>
+                                    @endif
+                                </div>
+
                                 <div class="min-w-0 whitespace-nowrap">
                                     <p class="font-medium text-zinc-900 dark:text-white">{{ shamsi($analysis->analyzed_at) }}</p>
                                     <p class="text-xs text-zinc-500">{{ shamsi($analysis->analyzed_at, 'time') }}</p>

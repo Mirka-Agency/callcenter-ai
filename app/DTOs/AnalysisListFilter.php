@@ -179,6 +179,9 @@ readonly class AnalysisListFilter
                 ->orderBy('organization_user.last_name', $direction),
             'status' => $query->orderByRaw('COALESCE(calls.status, voip_call_logs.status) '.$direction),
             'score' => $query->orderBy('conversation_analyses.score', $direction),
+            'call_at' => $query->orderByRaw(
+                'COALESCE(calls.conversation_date, calls.started_at, calls.created_at) '.$direction
+            ),
             default => $query->orderBy('conversation_analyses.analyzed_at', $direction),
         };
     }

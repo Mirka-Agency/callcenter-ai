@@ -146,8 +146,13 @@ class DemoAnalyticsClock
     {
         Cache::forget('performance:team:'.ReportFilter::make($organization->id, ReportDatePreset::Last30)->cacheKey());
 
+        $sinceKey = blank(config('dashboard.insight_lists_since'))
+            ? 'none'
+            : (string) \Carbon\Carbon::parse((string) config('dashboard.insight_lists_since'))->getTimestamp();
+
         foreach ([30, 90] as $days) {
             Cache::forget("dashboard:forgotten:{$organization->id}:{$days}");
+            Cache::forget("dashboard:forgotten:{$organization->id}:{$days}:{$sinceKey}");
         }
     }
 }

@@ -36,7 +36,7 @@
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-2">
                                 <p class="truncate font-semibold text-zinc-900 dark:text-white">{{ $customer['customer'] }}</p>
-                                <span class="text-xs text-zinc-400">{{ $customer['date'] }}</span>
+                                <span class="text-xs text-zinc-400">{{ $customer['call_date'] }}</span>
                             </div>
                             @if ($customer['company'] && $customer['company'] !== $customer['customer'])
                                 <p class="mt-0.5 truncate text-xs text-zinc-500">{{ $customer['company'] }}</p>
@@ -82,7 +82,7 @@
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-2">
                                 <p class="truncate font-semibold text-zinc-900 dark:text-white">{{ $customer['customer'] }}</p>
-                                <span class="text-xs text-zinc-400">{{ $customer['date'] }}</span>
+                                <span class="text-xs text-zinc-400">{{ $customer['call_date'] }}</span>
                             </div>
                             @if ($customer['company'] && $customer['company'] !== $customer['customer'])
                                 <p class="mt-0.5 truncate text-xs text-zinc-500">{{ $customer['company'] }}</p>

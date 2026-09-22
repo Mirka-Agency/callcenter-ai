@@ -129,8 +129,38 @@ class AnalyzeAudioJobTest extends TestCase
         Http::assertNothingSent();
     }
 
-    /** @return array{0: Call, 1: CallProcessingJob} */
-    private function seedCallWithRecording(): array
+    public function test_skips_short_voip_calls_before_download_or_analysis(): void
+    {
+        Storage::fake('local');
+        Http::fake();
+
+        [$call, $processingJob] = $this->seedCallWithRecording([
+            'source' => ConversationSource::Voip,
+            'duration_seconds' => 2,
+        ]);
+
+        $this->mock(AudioAnalyzer::class, function ($mock) {
+            $mock->shouldNotReceive('analyze');
+        });
+
+        $job = (new AnalyzeAudioJob($call->id))->withFakeQueueInteractions();
+        $this->app->call([$job, 'handle']);
+
+        $job->assertNotFailed();
+        $call->refresh();
+        $processingJob->refresh();
+
+        $this->assertSame(CallProcessingStatus::Skipped, $call->processing_status);
+        $this->assertSame(ProcessingJobStatus::Failed, $processingJob->status);
+        $this->assertDatabaseMissing('conversation_analyses', ['call_id' => $call->id]);
+        Http::assertNothingSent();
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array{0: Call, 1: CallProcessingJob}
+     */
+    private function seedCallWithRecording(array $overrides = []): array
     {
         $organization = Organization::factory()->create();
         $user = User::factory()->create();
@@ -142,7 +172,7 @@ class AnalyzeAudioJobTest extends TestCase
             'is_active' => true,
         ]);
 
-        $call = Call::query()->create([
+        $call = Call::query()->create(array_merge([
             'organization_id' => $organization->id,
             'organization_user_id' => $employee->id,
             'source' => ConversationSource::ManualUpload,
@@ -155,7 +185,7 @@ class AnalyzeAudioJobTest extends TestCase
             'processing_status' => CallProcessingStatus::Pending,
             'duration_seconds' => 120,
             'started_at' => now(),
-        ]);
+        ], $overrides));
 
         Storage::disk('local')->put('recordings/test.mp3', 'audio');
 

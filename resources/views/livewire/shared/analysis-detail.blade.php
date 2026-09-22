@@ -35,7 +35,19 @@
                     {{ $customerName ?? $analysis->call?->displayTitle() ?? 'جزئیات تماس' }}
                 </h1>
                 <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-zinc-500">
-                    <span>{{ shamsi($analysis->analyzed_at, 'datetime') }}</span>
+                    @php
+                        $callOccurredAt = AnalysisCallPresenter::callOccurredAt($analysis);
+                    @endphp
+                    @if ($callOccurredAt)
+                        <span>
+                            <span class="text-zinc-400">تاریخ تماس:</span>
+                            {{ shamsi($callOccurredAt, 'datetime') }}
+                        </span>
+                    @endif
+                    <span>
+                        <span class="text-zinc-400">تاریخ تحلیل:</span>
+                        {{ shamsi($analysis->analyzed_at, 'datetime') }}
+                    </span>
                     @if ($analysis->employee)
                         <x-saas.user-cell
                             :employee="$analysis->employee"

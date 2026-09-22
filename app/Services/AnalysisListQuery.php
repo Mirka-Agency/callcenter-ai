@@ -59,10 +59,12 @@ class AnalysisListQuery
         $avgDuration = (int) round((float) (clone $query)
             ->avg(DB::raw('COALESCE(calls.duration_seconds, voip_call_logs.duration, 0)')));
 
-        // Missed calls usually have no conversation analysis (no recording),
+        // Lost calls usually have no conversation analysis (no recording),
         // so count them from Call records like total_calls — not from analyses.
+        // Include busy/failed/cancelled: PBX often maps no-answer variants to those
+        // statuses, not only "missed".
         $missedCount = $filter->applyToCallQuery(Call::query())
-            ->where('status', CallStatus::Missed->value)
+            ->whereIn('status', CallStatus::lostValues())
             ->count();
 
         $inboundCount = (clone $query)->where(function (Builder $inner) {

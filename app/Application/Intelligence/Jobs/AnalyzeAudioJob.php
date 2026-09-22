@@ -2,6 +2,7 @@
 
 namespace App\Application\Intelligence\Jobs;
 
+use App\Application\Intelligence\Services\CallAnalysisQueueService;
 use App\Application\Llm\AnalysisManager;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
@@ -52,9 +53,18 @@ class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
         CallProcessingTracker $tracker,
         RecordingStorage $recordingStorage,
         RecordingRetentionService $retention,
+        CallAnalysisQueueService $queue,
     ): void {
         $call = Call::query()->findOrFail($this->callId);
         $job = $tracker->forCall($call->id);
+
+        $call->loadMissing('voipCallLog');
+
+        if ($queue->shouldSkipAnalysis($call)) {
+            $this->skipNonAnalyzableCall($call, $job, $tracker, $queue);
+
+            return;
+        }
 
         $call->update([
             'processing_status' => CallProcessingStatus::Downloading,
@@ -123,6 +133,23 @@ class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
             'processing_status' => CallProcessingStatus::Failed,
             'processing_error' => $message,
         ]);
+
+        if ($job && $job->status !== ProcessingJobStatus::Failed) {
+            $tracker->markFailed($job, $message);
+        }
+    }
+
+    private function skipNonAnalyzableCall(
+        Call $call,
+        ?CallProcessingJob $job,
+        CallProcessingTracker $tracker,
+        CallAnalysisQueueService $queue,
+    ): void {
+        $queue->markSkipped($call);
+        $call->refresh();
+
+        $message = $call->processing_error
+            ?? 'تماس کوتاه یا بدون مکالمه بود؛ ضبط و تحلیل انجام نشد.';
 
         if ($job && $job->status !== ProcessingJobStatus::Failed) {
             $tracker->markFailed($job, $message);

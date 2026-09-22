@@ -92,7 +92,7 @@ class Index extends Component
             'missedCalls' => $isComplete
                 ? VoipCallLog::query()
                     ->where('organization_id', $organizationId)
-                    ->where('status', CallStatus::Missed)
+                    ->whereIn('status', CallStatus::lostValues())
                     ->count()
                 : 0,
             'recentCallRows' => $recentCallRows,

@@ -55,7 +55,7 @@ class ForgottenFollowUpsDashboardTest extends TestCase
             ->assertSee('شماره تماس')
             ->assertSee('نام کارشناس')
             ->assertSee('اقدام فراموش‌شده')
-            ->assertSee('تاریخ پیگیری')
+            ->assertSee('تاریخ تماس')
             ->assertSee('سارا کریمی')
             ->assertSee('شرکت آریا')
             ->assertSee('09123334455')
@@ -133,7 +133,7 @@ class ForgottenFollowUpsDashboardTest extends TestCase
         );
         $this->assertSame('تماس پیگیری فردا', $forgotten[0]['forgotten_action']);
         $this->assertGreaterThan(0, $forgotten[0]['days_overdue']);
-        $this->assertArrayHasKey('sort_due_date', $forgotten[0]);
+        $this->assertArrayHasKey('sort_call_date', $forgotten[0]);
     }
 
     public function test_forgotten_follow_up_lookup_ignores_unrelated_outbound_volume(): void
@@ -178,7 +178,7 @@ class ForgottenFollowUpsDashboardTest extends TestCase
         $this->assertSame('پیگیری معوق', $forgotten[0]['customer']);
     }
 
-    public function test_dashboard_sorts_forgotten_follow_ups_by_due_date_title(): void
+    public function test_dashboard_sorts_forgotten_follow_ups_by_call_date_title(): void
     {
         $organization = $this->actingAsEmployer();
         $this->seedFollowUp($organization, [
@@ -202,9 +202,9 @@ class ForgottenFollowUpsDashboardTest extends TestCase
         $html = $component->html();
 
         $this->assertSame(['پیگیری قدیمی‌تر', 'پیگیری جدیدتر'], $this->forgottenNames($component));
-        $this->assertStringContainsString("sortBy('due_date')", $html);
+        $this->assertStringContainsString("sortBy('call_date')", $html);
         $this->assertStringContainsString('saas-sort-icon', $html);
-        $this->assertStringContainsString('data-sort-due-date="', $html);
+        $this->assertStringContainsString('data-sort-call-date="', $html);
         $this->assertStringNotContainsString('wire:click="sortForgottenBy', $html);
         $this->assertFalse(method_exists(Overview::class, 'sortForgottenBy'));
     }

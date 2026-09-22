@@ -9,6 +9,7 @@ enum CallProcessingStatus: string
     case Analyzing = 'analyzing';
     case Analyzed = 'analyzed';
     case Failed = 'failed';
+    case Skipped = 'skipped';
 
     public function label(): string
     {
@@ -18,6 +19,7 @@ enum CallProcessingStatus: string
             self::Analyzing => 'در حال تحلیل',
             self::Analyzed => 'تحلیل شد',
             self::Failed => 'ناموفق',
+            self::Skipped => 'رد شده',
         };
     }
 }

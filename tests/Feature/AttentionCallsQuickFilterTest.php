@@ -90,7 +90,7 @@ class AttentionCallsQuickFilterTest extends TestCase
 
         $component = Livewire::test(IntelligenceIndex::class)
             ->call('applyQuickFilter', 'missed')
-            ->assertSet('callStatus', 'missed')
+            ->assertSet('callStatus', 'lost')
             ->call('applyQuickFilter', 'missed')
             ->assertSet('callStatus', null);
 

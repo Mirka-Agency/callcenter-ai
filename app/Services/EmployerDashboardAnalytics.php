@@ -120,7 +120,7 @@ class EmployerDashboardAnalytics
      *     customer: string,
      *     phone: ?string,
      *     company: ?string,
-     *     date: string,
+     *     call_date: string,
      *     sort_date: int,
      *     employee: string,
      *     product: ?string,
@@ -138,14 +138,18 @@ class EmployerDashboardAnalytics
     {
         $days = max(1, min(90, $days));
 
-        return ConversationAnalysis::query()
+        $query = ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId)
             ->evaluable()
             ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay())
-            ->whereNotNull('lead_quality_json')
+            ->whereNotNull('lead_quality_json');
+
+        $this->constrainInsightListQuery($query);
+
+        return $query
             ->with([
                 'employee:id,first_name,last_name,user_id',
-                'call:id,customer_id,customer_name,customer_phone,caller_number,title,category,tags',
+                'call:id,customer_id,customer_name,customer_phone,caller_number,title,category,tags,started_at,conversation_date,created_at',
                 'call.customer:id,name,company_name,phone_number',
             ])
             ->latest('analyzed_at')
@@ -176,7 +180,7 @@ class EmployerDashboardAnalytics
      *         customer: string,
      *         phone: ?string,
      *         company: ?string,
-     *         date: string,
+     *         call_date: string,
      *         employee: string,
      *         summary: ?string,
      *         highlight: ?string
@@ -186,7 +190,7 @@ class EmployerDashboardAnalytics
      *         customer: string,
      *         phone: ?string,
      *         company: ?string,
-     *         date: string,
+     *         call_date: string,
      *         employee: string,
      *         summary: ?string,
      *         highlight: ?string
@@ -214,8 +218,8 @@ class EmployerDashboardAnalytics
      *     company: ?string,
      *     employee: string,
      *     forgotten_action: string,
-     *     due_date: string,
-     *     sort_due_date: int,
+     *     call_date: string,
+     *     sort_call_date: int,
      *     days_overdue: int,
      *     forgotten_actions: list<string>,
      *     summary: ?string
@@ -225,8 +229,10 @@ class EmployerDashboardAnalytics
     {
         $days = max(1, min(180, $days));
 
+        $sinceKey = $this->insightListsSince()?->getTimestamp() ?? 'none';
+
         return Cache::remember(
-            "dashboard:forgotten:{$this->organizationId}:{$days}",
+            "dashboard:forgotten:{$this->organizationId}:{$days}:{$sinceKey}",
             120,
             fn () => $this->buildForgottenFollowUps($days),
         );
@@ -240,8 +246,8 @@ class EmployerDashboardAnalytics
      *     company: ?string,
      *     employee: string,
      *     forgotten_action: string,
-     *     due_date: string,
-     *     sort_due_date: int,
+     *     call_date: string,
+     *     sort_call_date: int,
      *     days_overdue: int,
      *     forgotten_actions: list<string>,
      *     summary: ?string
@@ -251,17 +257,21 @@ class EmployerDashboardAnalytics
     {
         $today = now()->startOfDay();
 
-        $analyses = ConversationAnalysis::query()
+        $query = ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId)
             ->evaluable()
             ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay())
             ->where(function ($query) {
                 $query->whereNotNull('next_actions_json')
                     ->orWhereNotNull('operational_insights_json');
-            })
+            });
+
+        $this->constrainInsightListQuery($query);
+
+        $analyses = $query
             ->with([
                 'employee:id,first_name,last_name,user_id',
-                'call:id,customer_id,customer_name,customer_phone,caller_number,started_at',
+                'call:id,customer_id,customer_name,customer_phone,caller_number,started_at,conversation_date,created_at',
                 'call.customer:id,name,company_name,phone_number',
             ])
             ->latest('analyzed_at')
@@ -369,8 +379,8 @@ class EmployerDashboardAnalytics
      *     company: ?string,
      *     employee: string,
      *     forgotten_action: string,
-     *     due_date: string,
-     *     sort_due_date: int,
+     *     call_date: string,
+     *     sort_call_date: int,
      *     days_overdue: int,
      *     forgotten_actions: list<string>,
      *     summary: ?string
@@ -386,6 +396,7 @@ class EmployerDashboardAnalytics
 
         $primary = $actions[0];
         $contact = $this->contactSnapshot($analysis);
+        $callAt = $this->callOccurredAt($analysis);
 
         return [
             'analysis_id' => $analysis->id,
@@ -394,8 +405,8 @@ class EmployerDashboardAnalytics
             'company' => $contact['company'],
             'employee' => $analysis->employee?->full_name ?? '—',
             'forgotten_action' => $primary['text'],
-            'due_date' => JalaliDate::date($primary['due_at']),
-            'sort_due_date' => $primary['due_at']->getTimestamp(),
+            'call_date' => JalaliDate::date($callAt),
+            'sort_call_date' => $callAt?->getTimestamp() ?? 0,
             'days_overdue' => $primary['days_overdue'],
             'forgotten_actions' => array_values(array_unique(array_column($actions, 'text'))),
             'summary' => $this->nullableText($analysis->summary),
@@ -554,7 +565,7 @@ class EmployerDashboardAnalytics
      *     customer: string,
      *     phone: ?string,
      *     company: ?string,
-     *     date: string,
+     *     call_date: string,
      *     employee: string,
      *     summary: ?string,
      *     highlight: ?string
@@ -564,14 +575,18 @@ class EmployerDashboardAnalytics
     {
         $seen = [];
 
-        return ConversationAnalysis::query()
+        $query = ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId)
             ->evaluable()
             ->where('sentiment', $sentiment)
-            ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay())
+            ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay());
+
+        $this->constrainInsightListQuery($query);
+
+        return $query
             ->with([
                 'employee:id,first_name,last_name,user_id',
-                'call:id,customer_id,customer_name,customer_phone,caller_number',
+                'call:id,customer_id,customer_name,customer_phone,caller_number,started_at,conversation_date,created_at',
                 'call.customer:id,name,company_name,phone_number',
             ])
             ->latest('analyzed_at')
@@ -610,12 +625,43 @@ class EmployerDashboardAnalytics
     }
 
     /**
+     * Insight lists ignore historical rows before the reset cutoff.
+     * Match on analyzed_at or updated_at so a re-analysis always qualifies.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<ConversationAnalysis>  $query
+     */
+    private function constrainInsightListQuery($query): void
+    {
+        $since = $this->insightListsSince();
+
+        if ($since === null) {
+            return;
+        }
+
+        $query->where(function ($inner) use ($since): void {
+            $inner->where('analyzed_at', '>=', $since)
+                ->orWhere('updated_at', '>=', $since);
+        });
+    }
+
+    private function insightListsSince(): ?CarbonInterface
+    {
+        $value = config('dashboard.insight_lists_since');
+
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        return Carbon::parse($value)->utc();
+    }
+
+    /**
      * @return array{
      *     analysis_id: int,
      *     customer: string,
      *     phone: ?string,
      *     company: ?string,
-     *     date: string,
+     *     call_date: string,
      *     employee: string,
      *     summary: ?string,
      *     highlight: ?string,
@@ -631,7 +677,7 @@ class EmployerDashboardAnalytics
             'customer' => $contact['customer'],
             'phone' => $contact['phone'],
             'company' => $contact['company'],
-            'date' => JalaliDate::date($analysis->analyzed_at),
+            'call_date' => JalaliDate::date($this->callOccurredAt($analysis)),
             'employee' => $analysis->employee?->full_name ?? '—',
             'summary' => $this->nullableText($analysis->summary),
             'highlight' => $analysis->sentiment === AnalysisSentiment::Negative
@@ -717,7 +763,7 @@ class EmployerDashboardAnalytics
      *     customer: string,
      *     phone: ?string,
      *     company: ?string,
-     *     date: string,
+     *     call_date: string,
      *     sort_date: int,
      *     employee: string,
      *     product: ?string,
@@ -739,6 +785,7 @@ class EmployerDashboardAnalytics
         $lead = $analysis->lead_quality_json ?? [];
         $insights = $analysis->customer_insights_json ?? [];
         $operational = $analysis->operational_insights_json ?? [];
+        $callAt = $this->callOccurredAt($analysis);
 
         $leadScore = isset($lead['score']) && is_numeric($lead['score']) ? (int) $lead['score'] : null;
         $purchaseProbability = isset($insights['purchase_probability']) && is_numeric($insights['purchase_probability'])
@@ -762,8 +809,8 @@ class EmployerDashboardAnalytics
                 ?: ($phone ?: '—'),
             'phone' => $this->nullableText($phone),
             'company' => $this->nullableText($company),
-            'date' => JalaliDate::date($analysis->analyzed_at),
-            'sort_date' => $analysis->analyzed_at?->getTimestamp() ?? 0,
+            'call_date' => JalaliDate::date($callAt),
+            'sort_date' => $callAt?->getTimestamp() ?? 0,
             'employee' => $analysis->employee?->full_name ?? '—',
             'product' => $this->sellableProduct($call?->title, $call?->category, $intent, $operational['important_keywords'] ?? []),
             'lead_score' => $leadScore,
@@ -782,6 +829,16 @@ class EmployerDashboardAnalytics
             ), 5),
             'summary' => $this->nullableText($summary),
         ];
+    }
+
+    private function callOccurredAt(ConversationAnalysis $analysis): ?CarbonInterface
+    {
+        $call = $analysis->call;
+
+        return $call?->conversation_date
+            ?? $call?->started_at
+            ?? $call?->created_at
+            ?? $analysis->analyzed_at;
     }
 
     private function sellableProduct(?string $title, ?string $category, string $intent, mixed $keywords): ?string

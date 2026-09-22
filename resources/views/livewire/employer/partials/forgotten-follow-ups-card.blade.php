@@ -22,9 +22,9 @@
         <div
             class="saas-opportunity-table-wrap"
             x-data="dashboardTableSort({
-                column: 'due_date',
+                column: 'call_date',
                 dir: 'asc',
-                allowed: ['due_date'],
+                allowed: ['call_date'],
                 defaultDir: 'asc',
             })"
         >
@@ -44,14 +44,14 @@
                         <th>شماره تماس</th>
                         <th>نام کارشناس</th>
                         <th>اقدام فراموش‌شده</th>
-                        <x-saas.sort-header column="due_date" label="تاریخ پیگیری" />
+                        <x-saas.sort-header column="call_date" label="تاریخ تماس" />
                     </tr>
                 </thead>
                 @foreach ($forgottenFollowUps as $followUp)
                     <tbody
                         wire:key="forgotten-follow-up-{{ $followUp['analysis_id'] }}"
                         data-sort-row
-                        data-sort-due-date="{{ $followUp['sort_due_date'] ?? 0 }}"
+                        data-sort-call-date="{{ $followUp['sort_call_date'] ?? 0 }}"
                         x-data="{ open: false }"
                     >
                         <tr
@@ -79,7 +79,7 @@
                             <td class="truncate">{{ $followUp['employee'] }}</td>
                             <td class="truncate">{{ $followUp['forgotten_action'] }}</td>
                             <td>
-                                <p class="truncate tabular-nums">{{ $followUp['due_date'] }}</p>
+                                <p class="truncate tabular-nums">{{ $followUp['call_date'] }}</p>
                                 <p class="truncate text-xs text-red-600 dark:text-red-400">{{ $followUp['days_overdue'] }} روز تأخیر</p>
                             </td>
                         </tr>
