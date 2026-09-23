@@ -132,6 +132,7 @@ class AiPerformanceAnalytics
                 'name' => $employee->full_name,
                 'department' => $employee->department,
                 'avatar_url' => $employee->avatarUrl(),
+                'gender' => $employee->gender?->value,
                 'average_score' => round((float) $employee->average_score, 1),
                 'total_analyzed' => (int) $employee->total_analyzed,
             ]);

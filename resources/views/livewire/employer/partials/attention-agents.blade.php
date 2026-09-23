@@ -24,6 +24,8 @@
                             <x-saas.avatar
                                 :name="$agent['name']"
                                 :url="$agent['avatar_url'] ?? null"
+                                :gender="$agent['gender'] ?? null"
+                                agent
                                 size="sm"
                                 class="shrink-0"
                             />

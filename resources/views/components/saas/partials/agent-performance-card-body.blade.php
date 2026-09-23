@@ -10,6 +10,8 @@
         <x-saas.avatar
             :name="$agent['name']"
             :url="$agent['avatar_url'] ?? null"
+            :gender="$agent['gender'] ?? null"
+            agent
             size="lg"
             ring
             class="shrink-0"
@@ -68,7 +70,7 @@
     @if (filled($agent['average_duration_label'] ?? null) || (($agent['total_calls'] ?? 0) > ($agent['total_analyzed'] ?? 0)))
         <p class="text-xs text-zinc-500">
             @if (filled($agent['average_duration_label'] ?? null))
-                میانگین مدت مکالمه: <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ $agent['average_duration_label'] }}</span>
+                {{ (int) ($agent['total_analyzed'] ?? 0) }} تماس بررسی شده و میانگین مدت مکالمه <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ $agent['average_duration_label'] }}</span> بوده.
             @endif
             @if (($agent['total_calls'] ?? 0) > ($agent['total_analyzed'] ?? 0))
                 @if (filled($agent['average_duration_label'] ?? null)) · @endif

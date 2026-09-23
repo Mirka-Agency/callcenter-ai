@@ -34,6 +34,8 @@
         :employee="$employee"
         :name="$row['name']"
         :url="$row['avatar_url'] ?? null"
+        :gender="$row['gender'] ?? null"
+        agent
         size="sm"
         class="shrink-0"
     />

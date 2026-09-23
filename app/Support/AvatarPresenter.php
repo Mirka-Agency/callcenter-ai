@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Enums\Gender;
+use App\Enums\UserRole;
 use App\Models\OrganizationUser;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
@@ -25,21 +27,38 @@ class AvatarPresenter
             return self::forName('?', $size);
         }
 
-        return self::forName($user->name, $size, $user->avatarUrl());
+        $isAgent = $user->role === UserRole::Employee;
+        $gender = $isAgent ? self::genderForUser($user) : null;
+
+        return self::forName($user->name, $size, $user->avatarUrl(), $gender, $isAgent);
     }
 
     public static function forEmployee(?OrganizationUser $employee, string $size = 'md'): array
     {
         if (! $employee) {
-            return self::forName('?', $size);
+            return self::forName('?', $size, agent: true);
         }
 
-        return self::forName($employee->full_name, $size, $employee->avatarUrl());
+        return self::forName(
+            $employee->full_name,
+            $size,
+            $employee->avatarUrl(),
+            $employee->gender,
+            agent: true,
+        );
     }
 
-    public static function forName(string $name, string $size = 'md', ?string $url = null): array
-    {
+    public static function forName(
+        string $name,
+        string $size = 'md',
+        ?string $url = null,
+        mixed $gender = null,
+        bool $agent = false,
+    ): array {
         $normalized = trim($name) ?: '?';
+        $resolvedGender = Gender::tryFromMixed($gender);
+        $useAgentIcon = $agent || $resolvedGender !== null;
+        $displayGender = $resolvedGender ?? ($useAgentIcon ? Gender::Male : null);
 
         return [
             'name' => $normalized,
@@ -47,6 +66,9 @@ class AvatarPresenter
             'url' => filled($url) ? $url : null,
             'gradient' => self::gradientClass($normalized),
             'size' => $size,
+            'gender' => $displayGender?->value,
+            'use_agent_icon' => $useAgentIcon,
+            'icon' => $displayGender?->agentIcon(),
         ];
     }
 
@@ -79,11 +101,11 @@ class AvatarPresenter
     public static function sizeClasses(string $size): array
     {
         return match ($size) {
-            'xs' => ['box' => 'h-7 w-7 text-[10px]', 'ring' => 'ring-1'],
-            'sm' => ['box' => 'h-9 w-9 text-xs', 'ring' => 'ring-2'],
-            'lg' => ['box' => 'h-14 w-14 text-lg', 'ring' => 'ring-2'],
-            'xl' => ['box' => 'h-20 w-20 text-2xl', 'ring' => 'ring-4'],
-            default => ['box' => 'h-11 w-11 text-sm', 'ring' => 'ring-2'],
+            'xs' => ['box' => 'h-7 w-7 text-[10px]', 'ring' => 'ring-1', 'icon' => 'h-3.5 w-3.5'],
+            'sm' => ['box' => 'h-9 w-9 text-xs', 'ring' => 'ring-2', 'icon' => 'h-5 w-5'],
+            'lg' => ['box' => 'h-14 w-14 text-lg', 'ring' => 'ring-2', 'icon' => 'h-7 w-7'],
+            'xl' => ['box' => 'h-20 w-20 text-2xl', 'ring' => 'ring-4', 'icon' => 'h-10 w-10'],
+            default => ['box' => 'h-11 w-11 text-sm', 'ring' => 'ring-2', 'icon' => 'h-6 w-6'],
         };
     }
 
@@ -102,5 +124,15 @@ class AvatarPresenter
         }
 
         return Storage::disk('public')->url($path);
+    }
+
+    private static function genderForUser(User $user): ?Gender
+    {
+        $membership = OrganizationUser::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('id')
+            ->first();
+
+        return Gender::tryFromMixed($membership?->gender);
     }
 }

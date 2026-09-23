@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Gender;
 use App\Models\Concerns\HasAvatar;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
     'user_id',
     'first_name',
     'last_name',
+    'gender',
     'mobile',
     'position',
     'department',
@@ -30,6 +32,7 @@ class OrganizationUser extends Pivot
     {
         return [
             'is_active' => 'boolean',
+            'gender' => Gender::class,
         ];
     }
 

@@ -22,7 +22,15 @@
         {{ $attributes->class(['saas-chip', $chipClass]) }}
     >
         @if ($showAvatar)
-            <x-saas.avatar :employee="$employee" :name="$label" :url="$url" size="xs" class="shrink-0" />
+            <x-saas.avatar
+                :employee="$employee"
+                :name="$label"
+                :url="$url"
+                :gender="$employee?->gender"
+                :agent="(bool) $employee"
+                size="xs"
+                class="shrink-0"
+            />
         @endif
         <span class="max-w-[12rem] truncate sm:max-w-none sm:whitespace-nowrap">{{ $label }}</span>
     </a>
@@ -32,7 +40,15 @@
         {{ $attributes->class(['saas-chip', $chipClass]) }}
     >
         @if ($showAvatar)
-            <x-saas.avatar :employee="$employee" :name="$label" :url="$url" size="xs" class="shrink-0" />
+            <x-saas.avatar
+                :employee="$employee"
+                :name="$label"
+                :url="$url"
+                :gender="$employee?->gender"
+                :agent="(bool) $employee"
+                size="xs"
+                class="shrink-0"
+            />
         @endif
         <span class="max-w-[12rem] truncate sm:max-w-none sm:whitespace-nowrap">{{ $label }}</span>
     </button>
