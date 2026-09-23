@@ -45,6 +45,7 @@ RUN npm ci
 
 COPY vite.config.js ./
 COPY resources ./resources
+COPY app ./app
 COPY public ./public
 COPY --from=vendor /app/vendor ./vendor
 
