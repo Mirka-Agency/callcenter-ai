@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -94,6 +95,14 @@ class ConversationAnalysis extends Model
     public function call(): BelongsTo
     {
         return $this->belongsTo(Call::class);
+    }
+
+    /**
+     * Day the conversation happened — prefer call time over analysis completion.
+     */
+    public function occurredAt(): ?CarbonInterface
+    {
+        return $this->call?->occurredAt() ?? $this->analyzed_at;
     }
 
     public function llmModel(): BelongsTo

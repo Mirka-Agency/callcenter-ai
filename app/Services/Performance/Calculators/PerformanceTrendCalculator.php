@@ -8,13 +8,14 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Support\JalaliDate;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 class PerformanceTrendCalculator
 {
     /**
      * @param  Collection<int, ConversationAnalysis>  $analyses
-     * @return list<array{period: string, label: string, avg_score: float, count: int}>
+     * @return list<array{period: string, label: string, tooltip_label: string, avg_score: float, count: int}>
      */
     public function qualityTrend(ReportFilter $filter, Collection $analyses): array
     {
@@ -30,7 +31,7 @@ class PerformanceTrendCalculator
 
     /**
      * @param  Collection<int, ConversationAnalysis>  $analyses
-     * @return list<array{period: string, label: string, avg_score: float, count: int}>
+     * @return list<array{period: string, label: string, tooltip_label: string, avg_score: float, count: int}>
      */
     public function leadTrend(ReportFilter $filter, Collection $analyses): array
     {
@@ -54,7 +55,7 @@ class PerformanceTrendCalculator
         $buckets = [];
 
         foreach ($calls as $call) {
-            $date = $call->started_at ?? $call->created_at;
+            $date = $call->occurredAt();
             if (! $date) {
                 continue;
             }
@@ -68,6 +69,7 @@ class PerformanceTrendCalculator
         return collect($buckets)->map(fn (int $count, string $period) => [
             'period' => $period,
             'label' => $this->periodLabel($period, $granularity),
+            'tooltip_label' => $this->periodTooltipLabel($period, $granularity),
             'count' => $count,
         ])->values()->all();
     }
@@ -81,13 +83,14 @@ class PerformanceTrendCalculator
         $granularity = $filter->granularity();
 
         return $analyses
-            ->filter(fn (ConversationAnalysis $a) => $a->analyzed_at !== null)
-            ->groupBy(fn (ConversationAnalysis $a) => $this->periodKey($a->analyzed_at, $granularity))
+            ->filter(fn (ConversationAnalysis $a) => $a->occurredAt() !== null)
+            ->groupBy(fn (ConversationAnalysis $a) => $this->periodKey($a->occurredAt(), $granularity))
             ->sortKeys()
             ->map(function (Collection $items, string $period) use ($granularity) {
                 return [
                     'period' => $period,
                     'label' => $this->periodLabel($period, $granularity),
+                    'tooltip_label' => $this->periodTooltipLabel($period, $granularity),
                     'positive' => $items->where('sentiment', AnalysisSentiment::Positive)->count(),
                     'neutral' => $items->where('sentiment', AnalysisSentiment::Neutral)->count(),
                     'negative' => $items->where('sentiment', AnalysisSentiment::Negative)->count(),
@@ -137,13 +140,14 @@ class PerformanceTrendCalculator
         $granularity = $filter->granularity();
 
         return $analyses
-            ->filter(fn (ConversationAnalysis $a) => $a->analyzed_at !== null)
-            ->groupBy(fn (ConversationAnalysis $a) => $this->periodKey($a->analyzed_at, $granularity))
+            ->filter(fn (ConversationAnalysis $a) => $a->occurredAt() !== null)
+            ->groupBy(fn (ConversationAnalysis $a) => $this->periodKey($a->occurredAt(), $granularity))
             ->sortKeys()
             ->map(function (Collection $items, string $period) use ($granularity, $aggregator) {
                 return array_merge([
                     'period' => $period,
                     'label' => $this->periodLabel($period, $granularity),
+                    'tooltip_label' => $this->periodTooltipLabel($period, $granularity),
                 ], $aggregator($items));
             })
             ->values()
@@ -159,8 +163,8 @@ class PerformanceTrendCalculator
         $granularity = $filter->granularity();
 
         return $analyses
-            ->filter(fn (ConversationAnalysis $analysis) => $analysis->analyzed_at !== null
-                && $this->periodKey($analysis->analyzed_at, $granularity) === $period)
+            ->filter(fn (ConversationAnalysis $analysis) => $analysis->occurredAt() !== null
+                && $this->periodKey($analysis->occurredAt(), $granularity) === $period)
             ->values();
     }
 
@@ -180,11 +184,13 @@ class PerformanceTrendCalculator
         return $ordered[$index - 1];
     }
 
-    private function periodKey(Carbon $date, string $granularity): string
+    private function periodKey(CarbonInterface $date, string $granularity): string
     {
+        $carbon = $date instanceof Carbon ? $date : Carbon::instance($date);
+
         return match ($granularity) {
-            'week' => $date->format('Y-W'),
-            default => $date->format('Y-m-d'),
+            'week' => $carbon->format('Y-W'),
+            default => $carbon->format('Y-m-d'),
         };
     }
 
@@ -195,5 +201,14 @@ class PerformanceTrendCalculator
         }
 
         return JalaliDate::monthDay($key);
+    }
+
+    private function periodTooltipLabel(string $key, string $granularity): string
+    {
+        if ($granularity === 'week') {
+            return $this->periodLabel($key, $granularity);
+        }
+
+        return JalaliDate::monthDayWithWeekday($key);
     }
 }

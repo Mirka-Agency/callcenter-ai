@@ -5,6 +5,7 @@
 
     $qualityChart = [
         'labels' => collect($qualityTrend)->pluck('label')->all(),
+        'tooltipTitles' => collect($qualityTrend)->pluck('tooltip_label')->all(),
         'datasets' => [[
             'label' => 'امتیاز کیفیت مکالمه',
             'data' => collect($qualityTrend)->pluck('avg_score')->all(),

@@ -15,6 +15,20 @@ class JalaliDateTest extends TestCase
         $this->assertSame('1403/01/01', $formatted);
     }
 
+    public function test_month_day_keeps_date_only(): void
+    {
+        $formatted = JalaliDate::monthDay(Carbon::parse('2025-09-16'));
+
+        $this->assertSame('25 شهریور', $formatted);
+    }
+
+    public function test_month_day_with_weekday_includes_weekday(): void
+    {
+        $formatted = JalaliDate::monthDayWithWeekday(Carbon::parse('2025-09-16'));
+
+        $this->assertSame('25 شهریور (سه‌شنبه)', $formatted);
+    }
+
     public function test_converts_jalali_input_to_gregorian(): void
     {
         $gregorian = JalaliDate::toGregorianString('1403/01/01');

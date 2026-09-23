@@ -19,6 +19,8 @@ class JalaliDate
 
     public const MONTH_DAY = 'j F';
 
+    public const MONTH_DAY_WEEKDAY = 'j F (l)';
+
     public static function format(
         DateTimeInterface|string|int|null $value,
         string $format = self::DATE,
@@ -74,6 +76,11 @@ class JalaliDate
     public static function monthDay(DateTimeInterface|string|int|null $value, ?string $empty = '—'): string
     {
         return self::format($value, self::MONTH_DAY, $empty);
+    }
+
+    public static function monthDayWithWeekday(DateTimeInterface|string|int|null $value, ?string $empty = '—'): string
+    {
+        return self::format($value, self::MONTH_DAY_WEEKDAY, $empty);
     }
 
     public static function ago(DateTimeInterface|string|int|null $value, ?string $empty = '—'): string

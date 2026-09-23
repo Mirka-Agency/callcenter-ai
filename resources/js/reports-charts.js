@@ -433,6 +433,27 @@ function applyHorizontalBarHover(type, options) {
     };
 }
 
+function applyTooltipTitles(options, tooltipTitles) {
+    if (! tooltipTitles?.length) {
+        return;
+    }
+
+    options.plugins = options.plugins || {};
+    options.plugins.tooltip = options.plugins.tooltip || {};
+    options.plugins.tooltip.callbacks = {
+        ...(options.plugins.tooltip.callbacks || {}),
+        title(items) {
+            const index = items[0]?.dataIndex;
+
+            if (index == null) {
+                return '';
+            }
+
+            return tooltipTitles[index] ?? items[0]?.label ?? '';
+        },
+    };
+}
+
 function initChart(canvas) {
     const id = canvas.id;
 
@@ -448,9 +469,12 @@ function initChart(canvas) {
 
         const config = JSON.parse(canvas.dataset.config || '{}');
         const type = canvas.dataset.type || 'line';
+        const tooltipTitles = Array.isArray(config.tooltipTitles) ? config.tooltipTitles : null;
+        delete config.tooltipTitles;
         const datasetCount = config.datasets?.length ?? 1;
         const options = deepMerge(baseOptions(type, datasetCount), config.options || {});
 
+        applyTooltipTitles(options, tooltipTitles);
         applyHorizontalBarHover(type, options);
         attachDrilldown(canvas, options);
 

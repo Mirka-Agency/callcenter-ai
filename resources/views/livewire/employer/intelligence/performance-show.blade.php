@@ -11,6 +11,7 @@
 
     $qualityChart = [
         'labels' => collect($qualityTrend)->pluck('label')->all(),
+        'tooltipTitles' => collect($qualityTrend)->pluck('tooltip_label')->all(),
         'datasets' => [[
             'label' => 'امتیاز مکالمه',
             'data' => collect($qualityTrend)->pluck('avg_score')->all(),
@@ -23,6 +24,7 @@
 
     $volumeChart = [
         'labels' => collect($profile['volume_trend'])->pluck('label')->all(),
+        'tooltipTitles' => collect($profile['volume_trend'])->pluck('tooltip_label')->all(),
         'datasets' => [[
             'label' => 'تعداد تماس',
             'data' => collect($profile['volume_trend'])->pluck('count')->all(),

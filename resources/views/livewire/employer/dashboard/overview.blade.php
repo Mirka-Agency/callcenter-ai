@@ -1,6 +1,7 @@
 @php
     $qualityChart = [
         'labels' => collect($qualityTrend)->pluck('label')->all(),
+        'tooltipTitles' => collect($qualityTrend)->pluck('tooltip_label')->all(),
         'datasets' => [[
             'label' => 'میانگین امتیاز تیم',
             'data' => collect($qualityTrend)->pluck('avg_score')->all(),

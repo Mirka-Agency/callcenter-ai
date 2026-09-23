@@ -127,6 +127,47 @@ class QualityTrendPointInsightTest extends TestCase
             ->assertSet('selectedQualityTrendPeriod', null);
     }
 
+    public function test_quality_trend_buckets_by_call_day_not_analysis_day(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $employee = $this->seedEmployee($organization, 'نرگس', 'موسوی');
+
+        $callDay = now()->subDays(3)->startOfDay()->addHours(11);
+        $analysisDay = now()->subDays(2)->startOfDay()->addHours(9);
+
+        $this->seedAnalysis(
+            $organization,
+            $employee,
+            77,
+            analyzedAt: $analysisDay,
+            strengths: ['جمع‌بندی قوی'],
+            startedAt: $callDay,
+        );
+
+        $analytics = app(EmployeePerformanceAnalytics::class);
+        $dashboard = $analytics->teamDashboard(ReportFilter::make($organization->id, ReportDatePreset::Last30));
+        $periods = collect($dashboard['quality_trend'])->pluck('period')->all();
+
+        $this->assertContains($callDay->format('Y-m-d'), $periods);
+        $this->assertNotContains($analysisDay->format('Y-m-d'), $periods);
+
+        $insight = $analytics->qualityTrendPointInsight(
+            ReportFilter::make($organization->id, ReportDatePreset::Last30),
+            $callDay->format('Y-m-d'),
+        );
+
+        $this->assertNotNull($insight);
+        $this->assertSame(77.0, $insight['current_score']);
+        $this->assertSame(1, $insight['analyzed_count']);
+
+        $this->assertNull(
+            $analytics->qualityTrendPointInsight(
+                ReportFilter::make($organization->id, ReportDatePreset::Last30),
+                $analysisDay->format('Y-m-d'),
+            ),
+        );
+    }
+
     private function actingAsEmployer(): Organization
     {
         $employer = User::factory()->create(['role' => UserRole::Employer]);
@@ -157,7 +198,10 @@ class QualityTrendPointInsightTest extends TestCase
         $analyzedAt,
         array $strengths = [],
         array $weaknesses = [],
+        $startedAt = null,
     ): void {
+        $callAt = $startedAt ?? $analyzedAt;
+
         $call = Call::query()->create([
             'organization_id' => $organization->id,
             'organization_user_id' => $employee->id,
@@ -170,7 +214,7 @@ class QualityTrendPointInsightTest extends TestCase
             'status' => 'completed',
             'processing_status' => 'analyzed',
             'duration_seconds' => 140,
-            'started_at' => $analyzedAt,
+            'started_at' => $callAt,
         ]);
 
         ConversationAnalysis::query()->create([

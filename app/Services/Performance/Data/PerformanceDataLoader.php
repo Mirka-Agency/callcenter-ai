@@ -35,6 +35,14 @@ class PerformanceDataLoader
         'duration_seconds',
         'caller_number',
         'customer_name',
+        'conversation_date',
+        'started_at',
+        'created_at',
+    ];
+
+    private const ANALYSIS_CALL_COLUMNS = [
+        'id',
+        'conversation_date',
         'started_at',
         'created_at',
     ];
@@ -89,6 +97,7 @@ class PerformanceDataLoader
 
         return $filter->applyToAnalysisQuery(ConversationAnalysis::query())
             ->whereIn('organization_user_id', $employeeIds)
+            ->with(['call:'.implode(',', self::ANALYSIS_CALL_COLUMNS)])
             ->orderBy('analyzed_at')
             ->get(self::ANALYSIS_COLUMNS);
     }
