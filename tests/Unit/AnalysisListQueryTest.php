@@ -214,6 +214,97 @@ class AnalysisListQueryTest extends TestCase
         $this->assertSame(4, $overview['missed_count']);
     }
 
+    public function test_overview_call_stats_use_call_date_not_analysis_date(): void
+    {
+        $organization = Organization::factory()->create();
+        $user = User::factory()->create();
+        $agent = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $user->id,
+            'first_name' => 'Ali',
+            'last_name' => 'One',
+            'is_active' => true,
+        ]);
+
+        // Analyzed today, but the call happened 40 days ago → outside Last30 by call date.
+        $oldCall = Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09120000001',
+            'receiver_number' => '02100000000',
+            'status' => 'completed',
+            'processing_status' => 'analyzed',
+            'duration_seconds' => 200,
+            'started_at' => now()->subDays(40),
+            'conversation_date' => now()->subDays(40),
+        ]);
+        ConversationAnalysis::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'call_id' => $oldCall->id,
+            'source' => ConversationSource::Voip,
+            'llm_provider' => 'openai',
+            'model_name' => 'gpt-4o-mini',
+            'score' => 88,
+            'summary' => 'تحلیل امروز برای تماس قدیمی',
+            'sentiment' => AnalysisSentiment::Positive,
+            'strengths_json' => [],
+            'weaknesses_json' => [],
+            'next_actions_json' => [],
+            'lead_quality_json' => ['score' => 80, 'level' => 'high', 'reason' => 'test'],
+            'analyzed_at' => now(),
+        ]);
+
+        // Call in Last30, never analyzed — must count in total_calls / directions.
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'outbound',
+            'caller_number' => '02100000000',
+            'receiver_number' => '09120000002',
+            'status' => 'completed',
+            'processing_status' => 'pending',
+            'duration_seconds' => 100,
+            'started_at' => now()->subDays(2),
+        ]);
+
+        // conversation_date in range, started_at outside — still a Last30 call.
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09120000003',
+            'receiver_number' => '02100000000',
+            'status' => CallStatus::Missed->value,
+            'processing_status' => 'pending',
+            'duration_seconds' => 0,
+            'started_at' => now()->subDays(60),
+            'conversation_date' => now()->subDays(1),
+        ]);
+
+        $overview = app(AnalysisListQuery::class)->overview(AnalysisListFilter::make(
+            organizationId: $organization->id,
+            preset: ReportDatePreset::Last30,
+        ));
+
+        $this->assertSame(1, $overview['total'], 'analyses use analyzed_at');
+        $this->assertSame(2, $overview['total_calls'], 'calls use call occurrence date');
+        $this->assertSame(1, $overview['inbound_count']);
+        $this->assertSame(1, $overview['outbound_count']);
+        $this->assertSame(1, $overview['missed_count']);
+        $this->assertSame(100, $overview['average_duration_seconds']);
+    }
+
     public function test_assigned_employees_only_excludes_unassigned_analyses(): void
     {
         $organization = Organization::factory()->create();

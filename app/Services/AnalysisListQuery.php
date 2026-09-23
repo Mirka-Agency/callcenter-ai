@@ -52,30 +52,26 @@ class AnalysisListQuery
     {
         $query = $this->filteredQuery($filter);
 
+        // Analysis-dated metrics (analyzed_at via filter->apply).
         $total = (clone $query)->count();
-        $totalCalls = $filter->applyToCallQuery(Call::query())->count();
         $avgScore = round((float) (clone $query)->evaluable()->avg('conversation_analyses.score'), 1);
 
-        $avgDuration = (int) round((float) (clone $query)
-            ->avg(DB::raw('COALESCE(calls.duration_seconds, voip_call_logs.duration, 0)')));
+        // Call-dated metrics (occurredAt via applyToCallQuery) — volume and outcomes
+        // must follow when the call happened, not when AI finished analyzing.
+        $callQuery = $filter->applyToCallQuery(Call::query());
+        $totalCalls = (clone $callQuery)->count();
+        $avgDuration = (int) round((float) (clone $callQuery)
+            ->where('duration_seconds', '>', 0)
+            ->avg('duration_seconds'));
 
-        // Lost calls usually have no conversation analysis (no recording),
-        // so count them from Call records like total_calls — not from analyses.
-        // Include busy/failed/cancelled: PBX often maps no-answer variants to those
-        // statuses, not only "missed".
-        $missedCount = $filter->applyToCallQuery(Call::query())
+        // Lost calls usually have no conversation analysis (no recording).
+        // Include busy/failed/cancelled: PBX often maps no-answer variants to those.
+        $missedCount = (clone $callQuery)
             ->whereIn('status', CallStatus::lostValues())
             ->count();
 
-        $inboundCount = (clone $query)->where(function (Builder $inner) {
-            $inner->where('calls.direction', 'inbound')
-                ->orWhere('voip_call_logs.direction', 'inbound');
-        })->count();
-
-        $outboundCount = (clone $query)->where(function (Builder $inner) {
-            $inner->where('calls.direction', 'outbound')
-                ->orWhere('voip_call_logs.direction', 'outbound');
-        })->count();
+        $inboundCount = (clone $callQuery)->where('direction', 'inbound')->count();
+        $outboundCount = (clone $callQuery)->where('direction', 'outbound')->count();
 
         $lead = $this->leadDistribution($filter);
         $sentiment = $this->sentimentBreakdown($filter);
