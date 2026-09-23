@@ -26,9 +26,9 @@ class PerformanceTrendCalculator
      */
     public function qualityTrend(ReportFilter $filter, Collection $analyses): array
     {
-        return $this->bucketAnalyses(
+        $trend = $this->bucketAnalyses(
             $filter,
-            $this->excludeCompanyHolidays($filter, $analyses),
+            $analyses,
             function (Collection $items) {
                 $scored = $items->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable());
 
@@ -39,6 +39,8 @@ class PerformanceTrendCalculator
                 ];
             },
         );
+
+        return $this->omitFridays($filter, $trend);
     }
 
     /**
@@ -174,42 +176,41 @@ class PerformanceTrendCalculator
     {
         $granularity = $filter->granularity();
 
-        if ($granularity === 'day' && $this->isCompanyFriday(Carbon::parse($period, 'Asia/Tehran'))) {
+        if ($granularity === 'day' && $this->isFridayPeriod($period)) {
             return collect();
         }
 
-        return $this->excludeCompanyHolidays($filter, $analyses)
+        return $analyses
             ->filter(fn (ConversationAnalysis $analysis) => $analysis->occurredAt() !== null
                 && $this->periodKey($analysis->occurredAt(), $granularity) === $period)
             ->values();
     }
 
     /**
-     * Iranian work week treats Friday as the weekly holiday — Fridays are omitted from the chart.
+     * Only Friday is a company holiday for this chart — Thursday stays.
      *
-     * @param  Collection<int, ConversationAnalysis>  $analyses
-     * @return Collection<int, ConversationAnalysis>
+     * @param  list<array<string, mixed>>  $trend
+     * @return list<array<string, mixed>>
      */
-    private function excludeCompanyHolidays(ReportFilter $filter, Collection $analyses): Collection
+    private function omitFridays(ReportFilter $filter, array $trend): array
     {
         if ($filter->granularity() !== 'day') {
-            return $analyses;
+            return $trend;
         }
 
-        return $analyses
-            ->reject(function (ConversationAnalysis $analysis) {
-                $occurredAt = $analysis->occurredAt();
-
-                return $occurredAt !== null && $this->isCompanyFriday($occurredAt);
-            })
-            ->values();
+        return collect($trend)
+            ->reject(fn (array $row) => $this->isFridayPeriod((string) ($row['period'] ?? '')))
+            ->values()
+            ->all();
     }
 
-    private function isCompanyFriday(CarbonInterface $date): bool
+    private function isFridayPeriod(string $period): bool
     {
-        $carbon = $date instanceof Carbon ? $date->copy() : Carbon::instance($date);
+        if ($period === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $period)) {
+            return false;
+        }
 
-        return $carbon->timezone('Asia/Tehran')->isFriday();
+        return Carbon::createFromFormat('Y-m-d', $period)->isFriday();
     }
 
     /**
@@ -244,7 +245,7 @@ class PerformanceTrendCalculator
 
         return match ($granularity) {
             'week' => $carbon->format('Y-W'),
-            default => $carbon->timezone('Asia/Tehran')->format('Y-m-d'),
+            default => $carbon->format('Y-m-d'),
         };
     }
 

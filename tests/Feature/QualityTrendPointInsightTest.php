@@ -158,6 +158,7 @@ class QualityTrendPointInsightTest extends TestCase
 
         $this->assertNotContains($friday->toDateString(), $periods);
         $this->assertContains($thursday->toDateString(), $periods);
+        $this->assertSame(82.0, collect($dashboard['quality_trend'])->firstWhere('period', $thursday->toDateString())['avg_score']);
         $this->assertNull(
             $analytics->qualityTrendPointInsight(
                 ReportFilter::make($organization->id, ReportDatePreset::Last30),
