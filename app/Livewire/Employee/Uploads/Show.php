@@ -29,14 +29,14 @@ class Show extends Component
             404,
         );
 
-        $this->upload = $upload->load(['latestAnalysis', 'recording', 'processingJob']);
+        $this->upload = $upload->load(['latestAnalysis', 'recording', 'processingJob', 'customer.company']);
     }
 
     #[On('processing-job-updated')]
     public function onProcessingJobUpdated(array $job = []): void
     {
         if (($job['call_id'] ?? $job['job']['call_id'] ?? null) === $this->upload->id) {
-            $this->upload->refresh()->load(['latestAnalysis', 'recording', 'processingJob']);
+            $this->upload->refresh()->load(['latestAnalysis', 'recording', 'processingJob', 'customer.company']);
         }
     }
 
