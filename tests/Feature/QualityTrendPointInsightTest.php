@@ -127,33 +127,78 @@ class QualityTrendPointInsightTest extends TestCase
             ->assertSet('selectedQualityTrendPeriod', null);
     }
 
-    public function test_quality_trend_buckets_by_call_day_not_analysis_day(): void
+    public function test_quality_trend_omits_friday_points(): void
     {
         $organization = $this->actingAsEmployer();
-        $employee = $this->seedEmployee($organization, 'نرگس', 'موسوی');
+        $employee = $this->seedEmployee($organization, 'پریسا', 'اکبری');
 
-        $callDay = now()->subDays(3)->startOfDay()->addHours(11);
-        $analysisDay = now()->subDays(2)->startOfDay()->addHours(9);
+        $friday = now('Asia/Tehran')->previous(\Carbon\Carbon::FRIDAY)->setTime(11, 0);
+        $thursday = $friday->copy()->subDay()->setTime(11, 0);
 
         $this->seedAnalysis(
             $organization,
             $employee,
-            77,
-            analyzedAt: $analysisDay,
-            strengths: ['جمع‌بندی قوی'],
-            startedAt: $callDay,
+            55,
+            analyzedAt: $friday->copy()->utc(),
+            strengths: ['پیگیری'],
+            startedAt: $friday->copy()->utc(),
+        );
+        $this->seedAnalysis(
+            $organization,
+            $employee,
+            82,
+            analyzedAt: $thursday->copy()->utc(),
+            strengths: ['گوش دادن فعال'],
+            startedAt: $thursday->copy()->utc(),
         );
 
         $analytics = app(EmployeePerformanceAnalytics::class);
         $dashboard = $analytics->teamDashboard(ReportFilter::make($organization->id, ReportDatePreset::Last30));
         $periods = collect($dashboard['quality_trend'])->pluck('period')->all();
 
-        $this->assertContains($callDay->format('Y-m-d'), $periods);
-        $this->assertNotContains($analysisDay->format('Y-m-d'), $periods);
+        $this->assertNotContains($friday->toDateString(), $periods);
+        $this->assertContains($thursday->toDateString(), $periods);
+        $this->assertNull(
+            $analytics->qualityTrendPointInsight(
+                ReportFilter::make($organization->id, ReportDatePreset::Last30),
+                $friday->toDateString(),
+            ),
+        );
+    }
+
+    public function test_quality_trend_buckets_by_call_day_not_analysis_day(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $employee = $this->seedEmployee($organization, 'نرگس', 'موسوی');
+
+        $callDay = now('Asia/Tehran')->subDays(3)->setTime(11, 0);
+        while ($callDay->isFriday()) {
+            $callDay->subDay();
+        }
+        $analysisDay = $callDay->copy()->addDay()->setTime(9, 0);
+        while ($analysisDay->isFriday()) {
+            $analysisDay->addDay();
+        }
+
+        $this->seedAnalysis(
+            $organization,
+            $employee,
+            77,
+            analyzedAt: $analysisDay->copy()->utc(),
+            strengths: ['جمع‌بندی قوی'],
+            startedAt: $callDay->copy()->utc(),
+        );
+
+        $analytics = app(EmployeePerformanceAnalytics::class);
+        $dashboard = $analytics->teamDashboard(ReportFilter::make($organization->id, ReportDatePreset::Last30));
+        $periods = collect($dashboard['quality_trend'])->pluck('period')->all();
+
+        $this->assertContains($callDay->toDateString(), $periods);
+        $this->assertNotContains($analysisDay->toDateString(), $periods);
 
         $insight = $analytics->qualityTrendPointInsight(
             ReportFilter::make($organization->id, ReportDatePreset::Last30),
-            $callDay->format('Y-m-d'),
+            $callDay->toDateString(),
         );
 
         $this->assertNotNull($insight);
@@ -163,7 +208,7 @@ class QualityTrendPointInsightTest extends TestCase
         $this->assertNull(
             $analytics->qualityTrendPointInsight(
                 ReportFilter::make($organization->id, ReportDatePreset::Last30),
-                $analysisDay->format('Y-m-d'),
+                $analysisDay->toDateString(),
             ),
         );
     }

@@ -65,7 +65,6 @@ class Overview extends Component
                 : null,
             'agentProfileBase' => preg_replace('#/\d+$#', '', route('employer.intelligence.performance.show', 1)),
             'dailyTrend' => $analytics->dailyTrend(),
-            'activityFeed' => $analytics->activityFeed(6),
         ]);
     }
 }

@@ -589,7 +589,7 @@ class EmployeePerformanceAnalytics
         foreach ($trend as $row) {
             $period = (string) ($row['period'] ?? '');
 
-            if ($period === '') {
+            if ($period === '' || ($row['avg_score'] ?? null) === null) {
                 continue;
             }
 

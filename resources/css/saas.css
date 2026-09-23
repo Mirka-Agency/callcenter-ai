@@ -8,6 +8,7 @@
 @source '../../storage/framework/views/*.php';
 @source '../../resources/views/**/*.blade.php';
 @source '../../app/Livewire/**/*.php';
+@source '../../app/Support/**/*.php';
 
 @custom-variant dark (&:where(.dark, .dark *));
 

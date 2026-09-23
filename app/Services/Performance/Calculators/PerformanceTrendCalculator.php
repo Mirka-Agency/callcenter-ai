@@ -15,18 +15,30 @@ class PerformanceTrendCalculator
 {
     /**
      * @param  Collection<int, ConversationAnalysis>  $analyses
-     * @return list<array{period: string, label: string, tooltip_label: string, avg_score: float, count: int}>
+     * @return list<array{
+     *     period: string,
+     *     label: string,
+     *     tooltip_label: string,
+     *     tooltip_body: ?string,
+     *     avg_score: float|null,
+     *     count: int
+     * }>
      */
     public function qualityTrend(ReportFilter $filter, Collection $analyses): array
     {
-        return $this->bucketAnalyses($filter, $analyses, function (Collection $items) {
-            $scored = $items->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable());
+        return $this->bucketAnalyses(
+            $filter,
+            $this->excludeCompanyHolidays($filter, $analyses),
+            function (Collection $items) {
+                $scored = $items->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable());
 
-            return [
-                'avg_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : 0.0,
-                'count' => $items->count(),
-            ];
-        });
+                return [
+                    'avg_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : null,
+                    'count' => $items->count(),
+                    'tooltip_body' => $scored->isNotEmpty() ? null : 'تحلیلی انجام نشد',
+                ];
+            },
+        );
     }
 
     /**
@@ -162,15 +174,47 @@ class PerformanceTrendCalculator
     {
         $granularity = $filter->granularity();
 
-        return $analyses
+        if ($granularity === 'day' && $this->isCompanyFriday(Carbon::parse($period, 'Asia/Tehran'))) {
+            return collect();
+        }
+
+        return $this->excludeCompanyHolidays($filter, $analyses)
             ->filter(fn (ConversationAnalysis $analysis) => $analysis->occurredAt() !== null
                 && $this->periodKey($analysis->occurredAt(), $granularity) === $period)
             ->values();
     }
 
     /**
-     * @param  list<array{period: string, label: string, avg_score?: float, count?: int}>  $trend
-     * @return array{period: string, label: string, avg_score?: float, count?: int}|null
+     * Iranian work week treats Friday as the weekly holiday — Fridays are omitted from the chart.
+     *
+     * @param  Collection<int, ConversationAnalysis>  $analyses
+     * @return Collection<int, ConversationAnalysis>
+     */
+    private function excludeCompanyHolidays(ReportFilter $filter, Collection $analyses): Collection
+    {
+        if ($filter->granularity() !== 'day') {
+            return $analyses;
+        }
+
+        return $analyses
+            ->reject(function (ConversationAnalysis $analysis) {
+                $occurredAt = $analysis->occurredAt();
+
+                return $occurredAt !== null && $this->isCompanyFriday($occurredAt);
+            })
+            ->values();
+    }
+
+    private function isCompanyFriday(CarbonInterface $date): bool
+    {
+        $carbon = $date instanceof Carbon ? $date->copy() : Carbon::instance($date);
+
+        return $carbon->timezone('Asia/Tehran')->isFriday();
+    }
+
+    /**
+     * @param  list<array{period: string, label: string, avg_score?: float|null, count?: int}>  $trend
+     * @return array{period: string, label: string, avg_score?: float|null, count?: int}|null
      */
     public function previousTrendRow(array $trend, string $period): ?array
     {
@@ -181,16 +225,26 @@ class PerformanceTrendCalculator
             return null;
         }
 
-        return $ordered[$index - 1];
+        for ($i = $index - 1; $i >= 0; $i--) {
+            $row = $ordered[$i];
+
+            if (($row['avg_score'] ?? null) === null) {
+                continue;
+            }
+
+            return $row;
+        }
+
+        return null;
     }
 
     private function periodKey(CarbonInterface $date, string $granularity): string
     {
-        $carbon = $date instanceof Carbon ? $date : Carbon::instance($date);
+        $carbon = $date instanceof Carbon ? $date->copy() : Carbon::instance($date);
 
         return match ($granularity) {
             'week' => $carbon->format('Y-W'),
-            default => $carbon->format('Y-m-d'),
+            default => $carbon->timezone('Asia/Tehran')->format('Y-m-d'),
         };
     }
 

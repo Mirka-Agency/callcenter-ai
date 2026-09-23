@@ -6,6 +6,7 @@
     $qualityChart = [
         'labels' => collect($qualityTrend)->pluck('label')->all(),
         'tooltipTitles' => collect($qualityTrend)->pluck('tooltip_label')->all(),
+        'tooltipBodies' => collect($qualityTrend)->pluck('tooltip_body')->all(),
         'datasets' => [[
             'label' => 'امتیاز کیفیت مکالمه',
             'data' => collect($qualityTrend)->pluck('avg_score')->all(),
@@ -13,6 +14,7 @@
             'backgroundColor' => 'rgba(16, 185, 129, 0.12)',
             'fill' => true,
             'tension' => 0.35,
+            'spanGaps' => true,
         ]],
     ];
 

@@ -42,6 +42,7 @@
     $qualityChart = [
         'labels' => collect($qualityTrend)->pluck('label')->all(),
         'tooltipTitles' => collect($qualityTrend)->pluck('tooltip_label')->all(),
+        'tooltipBodies' => collect($qualityTrend)->pluck('tooltip_body')->all(),
         'datasets' => [[
             'label' => 'امتیاز مکالمه',
             'data' => collect($qualityTrend)->pluck('avg_score')->all(),

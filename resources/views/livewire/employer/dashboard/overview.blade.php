@@ -2,6 +2,7 @@
     $qualityChart = [
         'labels' => collect($qualityTrend)->pluck('label')->all(),
         'tooltipTitles' => collect($qualityTrend)->pluck('tooltip_label')->all(),
+        'tooltipBodies' => collect($qualityTrend)->pluck('tooltip_body')->all(),
         'datasets' => [[
             'label' => 'میانگین امتیاز تیم',
             'data' => collect($qualityTrend)->pluck('avg_score')->all(),
@@ -12,6 +13,7 @@
             'pointHitRadius' => 20,
             'fill' => true,
             'tension' => 0.35,
+            'spanGaps' => true,
         ]],
     ];
 @endphp
@@ -78,14 +80,13 @@
         'forgottenFollowUps' => $forgottenFollowUps,
     ])
 
-    <div class="grid gap-6 lg:grid-cols-3">
-        <div
-            class="saas-card lg:col-span-2"
-            data-tour="dashboard-quality"
-            data-quality-trend-card
-            x-data="qualityTrendCard({{ \Illuminate\Support\Js::from($qualityTrendInsights ?? []) }}, {{ \Illuminate\Support\Js::from($agentProfileBase ?? '') }})"
-            @quality-trend-select="select($event.detail.period)"
-        >
+    <div
+        class="saas-card"
+        data-tour="dashboard-quality"
+        data-quality-trend-card
+        x-data="qualityTrendCard({{ \Illuminate\Support\Js::from($qualityTrendInsights ?? []) }}, {{ \Illuminate\Support\Js::from($agentProfileBase ?? '') }})"
+        @quality-trend-select="select($event.detail.period)"
+    >
             <h2 class="text-lg font-semibold">روند کیفیت تیم</h2>
             <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز مکالمه در بازه ۳۰ روز اخیر. برای دیدن دلیل تغییر، روی یک نقطه کلیک کنید.</p>
             <div data-drilldown-selected="{{ $selectedQualityTrendPeriod ?? '' }}" :data-drilldown-selected="selected">
@@ -110,29 +111,5 @@
                     ])
                 </div>
             @endif
-        </div>
-
-        <div class="saas-card" data-tour="dashboard-activity">
-            <h2 class="text-lg font-semibold">فعالیت اخیر</h2>
-            <div class="mt-4 space-y-3">
-                @forelse ($activityFeed as $activity)
-                    <div class="border-b border-zinc-100 pb-3 last:border-0 dark:border-zinc-800">
-                        <p class="text-sm font-medium">{{ $activity['title'] }}</p>
-                        <p class="mt-0.5 text-xs text-zinc-500">{{ $activity['description'] }}</p>
-                        <p class="mt-1 text-[11px] text-zinc-400">{{ $activity['time'] }}</p>
-                    </div>
-                @empty
-                    <x-saas.empty-state
-                        title="{{ __('ui.empty.no_activity_feed.title') }}"
-                        description="{{ __('ui.empty.no_activity_feed.description') }}"
-                    />
-                @endforelse
-            </div>
-        </div>
-    </div>
-
-    <div class="flex flex-wrap gap-3">
-        <a href="{{ route('employer.intelligence.index') }}" class="saas-btn-secondary">تحلیل تماس‌ها</a>
-        <a href="{{ route('employer.intelligence.performance') }}" class="saas-btn-primary">عملکرد کارشناسان</a>
     </div>
 </div>
