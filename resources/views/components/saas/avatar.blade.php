@@ -7,6 +7,7 @@
     'agent' => false,
     'size' => 'md',
     'ring' => false,
+    'person' => false,
 ])
 
 @php
@@ -38,6 +39,8 @@
 >
     @if ($avatar['url'])
         <img src="{{ $avatar['url'] }}" alt="" class="h-full w-full object-cover" loading="lazy">
+    @elseif ($person)
+        <x-saas.icon name="user" class="{{ $sizes['icon'] }} text-white" />
     @elseif ($avatar['use_agent_icon'] && ($avatar['icon'] ?? null))
         <x-saas.icon :name="$avatar['icon']" class="{{ $sizes['icon'] }} text-white" />
     @else

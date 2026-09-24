@@ -34,7 +34,7 @@
             class="saas-sidebar-user"
             @click="$store.layout.closeSidebar()"
         >
-            <x-saas.avatar :user="$user" size="sm" ring />
+            <x-saas.avatar :user="$user" size="sm" ring person />
             <div class="min-w-0 flex-1">
                 <p class="truncate text-sm font-semibold text-zinc-900 dark:text-white">{{ $user->name }}</p>
                 <p class="truncate text-xs text-zinc-500">{{ $user->email }}</p>
