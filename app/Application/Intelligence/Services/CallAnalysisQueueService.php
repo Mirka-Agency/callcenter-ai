@@ -2,6 +2,7 @@
 
 namespace App\Application\Intelligence\Services;
 
+use App\Application\Call\Services\CallEmployeeResolver;
 use App\Application\Intelligence\Jobs\AnalyzeAudioJob;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
@@ -27,6 +28,7 @@ class CallAnalysisQueueService
     public function __construct(
         private CallProcessingTracker $tracker,
         private AiBillingService $billing,
+        private CallEmployeeResolver $employeeResolver,
     ) {}
 
     public function dispatchForCall(Call $call, bool $forceReanalyze = false): bool
@@ -46,6 +48,10 @@ class CallAnalysisQueueService
         }
 
         if (! $call->organization_user_id) {
+            return false;
+        }
+
+        if (! $this->matchesDefinedExtension($call)) {
             return false;
         }
 
@@ -98,6 +104,25 @@ class CallAnalysisQueueService
         AnalyzeAudioJob::dispatchChain($call->id, $recordingUrl);
 
         return true;
+    }
+
+    /**
+     * VoIP calls are analyzed only when the log resolves to an extension
+     * defined on an employee. Support-line and caller numbers do not qualify.
+     */
+    private function matchesDefinedExtension(Call $call): bool
+    {
+        if ($call->source !== ConversationSource::Voip) {
+            return true;
+        }
+
+        $log = $call->voipCallLog;
+
+        if ($log === null) {
+            return true;
+        }
+
+        return $this->employeeResolver->resolveFromCallLog($log) !== null;
     }
 
     public function shouldSkipAnalysis(Call $call): bool

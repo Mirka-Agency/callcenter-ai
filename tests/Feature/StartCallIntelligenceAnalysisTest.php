@@ -77,6 +77,58 @@ class StartCallIntelligenceAnalysisTest extends TestCase
         Bus::assertNotDispatched(AnalyzeAudioJob::class);
     }
 
+    public function test_support_line_calls_are_not_sent_for_analysis(): void
+    {
+        Bus::fake();
+        PlatformAiSettings::current()->update(['allow_negative_balance' => true]);
+
+        [$organization, $connection, $employee] = $this->setupOrganization(withEmployee: true);
+
+        EmployeeIntegrationMeta::query()->create([
+            'organization_user_id' => $employee->id,
+            'integratable_type' => OrganizationVoipConnection::class,
+            'integratable_id' => $connection->id,
+            'key' => 'extension',
+            'value' => '101',
+        ]);
+
+        VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'support-line-1',
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '41909000',
+            'status' => 'completed',
+            'started_at' => now(),
+            'duration' => 136,
+            'recording_url' => 'http://192.168.2.16/mirka-call-recordings/2026/09/24/q-5001-09120000000.wav',
+            'raw_payload' => [],
+        ]);
+
+        app(StartCallIntelligenceAnalysis::class)->handleVoipEvent(new CallEnded(
+            organizationId: $organization->id,
+            connectionId: $connection->id,
+            event: new NormalizedWebhookEvent(
+                type: VoipWebhookEventType::CallEnded,
+                callId: 'support-line-1',
+                direction: CallDirection::Inbound,
+                sourceNumber: '09120000000',
+                destinationNumber: '41909000',
+                status: CallStatus::Completed,
+                duration: 136,
+                recordingUrl: 'http://192.168.2.16/mirka-call-recordings/2026/09/24/q-5001-09120000000.wav',
+            ),
+        ));
+
+        $this->assertDatabaseHas('calls', [
+            'external_call_id' => 'support-line-1',
+            'organization_user_id' => null,
+        ]);
+        Bus::assertNotDispatched(AnalyzeAudioJob::class);
+    }
+
     public function test_assigned_voip_calls_are_queued_for_analysis(): void
     {
         Bus::fake();

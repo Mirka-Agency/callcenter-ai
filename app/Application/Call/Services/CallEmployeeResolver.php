@@ -94,7 +94,7 @@ class CallEmployeeResolver
     public function extensionCandidates(VoipCallLog $log): array
     {
         $payload = is_array($log->raw_payload) ? $log->raw_payload : [];
-        $candidates = [];
+        $seen = [];
 
         foreach ([
             $payload['resolved_extension'] ?? null,
@@ -110,26 +110,48 @@ class CallEmployeeResolver
         ] as $value) {
             $normalized = $this->normalizeCandidate($value);
 
-            if ($normalized !== null) {
-                $candidates[] = $normalized;
+            if ($normalized === null || in_array($normalized, $seen, true)) {
+                continue;
             }
+
+            $seen[] = $normalized;
         }
 
         $mapping = $this->extensionMappingFor($log);
+        $candidates = [];
 
-        foreach ($candidates as $candidate) {
+        foreach ($seen as $candidate) {
+            if ($this->isInternalExtension($candidate)) {
+                $candidates[] = $candidate;
+            }
+
             if (! isset($mapping[$candidate])) {
                 continue;
             }
 
             $mapped = $this->normalizeCandidate($mapping[$candidate]);
 
-            if ($mapped !== null) {
+            if ($mapped !== null && $this->isInternalExtension($mapped)) {
                 $candidates[] = $mapped;
             }
         }
 
         return array_values(array_unique($candidates));
+    }
+
+    /**
+     * Agent extensions are short internal numbers. Support DIDs and caller
+     * phone numbers must not be treated as extensions.
+     */
+    private function isInternalExtension(string $value): bool
+    {
+        if ($value === '' || ! ctype_digit($value)) {
+            return false;
+        }
+
+        $length = strlen($value);
+
+        return $length >= 2 && $length <= 6;
     }
 
     private function normalizeCandidate(mixed $value): ?string
