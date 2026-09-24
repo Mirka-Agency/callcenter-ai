@@ -41,6 +41,14 @@ class AnalysisListQuery
         return $filter->apply($query);
     }
 
+    /** @return Builder<ConversationAnalysis> */
+    private function analyticsQuery(AnalysisListFilter $filter): Builder
+    {
+        $moment = 'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, conversation_analyses.analyzed_at)';
+
+        return CompanyWorkCalendar::whereWorkday($this->filteredQuery($filter), $moment);
+    }
+
     public function paginate(AnalysisListFilter $filter, int $perPage = 20): LengthAwarePaginator
     {
         return $this->baseQuery($filter)
@@ -51,7 +59,7 @@ class AnalysisListQuery
     /** @return array<string, mixed> */
     public function overview(AnalysisListFilter $filter): array
     {
-        $query = $this->filteredQuery($filter);
+        $query = $this->analyticsQuery($filter);
 
         // Analysis-dated metrics (analyzed_at via filter->apply).
         $total = (clone $query)->count();
@@ -158,7 +166,7 @@ class AnalysisListQuery
                 'count' => $items->count(),
             ];
         })
-            ->reject(fn (array $row) => $granularity === 'day' && CompanyWorkCalendar::isFriday((string) $row['period']))
+            ->reject(fn (array $row) => $granularity === 'day' && CompanyWorkCalendar::isHoliday((string) $row['period']))
             ->values()
             ->all();
     }
@@ -177,7 +185,9 @@ class AnalysisListQuery
                 'label' => $this->periodLabel($period, $granularity),
                 'count' => $items->count(),
             ];
-        })->values()->all();
+        })->reject(fn (array $row) => $granularity === 'day' && CompanyWorkCalendar::isHoliday((string) $row['period']))
+            ->values()
+            ->all();
     }
 
     /** @return array{high: int, medium: int, low: int, total: int, average_score: float} */
@@ -186,7 +196,7 @@ class AnalysisListQuery
         $distribution = ['high' => 0, 'medium' => 0, 'low' => 0];
         $scores = [];
 
-        $this->filteredQuery($filter)
+        $this->analyticsQuery($filter)
             ->select(['conversation_analyses.id', 'conversation_analyses.lead_quality_json', 'conversation_analyses.is_evaluable', 'conversation_analyses.score'])
             ->chunkById(200, function (Collection $chunk) use (&$distribution, &$scores): void {
                 foreach ($chunk as $analysis) {
@@ -225,7 +235,7 @@ class AnalysisListQuery
     {
         $counts = [];
 
-        $this->filteredQuery($filter)
+        $this->analyticsQuery($filter)
             ->select(['conversation_analyses.id', 'conversation_analyses.sentiment'])
             ->chunkById(200, function (Collection $chunk) use (&$counts): void {
                 foreach ($chunk as $analysis) {
@@ -258,7 +268,7 @@ class AnalysisListQuery
     {
         $counts = [];
 
-        $this->filteredQuery($filter)
+        $this->analyticsQuery($filter)
             ->select(['conversation_analyses.id', 'conversation_analyses.concerns_json'])
             ->chunkById(200, function (Collection $chunk) use (&$counts): void {
                 foreach ($chunk as $analysis) {
@@ -295,7 +305,7 @@ class AnalysisListQuery
     /** @return Collection<int, ConversationAnalysis> */
     private function chartRows(AnalysisListFilter $filter): Collection
     {
-        return $this->filteredQuery($filter)
+        return $this->analyticsQuery($filter)
             ->whereNotNull('conversation_analyses.analyzed_at')
             ->orderBy('conversation_analyses.analyzed_at')
             ->get([

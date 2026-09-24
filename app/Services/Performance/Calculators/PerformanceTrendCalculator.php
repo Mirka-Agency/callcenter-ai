@@ -41,7 +41,7 @@ class PerformanceTrendCalculator
             },
         );
 
-        return $this->omitFridays($filter, $trend);
+        return $this->omitHolidays($filter, $trend);
     }
 
     /**
@@ -50,14 +50,14 @@ class PerformanceTrendCalculator
      */
     public function leadTrend(ReportFilter $filter, Collection $analyses): array
     {
-        return $this->bucketAnalyses($filter, $analyses, function (Collection $items) {
+        return $this->omitHolidays($filter, $this->bucketAnalyses($filter, $analyses, function (Collection $items) {
             $scores = $items->map(fn (ConversationAnalysis $a) => $a->lead_quality_json['score'] ?? null)->filter();
 
             return [
                 'avg_score' => $scores->isNotEmpty() ? round((float) $scores->avg(), 1) : 0.0,
                 'count' => $items->count(),
             ];
-        });
+        }));
     }
 
     /**
@@ -81,12 +81,12 @@ class PerformanceTrendCalculator
 
         ksort($buckets);
 
-        return collect($buckets)->map(fn (int $count, string $period) => [
+        return $this->omitHolidays($filter, collect($buckets)->map(fn (int $count, string $period) => [
             'period' => $period,
             'label' => $this->periodLabel($period, $granularity),
             'tooltip_label' => $this->periodTooltipLabel($period, $granularity),
             'count' => $count,
-        ])->values()->all();
+        ])->values()->all());
     }
 
     /**
@@ -97,7 +97,7 @@ class PerformanceTrendCalculator
     {
         $granularity = $filter->granularity();
 
-        return $analyses
+        $trend = $analyses
             ->filter(fn (ConversationAnalysis $a) => $a->occurredAt() !== null)
             ->groupBy(fn (ConversationAnalysis $a) => $this->periodKey($a->occurredAt(), $granularity))
             ->sortKeys()
@@ -114,6 +114,8 @@ class PerformanceTrendCalculator
             })
             ->values()
             ->all();
+
+        return $this->omitHolidays($filter, $trend);
     }
 
     /**
@@ -130,6 +132,11 @@ class PerformanceTrendCalculator
         ];
 
         foreach ($analyses as $analysis) {
+            $occurredAt = $analysis->occurredAt();
+            if ($occurredAt !== null && CompanyWorkCalendar::isHolidayMoment($occurredAt)) {
+                continue;
+            }
+
             $score = (int) ($analysis->score ?? 0);
             match (true) {
                 $score >= 80 => $buckets['عالی — ۸۰ به بالا']++,
@@ -177,7 +184,7 @@ class PerformanceTrendCalculator
     {
         $granularity = $filter->granularity();
 
-        if ($granularity === 'day' && $this->isFridayPeriod($period)) {
+        if ($granularity === 'day' && $this->isHolidayPeriod($period)) {
             return collect();
         }
 
@@ -188,26 +195,26 @@ class PerformanceTrendCalculator
     }
 
     /**
-     * Only Friday is a company holiday. Thursday is a working day and stays on the chart.
+     * Thursday and Friday are company holidays and do not appear on daily charts.
      *
      * @param  list<array<string, mixed>>  $trend
      * @return list<array<string, mixed>>
      */
-    private function omitFridays(ReportFilter $filter, array $trend): array
+    private function omitHolidays(ReportFilter $filter, array $trend): array
     {
         if ($filter->granularity() !== 'day') {
             return $trend;
         }
 
         return collect($trend)
-            ->reject(fn (array $row) => $this->isFridayPeriod((string) ($row['period'] ?? '')))
+            ->reject(fn (array $row) => $this->isHolidayPeriod((string) ($row['period'] ?? '')))
             ->values()
             ->all();
     }
 
-    private function isFridayPeriod(string $period): bool
+    private function isHolidayPeriod(string $period): bool
     {
-        return CompanyWorkCalendar::isFriday($period);
+        return CompanyWorkCalendar::isHoliday($period);
     }
 
     /**

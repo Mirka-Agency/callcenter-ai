@@ -9,6 +9,7 @@ use App\Models\OrganizationActivity;
 use App\Services\Reports\OrganizationCallMetrics;
 use App\Support\FollowUpDueDateParser;
 use App\Support\ForgottenCallbackMatcher;
+use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -76,9 +77,11 @@ class EmployerDashboardAnalytics
         $grouped = ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId)
             ->where('analyzed_at', '>=', now()->subDays($days))
+            ->with('call:id,conversation_date,started_at,created_at')
             ->orderBy('analyzed_at')
             ->get()
-            ->groupBy(fn ($a) => $a->analyzed_at->format('Y-m-d'));
+            ->groupBy(fn ($a) => CompanyWorkCalendar::dayKey($a->occurredAt() ?? $a->analyzed_at))
+            ->reject(fn ($items, $date) => CompanyWorkCalendar::isHoliday((string) $date));
 
         return $grouped->map(fn ($items, $date) => [
             'period' => $date,

@@ -128,13 +128,14 @@ class QualityTrendPointInsightTest extends TestCase
             ->assertSet('selectedQualityTrendPeriod', null);
     }
 
-    public function test_quality_trend_omits_friday_points(): void
+    public function test_quality_trend_omits_thursday_and_friday_points(): void
     {
         $organization = $this->actingAsEmployer();
         $employee = $this->seedEmployee($organization, 'پریسا', 'اکبری');
 
         $friday = now('Asia/Tehran')->previous(\Carbon\Carbon::FRIDAY)->setTime(11, 0);
         $thursday = $friday->copy()->subDay()->setTime(11, 0);
+        $wednesday = $thursday->copy()->subDay()->setTime(11, 0);
 
         $this->seedAnalysis(
             $organization,
@@ -152,23 +153,38 @@ class QualityTrendPointInsightTest extends TestCase
             strengths: ['گوش دادن فعال'],
             startedAt: $thursday->copy()->utc(),
         );
+        $this->seedAnalysis(
+            $organization,
+            $employee,
+            70,
+            analyzedAt: $wednesday->copy()->utc(),
+            strengths: ['جمع‌بندی'],
+            startedAt: $wednesday->copy()->utc(),
+        );
 
         $analytics = app(EmployeePerformanceAnalytics::class);
         $dashboard = $analytics->teamDashboard(ReportFilter::make($organization->id, ReportDatePreset::Last30));
         $periods = collect($dashboard['quality_trend'])->pluck('period')->all();
 
         $this->assertNotContains($friday->toDateString(), $periods);
-        $this->assertContains($thursday->toDateString(), $periods);
-        $this->assertSame(82.0, collect($dashboard['quality_trend'])->firstWhere('period', $thursday->toDateString())['avg_score']);
+        $this->assertNotContains($thursday->toDateString(), $periods);
+        $this->assertContains($wednesday->toDateString(), $periods);
+        $this->assertSame(70.0, collect($dashboard['quality_trend'])->firstWhere('period', $wednesday->toDateString())['avg_score']);
         $this->assertNull(
             $analytics->qualityTrendPointInsight(
                 ReportFilter::make($organization->id, ReportDatePreset::Last30),
                 $friday->toDateString(),
             ),
         );
+        $this->assertNull(
+            $analytics->qualityTrendPointInsight(
+                ReportFilter::make($organization->id, ReportDatePreset::Last30),
+                $thursday->toDateString(),
+            ),
+        );
     }
 
-    public function test_quality_trend_keeps_thursday_calls_that_a_tehran_shift_would_call_friday(): void
+    public function test_quality_trend_omits_holiday_calls_when_utc_and_tehran_weekdays_differ(): void
     {
         $organization = $this->actingAsEmployer();
         $employee = $this->seedEmployee($organization, 'هستی', 'راد');
@@ -202,16 +218,13 @@ class QualityTrendPointInsightTest extends TestCase
             startedAt: $friday->copy()->utc(),
         );
 
-        $dashboard = app(EmployeePerformanceAnalytics::class)
-            ->teamDashboard(ReportFilter::make($organization->id, ReportDatePreset::Last30));
-        $thursday = collect($dashboard['quality_trend'])->firstWhere('period', '2026-09-17');
+        $periods = collect(app(EmployeePerformanceAnalytics::class)
+            ->teamDashboard(ReportFilter::make($organization->id, ReportDatePreset::Last30))['quality_trend'])
+            ->pluck('period')
+            ->all();
 
-        $this->assertNotNull($thursday);
-        $this->assertSame(85.0, $thursday['avg_score']);
-        $this->assertNotContains(
-            '2026-09-18',
-            collect($dashboard['quality_trend'])->pluck('period')->all(),
-        );
+        $this->assertNotContains('2026-09-17', $periods);
+        $this->assertNotContains('2026-09-18', $periods);
     }
 
     public function test_quality_trend_buckets_by_call_day_not_analysis_day(): void
@@ -220,11 +233,11 @@ class QualityTrendPointInsightTest extends TestCase
         $employee = $this->seedEmployee($organization, 'نرگس', 'موسوی');
 
         $callDay = now('Asia/Tehran')->subDays(3)->setTime(11, 0);
-        while ($callDay->isFriday()) {
+        while (\App\Support\CompanyWorkCalendar::isHoliday($callDay->toDateString())) {
             $callDay->subDay();
         }
         $analysisDay = $callDay->copy()->addDay()->setTime(9, 0);
-        while ($analysisDay->isFriday()) {
+        while (\App\Support\CompanyWorkCalendar::isHoliday($analysisDay->toDateString())) {
             $analysisDay->addDay();
         }
 

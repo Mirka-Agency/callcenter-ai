@@ -4,44 +4,71 @@ namespace App\Support;
 
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Iranian company week: Saturday–Thursday are working days. Only Friday is off.
+ * Iranian company week: Saturday–Wednesday are working days.
+ * Thursday and Friday are company holidays and stay off charts and analytics.
  */
 class CompanyWorkCalendar
 {
     public const TIMEZONE = 'Asia/Tehran';
 
-    /**
-     * Calendar day used by charts.
-     *
-     * Thursday must stay Thursday. A Tehran offset must not fold a Thursday
-     * timestamp into Friday and drop it as a holiday.
-     */
     public static function dayKey(CarbonInterface $moment): string
     {
-        $utc = $moment instanceof Carbon ? $moment->copy()->utc() : Carbon::instance($moment)->utc();
-        $tehran = $utc->copy()->timezone(self::TIMEZONE);
+        $carbon = $moment instanceof Carbon ? $moment->copy() : Carbon::instance($moment);
 
-        if ($tehran->isThursday()) {
-            return $tehran->toDateString();
-        }
+        return $carbon->utc()->timezone(self::TIMEZONE)->toDateString();
+    }
 
-        if ($utc->isThursday()) {
-            return $utc->toDateString();
-        }
+    public static function isHoliday(string $dayKey): bool
+    {
+        $day = self::parseDayKey($dayKey);
 
-        return $tehran->toDateString();
+        return $day !== null && ($day->isThursday() || $day->isFriday());
+    }
+
+    public static function isHolidayMoment(CarbonInterface $moment): bool
+    {
+        return self::isHoliday(self::dayKey($moment));
     }
 
     public static function isFriday(string $dayKey): bool
     {
+        $day = self::parseDayKey($dayKey);
+
+        return $day !== null && $day->isFriday();
+    }
+
+    /**
+     * Keep rows whose timestamp falls on Saturday–Wednesday in Tehran.
+     *
+     * @param  Builder<\Illuminate\Database\Eloquent\Model>  $query
+     * @return Builder<\Illuminate\Database\Eloquent\Model>
+     */
+    public static function whereWorkday(Builder $query, string $utcTimestampSql): Builder
+    {
+        $driver = $query->getConnection()->getDriverName();
+
+        $dow = match ($driver) {
+            'pgsql' => "EXTRACT(DOW FROM (($utcTimestampSql) AT TIME ZONE 'UTC') AT TIME ZONE '".self::TIMEZONE."')",
+            'mysql', 'mariadb' => "DAYOFWEEK(CONVERT_TZ($utcTimestampSql, '+00:00', '+03:30'))",
+            default => "CAST(strftime('%w', datetime($utcTimestampSql, '+210 minutes')) AS INTEGER)",
+        };
+
+        $holidays = in_array($driver, ['mysql', 'mariadb'], true) ? '(5, 6)' : '(4, 5)';
+
+        return $query->whereRaw("($dow) NOT IN $holidays");
+    }
+
+    private static function parseDayKey(string $dayKey): ?Carbon
+    {
         if ($dayKey === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $dayKey)) {
-            return false;
+            return null;
         }
 
         $day = Carbon::createFromFormat('!Y-m-d', $dayKey, 'UTC');
 
-        return $day !== false && $day->isFriday();
+        return $day === false ? null : $day;
     }
 }
