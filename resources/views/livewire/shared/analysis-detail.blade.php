@@ -252,15 +252,6 @@
                 ])
             @endif
 
-            @include('livewire.shared.analysis-voip-call-info', [
-                'callLog' => $callLog ?? null,
-                'extension' => $extension ?? null,
-                'resolvedEmployeeId' => $resolvedEmployeeId ?? null,
-                'canAssignEmployee' => $canAssignEmployee ?? false,
-                'employees' => $employees ?? collect(),
-                'createEmployeeUrl' => $createEmployeeUrl ?? null,
-            ])
-
             @include('livewire.shared.analysis-customer-identity')
 
             @if ($analysis->customer_insights_json)
@@ -283,6 +274,15 @@
                     </dl>
                 </div>
             @endif
+
+            @include('livewire.shared.analysis-voip-call-info', [
+                'callLog' => $callLog ?? null,
+                'extension' => $extension ?? null,
+                'resolvedEmployeeId' => $resolvedEmployeeId ?? null,
+                'canAssignEmployee' => $canAssignEmployee ?? false,
+                'employees' => $employees ?? collect(),
+                'createEmployeeUrl' => $createEmployeeUrl ?? null,
+            ])
 
             <div class="saas-card space-y-4">
                 <h2 class="text-sm font-semibold uppercase tracking-wider text-zinc-500">جزئیات تماس</h2>

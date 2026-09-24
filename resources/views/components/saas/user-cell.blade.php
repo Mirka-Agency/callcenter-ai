@@ -18,6 +18,8 @@
         :user="$user"
         :name="$displayName"
         :url="$url ?? ($employee?->avatarUrl())"
+        :gender="$employee?->gender"
+        :agent="(bool) $employee"
         :size="$avatarSize"
     />
 

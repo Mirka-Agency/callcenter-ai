@@ -16,9 +16,22 @@
                     class="h-20 w-20 shrink-0 rounded-lg object-cover ring-2 ring-white dark:ring-zinc-900"
                 >
             @elseif ($employee)
-                <x-saas.avatar :employee="$employee" size="xl" ring />
+                <x-saas.avatar
+                    :name="trim($first_name.' '.$last_name) ?: $employee->full_name"
+                    :url="$employee->avatarUrl()"
+                    :gender="$gender"
+                    agent
+                    size="xl"
+                    ring
+                />
             @else
-                <x-saas.avatar :name="trim($first_name.' '.$last_name) ?: '?'" size="xl" ring />
+                <x-saas.avatar
+                    :name="trim($first_name.' '.$last_name) ?: '?'"
+                    :gender="$gender"
+                    agent
+                    size="xl"
+                    ring
+                />
             @endif
 
             <div class="min-w-0 flex-1">
@@ -40,6 +53,16 @@
                 <label class="mb-2 block text-sm font-medium">نام خانوادگی</label>
                 <input wire:model="last_name" class="saas-input" required>
             </div>
+        </div>
+        <div>
+            <label class="mb-2 block text-sm font-medium">جنسیت</label>
+            <select wire:model.live="gender" class="saas-input" required>
+                <option value="">انتخاب کنید</option>
+                @foreach (\App\Enums\Gender::options() as $value => $label)
+                    <option value="{{ $value }}">{{ $label }}</option>
+                @endforeach
+            </select>
+            @error('gender') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
         </div>
         <div>
             <label class="mb-2 block text-sm font-medium">ایمیل</label>

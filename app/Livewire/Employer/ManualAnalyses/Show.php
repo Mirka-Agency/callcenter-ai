@@ -24,14 +24,14 @@ class Show extends Component
         abort_unless($upload->source === ConversationSource::ManualUpload, 404);
         abort_unless($upload->organization_id === EmployerContext::organizationId(), 404);
 
-        $this->upload = $upload->load(['employee', 'uploader', 'latestAnalysis', 'recording', 'processingJob']);
+        $this->upload = $upload->load(['employee', 'uploader', 'latestAnalysis', 'recording', 'processingJob', 'customer.company']);
     }
 
     #[On('processing-job-updated')]
     public function onProcessingJobUpdated(array $job = []): void
     {
         if (($job['call_id'] ?? $job['job']['call_id'] ?? null) === $this->upload->id) {
-            $this->upload->refresh()->load(['employee', 'uploader', 'latestAnalysis', 'recording', 'processingJob']);
+            $this->upload->refresh()->load(['employee', 'uploader', 'latestAnalysis', 'recording', 'processingJob', 'customer.company']);
         }
     }
 

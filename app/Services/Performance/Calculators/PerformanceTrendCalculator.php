@@ -8,29 +8,44 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Support\JalaliDate;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 class PerformanceTrendCalculator
 {
     /**
      * @param  Collection<int, ConversationAnalysis>  $analyses
-     * @return list<array{period: string, label: string, avg_score: float, count: int}>
+     * @return list<array{
+     *     period: string,
+     *     label: string,
+     *     tooltip_label: string,
+     *     tooltip_body: ?string,
+     *     avg_score: float|null,
+     *     count: int
+     * }>
      */
     public function qualityTrend(ReportFilter $filter, Collection $analyses): array
     {
-        return $this->bucketAnalyses($filter, $analyses, function (Collection $items) {
-            $scored = $items->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable());
+        $trend = $this->bucketAnalyses(
+            $filter,
+            $analyses,
+            function (Collection $items) {
+                $scored = $items->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable());
 
-            return [
-                'avg_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : 0.0,
-                'count' => $items->count(),
-            ];
-        });
+                return [
+                    'avg_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : null,
+                    'count' => $items->count(),
+                    'tooltip_body' => $scored->isNotEmpty() ? null : 'تحلیلی انجام نشد',
+                ];
+            },
+        );
+
+        return $this->omitFridays($filter, $trend);
     }
 
     /**
      * @param  Collection<int, ConversationAnalysis>  $analyses
-     * @return list<array{period: string, label: string, avg_score: float, count: int}>
+     * @return list<array{period: string, label: string, tooltip_label: string, avg_score: float, count: int}>
      */
     public function leadTrend(ReportFilter $filter, Collection $analyses): array
     {
@@ -54,7 +69,7 @@ class PerformanceTrendCalculator
         $buckets = [];
 
         foreach ($calls as $call) {
-            $date = $call->started_at ?? $call->created_at;
+            $date = $call->occurredAt();
             if (! $date) {
                 continue;
             }
@@ -68,6 +83,7 @@ class PerformanceTrendCalculator
         return collect($buckets)->map(fn (int $count, string $period) => [
             'period' => $period,
             'label' => $this->periodLabel($period, $granularity),
+            'tooltip_label' => $this->periodTooltipLabel($period, $granularity),
             'count' => $count,
         ])->values()->all();
     }
@@ -81,13 +97,14 @@ class PerformanceTrendCalculator
         $granularity = $filter->granularity();
 
         return $analyses
-            ->filter(fn (ConversationAnalysis $a) => $a->analyzed_at !== null)
-            ->groupBy(fn (ConversationAnalysis $a) => $this->periodKey($a->analyzed_at, $granularity))
+            ->filter(fn (ConversationAnalysis $a) => $a->occurredAt() !== null)
+            ->groupBy(fn (ConversationAnalysis $a) => $this->periodKey($a->occurredAt(), $granularity))
             ->sortKeys()
             ->map(function (Collection $items, string $period) use ($granularity) {
                 return [
                     'period' => $period,
                     'label' => $this->periodLabel($period, $granularity),
+                    'tooltip_label' => $this->periodTooltipLabel($period, $granularity),
                     'positive' => $items->where('sentiment', AnalysisSentiment::Positive)->count(),
                     'neutral' => $items->where('sentiment', AnalysisSentiment::Neutral)->count(),
                     'negative' => $items->where('sentiment', AnalysisSentiment::Negative)->count(),
@@ -137,13 +154,14 @@ class PerformanceTrendCalculator
         $granularity = $filter->granularity();
 
         return $analyses
-            ->filter(fn (ConversationAnalysis $a) => $a->analyzed_at !== null)
-            ->groupBy(fn (ConversationAnalysis $a) => $this->periodKey($a->analyzed_at, $granularity))
+            ->filter(fn (ConversationAnalysis $a) => $a->occurredAt() !== null)
+            ->groupBy(fn (ConversationAnalysis $a) => $this->periodKey($a->occurredAt(), $granularity))
             ->sortKeys()
             ->map(function (Collection $items, string $period) use ($granularity, $aggregator) {
                 return array_merge([
                     'period' => $period,
                     'label' => $this->periodLabel($period, $granularity),
+                    'tooltip_label' => $this->periodTooltipLabel($period, $granularity),
                 ], $aggregator($items));
             })
             ->values()
@@ -158,15 +176,46 @@ class PerformanceTrendCalculator
     {
         $granularity = $filter->granularity();
 
+        if ($granularity === 'day' && $this->isFridayPeriod($period)) {
+            return collect();
+        }
+
         return $analyses
-            ->filter(fn (ConversationAnalysis $analysis) => $analysis->analyzed_at !== null
-                && $this->periodKey($analysis->analyzed_at, $granularity) === $period)
+            ->filter(fn (ConversationAnalysis $analysis) => $analysis->occurredAt() !== null
+                && $this->periodKey($analysis->occurredAt(), $granularity) === $period)
             ->values();
     }
 
     /**
-     * @param  list<array{period: string, label: string, avg_score?: float, count?: int}>  $trend
-     * @return array{period: string, label: string, avg_score?: float, count?: int}|null
+     * Only Friday is a company holiday for this chart — Thursday stays.
+     *
+     * @param  list<array<string, mixed>>  $trend
+     * @return list<array<string, mixed>>
+     */
+    private function omitFridays(ReportFilter $filter, array $trend): array
+    {
+        if ($filter->granularity() !== 'day') {
+            return $trend;
+        }
+
+        return collect($trend)
+            ->reject(fn (array $row) => $this->isFridayPeriod((string) ($row['period'] ?? '')))
+            ->values()
+            ->all();
+    }
+
+    private function isFridayPeriod(string $period): bool
+    {
+        if ($period === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $period)) {
+            return false;
+        }
+
+        return Carbon::createFromFormat('Y-m-d', $period)->isFriday();
+    }
+
+    /**
+     * @param  list<array{period: string, label: string, avg_score?: float|null, count?: int}>  $trend
+     * @return array{period: string, label: string, avg_score?: float|null, count?: int}|null
      */
     public function previousTrendRow(array $trend, string $period): ?array
     {
@@ -177,14 +226,26 @@ class PerformanceTrendCalculator
             return null;
         }
 
-        return $ordered[$index - 1];
+        for ($i = $index - 1; $i >= 0; $i--) {
+            $row = $ordered[$i];
+
+            if (($row['avg_score'] ?? null) === null) {
+                continue;
+            }
+
+            return $row;
+        }
+
+        return null;
     }
 
-    private function periodKey(Carbon $date, string $granularity): string
+    private function periodKey(CarbonInterface $date, string $granularity): string
     {
+        $carbon = $date instanceof Carbon ? $date->copy() : Carbon::instance($date);
+
         return match ($granularity) {
-            'week' => $date->format('Y-W'),
-            default => $date->format('Y-m-d'),
+            'week' => $carbon->format('Y-W'),
+            default => $carbon->format('Y-m-d'),
         };
     }
 
@@ -195,5 +256,14 @@ class PerformanceTrendCalculator
         }
 
         return JalaliDate::monthDay($key);
+    }
+
+    private function periodTooltipLabel(string $key, string $granularity): string
+    {
+        if ($granularity === 'week') {
+            return $this->periodLabel($key, $granularity);
+        }
+
+        return JalaliDate::monthDayWithWeekday($key);
     }
 }

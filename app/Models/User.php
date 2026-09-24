@@ -67,6 +67,7 @@ class User extends Authenticatable implements FilamentUser
             ->withPivot([
                 'first_name',
                 'last_name',
+                'gender',
                 'mobile',
                 'position',
                 'department',

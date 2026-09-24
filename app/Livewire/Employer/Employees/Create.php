@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Employer\Employees;
 
+use App\Enums\Gender;
 use App\Enums\UserRole;
 use App\Livewire\Employer\Concerns\ManagesEmployeeIntegrations;
 use App\Livewire\Employer\Employees\Concerns\ManagesEmployeeAvatar;
@@ -31,6 +32,8 @@ class Create extends Component
 
     public string $last_name = '';
 
+    public string $gender = '';
+
     public string $email = '';
 
     public string $password = '';
@@ -48,6 +51,7 @@ class Create extends Component
         $data = $this->validate([
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
+            'gender' => ['required', 'in:'.implode(',', array_column(Gender::cases(), 'value'))],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
             'mobile' => ['nullable', 'string', 'max:255'],
@@ -71,6 +75,7 @@ class Create extends Component
             'user_id' => $user->id,
             'first_name' => $data['first_name'],
             'last_name' => $data['last_name'],
+            'gender' => $data['gender'],
             'mobile' => $data['mobile'],
             'position' => $data['position'],
             'department' => $data['department'],

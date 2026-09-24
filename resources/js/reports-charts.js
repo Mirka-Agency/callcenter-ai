@@ -433,6 +433,54 @@ function applyHorizontalBarHover(type, options) {
     };
 }
 
+function applyTooltipTitles(options, tooltipTitles) {
+    if (! tooltipTitles?.length) {
+        return;
+    }
+
+    options.plugins = options.plugins || {};
+    options.plugins.tooltip = options.plugins.tooltip || {};
+    options.plugins.tooltip.callbacks = {
+        ...(options.plugins.tooltip.callbacks || {}),
+        title(items) {
+            const index = items[0]?.dataIndex;
+
+            if (index == null) {
+                return '';
+            }
+
+            return tooltipTitles[index] ?? items[0]?.label ?? '';
+        },
+    };
+}
+
+function applyTooltipBodies(options, tooltipBodies) {
+    if (! tooltipBodies?.length) {
+        return;
+    }
+
+    options.plugins = options.plugins || {};
+    options.plugins.tooltip = options.plugins.tooltip || {};
+    options.plugins.tooltip.callbacks = {
+        ...(options.plugins.tooltip.callbacks || {}),
+        label(ctx) {
+            const custom = tooltipBodies[ctx.dataIndex];
+
+            if (typeof custom === 'string' && custom !== '') {
+                return custom;
+            }
+
+            if (ctx.parsed?.y == null) {
+                return 'تحلیلی انجام نشد';
+            }
+
+            const datasetLabel = ctx.dataset?.label ? `${ctx.dataset.label}: ` : '';
+
+            return `${datasetLabel}${ctx.parsed.y}`;
+        },
+    };
+}
+
 function initChart(canvas) {
     const id = canvas.id;
 
@@ -448,9 +496,15 @@ function initChart(canvas) {
 
         const config = JSON.parse(canvas.dataset.config || '{}');
         const type = canvas.dataset.type || 'line';
+        const tooltipTitles = Array.isArray(config.tooltipTitles) ? config.tooltipTitles : null;
+        const tooltipBodies = Array.isArray(config.tooltipBodies) ? config.tooltipBodies : null;
+        delete config.tooltipTitles;
+        delete config.tooltipBodies;
         const datasetCount = config.datasets?.length ?? 1;
         const options = deepMerge(baseOptions(type, datasetCount), config.options || {});
 
+        applyTooltipTitles(options, tooltipTitles);
+        applyTooltipBodies(options, tooltipBodies);
         applyHorizontalBarHover(type, options);
         attachDrilldown(canvas, options);
 

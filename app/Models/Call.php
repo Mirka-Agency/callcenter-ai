@@ -137,6 +137,21 @@ class Call extends Model
         return $this->conversation_date ?? $this->started_at ?? $this->created_at;
     }
 
+    /**
+     * Prefer conversation_date (manual uploads), then started_at, then created_at —
+     * same order as occurredAt().
+     *
+     * @param  Builder<Call>  $query
+     * @return Builder<Call>
+     */
+    public function scopeOccurredBetween(Builder $query, CarbonInterface $from, CarbonInterface $to): Builder
+    {
+        return $query->whereRaw(
+            'COALESCE(conversation_date, started_at, created_at) BETWEEN ? AND ?',
+            [$from->toDateTimeString(), $to->toDateTimeString()],
+        );
+    }
+
     /** @param Builder<Call> $query */
     public function scopeWithPlayableOrAnalyzedAudio(Builder $query): Builder
     {

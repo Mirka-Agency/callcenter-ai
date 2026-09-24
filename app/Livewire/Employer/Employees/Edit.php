@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Employer\Employees;
 
+use App\Enums\Gender;
 use App\Livewire\Employer\Concerns\ManagesEmployeeIntegrations;
 use App\Livewire\Employer\Employees\Concerns\ManagesEmployeeAvatar;
 use App\Models\OrganizationUser;
@@ -26,6 +27,8 @@ class Edit extends Component
 
     public string $last_name = '';
 
+    public string $gender = '';
+
     public string $email = '';
 
     public ?string $password = null;
@@ -45,6 +48,7 @@ class Edit extends Component
         $this->employee = $employee;
         $this->first_name = (string) ($employee->first_name ?? '');
         $this->last_name = (string) ($employee->last_name ?? '');
+        $this->gender = $employee->gender?->value ?? '';
         $this->email = $employee->user?->email ?? '';
         $this->mobile = $employee->mobile;
         $this->position = $employee->position;
@@ -59,6 +63,7 @@ class Edit extends Component
         $data = $this->validate([
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
+            'gender' => ['required', 'in:'.implode(',', array_column(Gender::cases(), 'value'))],
             'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$this->employee->user_id],
             'password' => ['nullable', 'string', 'min:8'],
             'mobile' => ['nullable', 'string', 'max:255'],
@@ -71,6 +76,7 @@ class Edit extends Component
         $this->employee->update([
             'first_name' => $data['first_name'],
             'last_name' => $data['last_name'],
+            'gender' => $data['gender'],
             'mobile' => $data['mobile'],
             'position' => $data['position'],
             'department' => $data['department'],

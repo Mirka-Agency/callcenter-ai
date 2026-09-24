@@ -55,6 +55,7 @@ class DemoEmployeeProvisioner
         $membership->update([
             'first_name' => $profile['first_name'],
             'last_name' => $profile['last_name'],
+            'gender' => $profile['gender'],
             'mobile' => $mobile,
             'position' => $profile['position'],
             'department' => $profile['department'],

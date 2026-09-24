@@ -11,6 +11,8 @@
 
     $qualityChart = [
         'labels' => collect($qualityTrend)->pluck('label')->all(),
+        'tooltipTitles' => collect($qualityTrend)->pluck('tooltip_label')->all(),
+        'tooltipBodies' => collect($qualityTrend)->pluck('tooltip_body')->all(),
         'datasets' => [[
             'label' => 'امتیاز مکالمه',
             'data' => collect($qualityTrend)->pluck('avg_score')->all(),
@@ -18,11 +20,13 @@
             'backgroundColor' => 'rgba(99, 102, 241, 0.12)',
             'fill' => true,
             'tension' => 0.35,
+            'spanGaps' => true,
         ]],
     ];
 
     $volumeChart = [
         'labels' => collect($profile['volume_trend'])->pluck('label')->all(),
+        'tooltipTitles' => collect($profile['volume_trend'])->pluck('tooltip_label')->all(),
         'datasets' => [[
             'label' => 'تعداد تماس',
             'data' => collect($profile['volume_trend'])->pluck('count')->all(),
@@ -102,7 +106,14 @@
     <section class="saas-hero">
         <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div class="flex items-start gap-5">
-                <x-saas.avatar :name="$employee['name']" :url="$employee['avatar_url'] ?? null" size="xl" ring />
+                <x-saas.avatar
+                    :name="$employee['name']"
+                    :url="$employee['avatar_url'] ?? null"
+                    :gender="$employee['gender'] ?? null"
+                    agent
+                    size="xl"
+                    ring
+                />
                 <div>
                     <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">{{ $employee['name'] }}</h1>
                     <p class="mt-1 text-zinc-500">{{ $employee['department'] ?? 'بدون بخش' }} · {{ $employee['position'] ?? 'کارشناس تماس' }}</p>

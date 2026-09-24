@@ -40,11 +40,6 @@ export const employerPageTours = {
                 title: 'روند کیفیت تیم',
                 content: 'نمودار روند میانگین امتیاز مکالمه. روی هر نقطه کلیک کنید تا دلیل افزایش یا کاهش و کارشناسان مؤثر را ببینید.',
             },
-            {
-                selector: '[data-tour="dashboard-activity"]',
-                title: 'فعالیت اخیر',
-                content: 'آخرین رویدادهای مهم شرکت مثل تحلیل تماس یا تغییرات تیم.',
-            },
         ],
     },
     'employer.intelligence.performance': {
@@ -412,7 +407,7 @@ export const employerPageTours = {
 };
 
 const navSteps = [
-    ['employer.dashboard', 'داشبورد', 'نقطه شروع مدیر: نمای کلی تیم، عملکرد کارشناسان و فعالیت اخیر.'],
+    ['employer.dashboard', 'داشبورد', 'نقطه شروع مدیر: نمای کلی تیم و عملکرد کارشناسان.'],
     ['employer.intelligence.performance', 'عملکرد کارشناسان', 'رتبه‌بندی، مقایسه و مربیگری تیم تماس.'],
     ['employer.intelligence.index', 'تحلیل تماس‌ها', 'فهرست تمام تحلیل‌ها با فیلتر و جزئیات هر مکالمه.'],
     ['employer.extensions.index', 'داخلی‌ها', 'شماره داخلی را دستی ثبت کنید و به کارشناس وصل کنید تا تماس‌هایش به او نسبت داده شود.'],

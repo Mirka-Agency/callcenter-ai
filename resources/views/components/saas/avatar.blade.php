@@ -3,6 +3,8 @@
     'user' => null,
     'name' => null,
     'url' => null,
+    'gender' => null,
+    'agent' => false,
     'size' => 'md',
     'ring' => false,
 ])
@@ -15,7 +17,7 @@
     } elseif ($user) {
         $avatar = AvatarPresenter::forUser($user, $size);
     } else {
-        $avatar = AvatarPresenter::forName($name ?? '?', $size, $url);
+        $avatar = AvatarPresenter::forName($name ?? '?', $size, $url, $gender, (bool) $agent);
     }
 
     $sizes = AvatarPresenter::sizeClasses($size);
@@ -36,6 +38,8 @@
 >
     @if ($avatar['url'])
         <img src="{{ $avatar['url'] }}" alt="" class="h-full w-full object-cover" loading="lazy">
+    @elseif ($avatar['use_agent_icon'] && ($avatar['icon'] ?? null))
+        <x-saas.icon :name="$avatar['icon']" class="{{ $sizes['icon'] }} text-white" />
     @else
         {{ $avatar['initials'] }}
     @endif

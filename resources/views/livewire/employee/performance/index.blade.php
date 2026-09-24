@@ -41,6 +41,8 @@
 
     $qualityChart = [
         'labels' => collect($qualityTrend)->pluck('label')->all(),
+        'tooltipTitles' => collect($qualityTrend)->pluck('tooltip_label')->all(),
+        'tooltipBodies' => collect($qualityTrend)->pluck('tooltip_body')->all(),
         'datasets' => [[
             'label' => 'امتیاز مکالمه',
             'data' => collect($qualityTrend)->pluck('avg_score')->all(),
@@ -57,6 +59,7 @@
 
     $volumeChart = [
         'labels' => collect($volumeTrend)->pluck('label')->all(),
+        'tooltipTitles' => collect($volumeTrend)->pluck('tooltip_label')->all(),
         'datasets' => [[
             'label' => 'تعداد تماس',
             'data' => collect($volumeTrend)->pluck('count')->all(),
@@ -68,6 +71,7 @@
 
     $sentimentChart = [
         'labels' => collect($sentimentTrend)->pluck('label')->all(),
+        'tooltipTitles' => collect($sentimentTrend)->pluck('tooltip_label')->all(),
         'datasets' => [[
             'label' => 'رضایت مشتری (%)',
             'data' => $sentimentScores->all(),
@@ -84,6 +88,7 @@
 
     $leadChart = [
         'labels' => collect($leadTrend)->pluck('label')->all(),
+        'tooltipTitles' => collect($leadTrend)->pluck('tooltip_label')->all(),
         'datasets' => [[
             'label' => 'امتیاز سرنخ',
             'data' => collect($leadTrend)->pluck('avg_score')->all(),

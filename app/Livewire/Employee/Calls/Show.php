@@ -28,6 +28,7 @@ class Show extends Component
             'employee',
             'call.recording',
             'call.processingJob',
+            'call.customer.company',
             'callLog',
             'crmSyncs.crmConnection.provider',
         ]);

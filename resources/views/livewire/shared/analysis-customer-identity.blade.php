@@ -17,6 +17,19 @@
         || $customerIdentity['evidence'] !== ''
     );
     $confidence = min(100, max(0, (float) $customerIdentity['confidence'] * 100));
+
+    $linkedCustomer = $analysis->call?->customer
+        ?? (isset($call) ? $call->customer : null)
+        ?? (isset($upload) ? $upload->customer : null);
+    $linkedCompany = $linkedCustomer?->company;
+    $isEmployeePortal = request()->routeIs('employee.*');
+    $customerShowRoute = $linkedCustomer
+        ? route($isEmployeePortal ? 'employee.customers.show' : 'employer.customers.show', $linkedCustomer)
+        : null;
+    $companyShowRoute = $linkedCompany
+        ? route($isEmployeePortal ? 'employee.customers.companies.show' : 'employer.customers.companies.show', $linkedCompany)
+        : null;
+    $identityLinkClass = 'font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300';
 @endphp
 
 @if ($hasIdentity)
@@ -31,9 +44,22 @@
                 'job_title' => 'سمت',
             ] as $field => $label)
                 @if (filled($customerIdentity[$field]))
+                    @php
+                        $fieldHref = match ($field) {
+                            'person_name' => $customerShowRoute,
+                            'company_name' => $companyShowRoute,
+                            default => null,
+                        };
+                    @endphp
                     <div class="flex items-start justify-between gap-3">
                         <dt class="text-zinc-500">{{ $label }}</dt>
-                        <dd class="text-end font-medium text-zinc-900 dark:text-white">{{ $customerIdentity[$field] }}</dd>
+                        <dd class="text-end font-medium text-zinc-900 dark:text-white">
+                            @if ($fieldHref)
+                                <a href="{{ $fieldHref }}" class="{{ $identityLinkClass }}" wire:navigate>{{ $customerIdentity[$field] }}</a>
+                            @else
+                                {{ $customerIdentity[$field] }}
+                            @endif
+                        </dd>
                     </div>
                 @endif
             @endforeach

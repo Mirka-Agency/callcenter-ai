@@ -281,6 +281,7 @@ class EmployeePerformanceAnalytics
                 'id' => $employee->id,
                 'name' => $employee->full_name,
                 'avatar_url' => $employee->avatarUrl(),
+                'gender' => $employee->gender?->value,
                 'department' => $employee->department,
                 'position' => $employee->position,
                 'email' => $employee->user?->email,
@@ -405,6 +406,7 @@ class EmployeePerformanceAnalytics
                 'id' => $employee->id,
                 'name' => $employee->full_name,
                 'avatar_url' => $employee->avatarUrl(),
+                'gender' => $employee->gender?->value,
                 'department' => $employee->department,
                 'position' => $employee->position,
                 'average_score' => $metrics['average_quality_score'],
@@ -587,7 +589,7 @@ class EmployeePerformanceAnalytics
         foreach ($trend as $row) {
             $period = (string) ($row['period'] ?? '');
 
-            if ($period === '') {
+            if ($period === '' || ($row['avg_score'] ?? null) === null) {
                 continue;
             }
 
@@ -761,6 +763,7 @@ class EmployeePerformanceAnalytics
                     'id' => (int) $employeeId,
                     'name' => $employee?->full_name ?: '—',
                     'avatar_url' => $employee?->avatarUrl(),
+                    'gender' => $employee?->gender?->value,
                     'score' => $score,
                     'previous_score' => $previousScore,
                     'score_delta' => $previousScore === null ? null : round($score - $previousScore, 1),

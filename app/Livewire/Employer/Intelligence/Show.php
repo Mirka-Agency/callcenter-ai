@@ -30,6 +30,7 @@ class Show extends Component
             'employee.user',
             'call.recording',
             'call.processingJob',
+            'call.customer.company',
             'callLog.connection',
             'crmSyncs.crmConnection.provider',
         ]);
@@ -86,6 +87,7 @@ class Show extends Component
             'callLog.connection',
             'call.recording',
             'call.processingJob',
+            'call.customer.company',
             'crmSyncs.crmConnection.provider',
         ]);
         $this->assignEmployeeId = 0;
