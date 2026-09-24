@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\DTOs\ReportFilter;
+use App\Enums\Gender;
 use App\Enums\ReportDatePreset;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
@@ -31,6 +32,22 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $this->assertArrayHasKey('executive_summary', $dashboard);
         $this->assertNotEmpty($dashboard['employees']);
         $this->assertSame($employee->full_name, $dashboard['employees'][0]['name']);
+    }
+
+    public function test_team_dashboard_keeps_gender_so_avatars_can_be_colored(): void
+    {
+        $organization = Organization::factory()->create();
+        $female = $this->seedNamedEmployee($organization, 'زهرا', 'کریمی', Gender::Female);
+        $male = $this->seedNamedEmployee($organization, 'علی', 'محمدی', Gender::Male);
+        $this->seedAnalysisForEmployee($organization, $female, 80);
+        $this->seedAnalysisForEmployee($organization, $male, 70);
+
+        $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
+        $employees = collect(app(EmployeePerformanceAnalytics::class)->teamDashboard($filter)['employees'])
+            ->keyBy('id');
+
+        $this->assertSame('female', $employees[$female->id]['gender']);
+        $this->assertSame('male', $employees[$male->id]['gender']);
     }
 
     public function test_employee_profile_includes_recent_calls_and_coaching(): void
@@ -185,13 +202,18 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         return [$organization, $employee];
     }
 
-    private function seedNamedEmployee(Organization $organization, string $firstName, string $lastName): OrganizationUser
-    {
+    private function seedNamedEmployee(
+        Organization $organization,
+        string $firstName,
+        string $lastName,
+        ?Gender $gender = null,
+    ): OrganizationUser {
         return OrganizationUser::query()->create([
             'organization_id' => $organization->id,
             'user_id' => User::factory()->create()->id,
             'first_name' => $firstName,
             'last_name' => $lastName,
+            'gender' => $gender,
             'is_active' => true,
         ]);
     }

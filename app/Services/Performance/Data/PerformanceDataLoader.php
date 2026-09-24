@@ -85,7 +85,7 @@ class PerformanceDataLoader
             ->when($filter->employeeIds !== [], fn (Builder $q) => $q->whereIn('id', $filter->employeeIds))
             ->with('user:id,avatar_path,name')
             ->orderBy('first_name')
-            ->get(['id', 'user_id', 'first_name', 'last_name', 'department', 'position', 'is_active']);
+            ->get(['id', 'user_id', 'first_name', 'last_name', 'gender', 'department', 'position', 'is_active']);
     }
 
     /** @param  list<int>  $employeeIds */
