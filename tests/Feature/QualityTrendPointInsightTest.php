@@ -14,6 +14,7 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\User;
 use App\Services\Performance\EmployeePerformanceAnalytics;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -164,6 +165,52 @@ class QualityTrendPointInsightTest extends TestCase
                 ReportFilter::make($organization->id, ReportDatePreset::Last30),
                 $friday->toDateString(),
             ),
+        );
+    }
+
+    public function test_quality_trend_keeps_thursday_calls_that_a_tehran_shift_would_call_friday(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $employee = $this->seedEmployee($organization, 'هستی', 'راد');
+
+        $thursdayEvening = Carbon::parse('2026-09-17 22:30:00', 'UTC');
+        $earlyThursday = Carbon::parse('2026-09-17 00:40:00', 'Asia/Tehran');
+        $friday = Carbon::parse('2026-09-18 11:00:00', 'Asia/Tehran');
+
+        $this->seedAnalysis(
+            $organization,
+            $employee,
+            80,
+            analyzedAt: $thursdayEvening->copy(),
+            strengths: ['پیگیری'],
+            startedAt: $thursdayEvening->copy(),
+        );
+        $this->seedAnalysis(
+            $organization,
+            $employee,
+            90,
+            analyzedAt: $earlyThursday->copy()->utc(),
+            strengths: ['جمع‌بندی'],
+            startedAt: $earlyThursday->copy()->utc(),
+        );
+        $this->seedAnalysis(
+            $organization,
+            $employee,
+            40,
+            analyzedAt: $friday->copy()->utc(),
+            strengths: ['لحن'],
+            startedAt: $friday->copy()->utc(),
+        );
+
+        $dashboard = app(EmployeePerformanceAnalytics::class)
+            ->teamDashboard(ReportFilter::make($organization->id, ReportDatePreset::Last30));
+        $thursday = collect($dashboard['quality_trend'])->firstWhere('period', '2026-09-17');
+
+        $this->assertNotNull($thursday);
+        $this->assertSame(85.0, $thursday['avg_score']);
+        $this->assertNotContains(
+            '2026-09-18',
+            collect($dashboard['quality_trend'])->pluck('period')->all(),
         );
     }
 

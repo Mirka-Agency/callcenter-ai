@@ -6,6 +6,7 @@ use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\DTOs\ReportFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
+use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -187,7 +188,7 @@ class PerformanceTrendCalculator
     }
 
     /**
-     * Only Friday is a company holiday for this chart — Thursday stays.
+     * Only Friday is a company holiday. Thursday is a working day and stays on the chart.
      *
      * @param  list<array<string, mixed>>  $trend
      * @return list<array<string, mixed>>
@@ -206,11 +207,7 @@ class PerformanceTrendCalculator
 
     private function isFridayPeriod(string $period): bool
     {
-        if ($period === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $period)) {
-            return false;
-        }
-
-        return Carbon::createFromFormat('Y-m-d', $period)->isFriday();
+        return CompanyWorkCalendar::isFriday($period);
     }
 
     /**
@@ -245,7 +242,7 @@ class PerformanceTrendCalculator
 
         return match ($granularity) {
             'week' => $carbon->format('Y-W'),
-            default => $carbon->format('Y-m-d'),
+            default => CompanyWorkCalendar::dayKey($carbon),
         };
     }
 

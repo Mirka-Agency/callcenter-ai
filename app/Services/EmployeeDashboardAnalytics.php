@@ -8,6 +8,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\EmployeePerformanceSnapshot;
 use App\Models\OrganizationUser;
 use App\Services\Performance\Calculators\JsonFieldAggregator;
+use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -259,19 +260,29 @@ class EmployeeDashboardAnalytics
      */
     private function dailyTrendSeries(int $days, callable $aggregator): array
     {
-        $from = now()->subDays($days - 1)->startOfDay();
+        $from = now(CompanyWorkCalendar::TIMEZONE)->subDays($days - 1)->startOfDay();
 
         $grouped = $this->analysisQuery()
-            ->where('analyzed_at', '>=', $from)
+            ->with('call:id,conversation_date,started_at,created_at')
+            ->where('analyzed_at', '>=', $from->copy()->utc())
             ->orderBy('analyzed_at')
             ->get()
-            ->groupBy(fn (ConversationAnalysis $analysis) => $analysis->analyzed_at->format('Y-m-d'));
+            ->groupBy(function (ConversationAnalysis $analysis) {
+                $occurredAt = $analysis->call?->occurredAt() ?? $analysis->analyzed_at;
+
+                return CompanyWorkCalendar::dayKey($occurredAt);
+            });
 
         $series = [];
 
         for ($offset = 0; $offset < $days; $offset++) {
             $date = $from->copy()->addDays($offset);
-            $period = $date->format('Y-m-d');
+            $period = $date->toDateString();
+
+            if (CompanyWorkCalendar::isFriday($period)) {
+                continue;
+            }
+
             $items = $grouped->get($period, collect());
 
             $series[] = array_merge([
