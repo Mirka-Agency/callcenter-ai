@@ -9,7 +9,6 @@
     <div class="flex items-start gap-4">
         <x-saas.avatar
             :name="$agent['name']"
-            :url="$agent['avatar_url'] ?? null"
             :gender="$agent['gender'] ?? null"
             agent
             size="lg"
