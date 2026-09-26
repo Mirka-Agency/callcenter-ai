@@ -201,8 +201,8 @@
         </div>
     @endif
 
-    <div class="grid gap-6 lg:grid-cols-2" data-tour="analysis-charts">
-        <div class="saas-card">
+    <div class="grid gap-6 lg:grid-cols-4" data-tour="analysis-charts">
+        <div class="saas-card lg:col-span-2">
             <h2 class="text-lg font-semibold">روند کیفیت مکالمه</h2>
             <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز در بازه فیلتر فعلی</p>
             @if ($hasQualityTrend)
@@ -216,7 +216,7 @@
             @endif
         </div>
 
-        <div class="saas-card">
+        <div class="saas-card lg:col-span-2">
             <h2 class="text-lg font-semibold">حجم تحلیل‌ها</h2>
             <p class="mt-1 text-sm text-zinc-500">تعداد تحلیل‌های انجام‌شده در هر بازه</p>
             @if ($hasVolumeTrend)
@@ -230,11 +230,11 @@
             @endif
         </div>
 
-        <div class="saas-card">
+        <div class="saas-card lg:col-span-1">
             <h2 class="text-lg font-semibold">احساسات مشتری</h2>
             <p class="mt-1 text-sm text-zinc-500">توزیع احساس در مکالمات</p>
             @if ($hasSentiment)
-                <div class="mt-4 h-56" wire:key="intel-sentiment-{{ md5(json_encode($sentimentBreakdown)) }}">
+                <div class="mx-auto mt-4 aspect-square w-full" wire:key="intel-sentiment-{{ md5(json_encode($sentimentBreakdown)) }}">
                     <canvas id="intel-sentiment-dist" data-report-chart data-type="doughnut" data-config='@json($sentimentChart)'></canvas>
                 </div>
             @else
@@ -245,10 +245,10 @@
         </div>
 
         @if ($hasConcerns)
-            <div class="saas-card lg:col-span-2">
+            <div class="saas-card lg:col-span-3">
                 <h2 class="text-lg font-semibold">نگرانی‌های پرتکرار</h2>
                 <p class="mt-1 text-sm text-zinc-500">موضوعاتی که بیشتر در مکالمات مطرح شده‌اند</p>
-                <div class="mt-4 h-52" wire:key="intel-concerns-{{ md5(json_encode($concerns)) }}">
+                <div class="mt-4 h-56" wire:key="intel-concerns-{{ md5(json_encode($concerns)) }}">
                     <canvas id="intel-concerns-chart" data-report-chart data-type="bar" data-config='@json($concernChart)'></canvas>
                 </div>
             </div>
