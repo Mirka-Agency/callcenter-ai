@@ -5,13 +5,19 @@ namespace Tests\Unit;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Domain\Voip\Enums\CallStatus;
+use App\Domain\Voip\Enums\VoipProviderCode;
 use App\DTOs\AnalysisListFilter;
 use App\Enums\ReportDatePreset;
+use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
+use App\Models\EmployeeIntegrationMeta;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
+use App\Models\OrganizationVoipConnection;
 use App\Models\User;
+use App\Models\VoipCallLog;
+use App\Models\VoipProvider;
 use App\Services\AnalysisListQuery;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -109,6 +115,29 @@ class AnalysisListQueryTest extends TestCase
         $this->assertSame(3, $overview['total']);
         $this->assertSame(3, $overview['total_calls']);
         $this->assertSame(3, $overview['total_leads']);
+    }
+
+    public function test_average_lead_score_includes_low_medium_and_high_leads(): void
+    {
+        $organization = Organization::factory()->create();
+        $user = User::factory()->create();
+        $agent = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $user->id,
+            'first_name' => 'Ali',
+            'last_name' => 'One',
+            'is_active' => true,
+        ]);
+
+        $this->seedAnalysis($organization, $agent, 'completed', 300, 90, leadQuality: ['score' => 90, 'level' => 'high', 'reason' => 'test']);
+        $this->seedAnalysis($organization, $agent, 'completed', 300, 80, leadQuality: ['score' => 30, 'level' => 'low', 'reason' => 'test']);
+
+        $overview = app(AnalysisListQuery::class)->overview(AnalysisListFilter::make(
+            organizationId: $organization->id,
+            preset: ReportDatePreset::Last30,
+        ));
+
+        $this->assertSame(60.0, $overview['average_lead_score']);
     }
 
     public function test_overview_counts_unanalyzed_calls_in_total_calls(): void
@@ -312,12 +341,227 @@ class AnalysisListQueryTest extends TestCase
             preset: ReportDatePreset::Last30,
         ));
 
-        $this->assertSame(1, $overview['total'], 'analyses use analyzed_at');
+        $this->assertSame(0, $overview['total'], 'analyzed calls follow the same call set as the total');
         $this->assertSame(2, $overview['total_calls'], 'calls use call occurrence date');
         $this->assertSame(1, $overview['inbound_count']);
         $this->assertSame(1, $overview['outbound_count']);
         $this->assertSame(1, $overview['missed_count']);
         $this->assertSame(100, $overview['average_duration_seconds']);
+    }
+
+    public function test_analyzed_plus_missed_does_not_exceed_total_calls(): void
+    {
+        $organization = Organization::factory()->create();
+        $user = User::factory()->create();
+        $agent = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $user->id,
+            'first_name' => 'Ali',
+            'last_name' => 'One',
+            'is_active' => true,
+        ]);
+
+        $this->seedAnalysis($organization, $agent, 'completed', 300, 90);
+        $this->seedAnalysis($organization, $agent, CallStatus::Missed->value, 0, 10);
+
+        $oldCall = Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09120000021',
+            'receiver_number' => '02100000000',
+            'status' => 'completed',
+            'processing_status' => 'analyzed',
+            'duration_seconds' => 180,
+            'started_at' => now()->subDays(50),
+            'conversation_date' => now()->subDays(50),
+        ]);
+        ConversationAnalysis::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'call_id' => $oldCall->id,
+            'source' => ConversationSource::Voip,
+            'llm_provider' => 'openai',
+            'model_name' => 'gpt-4o-mini',
+            'score' => 70,
+            'summary' => 'تحلیل تماس خارج از بازه',
+            'sentiment' => AnalysisSentiment::Neutral,
+            'strengths_json' => [],
+            'weaknesses_json' => [],
+            'next_actions_json' => [],
+            'analyzed_at' => now(),
+        ]);
+
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09120000022',
+            'receiver_number' => '02100000000',
+            'status' => 'completed',
+            'processing_status' => 'pending',
+            'duration_seconds' => 90,
+            'started_at' => now(),
+        ]);
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09120000023',
+            'receiver_number' => '02100000000',
+            'status' => 'completed',
+            'processing_status' => 'skipped',
+            'duration_seconds' => 40,
+            'started_at' => now(),
+        ]);
+
+        $overview = app(AnalysisListQuery::class)->overview(AnalysisListFilter::make(
+            organizationId: $organization->id,
+            preset: ReportDatePreset::Last30,
+        ));
+
+        $this->assertSame(4, $overview['total_calls']);
+        $this->assertSame(2, $overview['total']);
+        $this->assertSame(1, $overview['missed_count']);
+        $this->assertSame(1, $overview['in_flight_count']);
+        $this->assertSame(
+            $overview['total_calls'],
+            $overview['total'] + $overview['missed_count'] + $overview['in_flight_count'],
+        );
+    }
+
+    public function test_overview_total_calls_counts_only_defined_extensions(): void
+    {
+        $organization = Organization::factory()->create();
+        $user = User::factory()->create();
+        $agent = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $user->id,
+            'first_name' => 'Ali',
+            'last_name' => 'One',
+            'is_active' => true,
+        ]);
+        $connection = $this->voipConnection($organization, [
+            '41909000' => '111',
+        ]);
+
+        EmployeeIntegrationMeta::query()->create([
+            'organization_user_id' => $agent->id,
+            'integratable_type' => OrganizationVoipConnection::class,
+            'integratable_id' => $connection->id,
+            'key' => 'extension',
+            'value' => '111',
+        ]);
+
+        $this->createExtensionCall($organization, $agent, $connection, [
+            'external_call_id' => 'defined-destination',
+            'direction' => 'inbound',
+            'source_number' => '09120000001',
+            'destination_number' => '111',
+            'status' => CallStatus::Completed->value,
+            'duration_seconds' => 100,
+        ]);
+        $this->createExtensionCall($organization, $agent, $connection, [
+            'external_call_id' => 'defined-missed',
+            'direction' => 'inbound',
+            'source_number' => '09120000002',
+            'destination_number' => '111',
+            'status' => CallStatus::Missed->value,
+            'duration_seconds' => 0,
+        ]);
+        $this->createExtensionCall($organization, $agent, $connection, [
+            'external_call_id' => 'defined-outbound',
+            'direction' => 'outbound',
+            'source_number' => '111',
+            'destination_number' => '09120000003',
+            'status' => CallStatus::Completed->value,
+            'duration_seconds' => 80,
+            'raw_payload' => ['resolved_extension' => '111'],
+        ]);
+        $this->createDirectExtensionCall($organization, $agent, $connection, '111', [
+            'direction' => 'outbound',
+            'duration_seconds' => 40,
+        ]);
+        $this->createExtensionCall($organization, $agent, $connection, [
+            'external_call_id' => 'defined-recording',
+            'direction' => 'inbound',
+            'source_number' => '09120000099',
+            'destination_number' => '5001',
+            'status' => CallStatus::Completed->value,
+            'duration_seconds' => 50,
+            'recording_url' => 'https://pbx.example/monitor/exten-111-20260926.wav',
+        ]);
+        $this->createExtensionCall($organization, $agent, $connection, [
+            'external_call_id' => 'defined-did-alias',
+            'direction' => 'inbound',
+            'source_number' => '09120000004',
+            'destination_number' => '41909000',
+            'status' => CallStatus::Completed->value,
+            'duration_seconds' => 60,
+        ]);
+
+        $this->createExtensionCall($organization, $agent, $connection, [
+            'external_call_id' => 'undefined-112',
+            'direction' => 'inbound',
+            'source_number' => '09120000005',
+            'destination_number' => '112',
+            'status' => CallStatus::Completed->value,
+            'duration_seconds' => 400,
+        ]);
+        $this->createExtensionCall($organization, $agent, $connection, [
+            'external_call_id' => 'undefined-missed-112',
+            'direction' => 'inbound',
+            'source_number' => '09120000006',
+            'destination_number' => '112',
+            'status' => CallStatus::Missed->value,
+            'duration_seconds' => 0,
+        ]);
+        $this->createExtensionCall($organization, $agent, $connection, [
+            'external_call_id' => 'prefix-1111',
+            'direction' => 'inbound',
+            'source_number' => '09120000007',
+            'destination_number' => '1111',
+            'status' => CallStatus::Completed->value,
+            'duration_seconds' => 30,
+        ]);
+        $this->createDirectExtensionCall($organization, $agent, $connection, '112', [
+            'direction' => 'inbound',
+            'duration_seconds' => 20,
+        ]);
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Imported,
+            'provider_code' => 'demo',
+            'external_call_id' => 'no-extension',
+            'direction' => 'inbound',
+            'caller_number' => '09120000008',
+            'receiver_number' => '02100000000',
+            'status' => CallStatus::Completed->value,
+            'processing_status' => 'analyzed',
+            'duration_seconds' => 10,
+            'started_at' => now(),
+        ]);
+
+        $overview = app(AnalysisListQuery::class)->overview(AnalysisListFilter::make(
+            organizationId: $organization->id,
+            preset: ReportDatePreset::Last30,
+        ));
+
+        $this->assertSame(6, $overview['total_calls']);
+        $this->assertSame(1, $overview['missed_count']);
+        $this->assertSame(4, $overview['inbound_count']);
+        $this->assertSame(2, $overview['outbound_count']);
+        $this->assertSame(66, $overview['average_duration_seconds']);
     }
 
     public function test_assigned_employees_only_excludes_unassigned_analyses(): void
@@ -417,6 +661,7 @@ class AnalysisListQueryTest extends TestCase
         int $durationSeconds,
         int $score,
         bool $needsAttention = false,
+        ?array $leadQuality = null,
     ): ConversationAnalysis {
         $call = Call::query()->create([
             'organization_id' => $organization->id,
@@ -446,7 +691,7 @@ class AnalysisListQueryTest extends TestCase
             'strengths_json' => [],
             'weaknesses_json' => [],
             'next_actions_json' => [],
-            'lead_quality_json' => ['score' => 70, 'level' => 'medium', 'reason' => 'test'],
+            'lead_quality_json' => $leadQuality ?? ['score' => 70, 'level' => 'medium', 'reason' => 'test'],
             'needs_attention' => $needsAttention,
             'attention_json' => $needsAttention ? [
                 'needed' => true,
@@ -455,5 +700,92 @@ class AnalysisListQueryTest extends TestCase
             ] : null,
             'analyzed_at' => now(),
         ]);
+    }
+
+    /** @param  array<string, string>  $extensionMapping */
+    private function voipConnection(Organization $organization, array $extensionMapping = []): OrganizationVoipConnection
+    {
+        $provider = VoipProvider::query()->create([
+            'name' => 'Custom',
+            'code' => VoipProviderCode::Custom->value.'-'.$organization->id,
+            'adapter_class' => NullVoipAdapter::class,
+            'is_active' => true,
+        ]);
+
+        return OrganizationVoipConnection::query()->create([
+            'organization_id' => $organization->id,
+            'voip_provider_id' => $provider->id,
+            'name' => 'Asterisk',
+            'credentials' => [],
+            'settings' => ['extension_mapping' => $extensionMapping],
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+    }
+
+    /** @param  array<string, mixed>  $logOverrides */
+    private function createExtensionCall(
+        Organization $organization,
+        OrganizationUser $agent,
+        OrganizationVoipConnection $connection,
+        array $logOverrides,
+    ): Call {
+        $log = VoipCallLog::query()->create(array_merge([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => uniqid('log-', true),
+            'direction' => 'inbound',
+            'source_number' => '09120000000',
+            'destination_number' => '111',
+            'status' => CallStatus::Completed->value,
+            'started_at' => now(),
+            'duration' => $logOverrides['duration_seconds'] ?? 0,
+            'raw_payload' => [],
+        ], $logOverrides));
+
+        return Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'organization_voip_connection_id' => $connection->id,
+            'voip_call_log_id' => $log->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => $log->external_call_id,
+            'direction' => $logOverrides['direction'] ?? 'inbound',
+            'caller_number' => $log->source_number,
+            'receiver_number' => $log->destination_number,
+            'status' => $logOverrides['status'] ?? CallStatus::Completed->value,
+            'processing_status' => 'pending',
+            'duration_seconds' => $logOverrides['duration_seconds'] ?? 0,
+            'started_at' => now(),
+        ]);
+    }
+
+    /** @param  array<string, mixed>  $overrides */
+    private function createDirectExtensionCall(
+        Organization $organization,
+        OrganizationUser $agent,
+        OrganizationVoipConnection $connection,
+        string $extension,
+        array $overrides,
+    ): Call {
+        $direction = $overrides['direction'] ?? 'inbound';
+
+        return Call::query()->create(array_merge([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'organization_voip_connection_id' => $connection->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => uniqid('direct-', true),
+            'direction' => $direction,
+            'caller_number' => $direction === 'outbound' ? $extension : '09121111111',
+            'receiver_number' => $direction === 'outbound' ? '09122222222' : $extension,
+            'status' => CallStatus::Completed->value,
+            'processing_status' => 'pending',
+            'duration_seconds' => 0,
+            'started_at' => now(),
+        ], $overrides));
     }
 }

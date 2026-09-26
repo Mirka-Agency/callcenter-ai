@@ -176,6 +176,58 @@ class AnalysisResponseNormalizerTest extends TestCase
         $this->assertSame('مشتری به عملکرد کارشناس و محصول اعتراض دارد', $result['needs_attention']['reason']);
     }
 
+    public function test_payment_collection_call_is_not_stored_as_customer_dissatisfaction(): void
+    {
+        $result = $this->normalizer->apply([
+            'score' => 70,
+            'sentiment' => 'negative',
+            'summary' => 'مشتری به‌خاطر پرداخت‌نشدن فاکتور تماس گرفت و ناراضی بود.',
+            'customer_insights' => ['sentiment' => 'negative', 'intent' => 'اعتراض به عدم پرداخت'],
+            'concerns' => [
+                ['type' => 'other', 'text' => 'مشتری بدهی را پرداخت نکرده است', 'severity' => 'high'],
+            ],
+            'needs_attention' => [
+                'needed' => true,
+                'categories' => ['general'],
+                'reason' => 'پیگیری بدهی مشتری',
+            ],
+        ]);
+
+        $this->assertSame('neutral', $result['sentiment']);
+        $this->assertSame('neutral', $result['customer_insights']['sentiment']);
+        $this->assertSame([], $result['concerns']);
+        $this->assertFalse($result['needs_attention']['needed']);
+    }
+
+    public function test_real_service_complaint_stays_negative_even_if_payment_is_mentioned(): void
+    {
+        $result = $this->normalizer->apply([
+            'score' => 40,
+            'sentiment' => 'negative',
+            'summary' => 'مشتری از کیفیت محصول ناراضی است و فاکتور را پرداخت نکرده تا محصول اصلاح شود.',
+            'concerns' => [
+                ['type' => 'other', 'text' => 'کیفیت محصول پایین است', 'severity' => 'high'],
+            ],
+        ]);
+
+        $this->assertSame('negative', $result['sentiment']);
+        $this->assertCount(1, $result['concerns']);
+    }
+
+    public function test_employee_name_with_honorific_is_not_stored_as_customer(): void
+    {
+        $result = $this->normalizer->apply([
+            'customer_identity' => [
+                'person_name' => 'آقای علی رضایی',
+                'confidence' => 0.9,
+            ],
+        ], [
+            'current_user_name' => 'علی رضایی',
+        ]);
+
+        $this->assertSame('', $result['customer_identity']['person_name']);
+    }
+
     public function test_explicit_evaluable_false_forces_zero_score(): void
     {
         $result = $this->normalizer->apply([
@@ -186,5 +238,64 @@ class AnalysisResponseNormalizerTest extends TestCase
 
         $this->assertFalse($result['evaluable']);
         $this->assertSame(0, $result['score']);
+    }
+
+    public function test_unanswered_call_is_not_evaluable_and_drops_false_weakness(): void
+    {
+        $result = $this->normalizer->apply([
+            'score' => 35,
+            'evaluable' => true,
+            'summary' => 'کارشناس تماس گرفت ولی مشتری پاسخ نداد و مکالمه‌ای شکل نگرفت.',
+            'weaknesses' => ['عدم ارتباط با مشتری'],
+            'strengths' => ['تلاش برای تماس'],
+            'operational_insights' => [
+                'follow_up_suggestions' => ['تماس پیگیری فردا'],
+                'missed_opportunities' => ['فرصتی ثبت شد'],
+            ],
+        ]);
+
+        $this->assertFalse($result['evaluable']);
+        $this->assertSame(0, $result['score']);
+        $this->assertSame([], $result['weaknesses']);
+        $this->assertSame([], $result['strengths']);
+        $this->assertSame([], $result['operational_insights']['follow_up_suggestions']);
+    }
+
+    public function test_extension_redirect_becomes_a_follow_up_instead_of_a_weakness(): void
+    {
+        $result = $this->normalizer->apply([
+            'score' => 72,
+            'evaluable' => true,
+            'summary' => 'کارشناس با شرکت تماس گرفت. کارمند گفت باید با داخلی دیگری تماس بگیرید و سپس تماس قطع شد.',
+            'weaknesses' => [
+                'عدم پیگیری برای اتصال مستقیم مشتری به بخش مربوطه',
+                'جمع‌بندی ضعیف انتهای تماس',
+            ],
+            'operational_insights' => [
+                'follow_up_suggestions' => [],
+                'missed_opportunities' => ['عدم پیگیری اتصال به بخش مربوطه انجام نشد'],
+            ],
+        ]);
+
+        $this->assertTrue($result['evaluable']);
+        $this->assertSame(['جمع‌بندی ضعیف انتهای تماس'], $result['weaknesses']);
+        $this->assertSame(
+            ['تماس پیگیری ۳ روز دیگر برای اتصال به بخش یا داخلی معرفی‌شده'],
+            $result['operational_insights']['follow_up_suggestions'],
+        );
+        $this->assertSame([], $result['operational_insights']['missed_opportunities']);
+    }
+
+    public function test_real_follow_up_weakness_stays_a_weakness(): void
+    {
+        $result = $this->normalizer->apply([
+            'score' => 64,
+            'evaluable' => true,
+            'summary' => 'مشتری درخواست پیش‌فاکتور داشت و کارشناس قول مشخصی برای بازگشت نداد.',
+            'weaknesses' => ['عدم پیگیری درخواست مشتری'],
+        ]);
+
+        $this->assertSame(['عدم پیگیری درخواست مشتری'], $result['weaknesses']);
+        $this->assertSame([], $result['operational_insights']['follow_up_suggestions'] ?? []);
     }
 }

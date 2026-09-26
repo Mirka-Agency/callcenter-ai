@@ -136,6 +136,58 @@ class ForgottenFollowUpsDashboardTest extends TestCase
         $this->assertArrayHasKey('sort_call_date', $forgotten[0]);
     }
 
+    public function test_extension_redirect_weakness_becomes_forgotten_only_after_a_few_days(): void
+    {
+        $organization = Organization::factory()->create();
+
+        $this->seedFollowUp($organization, [
+            'external_id' => 'redirect-overdue',
+            'customer_name' => 'ارجاع معوق',
+            'customer_phone' => '09125550001',
+            'follow_up' => 'عدم پیگیری برای اتصال مستقیم مشتری به بخش مربوطه',
+            'weakness_only' => true,
+            'analyzed_at' => now()->subDays(5),
+            'started_at' => now()->subDays(5),
+        ]);
+        $this->seedFollowUp($organization, [
+            'external_id' => 'redirect-recent',
+            'customer_name' => 'ارجاع تازه',
+            'customer_phone' => '09125550002',
+            'follow_up' => 'عدم پیگیری برای اتصال مستقیم مشتری به بخش مربوطه',
+            'weakness_only' => true,
+            'analyzed_at' => now()->subDay(),
+            'started_at' => now()->subDay(),
+        ]);
+        $this->seedFollowUp($organization, [
+            'external_id' => 'redirect-done',
+            'customer_name' => 'ارجاع انجام‌شده',
+            'customer_phone' => '09125550003',
+            'follow_up' => 'عدم پیگیری برای اتصال مستقیم مشتری به بخش مربوطه',
+            'weakness_only' => true,
+            'analyzed_at' => now()->subDays(6),
+            'started_at' => now()->subDays(6),
+            'followed_up_at' => now()->subDays(2),
+        ]);
+        $this->seedFollowUp($organization, [
+            'external_id' => 'ordinary-weakness',
+            'customer_name' => 'پیگیری معمولی',
+            'customer_phone' => '09125550004',
+            'follow_up' => 'عدم پیگیری درخواست مشتری',
+            'weakness_only' => true,
+            'analyzed_at' => now()->subDays(8),
+            'started_at' => now()->subDays(8),
+        ]);
+
+        $forgotten = EmployerDashboardAnalytics::forOrganization($organization->id)->forgottenFollowUps();
+
+        $this->assertSame(['ارجاع معوق'], array_column($forgotten, 'customer'));
+        $this->assertSame(
+            'تماس پیگیری ۳ روز دیگر برای اتصال به بخش یا داخلی معرفی‌شده',
+            $forgotten[0]['forgotten_action'],
+        );
+        $this->assertGreaterThan(0, $forgotten[0]['days_overdue']);
+    }
+
     public function test_forgotten_follow_up_lookup_ignores_unrelated_outbound_volume(): void
     {
         $organization = Organization::factory()->create();
@@ -335,10 +387,10 @@ class ForgottenFollowUpsDashboardTest extends TestCase
             'summary' => 'خلاصه '.$data['customer_name'],
             'sentiment' => AnalysisSentiment::Positive,
             'strengths_json' => [],
-            'weaknesses_json' => [],
-            'next_actions_json' => [$data['follow_up']],
+            'weaknesses_json' => ! empty($data['weakness_only']) ? [$data['follow_up']] : [],
+            'next_actions_json' => empty($data['weakness_only']) ? [$data['follow_up']] : [],
             'operational_insights_json' => [
-                'follow_up_suggestions' => [$data['follow_up']],
+                'follow_up_suggestions' => empty($data['weakness_only']) ? [$data['follow_up']] : [],
             ],
             'customer_identity_json' => [
                 'person_name' => $data['customer_name'],

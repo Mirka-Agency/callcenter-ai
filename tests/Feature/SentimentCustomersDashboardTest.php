@@ -158,6 +158,37 @@ class SentimentCustomersDashboardTest extends TestCase
         $this->assertSame('شکایت از پشتیبانی', $customers['dissatisfied'][0]['highlight']);
     }
 
+    public function test_payment_collection_call_with_swapped_roles_is_not_listed_as_dissatisfied(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $this->seedConversation($organization, [
+            'external_id' => 'real-unhappy',
+            'customer_name' => 'مریم کاظمی',
+            'customer_phone' => '09126662222',
+            'sentiment' => AnalysisSentiment::Negative,
+            'concern' => 'تأخیر در ارسال سفارش',
+            'summary' => 'مشتری از تأخیر در ارسال سفارش ناراضی بود.',
+            'analyzed_at' => now()->subHours(2),
+        ]);
+        $this->seedConversation($organization, [
+            'external_id' => 'collection-swapped',
+            'customer_name' => 'رضا نادری',
+            'customer_phone' => '09128883333',
+            'sentiment' => AnalysisSentiment::Negative,
+            'concern' => 'مشتری فاکتور را پرداخت نکرده است',
+            'summary' => 'مشتری به‌خاطر پرداخت‌نشدن فاکتور تماس گرفت. در واقع کارشناس برای پیگیری بدهی زنگ زده بود.',
+            'analyzed_at' => now()->subHour(),
+        ]);
+
+        $customers = EmployerDashboardAnalytics::forOrganization($organization->id)->sentimentCustomers();
+
+        $this->assertSame(['مریم کاظمی'], array_column($customers['dissatisfied'], 'customer'));
+
+        Livewire::test(Overview::class)
+            ->assertSee('مریم کاظمی')
+            ->assertDontSee('رضا نادری');
+    }
+
     public function test_empty_states_are_shown_when_there_are_no_sentiment_conversations(): void
     {
         $this->actingAsEmployer();

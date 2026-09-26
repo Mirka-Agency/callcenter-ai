@@ -6,6 +6,7 @@ use App\Domain\Voip\DTOs\NormalizedWebhookEvent;
 use App\Domain\Voip\Enums\CallDirection;
 use App\Domain\Voip\Enums\CallStatus;
 use App\Domain\Voip\Enums\VoipWebhookEventType;
+use App\Support\UnconnectedCallSignals;
 
 class WebhookPayloadNormalizer
 {
@@ -169,17 +170,22 @@ class WebhookPayloadNormalizer
     /** @param array<string, string> $fieldMapping */
     private function inferEventTypeFromPayload(array $payload, array $fieldMapping): string
     {
+        $status = (string) ($this->stringValue($payload, 'status', $fieldMapping) ?? '');
+
+        if (UnconnectedCallSignals::failedToConnect($status)) {
+            return 'call.missed';
+        }
+
         if ($this->stringValue($payload, 'recording_url', $fieldMapping)) {
             return 'recording.created';
         }
 
-        $status = strtolower((string) ($this->stringValue($payload, 'status', $fieldMapping) ?? ''));
+        $status = strtolower($status);
 
         return match (true) {
             in_array($status, ['ringing', 'initiated', 'dial'], true) => 'call.started',
             in_array($status, ['answered', 'in_progress'], true) => 'call.answered',
             in_array($status, ['completed', 'ended', 'answered'], true) => 'call.ended',
-            in_array($status, ['missed', 'no_answer', 'no answer', 'busy'], true) => 'call.missed',
             default => 'call.ended',
         };
     }
@@ -190,7 +196,7 @@ class WebhookPayloadNormalizer
             'call.started', 'call_started', 'ringing', 'dial', 'newstate' => VoipWebhookEventType::CallStarted,
             'call.answered', 'call_answered', 'answered' => VoipWebhookEventType::CallAnswered,
             'call.ended', 'call_ended', 'hangup', 'completed', 'cdr' => VoipWebhookEventType::CallEnded,
-            'call.missed', 'call_missed', 'missed', 'no_answer', 'no answer' => VoipWebhookEventType::CallMissed,
+            'call.missed', 'call_missed', 'missed', 'no_answer', 'no answer', 'noanswer' => VoipWebhookEventType::CallMissed,
             'recording.created', 'recording_created', 'recording' => VoipWebhookEventType::RecordingCreated,
             'extension.created', 'extension_created' => VoipWebhookEventType::ExtensionCreated,
             default => VoipWebhookEventType::Unknown,
@@ -216,9 +222,13 @@ class WebhookPayloadNormalizer
     {
         if ($status !== null && $status !== '') {
             $normalized = strtolower(str_replace(['_', '-'], ' ', $status));
+            $terminal = UnconnectedCallSignals::terminalStatus($normalized);
+
+            if ($terminal !== null) {
+                return $terminal;
+            }
 
             return match (true) {
-                str_contains($normalized, 'ring') => CallStatus::Ringing,
                 str_contains($normalized, 'answer') && ! str_contains($normalized, 'no') => CallStatus::Answered,
                 str_contains($normalized, 'complete') || str_contains($normalized, 'end') => CallStatus::Completed,
                 str_contains($normalized, 'miss') || str_contains($normalized, 'no answer') => CallStatus::Missed,

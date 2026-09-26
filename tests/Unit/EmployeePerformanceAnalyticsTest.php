@@ -148,6 +148,41 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $this->assertSame(3, $attention->firstWhere('id', $agent->id)['repeated_weaknesses'][0]['count']);
     }
 
+    public function test_team_weaknesses_skip_unanswered_calls_and_extension_redirects(): void
+    {
+        $organization = Organization::factory()->create();
+        $agent = $this->seedNamedEmployee($organization, 'نیما', 'کاظمی');
+
+        $this->seedAnalysisForEmployee(
+            $organization,
+            $agent,
+            40,
+            ['عدم ارتباط با مشتری'],
+            'کارشناس زنگ زد ولی مشتری پاسخ نداد و مکالمه‌ای شکل نگرفت',
+        );
+        $this->seedAnalysisForEmployee(
+            $organization,
+            $agent,
+            70,
+            ['عدم پیگیری برای اتصال مستقیم مشتری به بخش مربوطه'],
+            'کارمند شرکت گفت با داخلی دیگری تماس بگیرید و تماس قطع شد',
+        );
+        $this->seedAnalysisForEmployee(
+            $organization,
+            $agent,
+            61,
+            ['جمع‌بندی ضعیف انتهای تماس'],
+            'مشتری درباره قیمت پرسید و کارشناس جمع‌بندی نکرد',
+        );
+
+        $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
+        $items = collect(app(EmployeePerformanceAnalytics::class)->teamDashboard($filter)['team_weaknesses'])
+            ->pluck('item')
+            ->all();
+
+        $this->assertSame(['جمع‌بندی ضعیف انتهای تماس'], $items);
+    }
+
     public function test_team_dashboard_excludes_agents_with_sparse_repeated_weaknesses(): void
     {
         $organization = Organization::factory()->create();
@@ -239,6 +274,7 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         OrganizationUser $employee,
         int $score,
         array $weaknesses = [],
+        string $summary = 'تماس بدون مکالمه',
     ): void {
         $call = Call::query()->create([
             'organization_id' => $organization->id,
@@ -264,7 +300,7 @@ class EmployeePerformanceAnalyticsTest extends TestCase
             'model_name' => 'gpt-4o-mini',
             'score' => $score,
             'is_evaluable' => $score > 0,
-            'summary' => 'تماس بدون مکالمه',
+            'summary' => $summary,
             'sentiment' => AnalysisSentiment::Neutral,
             'strengths_json' => [],
             'weaknesses_json' => $weaknesses,

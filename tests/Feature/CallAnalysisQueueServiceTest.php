@@ -144,6 +144,69 @@ class CallAnalysisQueueServiceTest extends TestCase
         ]);
     }
 
+    public function test_does_not_queue_unanswered_calls_when_only_ring_time_was_recorded(): void
+    {
+        Bus::fake();
+        PlatformAiSettings::current()->update(['allow_negative_balance' => true]);
+
+        $call = $this->seedCall([
+            'duration_seconds' => 42,
+            'status' => 'completed',
+            'metadata' => [
+                'disposition' => 'ANSWERED',
+                'duration' => 42,
+                'billsec' => 0,
+            ],
+        ]);
+
+        $queued = app(CallAnalysisQueueService::class)->dispatchForCall($call);
+
+        $this->assertFalse($queued);
+        Bus::assertNothingDispatched();
+        $call->refresh();
+        $this->assertSame(CallProcessingStatus::Skipped, $call->processing_status);
+        $this->assertStringContainsString('بدون مکالمه', (string) $call->processing_error);
+    }
+
+    public function test_does_not_queue_calls_whose_disposition_is_no_answer(): void
+    {
+        Bus::fake();
+        PlatformAiSettings::current()->update(['allow_negative_balance' => true]);
+
+        $call = $this->seedCall([
+            'duration_seconds' => 36,
+            'status' => 'completed',
+            'metadata' => [
+                'disposition' => 'NO ANSWER',
+                'duration' => 36,
+            ],
+        ]);
+
+        $queued = app(CallAnalysisQueueService::class)->dispatchForCall($call);
+
+        $this->assertFalse($queued);
+        Bus::assertNothingDispatched();
+        $this->assertSame(CallProcessingStatus::Skipped, $call->fresh()->processing_status);
+    }
+
+    public function test_queues_a_connected_call_with_talk_time(): void
+    {
+        Bus::fake();
+        PlatformAiSettings::current()->update(['allow_negative_balance' => true]);
+
+        $call = $this->seedCall([
+            'duration_seconds' => 48,
+            'status' => 'completed',
+            'metadata' => [
+                'disposition' => 'ANSWERED',
+                'duration' => 48,
+                'billsec' => 31,
+            ],
+        ]);
+
+        $this->assertTrue(app(CallAnalysisQueueService::class)->dispatchForCall($call));
+    }
+
     public function test_force_reanalyze_does_not_bypass_short_call_skip(): void
     {
         Bus::fake();

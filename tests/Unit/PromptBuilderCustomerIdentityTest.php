@@ -41,6 +41,8 @@ class PromptBuilderCustomerIdentityTest extends TestCase
         $this->assertStringContainsString('قوانین تفکیک کارشناس، مشتری و شرکت', $policy);
         $this->assertStringContainsString('person_name را فقط وقتی پر کنید که خود مشتری نامش را گفته باشد', $policy);
         $this->assertStringContainsString('company_name فقط شرکت، برند یا محل کار خود مشتری است', $policy);
+        $this->assertStringContainsString('کسی که از طرف سازمان می‌گوید طرف مقابل پرداخت نکرده، کارشناس است', $policy);
+        $this->assertStringContainsString('کارشناس برای پیگیری پرداخت با مشتری تماس گرفت', $policy);
         $this->assertStringNotContainsString('Do NOT identify these values as customer information', $policy);
         $this->assertStringNotContainsString('You are provided with the current CRM user name', $policy);
     }
