@@ -43,4 +43,26 @@ class CompanyWorkCalendarTest extends TestCase
         $this->assertSame('2026-09-17', CompanyWorkCalendar::dayKey($earlyThursday));
         $this->assertTrue(CompanyWorkCalendar::isHolidayMoment($earlyThursday));
     }
+
+    public function test_a_company_can_treat_thursday_as_a_workday(): void
+    {
+        $fridayOnly = [Carbon::FRIDAY];
+
+        $this->assertFalse(CompanyWorkCalendar::isHoliday('2026-09-17', $fridayOnly));
+        $this->assertTrue(CompanyWorkCalendar::isHoliday('2026-09-18', $fridayOnly));
+        $this->assertFalse(CompanyWorkCalendar::isHoliday('2026-09-16', $fridayOnly));
+    }
+
+    public function test_an_empty_holiday_list_keeps_every_weekday_open(): void
+    {
+        $this->assertFalse(CompanyWorkCalendar::isHoliday('2026-09-17', []));
+        $this->assertFalse(CompanyWorkCalendar::isHoliday('2026-09-18', []));
+    }
+
+    public function test_a_missing_holiday_list_keeps_thursday_and_friday_closed(): void
+    {
+        $this->assertSame([Carbon::THURSDAY, Carbon::FRIDAY], CompanyWorkCalendar::normalizeWeekdays(null));
+        $this->assertSame([], CompanyWorkCalendar::normalizeWeekdays([]));
+        $this->assertSame([Carbon::FRIDAY], CompanyWorkCalendar::normalizeWeekdays(['5', 5, 9]));
+    }
 }

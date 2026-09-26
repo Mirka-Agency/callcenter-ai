@@ -17,6 +17,7 @@ use App\Services\Reports\CallMetricsAnalytics;
 use App\Services\Reports\LeadConcernsAnalytics;
 use App\Support\AgentPerformancePresenter;
 use App\Support\JalaliDate;
+use App\Support\OrganizationHolidays;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -39,7 +40,7 @@ class EmployeePerformanceAnalytics
     public function teamDashboard(ReportFilter $filter): array
     {
         return Cache::remember(
-            'performance:team:'.$filter->cacheKey(),
+            'performance:team:'.$filter->cacheKey().':'.OrganizationHolidays::cacheToken($filter->organizationId),
             120,
             fn () => $this->buildTeamDashboard($filter),
         );
@@ -51,7 +52,7 @@ class EmployeePerformanceAnalytics
         $employeeFilter = $this->scopedFilter($filter, $employee->id);
 
         return Cache::remember(
-            'performance:employee:'.$employee->id.':'.$employeeFilter->cacheKey(),
+            'performance:employee:'.$employee->id.':'.$employeeFilter->cacheKey().':'.OrganizationHolidays::cacheToken($employeeFilter->organizationId),
             120,
             fn () => $this->buildEmployeeProfile($employeeFilter, $employee),
         );
@@ -236,7 +237,7 @@ class EmployeePerformanceAnalytics
             'lead_trend' => $this->trendCalculator->leadTrend($filter, $data->analyses),
             'volume_trend' => $this->trendCalculator->callVolumeTrend($filter, $data->calls),
             'sentiment_trend' => $this->trendCalculator->sentimentTrend($filter, $data->analyses),
-            'quality_distribution' => $this->trendCalculator->qualityDistribution($data->analyses),
+            'quality_distribution' => $this->trendCalculator->qualityDistribution($data->analyses, $filter->organizationId),
             'lead_distribution' => $this->leadConcerns->leadQualityDistribution($filter),
             'team_weaknesses' => $this->jsonAggregator->rankedItems($data->analyses, 'weaknesses_json'),
             'attention_employees' => $this->employeesRequiringAttention($summaries, $data),

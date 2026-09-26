@@ -11,6 +11,7 @@ use App\Models\CustomerCompany;
 use App\Models\Organization;
 use App\Models\OrganizationActivity;
 use App\Services\CustomerCompanyService;
+use App\Support\OrganizationHolidays;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -144,11 +145,12 @@ class DemoAnalyticsClock
 
     private function forgetCachedDashboard(Organization $organization): void
     {
-        Cache::forget('performance:team:'.ReportFilter::make($organization->id, ReportDatePreset::Last30)->cacheKey());
+        $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
+        Cache::forget('performance:team:'.$filter->cacheKey().':'.OrganizationHolidays::cacheToken($organization->id));
 
         $sinceKey = blank(config('dashboard.insight_lists_since'))
             ? 'none'
-            : (string) \Carbon\Carbon::parse((string) config('dashboard.insight_lists_since'))->getTimestamp();
+            : (string) Carbon::parse((string) config('dashboard.insight_lists_since'))->getTimestamp();
 
         foreach ([30, 90] as $days) {
             Cache::forget("dashboard:forgotten:{$organization->id}:{$days}");

@@ -6,8 +6,10 @@ use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\DTOs\ReportFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
+use App\Services\Reports\ChartHolidayCalendar;
 use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
+use App\Support\OrganizationHolidays;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -122,8 +124,11 @@ class PerformanceTrendCalculator
      * @param  Collection<int, ConversationAnalysis>  $analyses
      * @return list<array{label: string, count: int}>
      */
-    public function qualityDistribution(Collection $analyses): array
+    public function qualityDistribution(Collection $analyses, ?int $organizationId = null): array
     {
+        $holidayWeekdays = $organizationId === null
+            ? null
+            : OrganizationHolidays::weekdays($organizationId);
         $buckets = [
             'عالی — ۸۰ به بالا' => 0,
             'خوب — ۶۰ تا ۷۹' => 0,
@@ -133,7 +138,7 @@ class PerformanceTrendCalculator
 
         foreach ($analyses as $analysis) {
             $occurredAt = $analysis->occurredAt();
-            if ($occurredAt !== null && CompanyWorkCalendar::isHolidayMoment($occurredAt)) {
+            if ($occurredAt !== null && CompanyWorkCalendar::isHolidayMoment($occurredAt, $holidayWeekdays)) {
                 continue;
             }
 
@@ -184,7 +189,7 @@ class PerformanceTrendCalculator
     {
         $granularity = $filter->granularity();
 
-        if ($granularity === 'day' && $this->isHolidayPeriod($period)) {
+        if ($granularity === 'day' && $this->isHolidayPeriod($period, $filter)) {
             return collect();
         }
 
@@ -195,7 +200,7 @@ class PerformanceTrendCalculator
     }
 
     /**
-     * Thursday and Friday are company holidays and do not appear on daily charts.
+     * The company's holidays do not appear on daily charts.
      *
      * @param  list<array<string, mixed>>  $trend
      * @return list<array<string, mixed>>
@@ -206,15 +211,25 @@ class PerformanceTrendCalculator
             return $trend;
         }
 
+        $days = app(ChartHolidayCalendar::class)->forRange(
+            $filter->organizationId,
+            $filter->from,
+            $filter->to,
+        );
+
         return collect($trend)
-            ->reject(fn (array $row) => $this->isHolidayPeriod((string) ($row['period'] ?? '')))
+            ->reject(fn (array $row) => $days->hides((string) ($row['period'] ?? '')))
             ->values()
             ->all();
     }
 
-    private function isHolidayPeriod(string $period): bool
+    private function isHolidayPeriod(string $period, ReportFilter $filter): bool
     {
-        return CompanyWorkCalendar::isHoliday($period);
+        $day = Carbon::parse($period, CompanyWorkCalendar::TIMEZONE);
+
+        return app(ChartHolidayCalendar::class)
+            ->forRange($filter->organizationId, $day->copy()->startOfDay(), $day->copy()->endOfDay())
+            ->hides($period);
     }
 
     /**

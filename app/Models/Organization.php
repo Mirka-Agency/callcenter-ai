@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\WalletService;
+use App\Support\CompanyWorkCalendar;
 use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['title', 'business_context', 'disabled', 'employer_can_manage_integrations', 'user_id', 'is_demo'])]
+#[Fillable(['title', 'business_context', 'holiday_weekdays', 'disabled', 'employer_can_manage_integrations', 'user_id', 'is_demo'])]
 class Organization extends Model
 {
     /** @use HasFactory<OrganizationFactory> */
@@ -30,7 +31,18 @@ class Organization extends Model
             'disabled' => 'boolean',
             'employer_can_manage_integrations' => 'boolean',
             'is_demo' => 'boolean',
+            'holiday_weekdays' => 'array',
         ];
+    }
+
+    /**
+     * Weekdays this company closes. Null in the database means Thursday and Friday.
+     *
+     * @return list<int>
+     */
+    public function holidayWeekdays(): array
+    {
+        return CompanyWorkCalendar::normalizeWeekdays($this->holiday_weekdays);
     }
 
     public function isDemo(): bool

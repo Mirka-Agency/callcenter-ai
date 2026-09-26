@@ -341,6 +341,7 @@ return [
 
     'success' => [
         'profile_saved' => 'پروفایل شما ذخیره شد.',
+        'holidays_saved' => 'تعطیلات شرکت ذخیره شد.',
         'customer_saved' => 'اطلاعات شخص ذخیره شد.',
         'customer_created' => 'شخص جدید ایجاد شد.',
         'company_saved' => 'اطلاعات شرکت ذخیره شد.',

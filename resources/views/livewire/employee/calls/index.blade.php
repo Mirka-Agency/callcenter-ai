@@ -16,6 +16,7 @@
 
     $qualityChart = [
         'labels' => collect($qualityTrend)->pluck('label')->all(),
+        'tooltipTitles' => collect($qualityTrend)->pluck('tooltip_label')->all(),
         'datasets' => [[
             'label' => 'میانگین امتیاز',
             'data' => collect($qualityTrend)->pluck('avg_score')->all(),
@@ -31,6 +32,7 @@
 
     $volumeChart = [
         'labels' => collect($volumeTrend)->pluck('label')->all(),
+        'tooltipTitles' => collect($volumeTrend)->pluck('tooltip_label')->all(),
         'datasets' => [[
             'label' => 'تعداد تحلیل',
             'data' => collect($volumeTrend)->pluck('count')->all(),
