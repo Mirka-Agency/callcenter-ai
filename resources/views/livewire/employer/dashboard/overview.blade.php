@@ -20,33 +20,19 @@
 
 <div class="saas-page">
     <section class="saas-hero" data-tour="dashboard-hero">
-        <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-                <p class="text-sm font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">داشبورد مدیر</p>
-                <h1 class="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">{{ $organization->title }}</h1>
-                <p class="mt-2 max-w-2xl text-zinc-500">
-                    نمای کلی عملکرد کارشناسان در ۳۰ روز اخیر
-                </p>
-            </div>
-            <div class="flex items-center gap-6">
-                <x-saas.score-ring :score="$teamKpis['average_quality_score']" size="lg" label="میانگین امتیاز تیم" />
-                <div class="hidden gap-4 sm:grid sm:grid-cols-2">
-                    <div class="saas-inline-stat">
-                        <p class="text-xs text-zinc-500">کارشناسان فعال</p>
-                        <p class="text-2xl font-bold tabular-nums">{{ $teamKpis['active_employees'] }}</p>
-                    </div>
-                    <div class="saas-inline-stat">
-                        <p class="text-xs text-zinc-500">تماس تحلیل‌شده</p>
-                        <p class="text-2xl font-bold tabular-nums">{{ $teamKpis['total_analyzed'] }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <p class="text-sm font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">داشبورد مدیر</p>
+        <h1 class="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">{{ $organization->title }}</h1>
+        <p class="mt-2 max-w-2xl text-zinc-500">
+            نمای کلی عملکرد کارشناسان در ۳۰ روز اخیر
+        </p>
     </section>
 
-    <div class="flex justify-center" data-tour="dashboard-stats">
+    <div data-tour="dashboard-stats">
         <div class="saas-stat-row">
+            <x-saas.stat-card class="saas-stat--compact" label="کارشناسان فعال" :value="$teamKpis['active_employees']" />
+            <x-saas.stat-card class="saas-stat--compact" label="تماس‌های تحلیل‌شده" :value="$teamKpis['total_analyzed']" />
             <x-saas.stat-card class="saas-stat--compact" label="تماس‌های امروز" :value="$cockpit['calls_today']" />
+            <x-saas.stat-card class="saas-stat--compact" label="میانگین امتیاز تیم" :value="$teamKpis['average_quality_score'] ?: '—'" :tone="\App\Support\MetricTone::fromScore($teamKpis['average_quality_score'])" />
             <x-saas.stat-card class="saas-stat--compact" label="میانگین کیفیت لید" :value="$teamKpis['average_lead_score'] ?: '—'" :tone="\App\Support\MetricTone::fromScore($teamKpis['average_lead_score'])" />
             <x-saas.stat-card class="saas-stat--compact" label="رضایت مشتری" :value="$teamKpis['average_sentiment'] ? $teamKpis['average_sentiment'].'%' : '—'" :tone="\App\Support\MetricTone::fromScore($teamKpis['average_sentiment'])" />
         </div>

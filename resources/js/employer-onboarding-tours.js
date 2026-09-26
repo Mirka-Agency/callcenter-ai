@@ -8,12 +8,12 @@ export const employerPageTours = {
             {
                 selector: '[data-tour="dashboard-hero"]',
                 title: 'نمای کلی شرکت',
-                content: 'خلاصه عملکرد تیم، میانگین امتیاز کیفیت و آمار کلیدی ۳۰ روز اخیر را اینجا می‌بینید.',
+                content: 'نام سازمان و بازه نمای کلی داشبورد را اینجا می‌بینید.',
             },
             {
                 selector: '[data-tour="dashboard-stats"]',
                 title: 'شاخص‌های سریع',
-                content: 'تماس‌های امروز، کیفیت لید و رضایت مشتری — برای پایش روزانه مفید است.',
+                content: 'کارشناسان فعال، تماس‌های تحلیل‌شده، تماس‌های امروز، میانگین امتیاز تیم، کیفیت لید و رضایت مشتری.',
             },
             {
                 selector: '[data-tour="dashboard-opportunities"]',

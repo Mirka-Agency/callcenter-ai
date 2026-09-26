@@ -230,7 +230,15 @@
     }
 
     .saas-stat-row {
-        @apply inline-grid w-max max-w-full grid-cols-1 gap-3 sm:grid-cols-3;
+        @apply grid w-full min-w-0 grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6;
+    }
+
+    .saas-stat-row > .saas-stat.saas-stat--compact {
+        min-width: 0;
+    }
+
+    .saas-stat-row > .saas-stat.saas-stat--compact .saas-stat-label {
+        white-space: normal;
     }
 
     .saas-stat.saas-stat--compact {
