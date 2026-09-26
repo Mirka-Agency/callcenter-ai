@@ -117,6 +117,29 @@ class AnalysisListQueryTest extends TestCase
         $this->assertSame(3, $overview['total_leads']);
     }
 
+    public function test_average_lead_score_includes_low_medium_and_high_leads(): void
+    {
+        $organization = Organization::factory()->create();
+        $user = User::factory()->create();
+        $agent = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $user->id,
+            'first_name' => 'Ali',
+            'last_name' => 'One',
+            'is_active' => true,
+        ]);
+
+        $this->seedAnalysis($organization, $agent, 'completed', 300, 90, leadQuality: ['score' => 90, 'level' => 'high', 'reason' => 'test']);
+        $this->seedAnalysis($organization, $agent, 'completed', 300, 80, leadQuality: ['score' => 30, 'level' => 'low', 'reason' => 'test']);
+
+        $overview = app(AnalysisListQuery::class)->overview(AnalysisListFilter::make(
+            organizationId: $organization->id,
+            preset: ReportDatePreset::Last30,
+        ));
+
+        $this->assertSame(60.0, $overview['average_lead_score']);
+    }
+
     public function test_overview_counts_unanalyzed_calls_in_total_calls(): void
     {
         $organization = Organization::factory()->create();
@@ -318,12 +341,102 @@ class AnalysisListQueryTest extends TestCase
             preset: ReportDatePreset::Last30,
         ));
 
-        $this->assertSame(1, $overview['total'], 'analyses use analyzed_at');
+        $this->assertSame(0, $overview['total'], 'analyzed calls follow the same call set as the total');
         $this->assertSame(2, $overview['total_calls'], 'calls use call occurrence date');
         $this->assertSame(1, $overview['inbound_count']);
         $this->assertSame(1, $overview['outbound_count']);
         $this->assertSame(1, $overview['missed_count']);
         $this->assertSame(100, $overview['average_duration_seconds']);
+    }
+
+    public function test_analyzed_plus_missed_does_not_exceed_total_calls(): void
+    {
+        $organization = Organization::factory()->create();
+        $user = User::factory()->create();
+        $agent = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $user->id,
+            'first_name' => 'Ali',
+            'last_name' => 'One',
+            'is_active' => true,
+        ]);
+
+        $this->seedAnalysis($organization, $agent, 'completed', 300, 90);
+        $this->seedAnalysis($organization, $agent, CallStatus::Missed->value, 0, 10);
+
+        $oldCall = Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09120000021',
+            'receiver_number' => '02100000000',
+            'status' => 'completed',
+            'processing_status' => 'analyzed',
+            'duration_seconds' => 180,
+            'started_at' => now()->subDays(50),
+            'conversation_date' => now()->subDays(50),
+        ]);
+        ConversationAnalysis::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'call_id' => $oldCall->id,
+            'source' => ConversationSource::Voip,
+            'llm_provider' => 'openai',
+            'model_name' => 'gpt-4o-mini',
+            'score' => 70,
+            'summary' => 'تحلیل تماس خارج از بازه',
+            'sentiment' => AnalysisSentiment::Neutral,
+            'strengths_json' => [],
+            'weaknesses_json' => [],
+            'next_actions_json' => [],
+            'analyzed_at' => now(),
+        ]);
+
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09120000022',
+            'receiver_number' => '02100000000',
+            'status' => 'completed',
+            'processing_status' => 'pending',
+            'duration_seconds' => 90,
+            'started_at' => now(),
+        ]);
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09120000023',
+            'receiver_number' => '02100000000',
+            'status' => 'completed',
+            'processing_status' => 'skipped',
+            'duration_seconds' => 40,
+            'started_at' => now(),
+        ]);
+
+        $overview = app(AnalysisListQuery::class)->overview(AnalysisListFilter::make(
+            organizationId: $organization->id,
+            preset: ReportDatePreset::Last30,
+        ));
+
+        $this->assertSame(4, $overview['total_calls']);
+        $this->assertSame(2, $overview['total']);
+        $this->assertSame(1, $overview['missed_count']);
+        $this->assertSame(1, $overview['in_flight_count']);
+        $this->assertSame(
+            $overview['total_calls'],
+            $overview['total'] + $overview['missed_count'] + $overview['in_flight_count'],
+        );
     }
 
     public function test_overview_total_calls_counts_only_defined_extensions(): void
@@ -548,6 +661,7 @@ class AnalysisListQueryTest extends TestCase
         int $durationSeconds,
         int $score,
         bool $needsAttention = false,
+        ?array $leadQuality = null,
     ): ConversationAnalysis {
         $call = Call::query()->create([
             'organization_id' => $organization->id,
@@ -577,7 +691,7 @@ class AnalysisListQueryTest extends TestCase
             'strengths_json' => [],
             'weaknesses_json' => [],
             'next_actions_json' => [],
-            'lead_quality_json' => ['score' => 70, 'level' => 'medium', 'reason' => 'test'],
+            'lead_quality_json' => $leadQuality ?? ['score' => 70, 'level' => 'medium', 'reason' => 'test'],
             'needs_attention' => $needsAttention,
             'attention_json' => $needsAttention ? [
                 'needed' => true,

@@ -104,10 +104,16 @@
 
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-tour="calls-stats">
         <x-saas.stat-card label="تعداد کل تماس‌ها" :value="number_format($overview['total_calls'])" />
-        <x-saas.stat-card label="تحلیل‌های فیلترشده" :value="number_format($overview['total'])" />
-        <x-saas.stat-card label="میانگین امتیاز" :value="$overview['average_score'] ?: '—'" hint="کیفیت مکالمه" />
-        <x-saas.stat-card label="میانگین سرنخ" :value="$overview['average_lead_score'] ?: '—'" :hint="$overview['high_lead_count'] ? $overview['high_lead_count'].' سرنخ با کیفیت بالا' : null" />
-        <x-saas.stat-card label="رضایت مشتری" :value="$overview['average_sentiment'] ? $overview['average_sentiment'].'%' : '—'" :hint="$overview['dominant_sentiment']" />
+        <x-saas.stat-card
+            label="تماس‌های تحلیل‌شده"
+            :value="number_format($overview['total'])"
+            :hint="($overview['in_flight_count'] ?? 0) > 0
+                ? number_format($overview['in_flight_count']).' در صف یا در حال پردازش'
+                : null"
+        />
+        <x-saas.stat-card label="میانگین امتیاز مکالمه" :value="$overview['average_score'] ?: '—'" :tone="\App\Support\MetricTone::fromScore($overview['average_score'])" />
+        <x-saas.stat-card label="میانگین کیفیت لیدها" :value="$overview['average_lead_score'] ?: '—'" :tone="\App\Support\MetricTone::fromScore($overview['average_lead_score'])" />
+        <x-saas.stat-card label="رضایت مشتری" :value="$overview['average_sentiment'] ? $overview['average_sentiment'].'%' : '—'" :hint="$overview['dominant_sentiment']" :tone="\App\Support\MetricTone::fromScore($overview['average_sentiment'])" />
         <x-saas.stat-card label="میانگین مدت تماس" :value="$overview['average_duration_label']" />
         <x-saas.stat-card
             label="تماس از دست رفته"
@@ -124,7 +130,7 @@
         </div>
     @endif
 
-    @if ($overview['total'] > 0)
+    @if ($hasQualityTrend || $hasVolumeTrend || $hasLeadDist || $hasSentiment || $hasConcerns)
         <div class="grid gap-6 lg:grid-cols-2" data-tour="calls-charts">
             <div class="saas-card">
                 <h2 class="text-lg font-semibold">روند کیفیت مکالمه</h2>

@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Llm\Enums\AnalysisSentiment;
+use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Domain\Voip\Enums\CallStatus;
 use App\DTOs\AnalysisListFilter;
 use App\Models\Call;
@@ -65,8 +67,7 @@ class AnalysisListQuery
     {
         $query = $this->analyticsQuery($filter);
 
-        // Analysis-dated metrics (analyzed_at via filter->apply).
-        $total = (clone $query)->count();
+        // Score and the other analysis cards still follow analyzed_at.
         $avgScore = round((float) (clone $query)->evaluable()->avg('conversation_analyses.score'), 1);
 
         // Call-dated metrics (occurredAt via applyToCallQuery) — volume and outcomes
@@ -78,15 +79,16 @@ class AnalysisListQuery
             $filter->organizationId,
         );
         $totalCalls = (clone $callQuery)->count();
-        $avgDuration = (int) round((float) (clone $callQuery)
-            ->where('duration_seconds', '>', 0)
-            ->avg('duration_seconds'));
-
-        // Lost calls usually have no conversation analysis (no recording).
-        // Include busy/failed/cancelled: PBX often maps no-answer variants to those.
+        // Missed calls plus finished calls equal the total. The only remainder
+        // is a call still queued or being processed.
         $missedCount = (clone $callQuery)
             ->whereIn('status', CallStatus::lostValues())
             ->count();
+        $inFlightCount = $this->inFlightCount(clone $callQuery);
+        $analyzedCalls = $totalCalls - $missedCount - $inFlightCount;
+        $avgDuration = (int) round((float) (clone $callQuery)
+            ->where('duration_seconds', '>', 0)
+            ->avg('duration_seconds'));
 
         $inboundCount = (clone $callQuery)->where('direction', 'inbound')->count();
         $outboundCount = (clone $callQuery)->where('direction', 'outbound')->count();
@@ -126,12 +128,13 @@ class AnalysisListQuery
             : null;
 
         return [
-            'total' => $total,
+            'total' => $analyzedCalls,
             'total_calls' => $totalCalls,
             'average_score' => $avgScore,
             'average_duration_seconds' => $avgDuration,
             'average_duration_label' => $this->callMetrics->formatDuration($avgDuration),
             'missed_count' => $missedCount,
+            'in_flight_count' => $inFlightCount,
             'inbound_count' => $inboundCount,
             'outbound_count' => $outboundCount,
             'average_lead_score' => $lead['average_score'] ?: null,
@@ -143,6 +146,33 @@ class AnalysisListQuery
             'top_agent_name' => $topAgent?->full_name,
             'top_agent_count' => (int) ($topAgentStats->agent_total ?? 0),
         ];
+    }
+
+    /** @param  Builder<Call>  $callQuery */
+    private function inFlightCount(Builder $callQuery): int
+    {
+        return $callQuery
+            ->where(function (Builder $query): void {
+                $query->whereNull('status')
+                    ->orWhereNotIn('status', CallStatus::lostValues());
+            })
+            ->where(function (Builder $query): void {
+                $query->whereIn('processing_status', [
+                    CallProcessingStatus::Pending->value,
+                    CallProcessingStatus::Downloading->value,
+                    CallProcessingStatus::Analyzing->value,
+                ])->orWhere(function (Builder $unmarked) {
+                    $unmarked->whereNull('processing_status')
+                        ->whereHas('processingJobs', function (Builder $jobs): void {
+                            $jobs->whereIn('status', [
+                                ProcessingJobStatus::Queued->value,
+                                ProcessingJobStatus::Uploading->value,
+                                ProcessingJobStatus::Processing->value,
+                            ]);
+                        });
+                });
+            })
+            ->count();
     }
 
     /** @return array<string, mixed> */

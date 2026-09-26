@@ -259,17 +259,20 @@
     }
 
     .saas-stat--good .saas-stat-label,
-    .saas-stat--good .saas-stat-value {
+    .saas-stat--good .saas-stat-value,
+    .saas-stat--good .saas-stat-meta {
         @apply text-emerald-800 dark:text-emerald-300;
     }
 
     .saas-stat--medium .saas-stat-label,
-    .saas-stat--medium .saas-stat-value {
+    .saas-stat--medium .saas-stat-value,
+    .saas-stat--medium .saas-stat-meta {
         @apply text-orange-800 dark:text-orange-300;
     }
 
     .saas-stat--bad .saas-stat-label,
-    .saas-stat--bad .saas-stat-value {
+    .saas-stat--bad .saas-stat-value,
+    .saas-stat--bad .saas-stat-meta {
         @apply text-red-800 dark:text-red-300;
     }
 
