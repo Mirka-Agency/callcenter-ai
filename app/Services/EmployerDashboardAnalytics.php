@@ -7,6 +7,7 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationActivity;
 use App\Services\Reports\OrganizationCallMetrics;
+use App\Support\CallCoachingRules;
 use App\Support\CompanyWorkCalendar;
 use App\Support\FollowUpDueDateParser;
 use App\Support\ForgottenCallbackMatcher;
@@ -286,6 +287,7 @@ class EmployerDashboardAnalytics
                 'organization_user_id',
                 'summary',
                 'next_actions_json',
+                'weaknesses_json',
                 'customer_identity_json',
                 'operational_insights_json',
                 'analyzed_at',
@@ -467,6 +469,23 @@ class EmployerDashboardAnalytics
                 $seen[$text] = true;
                 $actions[] = ['raw' => $raw, 'text' => $text];
             }
+        }
+
+        foreach ($analysis->weaknesses_json ?? [] as $raw) {
+            $text = $this->actionText($raw);
+
+            if ($text === null || ! CallCoachingRules::isDeferredRedirectFollowUp($text)) {
+                continue;
+            }
+
+            $followUp = CallCoachingRules::REDIRECT_FOLLOW_UP;
+
+            if (isset($seen[$followUp])) {
+                continue;
+            }
+
+            $seen[$followUp] = true;
+            $actions[] = ['raw' => $followUp, 'text' => $followUp];
         }
 
         return $actions;

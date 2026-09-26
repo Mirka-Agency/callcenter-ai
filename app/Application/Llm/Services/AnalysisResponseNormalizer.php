@@ -2,6 +2,7 @@
 
 namespace App\Application\Llm\Services;
 
+use App\Support\CallCoachingRules;
 use App\Support\CompanyName;
 use App\Support\NeedsAttention;
 use App\Support\PaymentFollowUpSentiment;
@@ -129,12 +130,20 @@ class AnalysisResponseNormalizer
         $response['customer_identity'] = $this->normalizeCustomerIdentity($response['customer_identity'] ?? null, $crmContext);
         $response = PaymentFollowUpSentiment::correct($response);
         $response['needs_attention'] = NeedsAttention::fromResponse($response);
+
+        if (CallCoachingRules::responseLacksConversation($response)) {
+            $response['evaluable'] = false;
+        }
+
         $response['evaluable'] = $this->resolveEvaluable($response);
 
         if (! $response['evaluable']) {
             $response['score'] = 0;
             $response['lead_quality']['score'] = 0;
             $response['lead_quality']['level'] = 'low';
+            $response = CallCoachingRules::clearUnevaluableCoaching($response);
+        } else {
+            $response = CallCoachingRules::moveRedirectsToFollowUp($response);
         }
 
         return $response;

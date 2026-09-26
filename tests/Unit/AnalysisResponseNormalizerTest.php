@@ -239,4 +239,63 @@ class AnalysisResponseNormalizerTest extends TestCase
         $this->assertFalse($result['evaluable']);
         $this->assertSame(0, $result['score']);
     }
+
+    public function test_unanswered_call_is_not_evaluable_and_drops_false_weakness(): void
+    {
+        $result = $this->normalizer->apply([
+            'score' => 35,
+            'evaluable' => true,
+            'summary' => 'کارشناس تماس گرفت ولی مشتری پاسخ نداد و مکالمه‌ای شکل نگرفت.',
+            'weaknesses' => ['عدم ارتباط با مشتری'],
+            'strengths' => ['تلاش برای تماس'],
+            'operational_insights' => [
+                'follow_up_suggestions' => ['تماس پیگیری فردا'],
+                'missed_opportunities' => ['فرصتی ثبت شد'],
+            ],
+        ]);
+
+        $this->assertFalse($result['evaluable']);
+        $this->assertSame(0, $result['score']);
+        $this->assertSame([], $result['weaknesses']);
+        $this->assertSame([], $result['strengths']);
+        $this->assertSame([], $result['operational_insights']['follow_up_suggestions']);
+    }
+
+    public function test_extension_redirect_becomes_a_follow_up_instead_of_a_weakness(): void
+    {
+        $result = $this->normalizer->apply([
+            'score' => 72,
+            'evaluable' => true,
+            'summary' => 'کارشناس با شرکت تماس گرفت. کارمند گفت باید با داخلی دیگری تماس بگیرید و سپس تماس قطع شد.',
+            'weaknesses' => [
+                'عدم پیگیری برای اتصال مستقیم مشتری به بخش مربوطه',
+                'جمع‌بندی ضعیف انتهای تماس',
+            ],
+            'operational_insights' => [
+                'follow_up_suggestions' => [],
+                'missed_opportunities' => ['عدم پیگیری اتصال به بخش مربوطه انجام نشد'],
+            ],
+        ]);
+
+        $this->assertTrue($result['evaluable']);
+        $this->assertSame(['جمع‌بندی ضعیف انتهای تماس'], $result['weaknesses']);
+        $this->assertSame(
+            ['تماس پیگیری ۳ روز دیگر برای اتصال به بخش یا داخلی معرفی‌شده'],
+            $result['operational_insights']['follow_up_suggestions'],
+        );
+        $this->assertSame([], $result['operational_insights']['missed_opportunities']);
+    }
+
+    public function test_real_follow_up_weakness_stays_a_weakness(): void
+    {
+        $result = $this->normalizer->apply([
+            'score' => 64,
+            'evaluable' => true,
+            'summary' => 'مشتری درخواست پیش‌فاکتور داشت و کارشناس قول مشخصی برای بازگشت نداد.',
+            'weaknesses' => ['عدم پیگیری درخواست مشتری'],
+        ]);
+
+        $this->assertSame(['عدم پیگیری درخواست مشتری'], $result['weaknesses']);
+        $this->assertSame([], $result['operational_insights']['follow_up_suggestions'] ?? []);
+    }
 }

@@ -4,6 +4,7 @@ namespace App\Services\Performance\Calculators;
 
 use App\Models\ConversationAnalysis;
 use App\Support\AnalysisInsightPresenter;
+use App\Support\CallCoachingRules;
 use Illuminate\Support\Collection;
 
 class JsonFieldAggregator
@@ -16,12 +17,18 @@ class JsonFieldAggregator
     {
         $counts = [];
 
-        foreach ($analyses->take($limit) as $analysis) {
+        foreach ($analyses->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable())->take($limit) as $analysis) {
             foreach ($analysis->{$column} ?? [] as $item) {
                 $text = $this->extractItemText($item);
-                if ($text) {
-                    $counts[$text] = ($counts[$text] ?? 0) + 1;
+                if (! $text) {
+                    continue;
                 }
+
+                if ($column === 'weaknesses_json' && CallCoachingRules::shouldHideWeakness($text, (string) $analysis->summary)) {
+                    continue;
+                }
+
+                $counts[$text] = ($counts[$text] ?? 0) + 1;
             }
         }
 
@@ -119,6 +126,10 @@ class JsonFieldAggregator
         $counts = [];
 
         foreach ($analyses as $analysis) {
+            if (! $analysis->isEvaluable()) {
+                continue;
+            }
+
             foreach ($analysis->concerns_json ?? [] as $concern) {
                 $text = $this->extractItemText($concern);
                 if ($text) {
@@ -141,11 +152,17 @@ class JsonFieldAggregator
         $counts = [];
 
         foreach ($analyses as $analysis) {
+            if (! $analysis->isEvaluable()) {
+                continue;
+            }
+
             foreach (($analysis->operational_insights_json[$key] ?? []) as $item) {
                 $text = $this->extractItemText($item);
-                if ($text) {
-                    $counts[$text] = ($counts[$text] ?? 0) + 1;
+                if (! $text || ($key === 'missed_opportunities' && CallCoachingRules::isDeferredRedirectFollowUp($text))) {
+                    continue;
                 }
+
+                $counts[$text] = ($counts[$text] ?? 0) + 1;
             }
         }
 
@@ -164,6 +181,10 @@ class JsonFieldAggregator
         $counts = [];
 
         foreach ($analyses as $analysis) {
+            if (! $analysis->isEvaluable()) {
+                continue;
+            }
+
             foreach ($analysis->performance_dimensions_json ?? [] as $key => $data) {
                 $score = AnalysisInsightPresenter::dimensionScore($data);
                 if ($score <= 0) {

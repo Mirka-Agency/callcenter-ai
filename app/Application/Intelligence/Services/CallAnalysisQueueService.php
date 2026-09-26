@@ -7,24 +7,14 @@ use App\Application\Intelligence\Jobs\AnalyzeAudioJob;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
-use App\Domain\Voip\Enums\CallStatus;
 use App\Exceptions\InsufficientWalletBalanceException;
 use App\Models\Call;
 use App\Services\AiBillingService;
 use App\Services\CallProcessingTracker;
+use App\Support\UnconnectedCallSignals;
 
 class CallAnalysisQueueService
 {
-    /** @var list<string> */
-    private const NON_ANALYZABLE_STATUSES = [
-        CallStatus::Missed->value,
-        CallStatus::Busy->value,
-        CallStatus::Failed->value,
-        CallStatus::Cancelled->value,
-        CallStatus::Initiated->value,
-        CallStatus::Ringing->value,
-    ];
-
     public function __construct(
         private CallProcessingTracker $tracker,
         private AiBillingService $billing,
@@ -125,15 +115,68 @@ class CallAnalysisQueueService
         return $this->employeeResolver->resolveFromCallLog($log) !== null;
     }
 
+    /**
+     * Ring time, a carrier tone, or an explicit no-answer disposition is not a conversation.
+     */
+    private function lacksConnectedConversation(Call $call): bool
+    {
+        $payload = $this->conversationPayload($call);
+
+        foreach ($this->statusCandidates($call, $payload) as $status) {
+            if (UnconnectedCallSignals::isUnconnectedStatus($status)) {
+                return true;
+            }
+        }
+
+        return UnconnectedCallSignals::explicitTalkSeconds($payload) === 0;
+    }
+
+    private function analyzableSeconds(Call $call): ?int
+    {
+        $talkSeconds = UnconnectedCallSignals::explicitTalkSeconds($this->conversationPayload($call));
+
+        if ($talkSeconds !== null) {
+            return $talkSeconds;
+        }
+
+        $duration = $call->duration_seconds ?? $call->voipCallLog?->duration;
+
+        return $duration === null ? null : (int) $duration;
+    }
+
+    /** @return array<string, mixed> */
+    private function conversationPayload(Call $call): array
+    {
+        $metadata = is_array($call->metadata) ? $call->metadata : [];
+        $raw = is_array($call->voipCallLog?->raw_payload) ? $call->voipCallLog->raw_payload : [];
+
+        return array_replace($raw, $metadata);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return list<string>
+     */
+    private function statusCandidates(Call $call, array $payload): array
+    {
+        $logStatus = $call->voipCallLog?->status;
+        $logStatus = $logStatus instanceof \BackedEnum ? $logStatus->value : $logStatus;
+
+        return array_values(array_filter([
+            is_string($call->status) ? $call->status : null,
+            is_string($logStatus) ? $logStatus : null,
+            isset($payload['disposition']) ? (string) $payload['disposition'] : null,
+            isset($payload['call_status']) ? (string) $payload['call_status'] : null,
+        ], fn (?string $status) => $status !== null && $status !== ''));
+    }
+
     public function shouldSkipAnalysis(Call $call): bool
     {
         if ($call->source !== ConversationSource::Voip) {
             return false;
         }
 
-        $status = strtolower((string) ($call->status ?? $call->voipCallLog?->status ?? ''));
-
-        if (in_array($status, self::NON_ANALYZABLE_STATUSES, true)) {
+        if ($this->lacksConnectedConversation($call)) {
             return true;
         }
 
@@ -143,13 +186,13 @@ class CallAnalysisQueueService
             return false;
         }
 
-        $duration = $call->duration_seconds ?? $call->voipCallLog?->duration;
+        $duration = $this->analyzableSeconds($call);
 
         if ($duration === null) {
             return false;
         }
 
-        return (int) $duration < $minDuration;
+        return $duration < $minDuration;
     }
 
     public function markSkipped(Call $call): void
@@ -158,11 +201,10 @@ class CallAnalysisQueueService
             return;
         }
 
-        $status = strtolower((string) ($call->status ?? $call->voipCallLog?->status ?? ''));
-        $duration = $call->duration_seconds ?? $call->voipCallLog?->duration;
+        $duration = $this->analyzableSeconds($call);
         $minDuration = (int) config('intelligence.min_analyzable_duration_seconds', 10);
 
-        $reason = in_array($status, self::NON_ANALYZABLE_STATUSES, true)
+        $reason = $this->lacksConnectedConversation($call)
             ? 'تماس برقرار نشده یا بدون مکالمه بود؛ ضبط و تحلیل انجام نشد.'
             : "مدت تماس ({$duration} ثانیه) کمتر از حداقل قابل تحلیل ({$minDuration} ثانیه) است؛ ضبط و تحلیل انجام نشد.";
 

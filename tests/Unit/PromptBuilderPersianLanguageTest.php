@@ -56,6 +56,10 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $this->assertStringContainsString('فقط قول صریح خود کارشناس', $policy);
         $this->assertStringContainsString('مشتری گفت خودش زنگ می‌زند', $policy);
         $this->assertStringContainsString('موعد را حدس نزنید', $policy);
+        $this->assertStringContainsString('ارجاع به داخلی یا بخش دیگر همان شرکت', $policy);
+        $this->assertStringContainsString('تماس پیگیری ۳ روز دیگر برای اتصال به بخش یا داخلی معرفی‌شده', $policy);
+        $this->assertStringContainsString('این نقطه ضعف «عدم پیگیری» نیست', PromptBuilder::weaknessEvaluationPolicy());
+        $this->assertStringContainsString('مشتری یا طرف مقابل اصلاً پاسخ نداده', PromptBuilder::evaluableConversationPolicy());
     }
 
     public function test_system_prompt_includes_follow_up_policy(): void
