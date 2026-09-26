@@ -13,6 +13,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -138,7 +139,7 @@ class AgentPerformanceCardFeedTest extends TestCase
             ->assertSet('showPrintDateRange', false);
     }
 
-    public function test_dashboard_shows_team_weaknesses_above_agent_performance_section(): void
+    public function test_dashboard_shows_agent_performance_below_kpi_cards(): void
     {
         $organization = $this->actingAsEmployer();
         $this->seedWeaknessAnalyses($organization, [
@@ -148,12 +149,15 @@ class AgentPerformanceCardFeedTest extends TestCase
         ]);
 
         $html = Livewire::test(Overview::class)->html();
-        $weaknessesPosition = mb_strpos($html, 'ضعف‌های پرتکرار تیم');
+        $statsPosition = mb_strpos($html, 'data-tour="dashboard-stats"');
         $agentsPosition = mb_strpos($html, 'data-tour="dashboard-agents"');
+        $weaknessesPosition = mb_strpos($html, 'ضعف‌های پرتکرار تیم');
 
-        $this->assertNotFalse($weaknessesPosition);
+        $this->assertNotFalse($statsPosition);
         $this->assertNotFalse($agentsPosition);
-        $this->assertLessThan($agentsPosition, $weaknessesPosition);
+        $this->assertNotFalse($weaknessesPosition);
+        $this->assertLessThan($agentsPosition, $statsPosition);
+        $this->assertLessThan($weaknessesPosition, $agentsPosition);
         $this->assertStringContainsString('جمع‌بندی ضعیف انتهای تماس (2)', $html);
         $this->assertStringContainsString('عدم تأیید نهایی نیاز مشتری (1)', $html);
 
@@ -267,6 +271,8 @@ class AgentPerformanceCardFeedTest extends TestCase
             'is_active' => true,
         ]);
 
+        $occurredAt = now()->previous(Carbon::MONDAY);
+
         foreach ($weaknesses as $index => $weakness) {
             $call = Call::query()->create([
                 'organization_id' => $organization->id,
@@ -280,7 +286,7 @@ class AgentPerformanceCardFeedTest extends TestCase
                 'status' => 'completed',
                 'processing_status' => 'analyzed',
                 'duration_seconds' => 120,
-                'started_at' => now()->subDay(),
+                'started_at' => $occurredAt,
             ]);
 
             ConversationAnalysis::query()->create([
@@ -298,7 +304,7 @@ class AgentPerformanceCardFeedTest extends TestCase
                 'weaknesses_json' => [$weakness],
                 'next_actions_json' => [],
                 'lead_quality_json' => ['score' => 50, 'level' => 'medium', 'reason' => 'test'],
-                'analyzed_at' => now(),
+                'analyzed_at' => $occurredAt,
             ]);
         }
     }

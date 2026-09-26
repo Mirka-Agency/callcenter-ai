@@ -16,6 +16,11 @@ export const employerPageTours = {
                 content: 'کارشناسان فعال، تماس‌های تحلیل‌شده، تماس‌های امروز، میانگین امتیاز تیم، کیفیت لید و رضایت مشتری.',
             },
             {
+                selector: '[data-tour="dashboard-agents"]',
+                title: 'عملکرد کارشناسان',
+                content: 'کارت هر کارشناس را ببینید، فیلتر برترین‌ها یا نیازمند توجه را بزنید و برای جزئیات روی کارت کلیک کنید.',
+            },
+            {
                 selector: '[data-tour="dashboard-opportunities"]',
                 title: 'فرصت‌های معاملاتی جدید',
                 content: 'لیدهای باکیفیت اخیر را اینجا ببینید و برای بستن فروش پیگیری کنید.',
@@ -24,11 +29,6 @@ export const employerPageTours = {
                 selector: '[data-tour="dashboard-sentiment-customers"]',
                 title: 'مشتریان راضی و ناراضی',
                 content: 'مکالمه‌های مثبت و منفی اخیر را در دو باکس جدا ببینید و برای جزئیات روی هر مشتری کلیک کنید.',
-            },
-            {
-                selector: '[data-tour="dashboard-agents"]',
-                title: 'عملکرد کارشناسان',
-                content: 'کارت هر کارشناس را ببینید، فیلتر برترین‌ها یا نیازمند توجه را بزنید و برای جزئیات روی کارت کلیک کنید.',
             },
             {
                 selector: '[data-tour="dashboard-forgotten-followups"]',

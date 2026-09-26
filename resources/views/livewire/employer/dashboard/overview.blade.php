@@ -38,6 +38,18 @@
         </div>
     </div>
 
+    @include('livewire.employer.partials.agent-performance-cards', [
+        'title' => 'عملکرد کارشناسان',
+        'subtitle' => $agentCardFeed['counts']['all'].' کارشناس با فعالیت در ۳۰ روز اخیر',
+        'agentCardFeed' => $agentCardFeed,
+        'agentCardFilter' => $agentCardFilter,
+        'agentProfileUrl' => fn (array $agent) => route('employer.intelligence.performance.show', $agent['id']),
+        'emptyTitle' => __('ui.empty.no_team_performance.title'),
+        'emptyDescription' => __('ui.empty.no_team_performance.description'),
+        'sectionTour' => 'dashboard-agents',
+        'showPerformanceLink' => true,
+    ])
+
     @include('livewire.employer.partials.trading-opportunities-card', [
         'tradingOpportunities' => $tradingOpportunities,
     ])
@@ -50,18 +62,6 @@
         'teamWeaknesses' => $teamWeaknesses,
         'selectedTeamWeakness' => $selectedTeamWeakness,
         'teamWeaknessCalls' => $teamWeaknessCalls,
-    ])
-
-    @include('livewire.employer.partials.agent-performance-cards', [
-        'title' => 'عملکرد کارشناسان',
-        'subtitle' => $agentCardFeed['counts']['all'].' کارشناس با فعالیت در ۳۰ روز اخیر',
-        'agentCardFeed' => $agentCardFeed,
-        'agentCardFilter' => $agentCardFilter,
-        'agentProfileUrl' => fn (array $agent) => route('employer.intelligence.performance.show', $agent['id']),
-        'emptyTitle' => __('ui.empty.no_team_performance.title'),
-        'emptyDescription' => __('ui.empty.no_team_performance.description'),
-        'sectionTour' => 'dashboard-agents',
-        'showPerformanceLink' => true,
     ])
 
     @include('livewire.employer.partials.forgotten-follow-ups-card', [
