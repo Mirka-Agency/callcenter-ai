@@ -10,6 +10,7 @@ use App\Models\OrganizationUser;
 use App\Services\Performance\Calculators\JsonFieldAggregator;
 use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
+use App\Support\OrganizationHolidays;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
@@ -26,6 +27,9 @@ class EmployeeDashboardAnalytics
     }
 
     private ?Collection $cachedWorkdayAnalyses = null;
+
+    /** @var list<int>|null */
+    private ?array $resolvedHolidayWeekdays = null;
 
     public function cockpit(): array
     {
@@ -180,7 +184,7 @@ class EmployeeDashboardAnalytics
             ->reject(function (ConversationAnalysis $analysis): bool {
                 $at = $analysis->occurredAt() ?? $analysis->analyzed_at;
 
-                return $at instanceof CarbonInterface && CompanyWorkCalendar::isHolidayMoment($at);
+                return $at instanceof CarbonInterface && CompanyWorkCalendar::isHolidayMoment($at, $this->holidayWeekdays());
             })
             ->values();
     }
@@ -299,7 +303,7 @@ class EmployeeDashboardAnalytics
             $date = $from->copy()->addDays($offset);
             $period = $date->toDateString();
 
-            if (CompanyWorkCalendar::isHoliday($period)) {
+            if (CompanyWorkCalendar::isHoliday($period, $this->holidayWeekdays())) {
                 continue;
             }
 
@@ -312,5 +316,11 @@ class EmployeeDashboardAnalytics
         }
 
         return $series;
+    }
+
+    /** @return list<int> */
+    private function holidayWeekdays(): array
+    {
+        return $this->resolvedHolidayWeekdays ??= OrganizationHolidays::weekdays($this->employee->organization_id);
     }
 }

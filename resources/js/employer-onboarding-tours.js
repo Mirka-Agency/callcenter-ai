@@ -349,6 +349,26 @@ export const employerPageTours = {
             },
         ],
     },
+    'employer.organization.profile': {
+        label: 'پروفایل سازمان',
+        steps: [
+            {
+                selector: '[data-tour="page-header"]',
+                title: 'پروفایل سازمان',
+                content: 'نام سازمان، ارائه‌دهنده ویپ، اتصال پیش‌فرض و آدرس وب‌هوک را اینجا ببینید. این اطلاعات قابل تغییر نیستند.',
+            },
+            {
+                selector: '[data-tour="organization-details"]',
+                title: 'اطلاعات سازمان',
+                content: 'جزئیات ثبت‌شده سازمان و اتصال ویپ فقط برای مشاهده است.',
+            },
+            {
+                selector: '[data-tour="organization-holidays"]',
+                title: 'تعطیلات شرکت',
+                content: 'روزهای تعطیل هفته را مشخص کنید تا تماس‌های آن روزها در آمار عملکرد نیاید.',
+            },
+        ],
+    },
     'employer.voip.index': {
         label: 'خطوط تلفنی',
         steps: [
@@ -416,6 +436,7 @@ const navSteps = [
     ['employer.processing-queue.index', 'صف تحلیل', 'پیگیری وضعیت پردازش فایل‌های در صف.'],
     ['employer.crm.index', 'CRM', 'اتصال سیستم ارتباط با مشتری.'],
     ['employer.voip.index', 'خطوط تلفنی', 'اتصال VoIP و وب‌هوک تماس.'],
+    ['employer.organization.profile', 'پروفایل سازمان', 'اطلاعات سازمان، اتصال ویپ و تعطیلات شرکت.'],
     ['employer.wallet.index', 'اعتبار هوش مصنوعی', 'موجودی و مصرف اعتبار تحلیل AI.'],
 ];
 
@@ -499,6 +520,7 @@ export const employerRouteMatchers = [
     { pattern: /^\/app\/extensions\/?$/, route: 'employer.extensions.index' },
     { pattern: /^\/app\/unmatched-extensions\/?$/, route: 'employer.extensions.index' },
     { pattern: /^\/app\/voip\/?$/, route: 'employer.voip.index' },
+    { pattern: /^\/app\/organization\/?$/, route: 'employer.organization.profile' },
     { pattern: /^\/app\/wallet\/?$/, route: 'employer.wallet.index' },
 ];
 

@@ -17,6 +17,7 @@ use App\Livewire\Employer\Customers\Show as CustomersShow;
 use App\Livewire\Employer\Dashboard\Overview as EmployerDashboard;
 use App\Livewire\Employer\Employees\Create as EmployeeCreate;
 use App\Livewire\Employer\Employees\Edit as EmployeeEdit;
+use App\Livewire\Employer\Organization\Profile as OrganizationProfile;
 use App\Livewire\Employer\Intelligence\Index as IntelligenceIndex;
 use App\Livewire\Employer\Intelligence\Performance as IntelligencePerformance;
 use App\Livewire\Employer\Intelligence\PerformanceShow as IntelligencePerformanceShow;
@@ -98,6 +99,8 @@ Route::middleware(['auth', 'employer'])->group(function () {
         Route::get('/create', App\Livewire\Employer\Voip\Connections\Create::class)->name('create');
         Route::get('/{connection}/edit', App\Livewire\Employer\Voip\Connections\Edit::class)->name('edit');
     });
+    Route::get('/organization', OrganizationProfile::class)->name('organization.profile');
+    Route::permanentRedirect('/holidays', '/app/organization')->name('holidays.index');
     Route::get('/wallet', WalletIndex::class)->name('wallet.index');
     Route::get('/profile', ProfileEdit::class)->name('profile.edit');
 });

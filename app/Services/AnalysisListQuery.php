@@ -15,6 +15,7 @@ use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Support\CompanyWorkCalendar;
 use App\Support\CustomerPresenter;
 use App\Support\JalaliDate;
+use App\Support\OrganizationHolidays;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -52,7 +53,11 @@ class AnalysisListQuery
     {
         $moment = 'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, conversation_analyses.analyzed_at)';
 
-        return CompanyWorkCalendar::whereWorkday($this->filteredQuery($filter), $moment);
+        return CompanyWorkCalendar::whereWorkday(
+            $this->filteredQuery($filter),
+            $moment,
+            $this->holidayWeekdays($filter),
+        );
     }
 
     public function paginate(AnalysisListFilter $filter, int $perPage = 20): LengthAwarePaginator
@@ -191,6 +196,7 @@ class AnalysisListQuery
     private function qualityTrend(AnalysisListFilter $filter): array
     {
         $granularity = $this->granularity($filter);
+        $holidayWeekdays = $this->holidayWeekdays($filter);
 
         $grouped = $this->chartRows($filter)
             ->groupBy(fn (ConversationAnalysis $analysis) => $this->periodKey($this->chartOccurredAt($analysis), $granularity));
@@ -205,7 +211,7 @@ class AnalysisListQuery
                 'count' => $items->count(),
             ];
         })
-            ->reject(fn (array $row) => $granularity === 'day' && CompanyWorkCalendar::isHoliday((string) $row['period']))
+            ->reject(fn (array $row) => $granularity === 'day' && CompanyWorkCalendar::isHoliday((string) $row['period'], $holidayWeekdays))
             ->values()
             ->all();
     }
@@ -214,6 +220,7 @@ class AnalysisListQuery
     private function volumeTrend(AnalysisListFilter $filter): array
     {
         $granularity = $this->granularity($filter);
+        $holidayWeekdays = $this->holidayWeekdays($filter);
 
         $grouped = $this->chartRows($filter)
             ->groupBy(fn (ConversationAnalysis $analysis) => $this->periodKey($this->chartOccurredAt($analysis), $granularity));
@@ -224,7 +231,7 @@ class AnalysisListQuery
                 'label' => $this->periodLabel($period, $granularity),
                 'count' => $items->count(),
             ];
-        })->reject(fn (array $row) => $granularity === 'day' && CompanyWorkCalendar::isHoliday((string) $row['period']))
+        })->reject(fn (array $row) => $granularity === 'day' && CompanyWorkCalendar::isHoliday((string) $row['period'], $holidayWeekdays))
             ->values()
             ->all();
     }
@@ -332,6 +339,12 @@ class AnalysisListQuery
             ->values()
             ->take(5)
             ->all();
+    }
+
+    /** @return list<int> */
+    private function holidayWeekdays(AnalysisListFilter $filter): array
+    {
+        return OrganizationHolidays::weekdays($filter->organizationId);
     }
 
     private function granularity(AnalysisListFilter $filter): string

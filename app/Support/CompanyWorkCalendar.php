@@ -5,14 +5,22 @@ namespace App\Support;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 /**
- * Iranian company week: Saturday–Wednesday are working days.
- * Thursday and Friday are company holidays and stay off charts and analytics.
+ * Iranian company week in Asia/Tehran.
+ * Which weekdays are holidays is chosen per organization.
+ * When a company has not chosen yet, Thursday and Friday stay off charts and analytics.
  */
 class CompanyWorkCalendar
 {
     public const TIMEZONE = 'Asia/Tehran';
+
+    /** @var list<int> */
+    public const DEFAULT_HOLIDAY_WEEKDAYS = [
+        Carbon::THURSDAY,
+        Carbon::FRIDAY,
+    ];
 
     public static function dayKey(CarbonInterface $moment): string
     {
@@ -21,16 +29,22 @@ class CompanyWorkCalendar
         return $carbon->utc()->timezone(self::TIMEZONE)->toDateString();
     }
 
-    public static function isHoliday(string $dayKey): bool
+    /**
+     * @param  list<int>|null  $holidayWeekdays  null keeps Thursday and Friday
+     */
+    public static function isHoliday(string $dayKey, ?array $holidayWeekdays = null): bool
     {
         $day = self::parseDayKey($dayKey);
 
-        return $day !== null && ($day->isThursday() || $day->isFriday());
+        return $day !== null && in_array($day->dayOfWeek, self::normalizeWeekdays($holidayWeekdays), true);
     }
 
-    public static function isHolidayMoment(CarbonInterface $moment): bool
+    /**
+     * @param  list<int>|null  $holidayWeekdays  null keeps Thursday and Friday
+     */
+    public static function isHolidayMoment(CarbonInterface $moment, ?array $holidayWeekdays = null): bool
     {
-        return self::isHoliday(self::dayKey($moment));
+        return self::isHoliday(self::dayKey($moment), $holidayWeekdays);
     }
 
     public static function isFriday(string $dayKey): bool
@@ -41,13 +55,43 @@ class CompanyWorkCalendar
     }
 
     /**
-     * Keep rows whose timestamp falls on Saturday–Wednesday in Tehran.
+     * Saturday through Friday, in the Iranian week order.
      *
-     * @param  Builder<\Illuminate\Database\Eloquent\Model>  $query
-     * @return Builder<\Illuminate\Database\Eloquent\Model>
+     * @return array<int, string>
      */
-    public static function whereWorkday(Builder $query, string $utcTimestampSql): Builder
+    public static function weekdayOptions(): array
     {
+        return [
+            Carbon::SATURDAY => 'شنبه',
+            Carbon::SUNDAY => 'یکشنبه',
+            Carbon::MONDAY => 'دوشنبه',
+            Carbon::TUESDAY => 'سه‌شنبه',
+            Carbon::WEDNESDAY => 'چهارشنبه',
+            Carbon::THURSDAY => 'پنجشنبه',
+            Carbon::FRIDAY => 'جمعه',
+        ];
+    }
+
+    public static function weekdayLabel(int $weekday): string
+    {
+        return self::weekdayOptions()[$weekday] ?? '';
+    }
+
+    /**
+     * Keep rows whose timestamp falls on a working day in Tehran.
+     *
+     * @param  Builder<Model>  $query
+     * @param  list<int>|null  $holidayWeekdays  null keeps Thursday and Friday
+     * @return Builder<Model>
+     */
+    public static function whereWorkday(Builder $query, string $utcTimestampSql, ?array $holidayWeekdays = null): Builder
+    {
+        $weekdays = self::normalizeWeekdays($holidayWeekdays);
+
+        if ($weekdays === []) {
+            return $query;
+        }
+
         $driver = $query->getConnection()->getDriverName();
 
         $dow = match ($driver) {
@@ -56,9 +100,42 @@ class CompanyWorkCalendar
             default => "CAST(strftime('%w', datetime($utcTimestampSql, '+210 minutes')) AS INTEGER)",
         };
 
-        $holidays = in_array($driver, ['mysql', 'mariadb'], true) ? '(5, 6)' : '(4, 5)';
+        $values = array_map(
+            fn (int $weekday): int => in_array($driver, ['mysql', 'mariadb'], true) ? $weekday + 1 : $weekday,
+            $weekdays,
+        );
+
+        $holidays = '('.implode(', ', $values).')';
 
         return $query->whereRaw("($dow) NOT IN $holidays");
+    }
+
+    /**
+     * @return list<int>
+     */
+    public static function normalizeWeekdays(mixed $holidayWeekdays): array
+    {
+        if (! is_array($holidayWeekdays)) {
+            return self::DEFAULT_HOLIDAY_WEEKDAYS;
+        }
+
+        $days = [];
+
+        foreach ($holidayWeekdays as $day) {
+            if (! is_numeric($day)) {
+                continue;
+            }
+
+            $weekday = (int) $day;
+
+            if ($weekday >= Carbon::SUNDAY && $weekday <= Carbon::SATURDAY) {
+                $days[$weekday] = $weekday;
+            }
+        }
+
+        ksort($days);
+
+        return array_values($days);
     }
 
     private static function parseDayKey(string $dayKey): ?Carbon

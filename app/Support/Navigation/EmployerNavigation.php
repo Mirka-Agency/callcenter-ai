@@ -18,6 +18,7 @@ class EmployerNavigation
             ['label' => 'صف تحلیل تماس', 'route' => 'employer.processing-queue.index', 'icon' => 'cloud'],
             ['label' => 'CRM', 'route' => 'employer.crm.index', 'icon' => 'cloud'],
             ['label' => 'خطوط تلفنی', 'route' => 'employer.voip.index', 'icon' => 'phone'],
+            ['label' => 'پروفایل سازمان', 'route' => 'employer.organization.profile', 'icon' => 'building'],
         ];
 
         if (! OnPrem::billingHidden()) {

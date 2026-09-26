@@ -12,6 +12,7 @@ use App\Support\CompanyWorkCalendar;
 use App\Support\FollowUpDueDateParser;
 use App\Support\ForgottenCallbackMatcher;
 use App\Support\JalaliDate;
+use App\Support\OrganizationHolidays;
 use App\Support\PaymentFollowUpSentiment;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -77,6 +78,7 @@ class EmployerDashboardAnalytics
             'positive' => 100, 'mixed' => 60, 'neutral' => 50, 'negative' => 20,
         ];
 
+        $holidayWeekdays = OrganizationHolidays::weekdays($this->organizationId);
         $grouped = ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId)
             ->where('analyzed_at', '>=', now()->subDays($days))
@@ -84,7 +86,7 @@ class EmployerDashboardAnalytics
             ->orderBy('analyzed_at')
             ->get()
             ->groupBy(fn ($a) => CompanyWorkCalendar::dayKey($a->occurredAt() ?? $a->analyzed_at))
-            ->reject(fn ($items, $date) => CompanyWorkCalendar::isHoliday((string) $date));
+            ->reject(fn ($items, $date) => CompanyWorkCalendar::isHoliday((string) $date, $holidayWeekdays));
 
         return $grouped->map(fn ($items, $date) => [
             'period' => $date,

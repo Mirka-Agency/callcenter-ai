@@ -7,6 +7,7 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
 use App\Support\CompanyWorkCalendar;
+use App\Support\OrganizationHolidays;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -54,13 +55,16 @@ class PerformanceDataLoader
         $employees = $this->employees($filter);
         $employeeIds = $employees->pluck('id')->all();
 
+        $holidayWeekdays = OrganizationHolidays::weekdays($filter->organizationId);
         $analyses = $this->withoutHolidays(
             $this->analyses($filter, $employeeIds),
             fn (ConversationAnalysis $analysis): ?CarbonInterface => $analysis->occurredAt(),
+            $holidayWeekdays,
         );
         $calls = $this->withoutHolidays(
             $this->calls($filter, $employeeIds),
             fn (Call $call): ?CarbonInterface => $call->occurredAt(),
+            $holidayWeekdays,
         );
 
         $previous = $withPreviousPeriod
@@ -128,21 +132,22 @@ class PerformanceDataLoader
     }
 
     /**
-     * Thursday and Friday conversations stay out of dashboard charts and score rollups.
+     * Conversations on the company's holidays stay out of dashboard charts and score rollups.
      *
      * @template TValue of ConversationAnalysis|Call
      *
      * @param  Collection<int, TValue>  $items
      * @param  callable(TValue): ?CarbonInterface  $moment
+     * @param  list<int>  $holidayWeekdays
      * @return Collection<int, TValue>
      */
-    private function withoutHolidays(Collection $items, callable $moment): Collection
+    private function withoutHolidays(Collection $items, callable $moment, array $holidayWeekdays): Collection
     {
         return $items
-            ->reject(function (ConversationAnalysis|Call $item) use ($moment): bool {
+            ->reject(function (ConversationAnalysis|Call $item) use ($moment, $holidayWeekdays): bool {
                 $at = $moment($item);
 
-                return $at instanceof CarbonInterface && CompanyWorkCalendar::isHolidayMoment($at);
+                return $at instanceof CarbonInterface && CompanyWorkCalendar::isHolidayMoment($at, $holidayWeekdays);
             })
             ->values();
     }

@@ -8,6 +8,7 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
 use App\Support\CompanyWorkCalendar;
+use App\Support\OrganizationHolidays;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -164,6 +165,7 @@ class AiPerformanceAnalytics
             $query->where('organization_user_id', $employeeId);
         }
 
+        $holidayWeekdays = OrganizationHolidays::weekdays($this->organizationId);
         $grouped = $query->with('call:id,conversation_date,started_at,created_at')->get()->groupBy(function (ConversationAnalysis $analysis) use ($period) {
             return match ($period) {
                 'week' => $analysis->analyzed_at->format('Y-W'),
@@ -172,7 +174,7 @@ class AiPerformanceAnalytics
                 ? CompanyWorkCalendar::dayKey($at)
                 : '',
             };
-        })->reject(fn (Collection $items, string $key) => $period === 'day' && CompanyWorkCalendar::isHoliday($key));
+        })->reject(fn (Collection $items, string $key) => $period === 'day' && CompanyWorkCalendar::isHoliday($key, $holidayWeekdays));
 
         return $grouped->map(fn (Collection $items, string $key) => [
             'period' => $key,

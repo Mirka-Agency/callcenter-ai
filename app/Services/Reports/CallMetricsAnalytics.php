@@ -4,12 +4,11 @@ namespace App\Services\Reports;
 
 use App\DTOs\ReportFilter;
 use App\Models\Call;
-use App\Models\ConversationAnalysis;
 use App\Models\VoipCallLog;
 use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
+use App\Support\OrganizationHolidays;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 
 class CallMetricsAnalytics
 {
@@ -46,8 +45,10 @@ class CallMetricsAnalytics
 
         ksort($buckets);
 
+        $holidayWeekdays = OrganizationHolidays::weekdays($filter->organizationId);
+
         return collect($buckets)
-            ->reject(fn (int $count, string $period) => $granularity === 'day' && CompanyWorkCalendar::isHoliday($period))
+            ->reject(fn (int $count, string $period) => $granularity === 'day' && CompanyWorkCalendar::isHoliday($period, $holidayWeekdays))
             ->map(fn (int $count, string $period) => [
                 'period' => $period,
                 'label' => $this->periodLabel($period, $granularity),
