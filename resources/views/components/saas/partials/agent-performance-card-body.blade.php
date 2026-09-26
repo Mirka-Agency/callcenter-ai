@@ -66,15 +66,9 @@
         </div>
     </dl>
 
-    @if (filled($agent['average_duration_label'] ?? null) || (($agent['total_calls'] ?? 0) > ($agent['total_analyzed'] ?? 0)))
+    @if (filled($agent['average_duration_label'] ?? null))
         <p class="text-xs text-zinc-500">
-            @if (filled($agent['average_duration_label'] ?? null))
-                {{ (int) ($agent['total_analyzed'] ?? 0) }} تماس بررسی شده و میانگین مدت مکالمه <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ $agent['average_duration_label'] }}</span> بوده.
-            @endif
-            @if (($agent['total_calls'] ?? 0) > ($agent['total_analyzed'] ?? 0))
-                @if (filled($agent['average_duration_label'] ?? null)) · @endif
-                {{ $agent['total_calls'] }} تماس VoIP ثبت‌شده
-            @endif
+            {{ (int) ($agent['total_analyzed'] ?? 0) }} تماس بررسی شده و میانگین مدت مکالمه <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ $agent['average_duration_label'] }}</span> بوده.
         </p>
     @endif
 </div>
