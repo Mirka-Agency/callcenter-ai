@@ -4,6 +4,7 @@ namespace App\Application\Llm\Services;
 
 use App\Support\CompanyName;
 use App\Support\NeedsAttention;
+use App\Support\PaymentFollowUpSentiment;
 
 class AnalysisResponseNormalizer
 {
@@ -126,6 +127,7 @@ class AnalysisResponseNormalizer
         $response['lead_quality'] = $this->normalizeLeadQuality($response['lead_quality'] ?? null);
         $response['concerns'] = $this->normalizeConcerns($response['concerns'] ?? null);
         $response['customer_identity'] = $this->normalizeCustomerIdentity($response['customer_identity'] ?? null, $crmContext);
+        $response = PaymentFollowUpSentiment::correct($response);
         $response['needs_attention'] = NeedsAttention::fromResponse($response);
         $response['evaluable'] = $this->resolveEvaluable($response);
 
@@ -172,7 +174,15 @@ class AnalysisResponseNormalizer
             return false;
         }
 
-        return mb_strtolower($value) === mb_strtolower($excluded);
+        return $this->normalizePersonName($value) === $this->normalizePersonName($excluded);
+    }
+
+    private function normalizePersonName(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        $value = preg_replace('/^(?:آقای|آقا|خانم|مهندس|دکتر|جناب)\s+/u', '', $value) ?? $value;
+
+        return trim($value);
     }
 
     private function matchesExcludedCompany(string $value, string $excluded): bool

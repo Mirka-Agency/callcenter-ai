@@ -76,6 +76,8 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $this->assertStringContainsString('اگر مشتری اعتراضی نسبت به محصول یا برند ما دارد، حتماً negative بگذارید', $policy);
         $this->assertStringContainsString('نارضایتی از لحن یا عملکرد کارشناس', $policy);
         $this->assertStringContainsString('استعلام قیمت', $policy);
+        $this->assertStringContainsString('پیگیری پرداخت‌نشده', $policy);
+        $this->assertStringContainsString('اگر نقش کارشناس و مشتری را عوض کنید', $policy);
         $this->assertStringContainsString('مقدار را neutral بگذارید', $policy);
         $this->assertStringNotContainsString('overall emotional tone', $policy);
     }

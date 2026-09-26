@@ -7,13 +7,15 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationActivity;
 use App\Services\Reports\OrganizationCallMetrics;
+use App\Support\CompanyWorkCalendar;
 use App\Support\FollowUpDueDateParser;
 use App\Support\ForgottenCallbackMatcher;
-use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
+use App\Support\PaymentFollowUpSentiment;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use DateTimeInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -599,12 +601,17 @@ class EmployerDashboardAnalytics
                 'call_id',
                 'organization_user_id',
                 'summary',
+                'overall_evaluation',
                 'sentiment',
                 'strengths_json',
                 'concerns_json',
+                'customer_insights_json',
+                'attention_json',
                 'customer_identity_json',
                 'analyzed_at',
             ])
+            ->reject(fn (ConversationAnalysis $analysis): bool => $sentiment === AnalysisSentiment::Negative
+                && PaymentFollowUpSentiment::analysisLooksMisclassified($analysis))
             ->map(fn (ConversationAnalysis $analysis) => $this->mapSentimentCustomer($analysis))
             ->filter(function (array $item) use (&$seen) {
                 $key = $item['customer_key'];
@@ -631,7 +638,7 @@ class EmployerDashboardAnalytics
      * Insight lists ignore historical rows before the reset cutoff.
      * Match on analyzed_at or updated_at so a re-analysis always qualifies.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<ConversationAnalysis>  $query
+     * @param  Builder<ConversationAnalysis>  $query
      */
     private function constrainInsightListQuery($query): void
     {

@@ -176,6 +176,58 @@ class AnalysisResponseNormalizerTest extends TestCase
         $this->assertSame('مشتری به عملکرد کارشناس و محصول اعتراض دارد', $result['needs_attention']['reason']);
     }
 
+    public function test_payment_collection_call_is_not_stored_as_customer_dissatisfaction(): void
+    {
+        $result = $this->normalizer->apply([
+            'score' => 70,
+            'sentiment' => 'negative',
+            'summary' => 'مشتری به‌خاطر پرداخت‌نشدن فاکتور تماس گرفت و ناراضی بود.',
+            'customer_insights' => ['sentiment' => 'negative', 'intent' => 'اعتراض به عدم پرداخت'],
+            'concerns' => [
+                ['type' => 'other', 'text' => 'مشتری بدهی را پرداخت نکرده است', 'severity' => 'high'],
+            ],
+            'needs_attention' => [
+                'needed' => true,
+                'categories' => ['general'],
+                'reason' => 'پیگیری بدهی مشتری',
+            ],
+        ]);
+
+        $this->assertSame('neutral', $result['sentiment']);
+        $this->assertSame('neutral', $result['customer_insights']['sentiment']);
+        $this->assertSame([], $result['concerns']);
+        $this->assertFalse($result['needs_attention']['needed']);
+    }
+
+    public function test_real_service_complaint_stays_negative_even_if_payment_is_mentioned(): void
+    {
+        $result = $this->normalizer->apply([
+            'score' => 40,
+            'sentiment' => 'negative',
+            'summary' => 'مشتری از کیفیت محصول ناراضی است و فاکتور را پرداخت نکرده تا محصول اصلاح شود.',
+            'concerns' => [
+                ['type' => 'other', 'text' => 'کیفیت محصول پایین است', 'severity' => 'high'],
+            ],
+        ]);
+
+        $this->assertSame('negative', $result['sentiment']);
+        $this->assertCount(1, $result['concerns']);
+    }
+
+    public function test_employee_name_with_honorific_is_not_stored_as_customer(): void
+    {
+        $result = $this->normalizer->apply([
+            'customer_identity' => [
+                'person_name' => 'آقای علی رضایی',
+                'confidence' => 0.9,
+            ],
+        ], [
+            'current_user_name' => 'علی رضایی',
+        ]);
+
+        $this->assertSame('', $result['customer_identity']['person_name']);
+    }
+
     public function test_explicit_evaluable_false_forces_zero_score(): void
     {
         $result = $this->normalizer->apply([
