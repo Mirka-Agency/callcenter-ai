@@ -156,8 +156,8 @@ class AgentPerformanceCardFeedTest extends TestCase
         $this->assertNotFalse($statsPosition);
         $this->assertNotFalse($agentsPosition);
         $this->assertNotFalse($weaknessesPosition);
-        $this->assertLessThan($agentsPosition, $statsPosition);
-        $this->assertLessThan($weaknessesPosition, $agentsPosition);
+        $this->assertLessThan($weaknessesPosition, $statsPosition);
+        $this->assertLessThan($agentsPosition, $weaknessesPosition);
         $this->assertStringContainsString('جمع‌بندی ضعیف انتهای تماس (2)', $html);
         $this->assertStringContainsString('عدم تأیید نهایی نیاز مشتری (1)', $html);
 

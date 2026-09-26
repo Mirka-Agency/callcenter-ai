@@ -38,43 +38,24 @@
         </div>
     </div>
 
-    @include('livewire.employer.partials.agent-performance-cards', [
-        'title' => 'عملکرد کارشناسان',
-        'subtitle' => $agentCardFeed['counts']['all'].' کارشناس با فعالیت در ۳۰ روز اخیر',
-        'agentCardFeed' => $agentCardFeed,
-        'agentCardFilter' => $agentCardFilter,
-        'agentProfileUrl' => fn (array $agent) => route('employer.intelligence.performance.show', $agent['id']),
-        'emptyTitle' => __('ui.empty.no_team_performance.title'),
-        'emptyDescription' => __('ui.empty.no_team_performance.description'),
-        'sectionTour' => 'dashboard-agents',
-        'showPerformanceLink' => true,
-    ])
+    <div @class([
+        'grid items-stretch gap-6',
+        'lg:grid-cols-[minmax(14rem,2fr)_minmax(0,5fr)]' => ! empty($teamWeaknesses),
+    ])>
+        @include('livewire.employer.partials.team-weaknesses-card', [
+            'teamWeaknesses' => $teamWeaknesses,
+            'selectedTeamWeakness' => $selectedTeamWeakness,
+            'teamWeaknessCalls' => $teamWeaknessCalls,
+            'cardClass' => 'h-full',
+        ])
 
-    @include('livewire.employer.partials.trading-opportunities-card', [
-        'tradingOpportunities' => $tradingOpportunities,
-    ])
-
-    @include('livewire.employer.partials.sentiment-customers-card', [
-        'sentimentCustomers' => $sentimentCustomers,
-    ])
-
-    @include('livewire.employer.partials.team-weaknesses-card', [
-        'teamWeaknesses' => $teamWeaknesses,
-        'selectedTeamWeakness' => $selectedTeamWeakness,
-        'teamWeaknessCalls' => $teamWeaknessCalls,
-    ])
-
-    @include('livewire.employer.partials.forgotten-follow-ups-card', [
-        'forgottenFollowUps' => $forgottenFollowUps,
-    ])
-
-    <div
-        class="saas-card"
-        data-tour="dashboard-quality"
-        data-quality-trend-card
-        x-data="qualityTrendCard({{ \Illuminate\Support\Js::from($qualityTrendInsights ?? []) }}, {{ \Illuminate\Support\Js::from($agentProfileBase ?? '') }})"
-        @quality-trend-select="select($event.detail.period)"
-    >
+        <div
+            class="saas-card h-full min-w-0"
+            data-tour="dashboard-quality"
+            data-quality-trend-card
+            x-data="qualityTrendCard({{ \Illuminate\Support\Js::from($qualityTrendInsights ?? []) }}, {{ \Illuminate\Support\Js::from($agentProfileBase ?? '') }})"
+            @quality-trend-select="select($event.detail.period)"
+        >
             <h2 class="text-lg font-semibold">روند کیفیت تیم</h2>
             <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز مکالمه در بازه ۳۰ روز اخیر. برای دیدن دلیل تغییر، روی یک نقطه کلیک کنید.</p>
             <div data-drilldown-selected="{{ $selectedQualityTrendPeriod ?? '' }}" :data-drilldown-selected="selected">
@@ -99,5 +80,30 @@
                     ])
                 </div>
             @endif
+        </div>
     </div>
+
+    @include('livewire.employer.partials.agent-performance-cards', [
+        'title' => 'عملکرد کارشناسان',
+        'subtitle' => $agentCardFeed['counts']['all'].' کارشناس با فعالیت در ۳۰ روز اخیر',
+        'agentCardFeed' => $agentCardFeed,
+        'agentCardFilter' => $agentCardFilter,
+        'agentProfileUrl' => fn (array $agent) => route('employer.intelligence.performance.show', $agent['id']),
+        'emptyTitle' => __('ui.empty.no_team_performance.title'),
+        'emptyDescription' => __('ui.empty.no_team_performance.description'),
+        'sectionTour' => 'dashboard-agents',
+        'showPerformanceLink' => true,
+    ])
+
+    @include('livewire.employer.partials.trading-opportunities-card', [
+        'tradingOpportunities' => $tradingOpportunities,
+    ])
+
+    @include('livewire.employer.partials.sentiment-customers-card', [
+        'sentimentCustomers' => $sentimentCustomers,
+    ])
+
+    @include('livewire.employer.partials.forgotten-follow-ups-card', [
+        'forgottenFollowUps' => $forgottenFollowUps,
+    ])
 </div>

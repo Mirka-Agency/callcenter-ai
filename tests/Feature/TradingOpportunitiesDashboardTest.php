@@ -21,7 +21,7 @@ class TradingOpportunitiesDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_dashboard_lists_recent_high_quality_leads_above_team_weaknesses(): void
+    public function test_dashboard_lists_recent_high_quality_leads_below_team_weaknesses(): void
     {
         $organization = $this->actingAsEmployer();
         $this->seedOpportunity($organization, [
@@ -78,7 +78,7 @@ class TradingOpportunitiesDashboardTest extends TestCase
 
         $this->assertNotFalse($opportunitiesPosition);
         $this->assertNotFalse($weaknessesPosition);
-        $this->assertLessThan($weaknessesPosition, $opportunitiesPosition);
+        $this->assertLessThan($opportunitiesPosition, $weaknessesPosition);
     }
 
     public function test_analytics_excludes_low_quality_old_and_foreign_leads(): void
