@@ -6,6 +6,7 @@ use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\DTOs\ReportFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
+use App\Services\Reports\ChartHolidayCalendar;
 use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
 use App\Support\OrganizationHolidays;
@@ -188,7 +189,7 @@ class PerformanceTrendCalculator
     {
         $granularity = $filter->granularity();
 
-        if ($granularity === 'day' && $this->isHolidayPeriod($period, $filter->organizationId)) {
+        if ($granularity === 'day' && $this->isHolidayPeriod($period, $filter)) {
             return collect();
         }
 
@@ -210,17 +211,25 @@ class PerformanceTrendCalculator
             return $trend;
         }
 
-        $holidayWeekdays = OrganizationHolidays::weekdays($filter->organizationId);
+        $days = app(ChartHolidayCalendar::class)->forRange(
+            $filter->organizationId,
+            $filter->from,
+            $filter->to,
+        );
 
         return collect($trend)
-            ->reject(fn (array $row) => CompanyWorkCalendar::isHoliday((string) ($row['period'] ?? ''), $holidayWeekdays))
+            ->reject(fn (array $row) => $days->hides((string) ($row['period'] ?? '')))
             ->values()
             ->all();
     }
 
-    private function isHolidayPeriod(string $period, int $organizationId): bool
+    private function isHolidayPeriod(string $period, ReportFilter $filter): bool
     {
-        return CompanyWorkCalendar::isHoliday($period, OrganizationHolidays::weekdays($organizationId));
+        $day = Carbon::parse($period, CompanyWorkCalendar::TIMEZONE);
+
+        return app(ChartHolidayCalendar::class)
+            ->forRange($filter->organizationId, $day->copy()->startOfDay(), $day->copy()->endOfDay())
+            ->hides($period);
     }
 
     /**

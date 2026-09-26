@@ -7,7 +7,6 @@ use App\Models\Call;
 use App\Models\VoipCallLog;
 use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
-use App\Support\OrganizationHolidays;
 use Carbon\Carbon;
 
 class CallMetricsAnalytics
@@ -45,10 +44,10 @@ class CallMetricsAnalytics
 
         ksort($buckets);
 
-        $holidayWeekdays = OrganizationHolidays::weekdays($filter->organizationId);
+        $closedDays = app(ChartHolidayCalendar::class)->forRange($filter->organizationId, $filter->from, $filter->to);
 
         return collect($buckets)
-            ->reject(fn (int $count, string $period) => $granularity === 'day' && CompanyWorkCalendar::isHoliday($period, $holidayWeekdays))
+            ->reject(fn (int $count, string $period) => $granularity === 'day' && $closedDays->hides($period))
             ->map(fn (int $count, string $period) => [
                 'period' => $period,
                 'label' => $this->periodLabel($period, $granularity),

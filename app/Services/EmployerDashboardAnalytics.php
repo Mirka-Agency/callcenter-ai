@@ -6,13 +6,13 @@ use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationActivity;
+use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\OrganizationCallMetrics;
 use App\Support\CallCoachingRules;
 use App\Support\CompanyWorkCalendar;
 use App\Support\FollowUpDueDateParser;
 use App\Support\ForgottenCallbackMatcher;
 use App\Support\JalaliDate;
-use App\Support\OrganizationHolidays;
 use App\Support\PaymentFollowUpSentiment;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -78,15 +78,16 @@ class EmployerDashboardAnalytics
             'positive' => 100, 'mixed' => 60, 'neutral' => 50, 'negative' => 20,
         ];
 
-        $holidayWeekdays = OrganizationHolidays::weekdays($this->organizationId);
+        $from = now()->subDays($days);
+        $closedDays = app(ChartHolidayCalendar::class)->forRange($this->organizationId, $from, now());
         $grouped = ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId)
-            ->where('analyzed_at', '>=', now()->subDays($days))
+            ->where('analyzed_at', '>=', $from)
             ->with('call:id,conversation_date,started_at,created_at')
             ->orderBy('analyzed_at')
             ->get()
             ->groupBy(fn ($a) => CompanyWorkCalendar::dayKey($a->occurredAt() ?? $a->analyzed_at))
-            ->reject(fn ($items, $date) => CompanyWorkCalendar::isHoliday((string) $date, $holidayWeekdays));
+            ->reject(fn ($items, $date) => $closedDays->hides((string) $date));
 
         return $grouped->map(fn ($items, $date) => [
             'period' => $date,

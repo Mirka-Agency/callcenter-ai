@@ -11,7 +11,9 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
 use App\Services\Reports\CallMetricsAnalytics;
+use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\DefinedExtensionCallConstraint;
+use App\Support\ChartDayFilter;
 use App\Support\CompanyWorkCalendar;
 use App\Support\CustomerPresenter;
 use App\Support\JalaliDate;
@@ -192,11 +194,11 @@ class AnalysisListQuery
         ];
     }
 
-    /** @return list<array{period: string, label: string, avg_score: float|null, count: int}> */
+    /** @return list<array{period: string, label: string, tooltip_label: string, avg_score: float|null, count: int}> */
     private function qualityTrend(AnalysisListFilter $filter): array
     {
         $granularity = $this->granularity($filter);
-        $holidayWeekdays = $this->holidayWeekdays($filter);
+        $days = $this->chartDays($filter);
 
         $grouped = $this->chartRows($filter)
             ->groupBy(fn (ConversationAnalysis $analysis) => $this->periodKey($this->chartOccurredAt($analysis), $granularity));
@@ -207,20 +209,21 @@ class AnalysisListQuery
             return [
                 'period' => $period,
                 'label' => $this->periodLabel($period, $granularity),
+                'tooltip_label' => $this->periodTooltipLabel($period, $granularity),
                 'avg_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : null,
                 'count' => $items->count(),
             ];
         })
-            ->reject(fn (array $row) => $granularity === 'day' && CompanyWorkCalendar::isHoliday((string) $row['period'], $holidayWeekdays))
+            ->reject(fn (array $row) => $granularity === 'day' && $days->hides((string) $row['period']))
             ->values()
             ->all();
     }
 
-    /** @return list<array{period: string, label: string, count: int}> */
+    /** @return list<array{period: string, label: string, tooltip_label: string, count: int}> */
     private function volumeTrend(AnalysisListFilter $filter): array
     {
         $granularity = $this->granularity($filter);
-        $holidayWeekdays = $this->holidayWeekdays($filter);
+        $days = $this->chartDays($filter);
 
         $grouped = $this->chartRows($filter)
             ->groupBy(fn (ConversationAnalysis $analysis) => $this->periodKey($this->chartOccurredAt($analysis), $granularity));
@@ -229,9 +232,10 @@ class AnalysisListQuery
             return [
                 'period' => $period,
                 'label' => $this->periodLabel($period, $granularity),
+                'tooltip_label' => $this->periodTooltipLabel($period, $granularity),
                 'count' => $items->count(),
             ];
-        })->reject(fn (array $row) => $granularity === 'day' && CompanyWorkCalendar::isHoliday((string) $row['period'], $holidayWeekdays))
+        })->reject(fn (array $row) => $granularity === 'day' && $days->hides((string) $row['period']))
             ->values()
             ->all();
     }
@@ -347,6 +351,15 @@ class AnalysisListQuery
         return OrganizationHolidays::weekdays($filter->organizationId);
     }
 
+    private function chartDays(AnalysisListFilter $filter): ChartDayFilter
+    {
+        return app(ChartHolidayCalendar::class)->forRange(
+            $filter->organizationId,
+            $filter->from,
+            $filter->to,
+        );
+    }
+
     private function granularity(AnalysisListFilter $filter): string
     {
         $days = $filter->from->diffInDays($filter->to) + 1;
@@ -398,5 +411,14 @@ class AnalysisListQuery
         }
 
         return JalaliDate::monthDay($key);
+    }
+
+    private function periodTooltipLabel(string $key, string $granularity): string
+    {
+        if ($granularity === 'week') {
+            return $this->periodLabel($key, $granularity);
+        }
+
+        return JalaliDate::monthDayWithWeekday($key);
     }
 }

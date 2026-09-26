@@ -22,15 +22,15 @@
                 <dt class="text-sm text-zinc-500">اتصال پیش‌فرض</dt>
                 <dd class="text-sm font-medium text-zinc-900 dark:text-white sm:col-span-2">{{ $defaultConnectionName ?? 'تعریف نشده' }}</dd>
             </div>
-            <div class="grid gap-1 py-3 sm:grid-cols-3 sm:items-start sm:gap-4">
-                <dt class="text-sm text-zinc-500">آدرس وب‌هوک ارائه‌دهنده ویپ</dt>
-                <dd class="sm:col-span-2">
-                    @if ($webhookUrl)
-                        <x-saas.webhook-url :url="$webhookUrl" label="آدرس وب‌هوک ارائه‌دهنده ویپ" :show-method="false" />
-                    @else
-                        <span class="text-sm font-medium text-zinc-900 dark:text-white">تعریف نشده</span>
-                    @endif
-                </dd>
+            <div class="py-3">
+                @if ($webhookUrl)
+                    <x-saas.webhook-url :url="$webhookUrl" label="آدرس وب‌هوک ارائه‌دهنده ویپ" :show-method="false" />
+                @else
+                    <div class="grid gap-1 sm:grid-cols-3 sm:gap-4">
+                        <dt class="text-sm text-zinc-500">آدرس وب‌هوک ارائه‌دهنده ویپ</dt>
+                        <dd class="text-sm font-medium text-zinc-900 dark:text-white sm:col-span-2">تعریف نشده</dd>
+                    </div>
+                @endif
             </div>
         </dl>
     </section>

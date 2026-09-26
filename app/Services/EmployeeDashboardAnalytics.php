@@ -8,6 +8,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\EmployeePerformanceSnapshot;
 use App\Models\OrganizationUser;
 use App\Services\Performance\Calculators\JsonFieldAggregator;
+use App\Services\Reports\ChartHolidayCalendar;
 use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
 use App\Support\OrganizationHolidays;
@@ -298,12 +299,17 @@ class EmployeeDashboardAnalytics
             });
 
         $series = [];
+        $closedDays = app(ChartHolidayCalendar::class)->forRange(
+            $this->employee->organization_id,
+            $from,
+            now(CompanyWorkCalendar::TIMEZONE),
+        );
 
         for ($offset = 0; $offset < $days; $offset++) {
             $date = $from->copy()->addDays($offset);
             $period = $date->toDateString();
 
-            if (CompanyWorkCalendar::isHoliday($period, $this->holidayWeekdays())) {
+            if ($closedDays->hides($period)) {
                 continue;
             }
 

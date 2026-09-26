@@ -8,9 +8,9 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
 use App\Services\Reports\CallMetricsAnalytics;
+use App\Services\Reports\ChartHolidayCalendar;
 use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
-use App\Support\OrganizationHolidays;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
@@ -57,7 +57,7 @@ class EmployeeActivityAnalytics
         $from = $filter->from->copy()->timezone(CompanyWorkCalendar::TIMEZONE)->startOfDay();
         $to = $filter->to->copy()->timezone(CompanyWorkCalendar::TIMEZONE)->startOfDay();
         $days = max(1, $from->diffInDays($to) + 1);
-        $holidayWeekdays = OrganizationHolidays::weekdays($employee->organization_id);
+        $closedDays = app(ChartHolidayCalendar::class)->forRange($employee->organization_id, $from, $to);
 
         $analysisGroups = $this->analysisQuery($filter, $employee)
             ->with('call:id,conversation_date,started_at,created_at')
@@ -73,7 +73,7 @@ class EmployeeActivityAnalytics
         for ($offset = 0; $offset < $days; $offset++) {
             $date = $from->copy()->addDays($offset);
             $key = $date->format('Y-m-d');
-            if (CompanyWorkCalendar::isHoliday($key, $holidayWeekdays)) {
+            if ($closedDays->hides($key)) {
                 continue;
             }
             $analysisCount = $analysisGroups->get($key, collect())->count();
