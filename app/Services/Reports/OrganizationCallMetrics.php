@@ -37,45 +37,72 @@ class OrganizationCallMetrics
         $to = $to->copy();
 
         $extensionMap = $this->resolver->extensionEmployeeMapForOrganization($organizationId);
-        $definedEmployeeIds = array_values(array_unique(array_map('intval', array_values($extensionMap))));
 
-        $callQuery = Call::query()
-            ->where('organization_id', $organizationId)
-            ->occurredBetween($from, $to)
-            ->whereNotNull('organization_user_id');
-
-        if ($definedEmployeeIds !== []) {
-            $callQuery->whereIn('organization_user_id', $definedEmployeeIds);
+        if ($extensionMap === []) {
+            return Call::query()
+                ->where('organization_id', $organizationId)
+                ->occurredBetween($from, $to)
+                ->whereNotNull('organization_user_id')
+                ->count();
         }
-
-        $callCount = $callQuery->count();
 
         $linkedVoipLogIds = Call::query()
             ->where('organization_id', $organizationId)
             ->whereNotNull('voip_call_log_id')
             ->pluck('voip_call_log_id');
 
-        $orphanLogs = VoipCallLog::query()
+        $calls = Call::query()
+            ->where('organization_id', $organizationId)
+            ->occurredBetween($from, $to)
+            ->with('voipCallLog.connection')
+            ->get();
+
+        $callCount = $calls
+            ->filter(fn (Call $call): bool => $this->callUsesDefinedExtension($call, $extensionMap))
+            ->count();
+
+        $orphanCount = VoipCallLog::query()
             ->where('organization_id', $organizationId)
             ->occurredBetween($from, $to)
             ->when(
                 $linkedVoipLogIds->isNotEmpty(),
                 fn ($query) => $query->whereNotIn('id', $linkedVoipLogIds),
             )
-            ->get();
-
-        $orphanCount = 0;
-
-        foreach ($orphanLogs as $log) {
-            $employeeId = $this->resolver->resolveFromCallLogUsingMap($log, $extensionMap);
-
-            if ($employeeId === null) {
-                continue;
-            }
-
-            $orphanCount++;
-        }
+            ->with('connection')
+            ->get()
+            ->filter(fn (VoipCallLog $log): bool => $this->resolver->resolveFromCallLogUsingMap($log, $extensionMap) !== null)
+            ->count();
 
         return $callCount + $orphanCount;
+    }
+
+    /**
+     * A call counts only when it was placed on an extension assigned to an employee.
+     *
+     * @param  array<string, int>  $extensionMap
+     */
+    private function callUsesDefinedExtension(Call $call, array $extensionMap): bool
+    {
+        $log = $call->voipCallLog;
+
+        if ($log !== null) {
+            return $this->resolver->resolveFromCallLogUsingMap($log, $extensionMap) !== null;
+        }
+
+        $connectionId = (int) $call->organization_voip_connection_id;
+
+        if ($connectionId === 0) {
+            return false;
+        }
+
+        foreach ([$call->receiver_number, $call->caller_number] as $number) {
+            $number = trim((string) $number);
+
+            if ($number !== '' && isset($extensionMap[$connectionId.'|'.$number])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
