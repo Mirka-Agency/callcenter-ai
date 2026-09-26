@@ -77,23 +77,32 @@ class EmployeePerformanceAnalytics
             return [];
         }
 
-        $data = $this->loader->load($filter, withPreviousPeriod: false);
-        $allowed = collect($this->jsonAggregator->rankedItems($data->analyses, 'weaknesses_json'))
-            ->pluck('item')
-            ->all();
+        $dashboard = $this->teamDashboard($filter);
+        $allowed = collect($dashboard['team_weaknesses'] ?? [])->pluck('item')->all();
 
         if (! in_array($weakness, $allowed, true)) {
             return [];
         }
 
-        $matchingIds = $data->analyses
-            ->filter(fn (ConversationAnalysis $analysis) => $this->jsonAggregator->analysisHasItem($analysis, 'weaknesses_json', $weakness))
-            ->pluck('id')
-            ->all();
+        if (! isset($dashboard['team_weakness_analysis_ids'])) {
+            return $this->teamWeaknessCallsFromLoadedAnalyses($filter, $weakness, $limit);
+        }
+
+        $matchingIds = array_slice(
+            array_values(array_filter(
+                $dashboard['team_weakness_analysis_ids'][$weakness] ?? [],
+                fn ($id) => is_int($id) || (is_string($id) && ctype_digit($id)),
+            )),
+            0,
+            $limit,
+        );
+        $matchingIds = array_map('intval', $matchingIds);
 
         if ($matchingIds === []) {
             return [];
         }
+
+        $order = array_flip($matchingIds);
 
         return ConversationAnalysis::query()
             ->where('organization_id', $filter->organizationId)
@@ -103,9 +112,63 @@ class EmployeePerformanceAnalytics
                 'call:id,customer_id,customer_name,caller_number,duration_seconds',
                 'call.customer:id,name,company_name,phone_number,normalized_phone',
             ])
-            ->latest('analyzed_at')
-            ->limit($limit)
             ->get(['id', 'call_id', 'organization_user_id', 'score', 'is_evaluable', 'summary', 'sentiment', 'lead_quality_json', 'analyzed_at'])
+            ->sortBy(fn (ConversationAnalysis $analysis) => $order[$analysis->id] ?? PHP_INT_MAX)
+            ->values()
+            ->map(function (ConversationAnalysis $analysis) {
+                $call = $analysis->call;
+                $lead = $analysis->lead_quality_json ?? [];
+
+                return [
+                    'analysis_id' => $analysis->id,
+                    'call_id' => $call?->id,
+                    'date' => JalaliDate::datetime($analysis->analyzed_at),
+                    'employee' => $analysis->employee?->full_name ?? '—',
+                    'customer' => $call?->customer?->displayName()
+                        ?? $call?->customer_name
+                        ?? $call?->caller_number
+                        ?? '—',
+                    'duration_label' => $this->callMetrics->formatDuration($call?->duration_seconds ?? 0),
+                    'quality_score' => $analysis->isEvaluable() ? $analysis->score : null,
+                    'lead_score' => $analysis->isEvaluable() ? ($lead['score'] ?? null) : null,
+                    'sentiment' => $analysis->sentiment?->label(),
+                    'summary' => $analysis->summary,
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function teamWeaknessCallsFromLoadedAnalyses(ReportFilter $filter, string $weakness, int $limit): array
+    {
+        $data = $this->loader->load($filter, withPreviousPeriod: false);
+        $matchingIds = $data->analyses
+            ->filter(fn (ConversationAnalysis $analysis) => $this->jsonAggregator->analysisHasItem($analysis, 'weaknesses_json', $weakness))
+            ->sortByDesc(fn (ConversationAnalysis $analysis) => $analysis->analyzed_at?->getTimestamp() ?? 0)
+            ->take($limit)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($matchingIds === []) {
+            return [];
+        }
+
+        $order = array_flip($matchingIds);
+
+        return ConversationAnalysis::query()
+            ->where('organization_id', $filter->organizationId)
+            ->whereIn('id', $matchingIds)
+            ->with([
+                'employee.user:id,avatar_path,name',
+                'call:id,customer_id,customer_name,caller_number,duration_seconds',
+                'call.customer:id,name,company_name,phone_number,normalized_phone',
+            ])
+            ->get(['id', 'call_id', 'organization_user_id', 'score', 'is_evaluable', 'summary', 'sentiment', 'lead_quality_json', 'analyzed_at'])
+            ->sortBy(fn (ConversationAnalysis $analysis) => $order[$analysis->id] ?? PHP_INT_MAX)
+            ->values()
             ->map(function (ConversationAnalysis $analysis) {
                 $call = $analysis->call;
                 $lead = $analysis->lead_quality_json ?? [];
@@ -221,8 +284,9 @@ class EmployeePerformanceAnalytics
     private function buildTeamDashboard(ReportFilter $filter): array
     {
         $data = $this->loader->load($filter);
-        $kpis = $this->computeTeamKpis($filter, $data);
-        $deltas = $this->computeTeamKpiDeltas($filter, $data);
+        $leadDistribution = $this->leadConcerns->leadQualityDistribution($filter);
+        $kpis = $this->computeTeamKpis($filter, $data, $leadDistribution);
+        $deltas = $this->computeTeamKpiDeltas($filter, $data, $kpis);
         $kpis['team_improvement_trend'] = $deltas['average_quality_score'];
 
         $summaries = $this->buildEmployeeSummaries($data);
@@ -238,7 +302,7 @@ class EmployeePerformanceAnalytics
             'volume_trend' => $this->trendCalculator->callVolumeTrend($filter, $data->calls),
             'sentiment_trend' => $this->trendCalculator->sentimentTrend($filter, $data->analyses),
             'quality_distribution' => $this->trendCalculator->qualityDistribution($data->analyses, $filter->organizationId),
-            'lead_distribution' => $this->leadConcerns->leadQualityDistribution($filter),
+            'lead_distribution' => $leadDistribution,
             'team_weaknesses' => $this->jsonAggregator->rankedItems($data->analyses, 'weaknesses_json'),
             'attention_employees' => $this->employeesRequiringAttention($summaries, $data),
             'top_performers' => array_slice($rankings['best_quality'], 0, 3),
@@ -248,6 +312,10 @@ class EmployeePerformanceAnalytics
             ),
         ];
 
+        $dashboard['team_weakness_analysis_ids'] = $this->weaknessAnalysisIds(
+            $data,
+            $dashboard['team_weaknesses'],
+        );
         $dashboard['quality_trend_insights'] = $this->buildQualityTrendPointInsights(
             $filter,
             $data,
@@ -345,9 +413,9 @@ class EmployeePerformanceAnalytics
     }
 
     /** @return array<string, mixed> */
-    private function computeTeamKpis(ReportFilter $filter, LoadedPerformanceData $data): array
+    private function computeTeamKpis(ReportFilter $filter, LoadedPerformanceData $data, ?array $leadDistribution = null): array
     {
-        $leadDist = $this->leadConcerns->leadQualityDistribution($filter);
+        $leadDist = $leadDistribution ?? $this->leadConcerns->leadQualityDistribution($filter);
 
         $scored = $data->analyses->filter(fn ($analysis) => $analysis->isEvaluable());
 
@@ -365,9 +433,9 @@ class EmployeePerformanceAnalytics
     }
 
     /** @return array<string, float|null> */
-    private function computeTeamKpiDeltas(ReportFilter $filter, LoadedPerformanceData $data): array
+    private function computeTeamKpiDeltas(ReportFilter $filter, LoadedPerformanceData $data, ?array $currentKpis = null): array
     {
-        $current = $this->computeTeamKpis($filter, $data);
+        $current = $currentKpis ?? $this->computeTeamKpis($filter, $data);
         $previous = $this->computeTeamKpis(
             $filter->previousPeriod(),
             $data->previousPeriod ?? $this->loader->load($filter->previousPeriod(), withPreviousPeriod: false),
@@ -577,6 +645,51 @@ class EmployeePerformanceAnalytics
         }
 
         return round((($current - $previous) / $previous) * 100, 1);
+    }
+
+    /**
+     * Latest analysis ids for each ranked weakness, already ordered newest first.
+     *
+     * @param  list<array{item: string, count: int}>  $ranked
+     * @return array<string, list<int>>
+     */
+    private function weaknessAnalysisIds(LoadedPerformanceData $data, array $ranked, int $perItem = 20): array
+    {
+        $wanted = [];
+
+        foreach ($ranked as $row) {
+            $item = $row['item'] ?? null;
+
+            if (is_string($item) && $item !== '') {
+                $wanted[$item] = [];
+            }
+        }
+
+        if ($wanted === []) {
+            return [];
+        }
+
+        $filled = array_fill_keys(array_keys($wanted), false);
+
+        foreach ($data->analyses->sortByDesc(fn (ConversationAnalysis $analysis) => $analysis->analyzed_at?->getTimestamp() ?? 0) as $analysis) {
+            if (! in_array(false, $filled, true)) {
+                break;
+            }
+
+            foreach ($wanted as $item => $ids) {
+                if ($filled[$item] || ! $this->jsonAggregator->analysisHasItem($analysis, 'weaknesses_json', $item)) {
+                    continue;
+                }
+
+                $wanted[$item][] = $analysis->id;
+
+                if (count($wanted[$item]) >= $perItem) {
+                    $filled[$item] = true;
+                }
+            }
+        }
+
+        return $wanted;
     }
 
     /**

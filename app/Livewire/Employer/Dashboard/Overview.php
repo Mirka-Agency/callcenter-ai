@@ -11,6 +11,7 @@ use App\Services\Demo\DemoAnalyticsClock;
 use App\Services\EmployerContext;
 use App\Services\EmployerDashboardAnalytics;
 use App\Services\Performance\EmployeePerformanceAnalytics;
+use App\Services\Reports\OrganizationCallMetrics;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -47,7 +48,9 @@ class Overview extends Component
 
         return view('livewire.employer.dashboard.overview', [
             'organization' => $organization,
-            'cockpit' => $analytics->cockpit(),
+            'cockpit' => [
+                'calls_today' => app(OrganizationCallMetrics::class)->countToday($organizationId),
+            ],
             'agentCardFeed' => $this->agentCardFeed($agents),
             'teamKpis' => $performanceDashboard['kpis'],
             'teamWeaknesses' => $performanceDashboard['team_weaknesses'],
@@ -64,7 +67,6 @@ class Overview extends Component
                 ? ($performanceDashboard['quality_trend_insights'][$selectedQualityPeriod] ?? null)
                 : null,
             'agentProfileBase' => preg_replace('#/\d+$#', '', route('employer.intelligence.performance.show', 1)),
-            'dailyTrend' => $analytics->dailyTrend(),
         ]);
     }
 }

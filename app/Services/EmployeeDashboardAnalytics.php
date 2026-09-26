@@ -9,6 +9,7 @@ use App\Models\EmployeePerformanceSnapshot;
 use App\Models\OrganizationUser;
 use App\Services\Performance\Calculators\JsonFieldAggregator;
 use App\Services\Reports\ChartHolidayCalendar;
+use App\Support\ChartDayFilter;
 use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
 use App\Support\OrganizationHolidays;
@@ -29,10 +30,25 @@ class EmployeeDashboardAnalytics
 
     private ?Collection $cachedWorkdayAnalyses = null;
 
+    private ?Collection $cachedTrendAnalyses = null;
+
+    private ?ChartDayFilter $cachedTrendClosedDays = null;
+
+    private ?Collection $cachedInsightAnalyses = null;
+
+    /** @var array<string, mixed>|null */
+    private ?array $cachedCockpit = null;
+
     /** @var list<int>|null */
     private ?array $resolvedHolidayWeekdays = null;
 
     public function cockpit(): array
+    {
+        return $this->cachedCockpit ??= $this->buildCockpit();
+    }
+
+    /** @return array<string, mixed> */
+    private function buildCockpit(): array
     {
         $analyses = $this->workdayAnalyses();
 
@@ -127,7 +143,7 @@ class EmployeeDashboardAnalytics
     public function topStrengths(int $limit = 5): array
     {
         return $this->aggregator()->rankedItems(
-            $this->workdayAnalyses()->sortByDesc('analyzed_at')->take(20),
+            $this->recentInsightAnalyses()->take(20),
             'strengths_json',
             $limit,
         );
@@ -137,9 +153,7 @@ class EmployeeDashboardAnalytics
     public function topImprovementAreas(int $limit = 5, int $analysisLimit = 50): array
     {
         return $this->aggregator()->rankedImprovementAreas(
-            $this->workdayAnalyses()
-                ->sortByDesc('analyzed_at')
-                ->take($analysisLimit),
+            $this->recentInsightAnalyses()->take($analysisLimit),
             $limit,
         );
     }
@@ -181,13 +195,86 @@ class EmployeeDashboardAnalytics
     {
         return $this->cachedWorkdayAnalyses ??= $this->analysisQuery()
             ->with('call:id,conversation_date,started_at,created_at')
-            ->get()
+            ->get([
+                'id',
+                'call_id',
+                'score',
+                'is_evaluable',
+                'sentiment',
+                'analyzed_at',
+            ])
             ->reject(function (ConversationAnalysis $analysis): bool {
                 $at = $analysis->occurredAt() ?? $analysis->analyzed_at;
 
                 return $at instanceof CarbonInterface && CompanyWorkCalendar::isHolidayMoment($at, $this->holidayWeekdays());
             })
             ->values();
+    }
+
+    /** @return Collection<int, ConversationAnalysis> */
+    private function recentInsightAnalyses(): Collection
+    {
+        return $this->cachedInsightAnalyses ??= $this->analysisQuery()
+            ->with('call:id,conversation_date,started_at,created_at')
+            ->latest('analyzed_at')
+            ->limit(200)
+            ->get([
+                'id',
+                'call_id',
+                'score',
+                'is_evaluable',
+                'summary',
+                'strengths_json',
+                'weaknesses_json',
+                'concerns_json',
+                'operational_insights_json',
+                'performance_dimensions_json',
+                'analyzed_at',
+            ])
+            ->reject(function (ConversationAnalysis $analysis): bool {
+                $at = $analysis->occurredAt() ?? $analysis->analyzed_at;
+
+                return $at instanceof CarbonInterface && CompanyWorkCalendar::isHolidayMoment($at, $this->holidayWeekdays());
+            })
+            ->values();
+    }
+
+    /** @return Collection<int, ConversationAnalysis> */
+    private function trendAnalyses(): Collection
+    {
+        if ($this->cachedTrendAnalyses !== null) {
+            return $this->cachedTrendAnalyses;
+        }
+
+        $from = now(CompanyWorkCalendar::TIMEZONE)->subDays(29)->startOfDay();
+
+        return $this->cachedTrendAnalyses = $this->analysisQuery()
+            ->with('call:id,conversation_date,started_at,created_at')
+            ->where('analyzed_at', '>=', $from->copy()->utc())
+            ->orderBy('analyzed_at')
+            ->get([
+                'id',
+                'call_id',
+                'score',
+                'is_evaluable',
+                'sentiment',
+                'analyzed_at',
+            ]);
+    }
+
+    private function trendClosedDays(): ChartDayFilter
+    {
+        if ($this->cachedTrendClosedDays !== null) {
+            return $this->cachedTrendClosedDays;
+        }
+
+        $from = now(CompanyWorkCalendar::TIMEZONE)->subDays(29)->startOfDay();
+
+        return $this->cachedTrendClosedDays = app(ChartHolidayCalendar::class)->forRange(
+            $this->employee->organization_id,
+            $from,
+            now(CompanyWorkCalendar::TIMEZONE),
+        );
     }
 
     private function aggregator(): JsonFieldAggregator
@@ -286,12 +373,10 @@ class EmployeeDashboardAnalytics
     private function dailyTrendSeries(int $days, callable $aggregator): array
     {
         $from = now(CompanyWorkCalendar::TIMEZONE)->subDays($days - 1)->startOfDay();
+        $fromUtc = $from->copy()->utc();
 
-        $grouped = $this->analysisQuery()
-            ->with('call:id,conversation_date,started_at,created_at')
-            ->where('analyzed_at', '>=', $from->copy()->utc())
-            ->orderBy('analyzed_at')
-            ->get()
+        $grouped = $this->trendAnalyses()
+            ->filter(fn (ConversationAnalysis $analysis) => $analysis->analyzed_at !== null && $analysis->analyzed_at->gte($fromUtc))
             ->groupBy(function (ConversationAnalysis $analysis) {
                 $occurredAt = $analysis->call?->occurredAt() ?? $analysis->analyzed_at;
 
@@ -299,11 +384,7 @@ class EmployeeDashboardAnalytics
             });
 
         $series = [];
-        $closedDays = app(ChartHolidayCalendar::class)->forRange(
-            $this->employee->organization_id,
-            $from,
-            now(CompanyWorkCalendar::TIMEZONE),
-        );
+        $closedDays = $this->trendClosedDays();
 
         for ($offset = 0; $offset < $days; $offset++) {
             $date = $from->copy()->addDays($offset);
