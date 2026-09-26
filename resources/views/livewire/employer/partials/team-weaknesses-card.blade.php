@@ -4,7 +4,7 @@
 @endphp
 
 @if (! empty($teamWeaknesses))
-    <div class="saas-card">
+    <div @class(['saas-card min-w-0', $cardClass ?? null])>
         <div class="flex flex-wrap items-start justify-between gap-3">
             <h2 class="text-lg font-semibold">ضعف‌های پرتکرار تیم</h2>
             @if ($selectedTeamWeakness)
