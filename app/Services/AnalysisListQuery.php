@@ -9,6 +9,7 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
 use App\Services\Reports\CallMetricsAnalytics;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Support\CompanyWorkCalendar;
 use App\Support\CustomerPresenter;
 use App\Support\JalaliDate;
@@ -20,7 +21,10 @@ use Illuminate\Support\Facades\DB;
 
 class AnalysisListQuery
 {
-    public function __construct(private CallMetricsAnalytics $callMetrics) {}
+    public function __construct(
+        private CallMetricsAnalytics $callMetrics,
+        private DefinedExtensionCallConstraint $definedExtensions,
+    ) {}
 
     /** @return Builder<ConversationAnalysis> */
     public function baseQuery(AnalysisListFilter $filter): Builder
@@ -67,7 +71,12 @@ class AnalysisListQuery
 
         // Call-dated metrics (occurredAt via applyToCallQuery) — volume and outcomes
         // must follow when the call happened, not when AI finished analyzing.
-        $callQuery = $filter->applyToCallQuery(Call::query());
+        // Once the organization has registered extensions, only calls placed on
+        // those extensions count (an unknown extension such as 112 is ignored).
+        $callQuery = $this->definedExtensions->apply(
+            $filter->applyToCallQuery(Call::query()),
+            $filter->organizationId,
+        );
         $totalCalls = (clone $callQuery)->count();
         $avgDuration = (int) round((float) (clone $callQuery)
             ->where('duration_seconds', '>', 0)
