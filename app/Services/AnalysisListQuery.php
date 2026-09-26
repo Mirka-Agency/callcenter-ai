@@ -9,6 +9,7 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
 use App\Services\Reports\CallMetricsAnalytics;
+use App\Support\CompanyWorkCalendar;
 use App\Support\CustomerPresenter;
 use App\Support\JalaliDate;
 use Carbon\Carbon;
@@ -40,6 +41,14 @@ class AnalysisListQuery
         return $filter->apply($query);
     }
 
+    /** @return Builder<ConversationAnalysis> */
+    private function analyticsQuery(AnalysisListFilter $filter): Builder
+    {
+        $moment = 'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, conversation_analyses.analyzed_at)';
+
+        return CompanyWorkCalendar::whereWorkday($this->filteredQuery($filter), $moment);
+    }
+
     public function paginate(AnalysisListFilter $filter, int $perPage = 20): LengthAwarePaginator
     {
         return $this->baseQuery($filter)
@@ -50,7 +59,7 @@ class AnalysisListQuery
     /** @return array<string, mixed> */
     public function overview(AnalysisListFilter $filter): array
     {
-        $query = $this->filteredQuery($filter);
+        $query = $this->analyticsQuery($filter);
 
         // Analysis-dated metrics (analyzed_at via filter->apply).
         $total = (clone $query)->count();
@@ -144,11 +153,8 @@ class AnalysisListQuery
     {
         $granularity = $this->granularity($filter);
 
-        $grouped = $this->filteredQuery($filter)
-            ->whereNotNull('conversation_analyses.analyzed_at')
-            ->orderBy('conversation_analyses.analyzed_at')
-            ->get(['conversation_analyses.analyzed_at', 'conversation_analyses.score', 'conversation_analyses.is_evaluable'])
-            ->groupBy(fn (ConversationAnalysis $analysis) => $this->periodKey($analysis->analyzed_at, $granularity));
+        $grouped = $this->chartRows($filter)
+            ->groupBy(fn (ConversationAnalysis $analysis) => $this->periodKey($this->chartOccurredAt($analysis), $granularity));
 
         return $grouped->map(function (Collection $items, string $period) use ($granularity) {
             $scored = $items->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable());
@@ -159,7 +165,10 @@ class AnalysisListQuery
                 'avg_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : null,
                 'count' => $items->count(),
             ];
-        })->values()->all();
+        })
+            ->reject(fn (array $row) => $granularity === 'day' && CompanyWorkCalendar::isHoliday((string) $row['period']))
+            ->values()
+            ->all();
     }
 
     /** @return list<array{period: string, label: string, count: int}> */
@@ -167,11 +176,8 @@ class AnalysisListQuery
     {
         $granularity = $this->granularity($filter);
 
-        $grouped = $this->filteredQuery($filter)
-            ->whereNotNull('conversation_analyses.analyzed_at')
-            ->orderBy('conversation_analyses.analyzed_at')
-            ->get(['conversation_analyses.analyzed_at'])
-            ->groupBy(fn (ConversationAnalysis $analysis) => $this->periodKey($analysis->analyzed_at, $granularity));
+        $grouped = $this->chartRows($filter)
+            ->groupBy(fn (ConversationAnalysis $analysis) => $this->periodKey($this->chartOccurredAt($analysis), $granularity));
 
         return $grouped->map(function (Collection $items, string $period) use ($granularity) {
             return [
@@ -179,7 +185,9 @@ class AnalysisListQuery
                 'label' => $this->periodLabel($period, $granularity),
                 'count' => $items->count(),
             ];
-        })->values()->all();
+        })->reject(fn (array $row) => $granularity === 'day' && CompanyWorkCalendar::isHoliday((string) $row['period']))
+            ->values()
+            ->all();
     }
 
     /** @return array{high: int, medium: int, low: int, total: int, average_score: float} */
@@ -188,7 +196,7 @@ class AnalysisListQuery
         $distribution = ['high' => 0, 'medium' => 0, 'low' => 0];
         $scores = [];
 
-        $this->filteredQuery($filter)
+        $this->analyticsQuery($filter)
             ->select(['conversation_analyses.id', 'conversation_analyses.lead_quality_json', 'conversation_analyses.is_evaluable', 'conversation_analyses.score'])
             ->chunkById(200, function (Collection $chunk) use (&$distribution, &$scores): void {
                 foreach ($chunk as $analysis) {
@@ -227,7 +235,7 @@ class AnalysisListQuery
     {
         $counts = [];
 
-        $this->filteredQuery($filter)
+        $this->analyticsQuery($filter)
             ->select(['conversation_analyses.id', 'conversation_analyses.sentiment'])
             ->chunkById(200, function (Collection $chunk) use (&$counts): void {
                 foreach ($chunk as $analysis) {
@@ -260,7 +268,7 @@ class AnalysisListQuery
     {
         $counts = [];
 
-        $this->filteredQuery($filter)
+        $this->analyticsQuery($filter)
             ->select(['conversation_analyses.id', 'conversation_analyses.concerns_json'])
             ->chunkById(200, function (Collection $chunk) use (&$counts): void {
                 foreach ($chunk as $analysis) {
@@ -294,11 +302,40 @@ class AnalysisListQuery
         return $days > 60 ? 'week' : 'day';
     }
 
+    /** @return Collection<int, ConversationAnalysis> */
+    private function chartRows(AnalysisListFilter $filter): Collection
+    {
+        return $this->analyticsQuery($filter)
+            ->whereNotNull('conversation_analyses.analyzed_at')
+            ->orderBy('conversation_analyses.analyzed_at')
+            ->get([
+                'conversation_analyses.analyzed_at',
+                'conversation_analyses.score',
+                'conversation_analyses.is_evaluable',
+                'calls.conversation_date as call_conversation_date',
+                'calls.started_at as call_started_at',
+                'calls.created_at as call_created_at',
+            ]);
+    }
+
+    private function chartOccurredAt(ConversationAnalysis $analysis): Carbon
+    {
+        foreach (['call_conversation_date', 'call_started_at', 'call_created_at', 'analyzed_at'] as $attribute) {
+            $value = $analysis->getAttribute($attribute);
+
+            if ($value) {
+                return Carbon::parse($value);
+            }
+        }
+
+        return Carbon::parse($analysis->analyzed_at);
+    }
+
     private function periodKey(Carbon $date, string $granularity): string
     {
         return match ($granularity) {
             'week' => $date->format('Y-W'),
-            default => $date->format('Y-m-d'),
+            default => CompanyWorkCalendar::dayKey($date),
         };
     }
 

@@ -13,12 +13,27 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\User;
 use App\Services\AnalysisListQuery;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AnalysisListQueryTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Carbon::setTestNow(Carbon::parse('2026-09-16 12:00:00', 'UTC'));
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
 
     public function test_filters_by_agent_status_and_duration(): void
     {
@@ -239,8 +254,8 @@ class AnalysisListQueryTest extends TestCase
             'status' => 'completed',
             'processing_status' => 'analyzed',
             'duration_seconds' => 200,
-            'started_at' => now()->subDays(40),
-            'conversation_date' => now()->subDays(40),
+            'started_at' => now()->subDays(42),
+            'conversation_date' => now()->subDays(42),
         ]);
         ConversationAnalysis::query()->create([
             'organization_id' => $organization->id,

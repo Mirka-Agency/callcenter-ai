@@ -44,10 +44,12 @@
         </div>
     </section>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-tour="dashboard-stats">
-        <x-saas.stat-card label="تماس‌های امروز" :value="$cockpit['calls_today']" />
-        <x-saas.stat-card label="میانگین کیفیت لید" :value="$teamKpis['average_lead_score'] ?: '—'" />
-        <x-saas.stat-card label="رضایت مشتری" :value="$teamKpis['average_sentiment'] ? $teamKpis['average_sentiment'].'%' : '—'" />
+    <div class="flex justify-center" data-tour="dashboard-stats">
+        <div class="saas-stat-row">
+            <x-saas.stat-card class="saas-stat--compact" label="تماس‌های امروز" :value="$cockpit['calls_today']" />
+            <x-saas.stat-card class="saas-stat--compact" label="میانگین کیفیت لید" :value="$teamKpis['average_lead_score'] ?: '—'" :tone="\App\Support\MetricTone::fromScore($teamKpis['average_lead_score'])" />
+            <x-saas.stat-card class="saas-stat--compact" label="رضایت مشتری" :value="$teamKpis['average_sentiment'] ? $teamKpis['average_sentiment'].'%' : '—'" :tone="\App\Support\MetricTone::fromScore($teamKpis['average_sentiment'])" />
+        </div>
     </div>
 
     @include('livewire.employer.partials.trading-opportunities-card', [

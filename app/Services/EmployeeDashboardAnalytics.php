@@ -8,6 +8,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\EmployeePerformanceSnapshot;
 use App\Models\OrganizationUser;
 use App\Services\Performance\Calculators\JsonFieldAggregator;
+use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -24,9 +25,11 @@ class EmployeeDashboardAnalytics
         return new self($employee, app(JsonFieldAggregator::class));
     }
 
+    private ?Collection $cachedWorkdayAnalyses = null;
+
     public function cockpit(): array
     {
-        $analyses = $this->analysisQuery()->get();
+        $analyses = $this->workdayAnalyses();
 
         $weekly = $this->periodAverage(now()->subWeek());
         $monthly = $this->periodAverage(now()->startOfMonth());
@@ -37,8 +40,9 @@ class EmployeeDashboardAnalytics
             ->where('organization_user_id', $this->employee->id)
             ->count();
 
-        $avgScore = round((float) $this->analysisQuery()->evaluable()->avg('score'), 1);
-        $latestEvaluable = $analyses->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable())->sortByDesc('analyzed_at')->first();
+        $evaluable = $analyses->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable());
+        $avgScore = $evaluable->isNotEmpty() ? round((float) $evaluable->avg('score'), 1) : 0.0;
+        $latestEvaluable = $evaluable->sortByDesc('analyzed_at')->first();
 
         return [
             'performance_score' => $latestEvaluable?->score ?? $avgScore,
@@ -118,7 +122,7 @@ class EmployeeDashboardAnalytics
     public function topStrengths(int $limit = 5): array
     {
         return $this->aggregator()->rankedItems(
-            $this->analysisQuery()->latest('analyzed_at')->limit(20)->get(),
+            $this->workdayAnalyses()->sortByDesc('analyzed_at')->take(20),
             'strengths_json',
             $limit,
         );
@@ -128,15 +132,9 @@ class EmployeeDashboardAnalytics
     public function topImprovementAreas(int $limit = 5, int $analysisLimit = 50): array
     {
         return $this->aggregator()->rankedImprovementAreas(
-            $this->analysisQuery()
-                ->latest('analyzed_at')
-                ->limit($analysisLimit)
-                ->get([
-                    'weaknesses_json',
-                    'performance_dimensions_json',
-                    'concerns_json',
-                    'operational_insights_json',
-                ]),
+            $this->workdayAnalyses()
+                ->sortByDesc('analyzed_at')
+                ->take($analysisLimit),
             $limit,
         );
     }
@@ -173,6 +171,20 @@ class EmployeeDashboardAnalytics
             ->where('organization_user_id', $this->employee->id);
     }
 
+    /** @return Collection<int, ConversationAnalysis> */
+    private function workdayAnalyses(): Collection
+    {
+        return $this->cachedWorkdayAnalyses ??= $this->analysisQuery()
+            ->with('call:id,conversation_date,started_at,created_at')
+            ->get()
+            ->reject(function (ConversationAnalysis $analysis): bool {
+                $at = $analysis->occurredAt() ?? $analysis->analyzed_at;
+
+                return $at instanceof CarbonInterface && CompanyWorkCalendar::isHolidayMoment($at);
+            })
+            ->values();
+    }
+
     private function aggregator(): JsonFieldAggregator
     {
         return $this->jsonFieldAggregator ??= app(JsonFieldAggregator::class);
@@ -180,18 +192,27 @@ class EmployeeDashboardAnalytics
 
     private function periodAverage(?CarbonInterface $from = null, ?CarbonInterface $to = null): ?float
     {
-        $query = $this->analysisQuery();
+        $scores = $this->workdayAnalyses()->filter(function (ConversationAnalysis $analysis) use ($from, $to): bool {
+            if (! $analysis->isEvaluable() || $analysis->analyzed_at === null) {
+                return false;
+            }
 
-        if ($from) {
-            $query->where('analyzed_at', '>=', $from);
+            if ($from && $analysis->analyzed_at->lt($from)) {
+                return false;
+            }
+
+            if ($to && $analysis->analyzed_at->gt($to)) {
+                return false;
+            }
+
+            return true;
+        });
+
+        if ($scores->isEmpty()) {
+            return null;
         }
-        if ($to) {
-            $query->where('analyzed_at', '<=', $to);
-        }
 
-        $avg = $query->evaluable()->avg('score');
-
-        return $avg ? round((float) $avg, 1) : null;
+        return round((float) $scores->avg('score'), 1);
     }
 
     private function sentimentScore(): float
@@ -203,7 +224,7 @@ class EmployeeDashboardAnalytics
             AnalysisSentiment::Negative->value => 20,
         ];
 
-        $analyses = $this->analysisQuery()->get(['sentiment']);
+        $analyses = $this->workdayAnalyses();
         if ($analyses->isEmpty()) {
             return 0;
         }
@@ -259,19 +280,29 @@ class EmployeeDashboardAnalytics
      */
     private function dailyTrendSeries(int $days, callable $aggregator): array
     {
-        $from = now()->subDays($days - 1)->startOfDay();
+        $from = now(CompanyWorkCalendar::TIMEZONE)->subDays($days - 1)->startOfDay();
 
         $grouped = $this->analysisQuery()
-            ->where('analyzed_at', '>=', $from)
+            ->with('call:id,conversation_date,started_at,created_at')
+            ->where('analyzed_at', '>=', $from->copy()->utc())
             ->orderBy('analyzed_at')
             ->get()
-            ->groupBy(fn (ConversationAnalysis $analysis) => $analysis->analyzed_at->format('Y-m-d'));
+            ->groupBy(function (ConversationAnalysis $analysis) {
+                $occurredAt = $analysis->call?->occurredAt() ?? $analysis->analyzed_at;
+
+                return CompanyWorkCalendar::dayKey($occurredAt);
+            });
 
         $series = [];
 
         for ($offset = 0; $offset < $days; $offset++) {
             $date = $from->copy()->addDays($offset);
-            $period = $date->format('Y-m-d');
+            $period = $date->toDateString();
+
+            if (CompanyWorkCalendar::isHoliday($period)) {
+                continue;
+            }
+
             $items = $grouped->get($period, collect());
 
             $series[] = array_merge([

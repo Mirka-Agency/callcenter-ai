@@ -163,6 +163,65 @@ class OrganizationCallMetricsTest extends TestCase
         );
     }
 
+    public function test_counts_only_calls_placed_on_defined_extensions(): void
+    {
+        $this->seed(PlatformFoundationSeeder::class);
+
+        $organization = $this->organization();
+        $definedEmployee = $this->employee($organization, 'Ali', 'Agent');
+        $connection = $this->voipConnection($organization);
+
+        EmployeeIntegrationMeta::query()->create([
+            'organization_user_id' => $definedEmployee->id,
+            'integratable_type' => OrganizationVoipConnection::class,
+            'integratable_id' => $connection->id,
+            'key' => 'extension',
+            'value' => '101',
+        ]);
+
+        $matchedLog = VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'on-defined-extension',
+            'direction' => 'inbound',
+            'source_number' => '09120000011',
+            'destination_number' => '41909000',
+            'status' => 'completed',
+            'started_at' => now()->startOfDay()->addHours(9),
+            'raw_payload' => ['resolved_extension' => '101'],
+        ]);
+        $this->createCall($organization, [
+            'organization_user_id' => null,
+            'organization_voip_connection_id' => $connection->id,
+            'voip_call_log_id' => $matchedLog->id,
+            'external_call_id' => 'on-defined-extension',
+            'receiver_number' => '41909000',
+        ]);
+
+        $otherLog = VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'same-agent-other-line',
+            'direction' => 'inbound',
+            'source_number' => '09120000012',
+            'destination_number' => '5001',
+            'status' => 'completed',
+            'started_at' => now()->startOfDay()->addHours(12),
+            'raw_payload' => ['resolved_extension' => '5001'],
+        ]);
+        $this->createCall($organization, [
+            'organization_user_id' => $definedEmployee->id,
+            'organization_voip_connection_id' => $connection->id,
+            'voip_call_log_id' => $otherLog->id,
+            'external_call_id' => 'same-agent-other-line',
+            'receiver_number' => '5001',
+        ]);
+
+        $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
+    }
+
     private function organization(): Organization
     {
         $employer = User::factory()->employer()->create();

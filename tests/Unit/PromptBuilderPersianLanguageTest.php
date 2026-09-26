@@ -52,6 +52,10 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $this->assertStringContainsString('واتساپ، تلگرام، اینستاگرام', $policy);
         $this->assertStringContainsString('ثبت تیکت، پیگیری مشکل سیستمی', $policy);
         $this->assertStringContainsString('آرایه خالی بگذارید', $policy);
+        $this->assertStringContainsString('فهرست پیگیری فراموش‌شده', $policy);
+        $this->assertStringContainsString('فقط قول صریح خود کارشناس', $policy);
+        $this->assertStringContainsString('مشتری گفت خودش زنگ می‌زند', $policy);
+        $this->assertStringContainsString('موعد را حدس نزنید', $policy);
     }
 
     public function test_system_prompt_includes_follow_up_policy(): void
@@ -59,7 +63,7 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $prompt = (new PromptBuilder)->systemPrompt();
 
         $this->assertStringContainsString(PromptBuilder::followUpPolicy(), $prompt);
-        $this->assertStringContainsString('فقط تماس تلفنی برگشتی با مشتری', $prompt);
+        $this->assertStringContainsString('فقط قول صریح کارشناس برای تماس تلفنی برگشتی با همین مشتری', $prompt);
         $this->assertStringContainsString('"follow_up_suggestions": ["تماس پیگیری در روز بعد برای اعلام تصمیم مشتری"]', $prompt);
     }
 

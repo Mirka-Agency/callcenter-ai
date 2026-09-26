@@ -1,6 +1,11 @@
-@props(['label', 'value', 'hint' => null, 'trend' => null])
+@props(['label', 'value', 'hint' => null, 'trend' => null, 'tone' => null])
 
-<div {{ $attributes->merge(['class' => 'saas-stat']) }}>
+<div {{ $attributes->class([
+    'saas-stat',
+    'saas-stat--good' => $tone === 'good',
+    'saas-stat--medium' => $tone === 'medium',
+    'saas-stat--bad' => $tone === 'bad',
+]) }}>
     <p class="saas-stat-label">{{ $label }}</p>
     <p class="saas-stat-value">{{ $value }}</p>
     <div class="saas-stat-meta">

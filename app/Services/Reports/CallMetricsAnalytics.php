@@ -6,6 +6,7 @@ use App\DTOs\ReportFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\VoipCallLog;
+use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -45,11 +46,13 @@ class CallMetricsAnalytics
 
         ksort($buckets);
 
-        return collect($buckets)->map(fn (int $count, string $period) => [
-            'period' => $period,
-            'label' => $this->periodLabel($period, $granularity),
-            'count' => $count,
-        ])->values()->all();
+        return collect($buckets)
+            ->reject(fn (int $count, string $period) => $granularity === 'day' && CompanyWorkCalendar::isHoliday($period))
+            ->map(fn (int $count, string $period) => [
+                'period' => $period,
+                'label' => $this->periodLabel($period, $granularity),
+                'count' => $count,
+            ])->values()->all();
     }
 
     public function averageCallDurationSeconds(ReportFilter $filter): int
@@ -82,7 +85,7 @@ class CallMetricsAnalytics
     {
         return match ($granularity) {
             'week' => $date->format('Y-W'),
-            default => $date->format('Y-m-d'),
+            default => CompanyWorkCalendar::dayKey($date),
         };
     }
 

@@ -7,6 +7,7 @@
     'agent' => false,
     'size' => 'md',
     'ring' => false,
+    'person' => false,
 ])
 
 @php
@@ -22,13 +23,19 @@
 
     $sizes = AvatarPresenter::sizeClasses($size);
     $roundedClass = ($user && ! $employee) ? 'rounded-full' : 'rounded-lg';
+    $showAgentIcon = ! $avatar['url'] && ! $person && ($avatar['use_agent_icon'] ?? false) && filled($avatar['icon'] ?? null);
+    $agentTone = match ($avatar['gender'] ?? null) {
+        'female' => ['bg' => 'bg-red-100', 'icon' => 'text-red-500'],
+        'male' => ['bg' => 'bg-blue-100', 'icon' => 'text-blue-500'],
+        default => null,
+    };
 @endphp
 
 <span
     {{ $attributes->class([
-        'saas-avatar bg-gradient-to-br',
+        'saas-avatar',
         $roundedClass,
-        $avatar['gradient'],
+        ($showAgentIcon && $agentTone) ? $agentTone['bg'] : 'bg-gradient-to-br '.$avatar['gradient'],
         $sizes['box'],
         $ring ? 'ring-white dark:ring-zinc-900 '.$sizes['ring'] : '',
     ]) }}
@@ -38,8 +45,10 @@
 >
     @if ($avatar['url'])
         <img src="{{ $avatar['url'] }}" alt="" class="h-full w-full object-cover" loading="lazy">
-    @elseif ($avatar['use_agent_icon'] && ($avatar['icon'] ?? null))
-        <x-saas.icon :name="$avatar['icon']" class="{{ $sizes['icon'] }} text-white" />
+    @elseif ($person)
+        <x-saas.icon name="user" class="{{ $sizes['icon'] }} text-white" />
+    @elseif ($showAgentIcon)
+        <x-saas.icon :name="$avatar['icon']" class="{{ $sizes['icon'] }} {{ $agentTone['icon'] ?? 'text-white' }}" />
     @else
         {{ $avatar['initials'] }}
     @endif

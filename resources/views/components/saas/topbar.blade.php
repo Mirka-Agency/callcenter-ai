@@ -45,7 +45,7 @@
             class="flex items-center gap-3 rounded-lg px-2 py-1.5 transition hover:bg-zinc-100 dark:hover:bg-zinc-800"
             title="ویرایش پروفایل"
         >
-            <x-saas.avatar :user="auth()->user()" size="sm" ring />
+            <x-saas.avatar :user="auth()->user()" size="sm" ring person />
             <div class="hidden text-start sm:block">
                 <p class="text-sm font-medium text-zinc-900 dark:text-white">{{ auth()->user()->name }}</p>
                 <p class="text-xs text-zinc-500">{{ auth()->user()->email }}</p>

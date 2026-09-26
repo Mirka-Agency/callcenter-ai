@@ -229,6 +229,54 @@
         @apply truncate;
     }
 
+    .saas-stat-row {
+        @apply inline-grid w-max max-w-full grid-cols-1 gap-3 sm:grid-cols-3;
+    }
+
+    .saas-stat.saas-stat--compact {
+        @apply w-full max-w-full shrink-0 gap-1.5 px-4 py-3.5 sm:gap-2 sm:px-5 sm:py-4;
+        min-width: max(12.5rem, max-content);
+    }
+
+    .saas-stat--compact .saas-stat-label {
+        @apply min-h-0 whitespace-nowrap text-sm leading-5;
+    }
+
+    .saas-stat--compact .saas-stat-value {
+        @apply text-2xl sm:text-3xl lg:text-3xl;
+    }
+
+    .saas-stat--good {
+        @apply border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/50;
+    }
+
+    .saas-stat--medium {
+        @apply border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/50;
+    }
+
+    .saas-stat--bad {
+        @apply border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/50;
+    }
+
+    .saas-stat--good .saas-stat-label,
+    .saas-stat--good .saas-stat-value {
+        @apply text-emerald-800 dark:text-emerald-300;
+    }
+
+    .saas-stat--medium .saas-stat-label,
+    .saas-stat--medium .saas-stat-value {
+        @apply text-orange-800 dark:text-orange-300;
+    }
+
+    .saas-stat--bad .saas-stat-label,
+    .saas-stat--bad .saas-stat-value {
+        @apply text-red-800 dark:text-red-300;
+    }
+
+    .saas-stat--compact .saas-stat-meta:not(:has(*)) {
+        @apply hidden;
+    }
+
     .saas-hero {
         @apply min-w-0 max-w-full overflow-hidden rounded-lg border border-zinc-200/80 bg-gradient-to-br from-white via-white to-indigo-50/50 p-4 dark:border-zinc-800 dark:from-zinc-900 dark:via-zinc-900 dark:to-indigo-950/30 sm:p-6 lg:p-8;
     }

@@ -35,7 +35,7 @@ class UnmatchedVoipExtensionServiceTest extends TestCase
 
         $candidates = app(CallEmployeeResolver::class)->extensionCandidates($log);
 
-        $this->assertSame(['553', '554', '982191093492', '09120000000'], $candidates);
+        $this->assertSame(['553', '554'], $candidates);
     }
 
     public function test_extension_candidates_include_raw_extension_from_asterisk_payload(): void
@@ -51,7 +51,7 @@ class UnmatchedVoipExtensionServiceTest extends TestCase
 
         $candidates = app(CallEmployeeResolver::class)->extensionCandidates($log);
 
-        $this->assertSame(['101', '982191093492', '09120000000'], $candidates);
+        $this->assertSame(['101'], $candidates);
     }
 
     public function test_extension_candidates_include_exten_from_recording_filename(): void
@@ -66,7 +66,7 @@ class UnmatchedVoipExtensionServiceTest extends TestCase
 
         $candidates = app(CallEmployeeResolver::class)->extensionCandidates($log);
 
-        $this->assertSame(['116', '41909000', '09120000000'], $candidates);
+        $this->assertSame(['116'], $candidates);
     }
 
     public function test_extension_candidates_ignore_queue_id_in_recording_filename(): void
@@ -81,8 +81,9 @@ class UnmatchedVoipExtensionServiceTest extends TestCase
 
         $candidates = app(CallEmployeeResolver::class)->extensionCandidates($log);
 
-        $this->assertSame(['41909000', '09120000000'], $candidates);
+        $this->assertSame([], $candidates);
         $this->assertNotContains('5001', $candidates);
+        $this->assertNotContains('41909000', $candidates);
     }
 
     public function test_resolver_matches_employee_using_raw_extension_without_resolved_extension(): void

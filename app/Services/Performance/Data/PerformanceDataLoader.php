@@ -6,6 +6,8 @@ use App\DTOs\ReportFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
+use App\Support\CompanyWorkCalendar;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -52,8 +54,14 @@ class PerformanceDataLoader
         $employees = $this->employees($filter);
         $employeeIds = $employees->pluck('id')->all();
 
-        $analyses = $this->analyses($filter, $employeeIds);
-        $calls = $this->calls($filter, $employeeIds);
+        $analyses = $this->withoutHolidays(
+            $this->analyses($filter, $employeeIds),
+            fn (ConversationAnalysis $analysis): ?CarbonInterface => $analysis->occurredAt(),
+        );
+        $calls = $this->withoutHolidays(
+            $this->calls($filter, $employeeIds),
+            fn (Call $call): ?CarbonInterface => $call->occurredAt(),
+        );
 
         $previous = $withPreviousPeriod
             ? $this->load($filter->previousPeriod(), withPreviousPeriod: false)
@@ -85,7 +93,7 @@ class PerformanceDataLoader
             ->when($filter->employeeIds !== [], fn (Builder $q) => $q->whereIn('id', $filter->employeeIds))
             ->with('user:id,avatar_path,name')
             ->orderBy('first_name')
-            ->get(['id', 'user_id', 'first_name', 'last_name', 'department', 'position', 'is_active']);
+            ->get(['id', 'user_id', 'first_name', 'last_name', 'gender', 'department', 'position', 'is_active']);
     }
 
     /** @param  list<int>  $employeeIds */
@@ -117,5 +125,25 @@ class PerformanceDataLoader
                     ->orWhereBetween('created_at', [$filter->from, $filter->to]);
             })
             ->get(self::CALL_COLUMNS);
+    }
+
+    /**
+     * Thursday and Friday conversations stay out of dashboard charts and score rollups.
+     *
+     * @template TValue of ConversationAnalysis|Call
+     *
+     * @param  Collection<int, TValue>  $items
+     * @param  callable(TValue): ?CarbonInterface  $moment
+     * @return Collection<int, TValue>
+     */
+    private function withoutHolidays(Collection $items, callable $moment): Collection
+    {
+        return $items
+            ->reject(function (ConversationAnalysis|Call $item) use ($moment): bool {
+                $at = $moment($item);
+
+                return $at instanceof CarbonInterface && CompanyWorkCalendar::isHolidayMoment($at);
+            })
+            ->values();
     }
 }

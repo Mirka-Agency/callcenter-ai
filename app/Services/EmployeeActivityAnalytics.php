@@ -8,6 +8,7 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
 use App\Services\Reports\CallMetricsAnalytics;
+use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -52,23 +53,27 @@ class EmployeeActivityAnalytics
      */
     public function volumeTrend(ReportFilter $filter, OrganizationUser $employee): array
     {
-        $from = $filter->from->copy()->startOfDay();
-        $to = $filter->to->copy()->endOfDay();
+        $from = $filter->from->copy()->timezone(CompanyWorkCalendar::TIMEZONE)->startOfDay();
+        $to = $filter->to->copy()->timezone(CompanyWorkCalendar::TIMEZONE)->startOfDay();
         $days = max(1, $from->diffInDays($to) + 1);
 
         $analysisGroups = $this->analysisQuery($filter, $employee)
-            ->get(['analyzed_at'])
-            ->groupBy(fn (ConversationAnalysis $analysis) => $analysis->analyzed_at->format('Y-m-d'));
+            ->with('call:id,conversation_date,started_at,created_at')
+            ->get()
+            ->groupBy(fn (ConversationAnalysis $analysis) => CompanyWorkCalendar::dayKey($analysis->occurredAt() ?? $analysis->analyzed_at));
 
         $uploadGroups = $this->uploadQuery($filter, $employee)
             ->get(['created_at'])
-            ->groupBy(fn (Call $call) => $call->created_at->format('Y-m-d'));
+            ->groupBy(fn (Call $call) => CompanyWorkCalendar::dayKey($call->created_at));
 
         $series = [];
 
         for ($offset = 0; $offset < $days; $offset++) {
             $date = $from->copy()->addDays($offset);
             $key = $date->format('Y-m-d');
+            if (CompanyWorkCalendar::isHoliday($key)) {
+                continue;
+            }
             $analysisCount = $analysisGroups->get($key, collect())->count();
             $uploadCount = $uploadGroups->get($key, collect())->count();
 
