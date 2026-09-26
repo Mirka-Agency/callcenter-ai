@@ -6,6 +6,8 @@ use App\Livewire\Concerns\InteractsWithProcessingQueue;
 use App\Livewire\Concerns\ManagesProcessingQueueJob;
 use App\Models\CallProcessingJob;
 use App\Services\EmployerContext;
+use App\Services\Reports\DefinedExtensionCallConstraint;
+use App\Services\Reports\ProcessingQueueCallStats;
 use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -25,7 +27,12 @@ class Index extends Component
 
     protected function scopeProcessingJobs(Builder $query): Builder
     {
-        return $query->where('organization_id', EmployerContext::organizationId());
+        $organizationId = EmployerContext::organizationId();
+
+        return app(DefinedExtensionCallConstraint::class)->applyToProcessingJobs(
+            $query->where('organization_id', $organizationId),
+            $organizationId,
+        );
     }
 
     protected function jobShowRoute(CallProcessingJob $job): string
@@ -36,6 +43,12 @@ class Index extends Component
     protected function uploadShowRoute(CallProcessingJob $job): string
     {
         return route('employer.manual-analyses.show', $job->call_id);
+    }
+
+    /** @return array{queued: int, processing: int, completed: int, failed: int, total: int} */
+    protected function queueStats(): array
+    {
+        return app(ProcessingQueueCallStats::class)->forOrganization($this->queueOrganizationId());
     }
 
     public function render()

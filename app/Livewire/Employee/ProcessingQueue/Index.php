@@ -23,11 +23,6 @@ class Index extends Component
         return EmployeeContext::organizationId();
     }
 
-    protected function queueEmployeeScope(): ?int
-    {
-        return EmployeeContext::membership()->id;
-    }
-
     protected function scopeProcessingJobs(Builder $query): Builder
     {
         $membershipId = EmployeeContext::membership()->id;

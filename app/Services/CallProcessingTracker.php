@@ -239,30 +239,6 @@ class CallProcessingTracker
         return CallProcessingJob::query()->where('call_id', $callId)->latest()->first();
     }
 
-    /** @return array{queued: int, processing: int, completed: int, failed: int, total: int} */
-    public function stats(int $organizationId, ?int $organizationUserId = null, ?int $uploaderUserId = null): array
-    {
-        $query = CallProcessingJob::query()->where('organization_id', $organizationId);
-
-        if ($organizationUserId) {
-            $query->where(function ($q) use ($organizationUserId, $uploaderUserId) {
-                $q->where('organization_user_id', $organizationUserId);
-
-                if ($uploaderUserId) {
-                    $q->orWhere('uploader_id', $uploaderUserId);
-                }
-            });
-        }
-
-        return [
-            'queued' => (clone $query)->where('status', ProcessingJobStatus::Queued)->count(),
-            'processing' => (clone $query)->where('status', ProcessingJobStatus::Processing)->count(),
-            'completed' => (clone $query)->where('status', ProcessingJobStatus::Completed)->count(),
-            'failed' => (clone $query)->where('status', ProcessingJobStatus::Failed)->count(),
-            'total' => (clone $query)->count(),
-        ];
-    }
-
     private function transition(
         CallProcessingJob $job,
         ProcessingJobStatus $status,
