@@ -48,11 +48,6 @@ class OrganizationCallMetrics
                 ->count();
         }
 
-        $linkedVoipLogIds = Call::query()
-            ->where('organization_id', $organizationId)
-            ->whereNotNull('voip_call_log_id')
-            ->pluck('voip_call_log_id');
-
         $calls = Call::query()
             ->where('organization_id', $organizationId)
             ->occurredBetween($from, $to)
@@ -66,10 +61,11 @@ class OrganizationCallMetrics
         $orphanCount = VoipCallLog::query()
             ->where('organization_id', $organizationId)
             ->occurredBetween($from, $to)
-            ->when(
-                $linkedVoipLogIds->isNotEmpty(),
-                fn ($query) => $query->whereNotIn('id', $linkedVoipLogIds),
-            )
+            ->whereNotExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('calls')
+                    ->whereColumn('calls.voip_call_log_id', 'voip_call_logs.id');
+            })
             ->with('connection')
             ->get()
             ->filter(fn (VoipCallLog $log): bool => $this->resolver->resolveFromCallLogUsingMap($log, $extensionMap) !== null)

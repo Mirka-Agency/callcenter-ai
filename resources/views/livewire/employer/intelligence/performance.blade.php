@@ -68,20 +68,25 @@
         'sectionTour' => 'performance-cards',
     ])
 
-    <div data-tour="performance-charts">
-        <div class="saas-card">
+    <div @class([
+        'grid items-stretch gap-6',
+        'lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]' => ! empty($dashboard['team_weaknesses']),
+    ]) data-tour="performance-charts">
+        <div class="saas-card h-full min-w-0">
             <h2 class="text-lg font-semibold">روند کیفیت مکالمه</h2>
             <div class="mt-4 h-64" wire:ignore>
                 <canvas id="perf-quality-trend" data-report-chart data-type="line" data-config='@json($qualityChart)'></canvas>
             </div>
         </div>
-    </div>
 
-    @include('livewire.employer.partials.team-weaknesses-card', [
-        'teamWeaknesses' => $dashboard['team_weaknesses'],
-        'selectedTeamWeakness' => $selectedTeamWeakness,
-        'teamWeaknessCalls' => $teamWeaknessCalls,
-    ])
+        @include('livewire.employer.partials.team-weaknesses-card', [
+            'teamWeaknesses' => $dashboard['team_weaknesses'],
+            'selectedTeamWeakness' => $selectedTeamWeakness,
+            'teamWeaknessCalls' => $teamWeaknessCalls,
+            'variant' => 'table',
+            'cardClass' => 'h-full',
+        ])
+    </div>
 
     @php
         $rankingMeta = [

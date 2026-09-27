@@ -146,12 +146,42 @@ class EmployerDashboardAnalytics
     public function tradingOpportunities(int $days = 30): array
     {
         $days = max(1, min(90, $days));
+        $sinceKey = $this->insightListsSince()?->getTimestamp() ?? 'none';
 
+        return Cache::remember(
+            "dashboard:opportunities:{$this->organizationId}:{$days}:{$sinceKey}",
+            120,
+            fn () => $this->buildTradingOpportunities($days),
+        );
+    }
+
+    /**
+     * @return list<array{
+     *     analysis_id: int,
+     *     customer: string,
+     *     phone: ?string,
+     *     company: ?string,
+     *     call_date: string,
+     *     sort_date: int,
+     *     employee: string,
+     *     product: ?string,
+     *     lead_score: ?int,
+     *     lead_level: ?string,
+     *     lead_reason: ?string,
+     *     intent: ?string,
+     *     purchase_probability: ?int,
+     *     follow_up_tags: list<string>,
+     *     next_actions: list<string>,
+     *     summary: ?string
+     * }>
+     */
+    private function buildTradingOpportunities(int $days): array
+    {
         $query = ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId)
             ->evaluable()
             ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay())
-            ->whereNotNull('lead_quality_json');
+            ->where('lead_quality_json->level', 'high');
 
         $this->constrainInsightListQuery($query);
 
@@ -210,11 +240,16 @@ class EmployerDashboardAnalytics
     {
         $days = max(1, min(90, $days));
         $limit = max(1, min(50, $limit));
+        $sinceKey = $this->insightListsSince()?->getTimestamp() ?? 'none';
 
-        return [
-            'satisfied' => $this->sentimentCustomerList(AnalysisSentiment::Positive, $days, $limit),
-            'dissatisfied' => $this->sentimentCustomerList(AnalysisSentiment::Negative, $days, $limit),
-        ];
+        return Cache::remember(
+            "dashboard:sentiment:{$this->organizationId}:{$days}:{$limit}:{$sinceKey}",
+            120,
+            fn () => [
+                'satisfied' => $this->sentimentCustomerList(AnalysisSentiment::Positive, $days, $limit),
+                'dissatisfied' => $this->sentimentCustomerList(AnalysisSentiment::Negative, $days, $limit),
+            ],
+        );
     }
 
     /**

@@ -4,7 +4,6 @@ namespace App\Livewire\Concerns;
 
 use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Models\CallProcessingJob;
-use App\Services\CallProcessingTracker;
 use App\Services\ProcessingQueueFlusher;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
@@ -76,19 +75,36 @@ trait InteractsWithProcessingQueue
         return $query;
     }
 
-    /** @return array<string, int> */
+    /**
+     * Card counts use the same rows as the queue table.
+     * Uploading is still in progress, and a cancelled job did not finish,
+     * so those two statuses sit in the processing and failed cards.
+     * Together the four cards equal the total.
+     *
+     * @return array{queued: int, processing: int, completed: int, failed: int, total: int}
+     */
     protected function queueStats(): array
     {
-        return app(CallProcessingTracker::class)->stats(
-            $this->queueOrganizationId(),
-            $this->queueEmployeeScope(),
-            $this->queueEmployeeScope() ? auth()->id() : null,
-        );
-    }
+        $query = $this->scopeProcessingJobs(CallProcessingJob::query());
 
-    protected function queueEmployeeScope(): ?int
-    {
-        return null;
+        $queued = (clone $query)->where('status', ProcessingJobStatus::Queued)->count();
+        $processing = (clone $query)->whereIn('status', [
+            ProcessingJobStatus::Processing,
+            ProcessingJobStatus::Uploading,
+        ])->count();
+        $completed = (clone $query)->where('status', ProcessingJobStatus::Completed)->count();
+        $failed = (clone $query)->whereIn('status', [
+            ProcessingJobStatus::Failed,
+            ProcessingJobStatus::Cancelled,
+        ])->count();
+
+        return [
+            'queued' => $queued,
+            'processing' => $processing,
+            'completed' => $completed,
+            'failed' => $failed,
+            'total' => $queued + $processing + $completed + $failed,
+        ];
     }
 
     protected function statusOptions(): array

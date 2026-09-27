@@ -5,7 +5,9 @@ namespace App\Services\Reports;
 use App\Application\Call\Services\CallEmployeeResolver;
 use App\Application\Call\Services\UnmatchedVoipExtensionService;
 use App\Application\Voip\Support\VoipReportFilter;
+use App\Domain\Call\Enums\ConversationSource;
 use App\Models\Call;
+use App\Models\CallProcessingJob;
 use App\Models\OrganizationVoipConnection;
 use App\Models\VoipCallLog;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,6 +38,44 @@ class DefinedExtensionCallConstraint
                     $this->matchConnection($branch, $connectionId, $set['extensions'], $set['numbers']);
                 });
             }
+        });
+    }
+
+    /**
+     * Calls that belong on the employer queue cards.
+     * A manual upload stays included because it is not a PBX call on an unknown extension.
+     *
+     * @param  Builder<Call>  $query
+     * @return Builder<Call>
+     */
+    public function applyToQueueCalls(Builder $query, int $organizationId): Builder
+    {
+        if ($this->matchSets($organizationId) === []) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $eligible) use ($organizationId): void {
+            $eligible->where('source', ConversationSource::ManualUpload->value)
+                ->orWhere(function (Builder $matched) use ($organizationId): void {
+                    $this->apply($matched, $organizationId);
+                });
+        });
+    }
+
+    /**
+     * Queue rows follow the same extension rule as the queue cards.
+     *
+     * @param  Builder<CallProcessingJob>  $query
+     * @return Builder<CallProcessingJob>
+     */
+    public function applyToProcessingJobs(Builder $query, int $organizationId): Builder
+    {
+        if ($this->matchSets($organizationId) === []) {
+            return $query;
+        }
+
+        return $query->whereHas('call', function (Builder $call) use ($organizationId): void {
+            $this->applyToQueueCalls($call, $organizationId);
         });
     }
 

@@ -116,15 +116,18 @@
                 },
                 apply() {
                     const table = this.$refs.table || this.$root.querySelector('table');
+                    const list = this.$refs.list;
+                    const container = table || list;
 
-                    if (! table) {
+                    if (! container) {
                         return;
                     }
 
                     const attr = 'data-sort-' + this.column.replaceAll('_', '-');
                     const multiplier = this.dir === 'asc' ? 1 : -1;
+                    const selector = table ? ':scope > tbody[data-sort-row]' : ':scope > [data-sort-row]';
 
-                    Array.from(table.querySelectorAll(':scope > tbody[data-sort-row]'))
+                    Array.from(container.querySelectorAll(selector))
                         .sort(function (left, right) {
                             const a = Number(left.getAttribute(attr) || Number.NEGATIVE_INFINITY);
                             const b = Number(right.getAttribute(attr) || Number.NEGATIVE_INFINITY);
@@ -136,7 +139,7 @@
                             return a < b ? -1 * multiplier : 1 * multiplier;
                         })
                         .forEach(function (row) {
-                            table.appendChild(row);
+                            container.appendChild(row);
                         });
                 },
             };

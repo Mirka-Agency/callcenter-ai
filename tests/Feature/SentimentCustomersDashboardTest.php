@@ -35,7 +35,7 @@ class SentimentCustomersDashboardTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_dashboard_lists_satisfied_and_dissatisfied_customers_between_opportunities_and_weaknesses(): void
+    public function test_dashboard_lists_satisfied_and_dissatisfied_customers_below_trading_opportunities(): void
     {
         $organization = $this->actingAsEmployer();
         $this->seedConversation($organization, [
@@ -82,8 +82,8 @@ class SentimentCustomersDashboardTest extends TestCase
         $this->assertNotFalse($opportunitiesPosition);
         $this->assertNotFalse($sentimentPosition);
         $this->assertNotFalse($weaknessesPosition);
+        $this->assertLessThan($opportunitiesPosition, $weaknessesPosition);
         $this->assertLessThan($sentimentPosition, $opportunitiesPosition);
-        $this->assertLessThan($weaknessesPosition, $sentimentPosition);
     }
 
     public function test_analytics_keeps_recent_positive_and_negative_conversations_and_dedupes_customers(): void

@@ -10,7 +10,7 @@
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5" data-tour="queue-stats">
-        <div class="saas-card"><p class="text-sm text-zinc-500">مجموع</p><p class="mt-1 text-2xl font-bold">{{ $stats['total'] }}</p></div>
+        <div class="saas-card"><p class="text-sm text-zinc-500">مجموع تماس‌ها</p><p class="mt-1 text-2xl font-bold">{{ $stats['total'] }}</p></div>
         <div class="saas-card"><p class="text-sm text-zinc-500">در صف</p><p class="mt-1 text-2xl font-bold text-amber-600">{{ $stats['queued'] }}</p></div>
         <div class="saas-card"><p class="text-sm text-zinc-500">در حال پردازش</p><p class="mt-1 text-2xl font-bold text-blue-600">{{ $stats['processing'] }}</p></div>
         <div class="saas-card"><p class="text-sm text-zinc-500">تکمیل‌شده</p><p class="mt-1 text-2xl font-bold text-emerald-600">{{ $stats['completed'] }}</p></div>
