@@ -496,6 +496,22 @@
         text-align: center;
     }
 
+    .saas-sentiment-tabs {
+        @apply grid grid-cols-2 gap-2;
+    }
+
+    .saas-sentiment-tab {
+        @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition;
+    }
+
+    .saas-sentiment-tab--active {
+        @apply bg-violet-600 text-white;
+    }
+
+    .saas-sentiment-tab--idle {
+        @apply bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300;
+    }
+
     .saas-sentiment-list {
         max-height: calc(6 * 5.4rem);
         overflow-y: auto;
@@ -510,11 +526,11 @@
     }
 
     .saas-sentiment-item {
-        @apply mb-2 flex rounded-lg border border-zinc-200/80 bg-white p-3.5 transition last:mb-0 hover:border-emerald-300 hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-emerald-800;
+        @apply mb-2 flex rounded-lg border border-emerald-400 bg-white p-3.5 transition last:mb-0 hover:border-emerald-500 hover:shadow-sm dark:border-emerald-600 dark:bg-zinc-900 dark:hover:border-emerald-400;
     }
 
     .saas-sentiment-item--warning {
-        @apply hover:border-red-300 dark:hover:border-red-800;
+        @apply border-red-400 hover:border-red-500 dark:border-red-600 dark:hover:border-red-400;
     }
 
     .saas-opportunity-row {

@@ -33,7 +33,7 @@ export const employerPageTours = {
             {
                 selector: '[data-tour="dashboard-sentiment-customers"]',
                 title: 'مشتریان راضی و ناراضی',
-                content: 'مکالمه‌های مثبت و منفی اخیر را در دو باکس جدا ببینید و برای جزئیات روی هر مشتری کلیک کنید.',
+                content: 'بین تب مشتریان راضی و ناراضی جابه‌جا شوید و برای جزئیات روی هر مشتری کلیک کنید.',
             },
             {
                 selector: '[data-tour="dashboard-forgotten-followups"]',
