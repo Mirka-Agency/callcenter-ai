@@ -41,6 +41,12 @@ class Overview extends Component
         );
         $performance = app(EmployeePerformanceAnalytics::class);
         $performanceDashboard = $performance->teamDashboard($performanceFilter);
+        $weekComparisons = $this->weekComparisons(
+            $performance->teamKpiPointDeltas(ReportFilter::make(
+                organizationId: $organizationId,
+                preset: ReportDatePreset::Last7,
+            )),
+        );
         $selectedWeakness = $this->resolvedTeamWeakness($performanceDashboard['team_weaknesses']);
 
         $agents = $performanceDashboard['employees'];
@@ -53,6 +59,7 @@ class Overview extends Component
             ],
             'agentCardFeed' => $this->agentCardFeed($agents),
             'teamKpis' => $performanceDashboard['kpis'],
+            'weekComparisons' => $weekComparisons,
             'teamWeaknesses' => $performanceDashboard['team_weaknesses'],
             'selectedTeamWeakness' => $selectedWeakness,
             'teamWeaknessCalls' => $selectedWeakness
@@ -68,5 +75,18 @@ class Overview extends Component
                 : null,
             'agentProfileBase' => preg_replace('#/\d+$#', '', route('employer.intelligence.performance.show', 1)),
         ]);
+    }
+
+    /**
+     * @param  array<string, float|null>  $deltas
+     * @return array{average_quality_score: ?float, average_lead_score: ?float, average_sentiment: ?float}
+     */
+    private function weekComparisons(array $deltas): array
+    {
+        return [
+            'average_quality_score' => $deltas['average_quality_score'] ?? null,
+            'average_lead_score' => $deltas['average_lead_score'] ?? null,
+            'average_sentiment' => $deltas['average_sentiment'] ?? null,
+        ];
     }
 }

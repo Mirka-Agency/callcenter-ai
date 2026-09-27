@@ -229,6 +229,12 @@
         @apply truncate;
     }
 
+    .saas-stat-meta p.saas-stat-comparison {
+        overflow: visible;
+        text-overflow: unset;
+        white-space: normal;
+    }
+
     .saas-stat-row {
         @apply grid w-full min-w-0 grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6;
     }

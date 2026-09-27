@@ -248,6 +248,22 @@ class EmployeePerformanceAnalytics
         ];
     }
 
+    /** @return array<string, float|null> */
+    public function teamKpiPointDeltas(ReportFilter $filter): array
+    {
+        $current = $this->loader->load($filter, withPreviousPeriod: false);
+        $previous = $this->loader->load($filter->previousPeriod(), withPreviousPeriod: false);
+
+        $currentKpis = $this->computeTeamKpis($filter, $current);
+        $previousKpis = $this->computeTeamKpis($filter->previousPeriod(), $previous);
+
+        return [
+            'average_quality_score' => $this->pointDelta($currentKpis['average_quality_score'], $previousKpis['average_quality_score']),
+            'average_lead_score' => $this->pointDelta($currentKpis['average_lead_score'], $previousKpis['average_lead_score']),
+            'average_sentiment' => $this->pointDelta($currentKpis['average_sentiment'], $previousKpis['average_sentiment']),
+        ];
+    }
+
     /** @return list<array<int|string|null>> */
     public function exportTeamRows(ReportFilter $filter): array
     {
@@ -645,6 +661,15 @@ class EmployeePerformanceAnalytics
         }
 
         return round((($current - $previous) / $previous) * 100, 1);
+    }
+
+    private function pointDelta(float|int|null $current, float|int|null $previous): ?float
+    {
+        if ($current === null || $previous === null) {
+            return null;
+        }
+
+        return round($current - $previous, 1);
     }
 
     /**
