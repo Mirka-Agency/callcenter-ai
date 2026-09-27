@@ -40,6 +40,7 @@ class CallCoachingRules
             'categories' => [],
             'reason' => '',
         ];
+        $response['coaching_analysis'] = null;
 
         return $response;
     }

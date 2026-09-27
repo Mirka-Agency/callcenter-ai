@@ -162,6 +162,16 @@ class PerformanceTrendCalculator
      * @param  callable(Collection<int, ConversationAnalysis>): array<string, mixed>  $aggregator
      * @return list<array<string, mixed>>
      */
+    public function mapByPeriod(ReportFilter $filter, Collection $analyses, callable $aggregator): array
+    {
+        return $this->omitHolidays($filter, $this->bucketAnalyses($filter, $analyses, $aggregator));
+    }
+
+    /**
+     * @param  Collection<int, ConversationAnalysis>  $analyses
+     * @param  callable(Collection<int, ConversationAnalysis>): array<string, mixed>  $aggregator
+     * @return list<array<string, mixed>>
+     */
     private function bucketAnalyses(ReportFilter $filter, Collection $analyses, callable $aggregator): array
     {
         $granularity = $filter->granularity();

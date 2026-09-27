@@ -48,7 +48,7 @@ export const employerPageTours = {
             {
                 selector: '[data-tour="page-header"]',
                 title: 'عملکرد کارشناسان',
-                content: 'رتبه‌بندی، مقایسه و مربیگری تیم. از همین بالا می‌توانید کارشناس جدید اضافه کنید یا خروجی PDF بگیرید.',
+                content: 'رتبه‌بندی، مقایسه و ارزیابی مهارت تیم. از همین بالا می‌توانید کارشناس جدید اضافه کنید یا خروجی PDF بگیرید.',
             },
             {
                 selector: '[data-tour="performance-filters"]',
@@ -428,7 +428,7 @@ export const employerPageTours = {
 
 const navSteps = [
     ['employer.dashboard', 'داشبورد', 'نقطه شروع مدیر: نمای کلی تیم و عملکرد کارشناسان.'],
-    ['employer.intelligence.performance', 'عملکرد کارشناسان', 'رتبه‌بندی، مقایسه و مربیگری تیم تماس.'],
+    ['employer.intelligence.performance', 'عملکرد کارشناسان', 'رتبه‌بندی، مقایسه و ارزیابی مهارت تیم تماس.'],
     ['employer.intelligence.index', 'تحلیل تماس‌ها', 'فهرست تمام تحلیل‌ها با فیلتر و جزئیات هر مکالمه.'],
     ['employer.extensions.index', 'داخلی‌ها', 'شماره داخلی را دستی ثبت کنید و به کارشناس وصل کنید تا تماس‌هایش به او نسبت داده شود.'],
     ['employer.customers.index', 'مشتریان', 'شرکت‌ها و اشخاص — پروفایل خودکار از تحلیل تماس‌ها، با آمار تجمیعی برای هر شرکت.'],

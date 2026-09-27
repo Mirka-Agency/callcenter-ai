@@ -45,6 +45,7 @@ readonly class AnalysisResultData
         public bool $isEvaluable = true,
         public bool $needsAttention = false,
         public array $attention = [],
+        public ?array $coachingAnalysis = null,
     ) {}
 
     public function totalTokens(): int
@@ -92,6 +93,7 @@ readonly class AnalysisResultData
             isEvaluable: $this->isEvaluable,
             needsAttention: $this->needsAttention,
             attention: $this->attention,
+            coachingAnalysis: $this->coachingAnalysis,
         );
     }
 
@@ -124,6 +126,7 @@ readonly class AnalysisResultData
         $concerns = (array) ($response['concerns'] ?? []);
         $customerIdentity = (array) ($response['customer_identity'] ?? []);
         $attention = (array) ($response['needs_attention'] ?? []);
+        $coaching = $response['coaching_analysis'] ?? null;
         $score = (int) ($response['score'] ?? $performance['overall_score'] ?? 0);
         $isEvaluable = (bool) ($response['evaluable'] ?? true) && $score > 0;
 
@@ -164,6 +167,7 @@ readonly class AnalysisResultData
             isEvaluable: $isEvaluable,
             needsAttention: (bool) ($attention['needed'] ?? false),
             attention: $attention,
+            coachingAnalysis: is_array($coaching) ? $coaching : null,
         );
     }
 }

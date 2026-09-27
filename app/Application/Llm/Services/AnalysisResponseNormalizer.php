@@ -2,6 +2,7 @@
 
 namespace App\Application\Llm\Services;
 
+use App\Services\Coaching\CoachingAnalysisNormalizer;
 use App\Support\CallCoachingRules;
 use App\Support\CompanyName;
 use App\Support\NeedsAttention;
@@ -127,6 +128,7 @@ class AnalysisResponseNormalizer
     {
         $response['lead_quality'] = $this->normalizeLeadQuality($response['lead_quality'] ?? null);
         $response['concerns'] = $this->normalizeConcerns($response['concerns'] ?? null);
+        $response['coaching_analysis'] = (new CoachingAnalysisNormalizer)->normalize($response['coaching_analysis'] ?? null);
         $response['customer_identity'] = $this->normalizeCustomerIdentity($response['customer_identity'] ?? null, $crmContext);
         $response = PaymentFollowUpSentiment::correct($response);
         $response['needs_attention'] = NeedsAttention::fromResponse($response);

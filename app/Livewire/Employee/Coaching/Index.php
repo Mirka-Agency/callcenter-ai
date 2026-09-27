@@ -15,7 +15,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 
 #[Layout('layouts.employee')]
-#[Title('مربیگری فروش')]
+#[Title('ارزیابی مهارت فروش')]
 class Index extends Component
 {
     #[Url(as: 'preset')]

@@ -15,7 +15,7 @@ class CoachingRecommendationBuilder
             str_contains($weakness, 'قطع') || str_contains($weakness, 'interrupt') => 'کاهش قطع کردن مشتری',
             str_contains($weakness, 'کشف') || str_contains($weakness, 'discovery') => 'بهبود سوالات کشف نیاز',
             str_contains($weakness, 'اعتراض') || str_contains($weakness, 'objection') => 'تمرین مدیریت اعتراضات',
-            default => 'تمرکز بر: '.$weakness,
+            default => 'تمرکز بر '.$weakness,
         })->unique()->take(4)->values()->all();
 
         $plan = [

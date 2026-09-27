@@ -2,6 +2,7 @@
 
 namespace App\Application\Llm\Services;
 
+use App\Domain\Coaching\CoachingCatalog;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\DTOs\PromptContextData;
 use App\Domain\Voip\Enums\CallDirection;
@@ -253,6 +254,8 @@ PROMPT;
   - نوع دغدغه: price یا trust یا timing یا technical یا other
   - شدت دغدغه: low یا medium یا high
   - دسته نیازمند توجه: agent یا product یا service یا general یا other
+  - وضعیت مهارت: strength یا good یا needs_improvement یا critical
+  - اولویت بهبود: low یا medium یا high
 - به‌جز این کدها و نام کلیدها، هیچ حرف لاتین در متن نیاید
 PROMPT;
     }
@@ -314,6 +317,51 @@ PROMPT;
     "company_name": "",
     "confidence": 0,
     "evidence": ""
+  },
+  "coaching_analysis": {
+    "skills": [
+      {
+        "skill_key": "need_discovery",
+        "score": 54,
+        "status": "needs_improvement",
+        "confidence": 0.8,
+        "evidence": [
+          {
+            "description": "پیش از فهم نیاز، معرفی محصول شروع شد",
+            "quote_or_summary": "کارشناس بلافاصله طرح سالانه را توضیح داد",
+            "start_time": 194,
+            "end_time": 222
+          }
+        ],
+        "feedback": "کارشناس قبل از روشن شدن تعداد کاربر و بودجه، ارائه را شروع کرد.",
+        "recommendation": "پیش از معرفی طرح، دست‌کم دو یا سه پرسش درباره هدف، کاربرد و بودجه بپرسد."
+      }
+    ],
+    "strengths": [
+      {
+        "skill_key": "call_opening",
+        "title": "شروع حرفه‌ای تماس",
+        "explanation": "کارشناس خودش و دلیل تماس را روشن معرفی کرد.",
+        "evidence": []
+      }
+    ],
+    "weaknesses": [
+      {
+        "skill_key": "need_discovery",
+        "title": "کشف نیاز ناقص",
+        "explanation": "پرسش‌های لازم پیش از ارائه پرسیده نشد.",
+        "severity": "high",
+        "evidence": []
+      }
+    ],
+    "coaching_recommendations": [
+      {
+        "skill_key": "need_discovery",
+        "priority": "high",
+        "recommendation": "کشف نیاز را قبل از ارائه کامل کنید.",
+        "suggested_action": "پیش از معرفی محصول، درباره هدف، کاربرد و بودجه بپرسید."
+      }
+    ]
   }
 }
 PROMPT;
@@ -383,6 +431,7 @@ PROMPT;
   - company_name (رشته فارسی — شرکت خود مشتری، نه نام سازمان سامانه)
   - confidence (عدد اعشاری صفر تا یک)
   - evidence (رشته فارسی — جمله استخراج‌شده از مکالمه)
+- coaching_analysis (شیء یا تهی — ارزیابی مهارت کارشناس؛ اگر مکالمه قابل ارزیابی نیست تهی باشد)
 
 منصفانه، سازنده و دقیق باشید. روی مهارت ارتباطی، حل مسئله، همدلی، انطباق و فرصت‌های فروش تمرکز کنید.
 PROMPT;
@@ -405,7 +454,42 @@ PROMPT;
             self::followUpPolicy(),
             self::customerIdentityPolicy(),
             self::evaluableConversationPolicy(),
+            self::coachingPolicy(),
         ]);
+    }
+
+    public static function coachingPolicy(): string
+    {
+        $skills = collect(CoachingCatalog::skills())
+            ->map(fn (array $skill) => "  - {$skill['key']} ({$skill['label']})")
+            ->implode("\n");
+
+        return <<<PROMPT
+قوانین ارزیابی مهارت کارشناس (الزامی):
+- فقط رفتار کارشناس را ارزیابی کنید. لحن، اعتراض یا تردید مشتری مهارت کارشناس نیست
+- فقط مهارتی را امتیاز دهید که از همین مکالمه قابل استنباط است. مهارت نامرتبط را از skills حذف کنید؛ برای آن امتیاز صفر نسازید
+- امتیاز، کیفیت مشاهده‌شده است و اطمینان، میزان اتکای شما به شاهد است. این دو را یکی نکنید
+- score عدد صفر تا صد است. confidence عدد اعشاری صفر تا یک است. اگر شاهد ندارید confidence را پایین بگذارید، نه اینکه واقعیت بسازید
+- status را فقط از روی امتیاز و دقیقاً یکی از این مقدارها بگذارید: strength ، good ، needs_improvement ، critical
+- اگر نقل‌قول یا زمان دقیق در دست نیست، quote_or_summary یا start_time و end_time را تهی بگذارید. زمان را حدس نزنید
+- start_time و end_time ثانیه از آغاز تماس هستند، یا تهی
+- explanation و recommendation باید به رفتار مشخص همین تماس اشاره کنند
+- پیشنهاد کلی و غیرقابل اجرا ممنوع است. مثال بد: «کارشناس باید بهتر ارتباط برقرار کند.» مثال خوب: «کارشناس پیش از روشن شدن تعداد کاربر، بودجه و کاربرد اصلی، ارائه محصول را شروع کرد. پیش از معرفی طرح، دست‌کم دو یا سه پرسش کشف نیاز بپرسد.»
+- strengths فقط مهارت‌هایی است که در همین تماس خوب انجام شده‌اند. weaknesses فقط مهارت‌هایی است که شاهد ضعف دارند
+- severity و priority فقط یکی از low ، medium ، high
+- اگر مکالمه قابل ارزیابی نیست، coaching_analysis را تهی بگذارید و مهارت نسازید
+- فیلدهای متنی فارسی باشند. skill_key را عوض نکنید
+
+مهارت‌های مجاز:
+{$skills}
+
+ساختار coaching_analysis:
+- skills (آرایه): skill_key ، score ، status ، confidence ، evidence ، feedback ، recommendation
+- evidence (آرایه): description ، quote_or_summary ، start_time ، end_time
+- strengths (آرایه): skill_key ، title ، explanation ، evidence
+- weaknesses (آرایه): skill_key ، title ، explanation ، severity ، evidence
+- coaching_recommendations (آرایه): skill_key ، priority ، recommendation ، suggested_action
+PROMPT;
     }
 
     public function contextPrompt(AudioAnalysisRequestData $request): string
@@ -428,7 +512,7 @@ PROMPT;
         $sections[] = $this->labeledBlock('متن مکالمه', $transcript);
         $sections[] = $this->labeledBlock(
             'وظیفه',
-            "به فایل صوتی پیوست‌شده گوش دهید و مکالمه را تحلیل کنید.\nخلاصه باید مفصل، کسب‌وکاری و کاملاً فارسی باشد.\nنام کارشناس و نام سازمان در زمینه تماس را از نام و شرکت مشتری جدا کنید.
+            "به فایل صوتی پیوست‌شده گوش دهید و مکالمه را تحلیل کنید.\nخلاصه باید مفصل، کسب‌وکاری و کاملاً فارسی باشد.\nارزیابی مهارت را فقط درباره رفتار کارشناس بنویسید، نه رفتار مشتری.\nنام کارشناس و نام سازمان در زمینه تماس را از نام و شرکت مشتری جدا کنید.
 اگر موضوع تماس پیگیری پرداخت‌نشده یا بدهی است، کسی که از طرف سازمان پول می‌خواهد کارشناس است و طرف مقابل مشتری است. این درخواست را نارضایتی مشتری حساب نکنید.\nپیگیری تلفنی را فقط اگر کارشناس صریحاً قول تماس مجدد با زمان مشخص داده باشد ثبت کنید؛ در غیر این صورت آن فهرست را خالی بگذارید.\nفقط خروجی ساخت‌یافته با کلیدهای خواسته‌شده را برگردانید؛ همه مقدارهای متنی فارسی باشند.",
         );
 
