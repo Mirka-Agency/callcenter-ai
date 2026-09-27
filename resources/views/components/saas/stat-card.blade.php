@@ -39,11 +39,11 @@
                 'text-zinc-500' => (float) $comparison == 0,
             ])>
                 @if ((float) $comparison > 0)
-                    <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                    <svg class="h-[1em] w-[1em] shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M8 13V3m0 0L4 7m4-4 4 4" />
                     </svg>
                 @elseif ((float) $comparison < 0)
-                    <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                    <svg class="h-[1em] w-[1em] shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M8 3v10m0 0 4-4m-4 4L4 9" />
                     </svg>
                 @endif

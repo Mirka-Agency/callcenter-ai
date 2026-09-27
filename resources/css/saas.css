@@ -232,7 +232,9 @@
     .saas-stat-meta p.saas-stat-comparison {
         overflow: visible;
         text-overflow: unset;
-        white-space: normal;
+        white-space: nowrap;
+        font-size: clamp(0.75rem, 7.4cqi, 0.875rem);
+        line-height: 1.25rem;
     }
 
     .saas-stat-row {
@@ -244,16 +246,18 @@
     }
 
     .saas-stat-row > .saas-stat.saas-stat--compact .saas-stat-label {
-        white-space: normal;
+        white-space: nowrap;
     }
 
     .saas-stat.saas-stat--compact {
         @apply w-full max-w-full shrink-0 gap-1.5 px-4 py-3.5 sm:gap-2 sm:px-5 sm:py-4;
         min-width: max(12.5rem, max-content);
+        container-type: inline-size;
     }
 
     .saas-stat--compact .saas-stat-label {
-        @apply min-h-0 whitespace-nowrap text-sm leading-5;
+        @apply min-h-0 whitespace-nowrap leading-5;
+        font-size: clamp(0.8125rem, 8.6cqi, 1rem);
     }
 
     .saas-stat--compact .saas-stat-value {
