@@ -91,6 +91,9 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $this->assertSame(80.0, $dashboard['kpis']['average_quality_score']);
         $this->assertSame(80.0, $dashboard['employees'][0]['average_score']);
         $this->assertSame(2, $dashboard['kpis']['total_analyzed']);
+        $this->assertSame(1, $dashboard['kpis']['quality_sample_count']);
+        $this->assertSame(1, $dashboard['kpis']['lead_sample_count']);
+        $this->assertSame(1, $dashboard['kpis']['sentiment_sample_count']);
     }
 
     public function test_report_date_preset_includes_quarter_and_year(): void

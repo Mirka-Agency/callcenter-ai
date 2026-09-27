@@ -210,7 +210,25 @@
     }
 
     .saas-stat {
-        @apply flex h-full min-w-0 max-w-full flex-col gap-2 rounded-lg border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 sm:gap-3 sm:p-5;
+        @apply relative flex h-full min-w-0 max-w-full flex-col gap-2 rounded-lg border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 sm:gap-3 sm:p-5;
+    }
+
+    .saas-stat:has(> .saas-stat-tooltip) {
+        @apply cursor-help;
+    }
+
+    .saas-stat:hover,
+    .saas-stat:focus-visible {
+        z-index: 30;
+    }
+
+    .saas-stat-tooltip {
+        @apply pointer-events-none absolute inset-x-0 top-full z-40 mt-1.5 hidden rounded-md bg-zinc-900 px-2.5 py-1.5 text-center text-xs font-medium leading-5 text-white shadow-lg dark:bg-zinc-700;
+    }
+
+    .saas-stat:hover > .saas-stat-tooltip,
+    .saas-stat:focus-visible > .saas-stat-tooltip {
+        display: block;
     }
 
     .saas-stat-label {
@@ -235,6 +253,54 @@
         white-space: nowrap;
         font-size: clamp(0.75rem, 7.4cqi, 0.875rem);
         line-height: 1.25rem;
+    }
+
+    .saas-today-summary {
+        @apply rounded-lg border border-violet-300 bg-violet-50 px-4 py-4 shadow-sm shadow-violet-950/5 dark:border-violet-600 dark:bg-violet-950/35 sm:px-5 sm:py-5;
+    }
+
+    .saas-today-summary-item {
+        @apply flex min-w-0 items-center gap-3 rounded-lg border border-white/80 bg-white/85 p-3.5 shadow-sm shadow-violet-950/5 backdrop-blur-sm dark:border-violet-800/60 dark:bg-zinc-900/70;
+    }
+
+    .saas-today-summary-icon {
+        @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg;
+    }
+
+    .saas-today-summary-icon svg {
+        @apply h-5 w-5;
+    }
+
+    .saas-today-summary-icon--quality {
+        @apply bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-200;
+    }
+
+    .saas-today-summary-icon--unhappy {
+        @apply bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300;
+    }
+
+    .saas-today-summary-icon--agents {
+        @apply bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300;
+    }
+
+    .saas-today-summary-icon--sales {
+        @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300;
+    }
+
+    .saas-today-summary-label {
+        @apply text-xs font-medium leading-5 text-zinc-500 dark:text-zinc-400;
+    }
+
+    .saas-today-summary-value {
+        @apply mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white;
+    }
+
+    .saas-today-summary-meter {
+        @apply mt-2 h-1.5 overflow-hidden rounded-full bg-violet-100 dark:bg-violet-900/60;
+    }
+
+    .saas-today-summary-meter span {
+        @apply block h-full rounded-full bg-violet-500 dark:bg-violet-400;
     }
 
     .saas-stat-row {

@@ -49,15 +49,30 @@ class DashboardWeekComparisonTest extends TestCase
         $this->seedAnalysis($organization, $employee, now()->subDay(), 90, AnalysisSentiment::Positive, 80);
 
         $html = Livewire::test(Overview::class)
+            ->assertSee('خلاصه امروز')
+            ->assertSee('کیفیت تیم')
+            ->assertSee('تعداد مشتری ناراضی')
+            ->assertSee('تعداد کارشناسان نیازمند پیشرفت')
+            ->assertSee('تعداد فرصت فروش با احتمال بالا')
             ->assertSee('میانگین امتیاز تیم')
             ->assertSee('میانگین کیفیت لید')
             ->assertSee('رضایت مشتری')
+            ->assertSee('بر اساس 2 تماس از 2 تماس تحلیل شده')
             ->assertSee('50 نسبت به هفته قبل')
             ->assertSee('80٪ نسبت به هفته قبل')
             ->assertDontSee('50٪ نسبت به هفته قبل')
             ->assertDontSee('⬆')
             ->assertDontSee('⬇')
             ->html();
+
+        $summaryAt = mb_strpos($html, 'خلاصه امروز');
+        $trendAt = mb_strpos($html, 'روند کیفیت تیم');
+        $callsTodayAt = mb_strpos($html, 'تماس‌های امروز');
+        $this->assertNotFalse($summaryAt);
+        $this->assertNotFalse($trendAt);
+        $this->assertNotFalse($callsTodayAt);
+        $this->assertLessThan($summaryAt, $callsTodayAt);
+        $this->assertLessThan($trendAt, $summaryAt);
 
         $this->assertSame(2, mb_substr_count($html, '50 نسبت به هفته قبل'));
         $this->assertSame(1, mb_substr_count($html, '80٪ نسبت به هفته قبل'));
