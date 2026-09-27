@@ -70,7 +70,7 @@
 
     <div @class([
         'grid items-stretch gap-6',
-        'lg:grid-cols-2' => ! empty($dashboard['team_weaknesses']),
+        'lg:grid-cols-[minmax(0,5fr)_minmax(16rem,2fr)]' => ! empty($dashboard['team_weaknesses']),
     ]) data-tour="performance-charts">
         <div class="saas-card h-full min-w-0">
             <h2 class="text-lg font-semibold">روند کیفیت مکالمه</h2>
