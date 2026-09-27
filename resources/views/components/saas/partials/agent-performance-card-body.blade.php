@@ -71,4 +71,15 @@
             {{ (int) ($agent['total_analyzed'] ?? 0) }} تماس بررسی شده و میانگین مدت مکالمه <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ $agent['average_duration_label'] }}</span> بوده.
         </p>
     @endif
+
+    <div class="grid gap-2 sm:grid-cols-2">
+        <div class="rounded-md border border-emerald-200/70 bg-emerald-50/50 px-3 py-2 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+            <p class="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">نقطه قوت</p>
+            <p class="mt-0.5 text-sm leading-6 text-zinc-800 dark:text-zinc-100">{{ filled($agent['top_strength'] ?? null) ? $agent['top_strength'] : 'ثبت نشده' }}</p>
+        </div>
+        <div class="rounded-md border border-amber-200/70 bg-amber-50/50 px-3 py-2 dark:border-amber-900/40 dark:bg-amber-950/20">
+            <p class="text-[11px] font-medium text-amber-800 dark:text-amber-300">نقطه ضعف</p>
+            <p class="mt-0.5 text-sm leading-6 text-zinc-800 dark:text-zinc-100">{{ filled($agent['top_weakness'] ?? null) ? $agent['top_weakness'] : 'ثبت نشده' }}</p>
+        </div>
+    </div>
 </div>

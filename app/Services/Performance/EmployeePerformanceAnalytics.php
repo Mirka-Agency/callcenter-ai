@@ -39,11 +39,16 @@ class EmployeePerformanceAnalytics
         private PerformanceExecutiveSummaryService $summaryService,
     ) {}
 
+    public static function teamDashboardCacheKey(ReportFilter $filter): string
+    {
+        return 'performance:team:highlights:'.$filter->cacheKey().':'.OrganizationHolidays::cacheToken($filter->organizationId);
+    }
+
     /** @return array<string, mixed> */
     public function teamDashboard(ReportFilter $filter): array
     {
         return Cache::remember(
-            'performance:team:'.$filter->cacheKey().':'.OrganizationHolidays::cacheToken($filter->organizationId),
+            self::teamDashboardCacheKey($filter),
             120,
             fn () => $this->buildTeamDashboard($filter),
         );
@@ -458,6 +463,11 @@ class EmployeePerformanceAnalytics
         $leadDist = $leadDistribution ?? $this->leadConcerns->leadQualityDistribution($filter);
 
         $scored = $data->analyses->filter(fn ($analysis) => $analysis->isEvaluable());
+        $leadSample = $scored->filter(function ($analysis): bool {
+            $lead = $analysis->lead_quality_json;
+
+            return is_array($lead) && isset($lead['score']);
+        });
 
         return [
             'total_employees' => OrganizationUser::query()
@@ -469,6 +479,9 @@ class EmployeePerformanceAnalytics
             'average_quality_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : 0.0,
             'average_lead_score' => $leadDist['average_score'],
             'average_sentiment' => $this->sentimentCalculator->average($scored),
+            'quality_sample_count' => $scored->count(),
+            'lead_sample_count' => $leadSample->count(),
+            'sentiment_sample_count' => $scored->filter(fn ($analysis) => $analysis->sentiment !== null)->count(),
         ];
     }
 
@@ -532,6 +545,8 @@ class EmployeePerformanceAnalytics
                     : null,
                 'improvement_percent' => $deltas['quality_improvement_percent'],
                 'trend' => $deltas['quality_trend'],
+                'top_strength' => $this->jsonAggregator->topItems($analyses, 'strengths_json', 1)[0] ?? null,
+                'top_weakness' => $this->jsonAggregator->topItems($analyses, 'weaknesses_json', 1)[0] ?? null,
             ];
 
             return $row;

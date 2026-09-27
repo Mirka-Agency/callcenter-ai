@@ -11,7 +11,7 @@ use App\Models\CustomerCompany;
 use App\Models\Organization;
 use App\Models\OrganizationActivity;
 use App\Services\CustomerCompanyService;
-use App\Support\OrganizationHolidays;
+use App\Services\Performance\EmployeePerformanceAnalytics;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -146,7 +146,7 @@ class DemoAnalyticsClock
     private function forgetCachedDashboard(Organization $organization): void
     {
         $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
-        Cache::forget('performance:team:'.$filter->cacheKey().':'.OrganizationHolidays::cacheToken($organization->id));
+        Cache::forget(EmployeePerformanceAnalytics::teamDashboardCacheKey($filter));
 
         $sinceKey = blank(config('dashboard.insight_lists_since'))
             ? 'none'

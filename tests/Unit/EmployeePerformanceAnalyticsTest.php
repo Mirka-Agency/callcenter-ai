@@ -91,12 +91,32 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $this->assertSame(80.0, $dashboard['kpis']['average_quality_score']);
         $this->assertSame(80.0, $dashboard['employees'][0]['average_score']);
         $this->assertSame(2, $dashboard['kpis']['total_analyzed']);
+        $this->assertSame(1, $dashboard['kpis']['quality_sample_count']);
+        $this->assertSame(1, $dashboard['kpis']['lead_sample_count']);
+        $this->assertSame(1, $dashboard['kpis']['sentiment_sample_count']);
     }
 
     public function test_report_date_preset_includes_quarter_and_year(): void
     {
         $this->assertContains(ReportDatePreset::CurrentQuarter, ReportDatePreset::selectable());
         $this->assertContains(ReportDatePreset::CurrentYear, ReportDatePreset::selectable());
+    }
+
+    public function test_employee_summary_keeps_only_the_most_frequent_strength_and_weakness(): void
+    {
+        $organization = Organization::factory()->create();
+        $employee = $this->seedNamedEmployee($organization, 'نگار', 'صادقی');
+
+        $this->seedAnalysisForEmployee($organization, $employee, 78, ['پیگیری ضعیف', 'جمع‌بندی ضعیف'], strengths: ['لحن محترمانه', 'گوش دادن فعال']);
+        $this->seedAnalysisForEmployee($organization, $employee, 74, ['پیگیری ضعیف'], strengths: ['لحن محترمانه']);
+        $this->seedAnalysisForEmployee($organization, $employee, 81, ['توضیح ناقص محصول'], strengths: ['شروع مناسب تماس']);
+
+        $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
+        $card = collect(app(EmployeePerformanceAnalytics::class)->teamDashboard($filter)['employees'])
+            ->firstWhere('id', $employee->id);
+
+        $this->assertSame('لحن محترمانه', $card['top_strength']);
+        $this->assertSame('پیگیری ضعیف', $card['top_weakness']);
     }
 
     public function test_team_dashboard_flags_agents_with_repeated_weaknesses(): void
@@ -303,7 +323,10 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         ]);
     }
 
-    /** @param  list<string>  $weaknesses */
+    /**
+     * @param  list<string>  $weaknesses
+     * @param  list<string>  $strengths
+     */
     private function seedAnalysisForEmployee(
         Organization $organization,
         OrganizationUser $employee,
@@ -311,6 +334,7 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         array $weaknesses = [],
         string $summary = 'تماس بدون مکالمه',
         ?Carbon $analyzedAt = null,
+        array $strengths = [],
     ): void {
         $analyzedAt ??= now();
 
@@ -340,7 +364,7 @@ class EmployeePerformanceAnalyticsTest extends TestCase
             'is_evaluable' => $score > 0,
             'summary' => $summary,
             'sentiment' => AnalysisSentiment::Neutral,
-            'strengths_json' => [],
+            'strengths_json' => $strengths,
             'weaknesses_json' => $weaknesses,
             'next_actions_json' => [],
             'analyzed_at' => $analyzedAt,

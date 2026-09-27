@@ -1,4 +1,4 @@
-@props(['label', 'value', 'hint' => null, 'trend' => null, 'tone' => null, 'comparison' => null, 'comparisonUnit' => null])
+@props(['label', 'value', 'hint' => null, 'trend' => null, 'tone' => null, 'comparison' => null, 'comparisonUnit' => null, 'tooltip' => null])
 
 @php
     $comparisonAmount = $comparison === null ? null : abs((float) $comparison);
@@ -14,7 +14,7 @@
     'saas-stat--good' => $tone === 'good',
     'saas-stat--medium' => $tone === 'medium',
     'saas-stat--bad' => $tone === 'bad',
-]) }}>
+]) }} @if ($tooltip) tabindex="0" @endif>
     <p class="saas-stat-label">{{ $label }}</p>
     <p class="saas-stat-value">{{ $value }}</p>
     <div class="saas-stat-meta">
@@ -51,4 +51,7 @@
             </p>
         @endif
     </div>
+    @if ($tooltip)
+        <p class="saas-stat-tooltip" role="tooltip">{{ $tooltip }}</p>
+    @endif
 </div>
