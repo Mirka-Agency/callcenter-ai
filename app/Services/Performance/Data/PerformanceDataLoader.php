@@ -50,14 +50,14 @@ class PerformanceDataLoader
         'created_at',
     ];
 
-    public function load(ReportFilter $filter, bool $withPreviousPeriod = true): LoadedPerformanceData
+    public function load(ReportFilter $filter, bool $withPreviousPeriod = true, bool $withCoaching = false): LoadedPerformanceData
     {
         $employees = $this->employees($filter);
         $employeeIds = $employees->pluck('id')->all();
 
         $holidayWeekdays = OrganizationHolidays::weekdays($filter->organizationId);
         $analyses = $this->withoutHolidays(
-            $this->analyses($filter, $employeeIds),
+            $this->analyses($filter, $employeeIds, $withCoaching),
             fn (ConversationAnalysis $analysis): ?CarbonInterface => $analysis->occurredAt(),
             $holidayWeekdays,
         );
@@ -68,7 +68,7 @@ class PerformanceDataLoader
         );
 
         $previous = $withPreviousPeriod
-            ? $this->load($filter->previousPeriod(), withPreviousPeriod: false)
+            ? $this->load($filter->previousPeriod(), withPreviousPeriod: false, withCoaching: $withCoaching)
             : null;
 
         return new LoadedPerformanceData($filter, $employees, $analyses, $calls, $previous);
@@ -85,7 +85,7 @@ class PerformanceDataLoader
             compareMode: $filter->compareMode,
         );
 
-        return $this->load($scoped);
+        return $this->load($scoped, withCoaching: true);
     }
 
     /** @return Collection<int, OrganizationUser> */
@@ -101,17 +101,22 @@ class PerformanceDataLoader
     }
 
     /** @param  list<int>  $employeeIds */
-    private function analyses(ReportFilter $filter, array $employeeIds): Collection
+    private function analyses(ReportFilter $filter, array $employeeIds, bool $withCoaching = false): Collection
     {
         if ($employeeIds === []) {
             return collect();
+        }
+
+        $columns = self::ANALYSIS_COLUMNS;
+        if ($withCoaching) {
+            $columns[] = 'coaching_analysis_json';
         }
 
         return $filter->applyToAnalysisQuery(ConversationAnalysis::query())
             ->whereIn('organization_user_id', $employeeIds)
             ->with(['call:'.implode(',', self::ANALYSIS_CALL_COLUMNS)])
             ->orderBy('analyzed_at')
-            ->get(self::ANALYSIS_COLUMNS);
+            ->get($columns);
     }
 
     /** @param  list<int>  $employeeIds */

@@ -242,7 +242,7 @@
     </div>
 
     <div class="saas-card" data-tour="dashboard-recommendations">
-        <p class="mt-1 text-sm text-zinc-500">حوزه‌های تمرکز مربیگری بر اساس گفتگوهای اخیر شما</p>
+        <p class="mt-1 text-sm text-zinc-500">حوزه‌های تمرکز ارزیابی مهارت بر اساس گفتگوهای اخیر شما</p>
         <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             @forelse ($recommendations as $rec)
                 <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">

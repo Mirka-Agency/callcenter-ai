@@ -67,6 +67,9 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $prompt = (new PromptBuilder)->systemPrompt();
 
         $this->assertStringContainsString(PromptBuilder::followUpPolicy(), $prompt);
+        $this->assertStringContainsString(PromptBuilder::coachingPolicy(), $prompt);
+        $this->assertStringContainsString('فقط رفتار کارشناس را ارزیابی کنید', $prompt);
+        $this->assertStringContainsString('need_discovery', $prompt);
         $this->assertStringContainsString('فقط قول صریح کارشناس برای تماس تلفنی برگشتی با همین مشتری', $prompt);
         $this->assertStringContainsString('"follow_up_suggestions": ["تماس پیگیری در روز بعد برای اعلام تصمیم مشتری"]', $prompt);
     }

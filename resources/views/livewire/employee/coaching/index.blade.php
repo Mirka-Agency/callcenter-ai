@@ -52,7 +52,7 @@
     <x-saas.filter-loading-overlay :target="$filterActionTargets" />
 
     <x-saas.page-header
-        title="مربیگری فروش"
+        title="ارزیابی مهارت فروش"
         description="برنامه رشد شخصی‌سازی‌شده بر اساس تحلیل تماس‌ها — نقاط قوت، حوزه‌های بهبود و اقدامات عملی."
         data-tour="page-header"
     >
@@ -67,7 +67,7 @@
             <div class="flex items-start gap-5">
                 <x-saas.avatar :employee="$membership" size="xl" ring />
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">مرکز مربیگری</p>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">مرکز ارزیابی مهارت</p>
                     <h2 class="text-2xl font-bold tracking-tight">{{ $membership->first_name }}، برنامه رشد شما</h2>
                     <p class="mt-2 max-w-xl text-sm leading-7 text-zinc-600 dark:text-zinc-300">
                         {{ $profile['executive_summary'] ?? 'با تحلیل تماس‌های اخیر، حوزه‌های تمرکز و اقدامات عملی اینجا پیشنهاد می‌شود.' }}
@@ -125,7 +125,7 @@
                 </div>
 
                 <div class="saas-card">
-                    <h2 class="text-lg font-semibold">برنامه مربیگری هفتگی</h2>
+                    <h2 class="text-lg font-semibold">برنامه پیشرفت هفتگی</h2>
                     <p class="mt-1 text-sm text-zinc-500">گام‌های عملی برای اجرا در هفته جاری</p>
                     <ol class="mt-4 space-y-3">
                         @foreach ($coaching['coaching_plan'] as $i => $step)
@@ -268,7 +268,7 @@
 
         @if (! empty($recommendations))
             <div class="saas-card">
-                <h2 class="text-lg font-semibold">تمرکز مربیگری</h2>
+                <h2 class="text-lg font-semibold">تمرکز ارزیابی مهارت</h2>
                 <p class="mt-1 text-sm text-zinc-500">اقدامات پیشنهادی با اولویت</p>
                 <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach ($recommendations as $rec)

@@ -9,7 +9,7 @@
             <p class="mt-0.5 text-xs text-zinc-500">{{ $activePreset->label() }}</p>
         </div>
         <a href="{{ route('employee.coaching') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
-            مربیگری هوش مصنوعی
+            ارزیابی مهارت هوش مصنوعی
         </a>
     </div>
 

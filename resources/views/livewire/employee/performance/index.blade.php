@@ -281,7 +281,7 @@
                     </ul>
                 </div>
                 <div class="saas-card">
-                    <h2 class="text-lg font-semibold">برنامه مربیگری</h2>
+                    <h2 class="text-lg font-semibold">برنامه پیشرفت</h2>
                     <ol class="mt-4 list-decimal space-y-2 pr-5 text-sm leading-relaxed">
                         @foreach ($coaching['coaching_plan'] as $step)
                             <li>{{ $step }}</li>
@@ -311,7 +311,7 @@
         <div class="saas-card lg:col-span-2">
             <div class="flex items-center justify-between gap-3">
                 <div>
-                    <h2 class="text-lg font-semibold">تمرکز مربیگری</h2>
+                    <h2 class="text-lg font-semibold">تمرکز ارزیابی مهارت</h2>
                     <p class="mt-1 text-sm text-zinc-500">بر اساس ضعف‌های پرتکرار در مکالمات اخیر</p>
                 </div>
                 <a href="{{ route('employee.coaching') }}" class="shrink-0 text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">جزئیات</a>

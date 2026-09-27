@@ -22,6 +22,7 @@ class EloquentConversationAnalysisRepository implements ConversationAnalysisRepo
             'is_evaluable' => $data->isEvaluable,
             'needs_attention' => $data->needsAttention,
             'attention_json' => $data->attention ?: null,
+            'coaching_analysis_json' => $data->coachingAnalysis ?: null,
             'summary' => $data->summary,
             'transcript' => $data->transcript,
             'sentiment' => $data->sentiment,
@@ -117,6 +118,7 @@ class EloquentConversationAnalysisRepository implements ConversationAnalysisRepo
             isEvaluable: $analysis->isEvaluable(),
             needsAttention: (bool) $analysis->needs_attention,
             attention: $analysis->attention_json ?? [],
+            coachingAnalysis: $analysis->coaching_analysis_json ?: null,
         );
     }
 }

@@ -27,7 +27,7 @@
     <x-saas.page-header
         data-tour="page-header"
         title="عملکرد کارشناسان"
-        description="مقایسه، رتبه‌بندی و شناسایی فرصت‌های مربیگری تیم تماس."
+        description="مقایسه، رتبه‌بندی و شناسایی فرصت‌های ارزیابی مهارت تیم تماس."
     >
         <x-slot:actions>
             <a href="{{ route('employer.employees.create') }}" class="saas-btn-primary">@lang('ui.cta.add_employee')</a>

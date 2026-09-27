@@ -210,7 +210,7 @@
                 </ul>
             </div>
             <div class="saas-card">
-                <h2 class="text-lg font-semibold">برنامه مربیگری</h2>
+                <h2 class="text-lg font-semibold">برنامه پیشرفت</h2>
                 <ol class="mt-4 list-decimal space-y-2 pr-5 text-sm leading-relaxed">
                     @foreach ($coaching['coaching_plan'] as $step)
                         <li>{{ $step }}</li>
@@ -259,6 +259,15 @@
             @endforelse
         </div>
     </section>
+
+    @include('livewire.employer.intelligence.partials.agent-coaching', [
+        'agentCoaching' => $profile['agent_coaching'] ?? [
+            'status' => 'empty',
+            'title' => __('ui.empty.agent_coaching.empty_title'),
+            'description' => __('ui.empty.agent_coaching.empty_description'),
+            'trend' => ['has_data' => false, 'labels' => [], 'datasets' => []],
+        ],
+    ])
     </div>
 
     <div
@@ -341,7 +350,8 @@
         }
 
         #emp-quality-trend,
-        #emp-volume-trend {
+        #emp-volume-trend,
+        #agent-coaching-trend {
             display: block !important;
             width: 100% !important;
             height: 14rem !important;
