@@ -164,7 +164,11 @@ class AgentPerformanceCardFeedTest extends TestCase
 
         Livewire::test(Performance::class)
             ->assertSee('ضعف‌های پرتکرار تیم')
-            ->assertSee('جمع‌بندی ضعیف انتهای تماس (2)');
+            ->assertSee('مهمترین نقاط ضعف شناسایی شده در مکالمات تیم')
+            ->assertSee('جمع‌بندی ضعیف انتهای تماس')
+            ->assertSee('موضوع')
+            ->assertSee('روند')
+            ->assertDontSee('جمع‌بندی ضعیف انتهای تماس (2)');
     }
 
     public function test_performance_page_shows_attention_agents_above_performance_cards(): void

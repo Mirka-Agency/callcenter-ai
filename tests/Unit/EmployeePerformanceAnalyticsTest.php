@@ -183,6 +183,41 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $this->assertSame(['جمع‌بندی ضعیف انتهای تماس'], $items);
     }
 
+    public function test_team_weakness_trend_compares_counts_with_the_previous_period(): void
+    {
+        $organization = Organization::factory()->create();
+        $agent = $this->seedNamedEmployee($organization, 'نیما', 'کاظمی');
+        $previous = now()->subDays(42);
+
+        foreach (range(1, 4) as $ignored) {
+            $this->seedAnalysisForEmployee($organization, $agent, 60, ['جمع‌بندی ضعیف مکالمه'], analyzedAt: $previous);
+        }
+
+        foreach (range(1, 2) as $ignored) {
+            $this->seedAnalysisForEmployee($organization, $agent, 60, ['پاسخ‌گویی ناقص'], analyzedAt: $previous);
+        }
+
+        foreach (range(1, 5) as $ignored) {
+            $this->seedAnalysisForEmployee($organization, $agent, 60, ['جمع‌بندی ضعیف مکالمه']);
+        }
+
+        foreach (range(1, 1) as $ignored) {
+            $this->seedAnalysisForEmployee($organization, $agent, 60, ['پاسخ‌گویی ناقص']);
+        }
+
+        $this->seedAnalysisForEmployee($organization, $agent, 60, ['فرصت فروش مکمل از دست رفت']);
+
+        $rows = collect(app(EmployeePerformanceAnalytics::class)->teamDashboard(
+            ReportFilter::make($organization->id, ReportDatePreset::Last30),
+        )['team_weaknesses'])->keyBy('item');
+
+        $this->assertSame(5, $rows['جمع‌بندی ضعیف مکالمه']['count']);
+        $this->assertSame(25, $rows['جمع‌بندی ضعیف مکالمه']['trend']);
+        $this->assertSame(1, $rows['پاسخ‌گویی ناقص']['count']);
+        $this->assertSame(-50, $rows['پاسخ‌گویی ناقص']['trend']);
+        $this->assertSame(100, $rows['فرصت فروش مکمل از دست رفت']['trend']);
+    }
+
     public function test_team_dashboard_excludes_agents_with_sparse_repeated_weaknesses(): void
     {
         $organization = Organization::factory()->create();
@@ -275,7 +310,10 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         int $score,
         array $weaknesses = [],
         string $summary = 'تماس بدون مکالمه',
+        ?Carbon $analyzedAt = null,
     ): void {
+        $analyzedAt ??= now();
+
         $call = Call::query()->create([
             'organization_id' => $organization->id,
             'organization_user_id' => $employee->id,
@@ -288,7 +326,7 @@ class EmployeePerformanceAnalyticsTest extends TestCase
             'status' => 'completed',
             'processing_status' => 'analyzed',
             'duration_seconds' => 12,
-            'started_at' => now()->subHours(2),
+            'started_at' => $analyzedAt,
         ]);
 
         ConversationAnalysis::query()->create([
@@ -305,7 +343,7 @@ class EmployeePerformanceAnalyticsTest extends TestCase
             'strengths_json' => [],
             'weaknesses_json' => $weaknesses,
             'next_actions_json' => [],
-            'analyzed_at' => now(),
+            'analyzed_at' => $analyzedAt,
         ]);
     }
 }

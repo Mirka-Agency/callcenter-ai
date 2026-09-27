@@ -319,7 +319,7 @@ class EmployeePerformanceAnalytics
             'sentiment_trend' => $this->trendCalculator->sentimentTrend($filter, $data->analyses),
             'quality_distribution' => $this->trendCalculator->qualityDistribution($data->analyses, $filter->organizationId),
             'lead_distribution' => $leadDistribution,
-            'team_weaknesses' => $this->jsonAggregator->rankedItems($data->analyses, 'weaknesses_json'),
+            'team_weaknesses' => $this->teamWeaknessesWithTrend($data),
             'attention_employees' => $this->employeesRequiringAttention($summaries, $data),
             'top_performers' => array_slice($rankings['best_quality'], 0, 3),
             'progress_insights' => $this->insightFormatter->teamInsights(
@@ -670,6 +670,27 @@ class EmployeePerformanceAnalytics
         }
 
         return round($current - $previous, 1);
+    }
+
+    /**
+     * @return list<array{item: string, count: int, trend: int|null}>
+     */
+    private function teamWeaknessesWithTrend(LoadedPerformanceData $data): array
+    {
+        $current = $this->jsonAggregator->rankedItems($data->analyses, 'weaknesses_json');
+        $previousCounts = $this->jsonAggregator->countItems(
+            $data->previousPeriod?->analyses ?? collect(),
+            'weaknesses_json',
+        );
+
+        return array_map(function (array $row) use ($previousCounts): array {
+            $previous = $previousCounts[$row['item']] ?? 0;
+            $delta = $this->percentDelta($row['count'], $previous);
+
+            $row['trend'] = $delta === null ? null : (int) round($delta);
+
+            return $row;
+        }, $current);
     }
 
     /**
