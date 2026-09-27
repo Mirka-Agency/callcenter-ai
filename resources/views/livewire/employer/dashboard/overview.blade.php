@@ -40,12 +40,13 @@
 
     <div @class([
         'grid items-stretch gap-6',
-        'lg:grid-cols-[minmax(14rem,2fr)_minmax(0,5fr)]' => ! empty($teamWeaknesses),
+        'lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]' => ! empty($teamWeaknesses),
     ])>
         @include('livewire.employer.partials.team-weaknesses-card', [
             'teamWeaknesses' => $teamWeaknesses,
             'selectedTeamWeakness' => $selectedTeamWeakness,
             'teamWeaknessCalls' => $teamWeaknessCalls,
+            'variant' => 'table',
             'cardClass' => 'h-full',
         ])
 

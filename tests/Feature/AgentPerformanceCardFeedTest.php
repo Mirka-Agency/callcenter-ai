@@ -159,8 +159,10 @@ class AgentPerformanceCardFeedTest extends TestCase
         $this->assertNotFalse($weaknessesPosition);
         $this->assertLessThan($weaknessesPosition, $statsPosition);
         $this->assertLessThan($agentsPosition, $weaknessesPosition);
-        $this->assertStringContainsString('جمع‌بندی ضعیف انتهای تماس (2)', $html);
-        $this->assertStringContainsString('عدم تأیید نهایی نیاز مشتری (1)', $html);
+        $this->assertStringContainsString('مهمترین نقاط ضعف شناسایی شده در مکالمات تیم', $html);
+        $this->assertStringContainsString('جمع‌بندی ضعیف انتهای تماس', $html);
+        $this->assertStringContainsString('عدم تأیید نهایی نیاز مشتری', $html);
+        $this->assertStringNotContainsString('جمع‌بندی ضعیف انتهای تماس (2)', $html);
 
         Livewire::test(Performance::class)
             ->assertSee('ضعف‌های پرتکرار تیم')

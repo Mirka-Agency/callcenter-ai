@@ -32,7 +32,8 @@ class TeamWeaknessCallDrilldownTest extends TestCase
 
         Livewire::test(Overview::class)
             ->assertSee('ضعف‌های پرتکرار تیم')
-            ->assertSee('جمع‌بندی ضعیف انتهای تماس (1)')
+            ->assertSee('جمع‌بندی ضعیف انتهای تماس')
+            ->assertDontSee('جمع‌بندی ضعیف انتهای تماس (1)')
             ->call('selectTeamWeakness', 'جمع‌بندی ضعیف انتهای تماس')
             ->assertSet('selectedTeamWeakness', 'جمع‌بندی ضعیف انتهای تماس')
             ->assertSee('مشتری الف')
