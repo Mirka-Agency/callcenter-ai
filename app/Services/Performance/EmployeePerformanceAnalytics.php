@@ -39,11 +39,16 @@ class EmployeePerformanceAnalytics
         private PerformanceExecutiveSummaryService $summaryService,
     ) {}
 
+    public static function teamDashboardCacheKey(ReportFilter $filter): string
+    {
+        return 'performance:team:highlights:'.$filter->cacheKey().':'.OrganizationHolidays::cacheToken($filter->organizationId);
+    }
+
     /** @return array<string, mixed> */
     public function teamDashboard(ReportFilter $filter): array
     {
         return Cache::remember(
-            'performance:team:'.$filter->cacheKey().':'.OrganizationHolidays::cacheToken($filter->organizationId),
+            self::teamDashboardCacheKey($filter),
             120,
             fn () => $this->buildTeamDashboard($filter),
         );
@@ -540,6 +545,8 @@ class EmployeePerformanceAnalytics
                     : null,
                 'improvement_percent' => $deltas['quality_improvement_percent'],
                 'trend' => $deltas['quality_trend'],
+                'top_strength' => $this->jsonAggregator->topItems($analyses, 'strengths_json', 1)[0] ?? null,
+                'top_weakness' => $this->jsonAggregator->topItems($analyses, 'weaknesses_json', 1)[0] ?? null,
             ];
 
             return $row;

@@ -7,6 +7,7 @@ use App\Enums\ReportDatePreset;
 use App\Livewire\Employer\Concerns\HasAgentPerformanceCardFeed;
 use App\Livewire\Employer\Concerns\HasQualityTrendDrilldown;
 use App\Livewire\Employer\Concerns\HasTeamWeaknessDrilldown;
+use App\Models\ConversationAnalysis;
 use App\Services\Demo\DemoAnalyticsClock;
 use App\Services\EmployerContext;
 use App\Services\EmployerDashboardAnalytics;
@@ -74,7 +75,54 @@ class Overview extends Component
                 ? ($performanceDashboard['quality_trend_insights'][$selectedQualityPeriod] ?? null)
                 : null,
             'agentProfileBase' => preg_replace('#/\d+$#', '', route('employer.intelligence.performance.show', 1)),
+            'progressAgentCalls' => $this->progressAgentCalls($agents),
         ]);
+    }
+
+    /**
+     * Latest analyzed call for each agent who needs to improve.
+     *
+     * @param  list<array<string, mixed>>  $agents
+     * @return list<array{name: string, url: string}>
+     */
+    private function progressAgentCalls(array $agents): array
+    {
+        $attention = collect($agents)->where('tier', 'attention')->values();
+
+        if ($attention->isEmpty()) {
+            return [];
+        }
+
+        $latest = ConversationAnalysis::query()
+            ->whereIn('organization_user_id', $attention->pluck('id'))
+            ->evaluable()
+            ->with([
+                'call:id,customer_id,customer_name,customer_phone,caller_number',
+                'call.customer:id,name,company_name,phone_number',
+            ])
+            ->orderByDesc('analyzed_at')
+            ->get()
+            ->unique('organization_user_id')
+            ->keyBy('organization_user_id');
+
+        return $attention->map(function (array $agent) use ($latest): array {
+            $analysis = $latest->get($agent['id']);
+            $call = $analysis?->call;
+            $customer = $call?->customer;
+            $name = $customer?->displayName()
+                ?: ($call?->customer_name ?: null)
+                ?: ($customer?->phone_number ?: null)
+                ?: ($call?->customer_phone ?: null)
+                ?: ($call?->caller_number ?: null)
+                ?: ($agent['name'] ?? '—');
+
+            return [
+                'name' => $name,
+                'url' => $analysis
+                    ? route('employer.intelligence.show', $analysis->id)
+                    : route('employer.intelligence.performance.show', $agent['id']),
+            ];
+        })->all();
     }
 
     /**

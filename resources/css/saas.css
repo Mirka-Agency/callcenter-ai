@@ -263,6 +263,10 @@
         @apply flex min-w-0 items-center gap-3 rounded-lg border border-white/80 bg-white/85 p-3.5 shadow-sm shadow-violet-950/5 backdrop-blur-sm dark:border-violet-800/60 dark:bg-zinc-900/70;
     }
 
+    .saas-today-summary-item--list {
+        @apply items-stretch flex-col gap-0;
+    }
+
     .saas-today-summary-icon {
         @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg;
     }
@@ -275,24 +279,36 @@
         @apply bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-200;
     }
 
-    .saas-today-summary-icon--unhappy {
-        @apply bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300;
-    }
-
-    .saas-today-summary-icon--agents {
-        @apply bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300;
-    }
-
-    .saas-today-summary-icon--sales {
-        @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300;
-    }
-
     .saas-today-summary-label {
         @apply text-xs font-medium leading-5 text-zinc-500 dark:text-zinc-400;
     }
 
     .saas-today-summary-value {
         @apply mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white;
+    }
+
+    .saas-today-summary-scale {
+        @apply ms-0.5 text-base font-medium text-violet-400 dark:text-violet-300;
+    }
+
+    .saas-today-summary-list {
+        @apply mt-3 flex max-h-44 flex-col gap-1.5 overflow-y-auto pe-0.5;
+    }
+
+    .saas-today-summary-row {
+        @apply flex min-w-0 items-center gap-2 rounded-md border border-violet-100 bg-violet-50/60 px-2 py-1.5 dark:border-violet-800/70 dark:bg-violet-950/30;
+    }
+
+    .saas-today-summary-index {
+        @apply shrink-0 text-xs font-semibold tabular-nums text-violet-500 dark:text-violet-300;
+    }
+
+    .saas-today-summary-name {
+        @apply min-w-0 flex-1 truncate text-sm font-medium text-zinc-800 dark:text-zinc-100;
+    }
+
+    .saas-today-summary-details {
+        @apply shrink-0 rounded-md bg-violet-600 px-2 py-1 text-xs font-medium text-white transition hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-400;
     }
 
     .saas-today-summary-meter {
@@ -330,34 +346,55 @@
         @apply text-2xl sm:text-3xl lg:text-3xl;
     }
 
-    .saas-stat--good {
-        @apply border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/50;
+    .saas-stat--good,
+    .dark .saas-stat--good {
+        border-color: #B7E4C7;
+        background-color: #F5FBF8;
     }
 
-    .saas-stat--medium {
-        @apply border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/50;
+    .saas-stat--medium,
+    .dark .saas-stat--medium {
+        border-color: #F3D19C;
+        background-color: #FFFBF6;
     }
 
-    .saas-stat--bad {
-        @apply border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/50;
+    .saas-stat--bad,
+    .dark .saas-stat--bad {
+        border-color: #E9B4B4;
+        background-color: #FEF7F7;
     }
 
     .saas-stat--good .saas-stat-label,
     .saas-stat--good .saas-stat-value,
-    .saas-stat--good .saas-stat-meta {
-        @apply text-emerald-800 dark:text-emerald-300;
+    .saas-stat--good .saas-stat-meta,
+    .saas-stat--good .saas-stat-comparison,
+    .dark .saas-stat--good .saas-stat-label,
+    .dark .saas-stat--good .saas-stat-value,
+    .dark .saas-stat--good .saas-stat-meta,
+    .dark .saas-stat--good .saas-stat-comparison {
+        color: #0F6B46;
     }
 
     .saas-stat--medium .saas-stat-label,
     .saas-stat--medium .saas-stat-value,
-    .saas-stat--medium .saas-stat-meta {
-        @apply text-orange-800 dark:text-orange-300;
+    .saas-stat--medium .saas-stat-meta,
+    .saas-stat--medium .saas-stat-comparison,
+    .dark .saas-stat--medium .saas-stat-label,
+    .dark .saas-stat--medium .saas-stat-value,
+    .dark .saas-stat--medium .saas-stat-meta,
+    .dark .saas-stat--medium .saas-stat-comparison {
+        color: #9A5B13;
     }
 
     .saas-stat--bad .saas-stat-label,
     .saas-stat--bad .saas-stat-value,
-    .saas-stat--bad .saas-stat-meta {
-        @apply text-red-800 dark:text-red-300;
+    .saas-stat--bad .saas-stat-meta,
+    .saas-stat--bad .saas-stat-comparison,
+    .dark .saas-stat--bad .saas-stat-label,
+    .dark .saas-stat--bad .saas-stat-value,
+    .dark .saas-stat--bad .saas-stat-meta,
+    .dark .saas-stat--bad .saas-stat-comparison {
+        color: #B54747;
     }
 
     .saas-stat--compact .saas-stat-meta:not(:has(*)) {

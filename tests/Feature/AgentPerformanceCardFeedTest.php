@@ -162,6 +162,9 @@ class AgentPerformanceCardFeedTest extends TestCase
         $this->assertStringContainsString('مهمترین نقاط ضعف شناسایی شده در مکالمات تیم', $html);
         $this->assertStringContainsString('جمع‌بندی ضعیف انتهای تماس', $html);
         $this->assertStringContainsString('عدم تأیید نهایی نیاز مشتری', $html);
+        $this->assertStringContainsString('نقطه قوت', $html);
+        $this->assertStringContainsString('نقطه ضعف', $html);
+        $this->assertStringContainsString('لحن محترمانه', $html);
         $this->assertStringNotContainsString('جمع‌بندی ضعیف انتهای تماس (2)', $html);
 
         Livewire::test(Performance::class)
@@ -307,7 +310,7 @@ class AgentPerformanceCardFeedTest extends TestCase
                 'is_evaluable' => true,
                 'summary' => 'خلاصه تست',
                 'sentiment' => AnalysisSentiment::Neutral,
-                'strengths_json' => [],
+                'strengths_json' => ['لحن محترمانه'],
                 'weaknesses_json' => [$weakness],
                 'next_actions_json' => [],
                 'lead_quality_json' => ['score' => 50, 'level' => 'medium', 'reason' => 'test'],
