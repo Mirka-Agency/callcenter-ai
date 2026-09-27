@@ -99,11 +99,13 @@
         'tradingOpportunities' => $tradingOpportunities,
     ])
 
-    @include('livewire.employer.partials.sentiment-customers-card', [
-        'sentimentCustomers' => $sentimentCustomers,
-    ])
+    <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        @include('livewire.employer.partials.sentiment-customers-card', [
+            'sentimentCustomers' => $sentimentCustomers,
+        ])
 
-    @include('livewire.employer.partials.forgotten-follow-ups-card', [
-        'forgottenFollowUps' => $forgottenFollowUps,
-    ])
+        @include('livewire.employer.partials.forgotten-follow-ups-card', [
+            'forgottenFollowUps' => $forgottenFollowUps,
+        ])
+    </div>
 </div>

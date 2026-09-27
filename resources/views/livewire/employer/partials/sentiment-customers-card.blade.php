@@ -22,7 +22,7 @@
 @endphp
 
 <section
-    class="saas-card w-full overflow-hidden p-0 lg:w-1/2"
+    class="saas-card min-w-0 w-full overflow-hidden p-0"
     data-tour="dashboard-sentiment-customers"
     x-data="{ tab: 'satisfied' }"
 >
