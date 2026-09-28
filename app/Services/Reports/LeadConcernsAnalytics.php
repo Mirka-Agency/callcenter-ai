@@ -19,23 +19,64 @@ class LeadConcernsAnalytics
             ->select(['id', 'lead_quality_json'])
             ->chunkById(200, function (Collection $chunk) use (&$distribution, &$scores): void {
                 foreach ($chunk as $analysis) {
-                    $lead = $analysis->lead_quality_json;
-                    if (! is_array($lead) || empty($lead)) {
-                        continue;
-                    }
-
-                    $level = strtolower((string) ($lead['level'] ?? 'medium'));
-                    if (! isset($distribution[$level])) {
-                        $level = 'medium';
-                    }
-                    $distribution[$level]++;
-
-                    if (isset($lead['score'])) {
-                        $scores[] = (int) $lead['score'];
-                    }
+                    $this->accumulateLead($analysis->lead_quality_json, $distribution, $scores);
                 }
             });
 
+        return $this->leadDistributionResult($distribution, $scores);
+    }
+
+    /**
+     * Same rollup as the database scan, over analyses already loaded for this dashboard.
+     *
+     * @param  Collection<int, ConversationAnalysis>  $analyses
+     * @return array{high: int, medium: int, low: int, total: int, average_score: float}
+     */
+    public function summarizeLoaded(Collection $analyses): array
+    {
+        $distribution = ['high' => 0, 'medium' => 0, 'low' => 0];
+        $scores = [];
+
+        foreach ($analyses as $analysis) {
+            if ($analysis->is_evaluable !== true || (int) $analysis->score <= 0) {
+                continue;
+            }
+
+            $this->accumulateLead($analysis->lead_quality_json, $distribution, $scores);
+        }
+
+        return $this->leadDistributionResult($distribution, $scores);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $lead
+     * @param  array{high: int, medium: int, low: int}  $distribution
+     * @param  list<int>  $scores
+     */
+    private function accumulateLead(mixed $lead, array &$distribution, array &$scores): void
+    {
+        if (! is_array($lead) || $lead === []) {
+            return;
+        }
+
+        $level = strtolower((string) ($lead['level'] ?? 'medium'));
+        if (! isset($distribution[$level])) {
+            $level = 'medium';
+        }
+        $distribution[$level]++;
+
+        if (isset($lead['score'])) {
+            $scores[] = (int) $lead['score'];
+        }
+    }
+
+    /**
+     * @param  array{high: int, medium: int, low: int}  $distribution
+     * @param  list<int>  $scores
+     * @return array{high: int, medium: int, low: int, total: int, average_score: float}
+     */
+    private function leadDistributionResult(array $distribution, array $scores): array
+    {
         return [
             'high' => $distribution['high'],
             'medium' => $distribution['medium'],

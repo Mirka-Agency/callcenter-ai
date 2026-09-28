@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +18,27 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class EmployeeIntegrationMeta extends Model
 {
     protected $table = 'employee_integration_meta';
+
+    protected static function booted(): void
+    {
+        $refresh = function (EmployeeIntegrationMeta $meta): void {
+            if ($meta->key !== 'extension') {
+                return;
+            }
+
+            $organizationId = OrganizationUser::query()
+                ->whereKey($meta->organization_user_id)
+                ->value('organization_id');
+
+            if ($organizationId) {
+                app(DefinedExtensionCallConstraint::class)
+                    ->refreshOrganization((int) $organizationId);
+            }
+        };
+
+        static::saved($refresh);
+        static::deleted($refresh);
+    }
 
     public function employee(): BelongsTo
     {

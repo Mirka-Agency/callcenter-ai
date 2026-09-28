@@ -4,13 +4,19 @@ namespace Tests\Feature;
 
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
+use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Enums\UserRole;
+use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
 use App\Livewire\Employer\Dashboard\Overview;
 use App\Models\Call;
+use App\Models\CallRecording;
 use App\Models\ConversationAnalysis;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
+use App\Models\OrganizationVoipConnection;
 use App\Models\User;
+use App\Models\VoipCallLog;
+use App\Models\VoipProvider;
 use App\Services\EmployerDashboardAnalytics;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -51,7 +57,9 @@ class ForgottenFollowUpsDashboardTest extends TestCase
 
         $html = Livewire::test(Overview::class)
             ->assertSee('پیگیری‌های فراموش‌شده')
-            ->assertSee('تاریخ تماس')
+            ->assertSee('همه')
+            ->assertSee('فوری')
+            ->assertSee('در حال تأخیر')
             ->assertSee('سارا کریمی')
             ->assertSee('شرکت آریا')
             ->assertSee('09123334455')
@@ -225,7 +233,7 @@ class ForgottenFollowUpsDashboardTest extends TestCase
         $this->assertSame('پیگیری معوق', $forgotten[0]['customer']);
     }
 
-    public function test_dashboard_sorts_forgotten_follow_ups_by_call_date_title(): void
+    public function test_dashboard_groups_forgotten_follow_ups_into_urgent_and_delayed(): void
     {
         $organization = $this->actingAsEmployer();
         $this->seedFollowUp($organization, [
@@ -249,11 +257,61 @@ class ForgottenFollowUpsDashboardTest extends TestCase
         $html = $component->html();
 
         $this->assertSame(['پیگیری قدیمی‌تر', 'پیگیری جدیدتر'], $this->forgottenNames($component));
-        $this->assertStringContainsString("sortBy('call_date')", $html);
-        $this->assertStringContainsString('saas-sort-icon', $html);
-        $this->assertStringContainsString('data-sort-call-date="', $html);
+        $this->assertStringNotContainsString("sortBy('call_date')", $html);
+        $this->assertStringNotContainsString('data-sort-call-date="', $html);
         $this->assertStringNotContainsString('wire:click="sortForgottenBy', $html);
         $this->assertFalse(method_exists(Overview::class, 'sortForgottenBy'));
+
+        $card = mb_substr($html, (int) mb_strpos($html, 'data-tour="dashboard-forgotten-followups"'));
+        $urgent = mb_strpos($card, 'data-forgotten-group="urgent"');
+        $delayed = mb_strpos($card, 'data-forgotten-group="delayed"');
+        $older = mb_strpos($card, 'پیگیری قدیمی‌تر');
+        $newer = mb_strpos($card, 'پیگیری جدیدتر');
+
+        $this->assertNotFalse($urgent);
+        $this->assertNotFalse($delayed);
+        $this->assertLessThan($older, $urgent);
+        $this->assertLessThan($delayed, $older);
+        $this->assertLessThan($newer, $delayed);
+    }
+
+    public function test_purged_recording_keeps_the_voip_link_on_old_forgotten_follow_ups(): void
+    {
+        config(['recordings.retention_days' => 30]);
+
+        $organization = $this->actingAsEmployer();
+        $recordingUrl = 'http://10.0.0.20/recordings/old-call.wav';
+
+        $this->seedFollowUp($organization, [
+            'external_id' => 'forgotten-old-link',
+            'customer_name' => 'تماس قدیمی',
+            'customer_phone' => '09120000077',
+            'follow_up' => 'تماس پیگیری فردا',
+            'analyzed_at' => now()->subDays(40),
+            'started_at' => now()->subDays(40),
+        ]);
+        $this->attachVoipRecording($organization, 'forgotten-old-link', $recordingUrl, expired: true);
+
+        $this->seedFollowUp($organization, [
+            'external_id' => 'forgotten-recent-link',
+            'customer_name' => 'تماس تازه',
+            'customer_phone' => '09120000078',
+            'follow_up' => 'تماس پیگیری فردا',
+            'analyzed_at' => now()->subDays(4),
+            'started_at' => now()->subDays(4),
+        ]);
+        $this->attachVoipRecording($organization, 'forgotten-recent-link', 'http://10.0.0.20/recordings/recent-call.wav', expired: false);
+
+        $forgotten = collect(EmployerDashboardAnalytics::forOrganization($organization->id)->forgottenFollowUps())
+            ->keyBy('customer');
+
+        $this->assertSame($recordingUrl, $forgotten['تماس قدیمی']['recording_url']);
+        $this->assertNull($forgotten['تماس تازه']['recording_url']);
+
+        Livewire::test(Overview::class)
+            ->assertSee('لینک تماس')
+            ->assertSee($recordingUrl)
+            ->assertDontSee('http://10.0.0.20/recordings/recent-call.wav');
     }
 
     public function test_empty_state_is_shown_when_there_are_no_forgotten_follow_ups(): void
@@ -334,6 +392,54 @@ class ForgottenFollowUpsDashboardTest extends TestCase
         $this->actingAs($employer);
 
         return $organization;
+    }
+
+    private function attachVoipRecording(Organization $organization, string $externalId, string $recordingUrl, bool $expired): void
+    {
+        $provider = VoipProvider::query()->firstOrCreate(
+            ['code' => VoipProviderCode::Custom->value],
+            [
+                'name' => 'Custom',
+                'adapter_class' => NullVoipAdapter::class,
+                'is_active' => true,
+            ],
+        );
+        $connection = OrganizationVoipConnection::query()->create([
+            'organization_id' => $organization->id,
+            'voip_provider_id' => $provider->id,
+            'name' => 'Asterisk '.$externalId,
+            'credentials' => [],
+            'webhook_token' => str_pad(md5($externalId), 48, 'a'),
+            'is_active' => true,
+            'ingestion_mode' => 'webhook',
+        ]);
+        $call = Call::query()->where('external_call_id', $externalId)->firstOrFail();
+        $log = VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => $externalId,
+            'direction' => 'inbound',
+            'source_number' => $call->customer_phone,
+            'destination_number' => '100',
+            'status' => 'completed',
+            'recording_url' => $recordingUrl,
+        ]);
+
+        $call->update(['voip_call_log_id' => $log->id]);
+        ConversationAnalysis::query()->where('call_id', $call->id)->update(['voip_call_log_id' => $log->id]);
+
+        CallRecording::query()->create([
+            'call_id' => $call->id,
+            'source_url' => $expired ? null : $recordingUrl,
+            'storage_disk' => 'local',
+            'storage_path' => $expired ? null : 'recordings/'.$call->id.'/call.wav',
+            'mime_type' => 'audio/wav',
+            'status' => $expired ? 'expired' : 'completed',
+            'is_expired' => $expired,
+            'expires_at' => $expired ? now()->subDay() : now()->addDays(10),
+            'expired_at' => $expired ? now()->subDay() : null,
+        ]);
     }
 
     /** @param  array<string, mixed>  $data */

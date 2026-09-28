@@ -5,8 +5,9 @@ namespace App\Models;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Call\Enums\UploaderType;
-use App\Models\CallProcessingJob;
 use App\Models\Concerns\OccurredBetween;
+use App\Services\CustomerPhoneResolver;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'started_at', 'ended_at',
     'duration_seconds', 'metadata', 'title', 'customer_name', 'customer_phone', 'customer_id',
     'notes', 'category', 'tags', 'conversation_date',
+    'counts_for_extension_reports',
 ])]
 class Call extends Model
 {
@@ -40,6 +42,7 @@ class Call extends Model
             'conversation_date' => 'datetime',
             'metadata' => 'array',
             'tags' => 'array',
+            'counts_for_extension_reports' => 'boolean',
         ];
     }
 
@@ -68,6 +71,18 @@ class Call extends Model
                 throw new \RuntimeException('Cannot link a call to a customer outside its organization.');
             }
         });
+
+        static::saving(function (Call $call): void {
+            $call->counts_for_extension_reports = app(DefinedExtensionCallConstraint::class)
+                ->countsForReports($call);
+        });
+
+        static::saving(function (Call $call): void {
+            $resolver = app(CustomerPhoneResolver::class);
+            $call->normalized_caller_number = $resolver->normalize($call->caller_number);
+            $call->normalized_receiver_number = $resolver->normalize($call->receiver_number);
+            $call->normalized_customer_phone = $resolver->normalize($call->customer_phone);
+        });
     }
 
     public function employee(): BelongsTo
@@ -95,6 +110,40 @@ class Call extends Model
         return $this->hasOne(CallRecording::class)
             ->available()
             ->latestOfMany();
+    }
+
+    /**
+     * A call has a recording when the PBX sent a URL or a recording row stores a file or source URL.
+     *
+     * @param  Builder<Call>  $query
+     * @return Builder<Call>
+     */
+    public function scopeWithRecording(Builder $query): Builder
+    {
+        $table = $query->getModel()->getTable();
+
+        return $query->where(function (Builder $eligible) use ($table): void {
+            $eligible->whereExists(function ($recordings) use ($table): void {
+                $recordings->selectRaw('1')
+                    ->from('call_recordings')
+                    ->whereColumn('call_recordings.call_id', $table.'.id')
+                    ->where(function ($file): void {
+                        $file->where(function ($path): void {
+                            $path->whereNotNull('call_recordings.storage_path')
+                                ->where('call_recordings.storage_path', '!=', '');
+                        })->orWhere(function ($url): void {
+                            $url->whereNotNull('call_recordings.source_url')
+                                ->where('call_recordings.source_url', '!=', '');
+                        });
+                    });
+            })->orWhereExists(function ($logs) use ($table): void {
+                $logs->selectRaw('1')
+                    ->from('voip_call_logs')
+                    ->whereColumn('voip_call_logs.id', $table.'.voip_call_log_id')
+                    ->whereNotNull('voip_call_logs.recording_url')
+                    ->where('voip_call_logs.recording_url', '!=', '');
+            });
+        });
     }
 
     public function analyses(): HasMany

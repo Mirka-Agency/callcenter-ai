@@ -4,9 +4,15 @@ namespace App\Livewire\Employer\Intelligence;
 
 use App\Application\Call\Services\CallEmployeeResolver;
 use App\Application\Call\Services\UnmatchedVoipExtensionService;
+use App\Application\Intelligence\Services\CallAnalysisQueueService;
+use App\Domain\Call\Enums\CallProcessingStatus;
+use App\Domain\Processing\Enums\ProcessingJobStatus;
+use App\Exceptions\InsufficientWalletBalanceException;
 use App\Livewire\Concerns\ResolvesRecordingPlayback;
+use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
+use App\Services\AiBillingService;
 use App\Services\EmployerContext;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -26,14 +32,32 @@ class Show extends Component
     public function mount(ConversationAnalysis $analysis): void
     {
         abort_unless($analysis->organization_id === EmployerContext::organizationId(), 404);
-        $this->analysis = $analysis->load([
-            'employee.user',
-            'call.recording',
-            'call.processingJob',
-            'call.customer.company',
-            'callLog.connection',
-            'crmSyncs.crmConnection.provider',
-        ]);
+        $this->analysis = $analysis;
+        $this->loadAnalysis();
+    }
+
+    public function reanalyze(): void
+    {
+        $call = $this->analysis->call;
+
+        if ($call === null) {
+            session()->flash('error', __('ui.intelligence.reanalyze_one_unavailable'));
+
+            return;
+        }
+
+        $queued = app(CallAnalysisQueueService::class)->dispatchForCall($call, forceReanalyze: true);
+
+        $this->analysis->refresh();
+        $this->loadAnalysis();
+
+        if ($queued) {
+            session()->flash('status', __('ui.intelligence.reanalyze_one_queued'));
+
+            return;
+        }
+
+        session()->flash('error', $this->reanalyzeFailureMessage($call->fresh(['recording', 'processingJob', 'voipCallLog'])));
     }
 
     public function recordingPlayback(): array
@@ -82,14 +106,8 @@ class Show extends Component
             );
         }
 
-        $this->analysis->refresh()->load([
-            'employee.user',
-            'callLog.connection',
-            'call.recording',
-            'call.processingJob',
-            'call.customer.company',
-            'crmSyncs.crmConnection.provider',
-        ]);
+        $this->analysis->refresh();
+        $this->loadAnalysis();
         $this->assignEmployeeId = 0;
 
         session()->flash('status', $extension
@@ -119,6 +137,59 @@ class Show extends Component
                 ->orderBy('last_name')
                 ->get(),
             'createEmployeeUrl' => route('employer.employees.create'),
+            'canReanalyze' => $this->analysis->call !== null,
         ]);
+    }
+
+    private function loadAnalysis(): void
+    {
+        $this->analysis->load([
+            'employee.user',
+            'call.recording',
+            'call.processingJob',
+            'call.customer.company',
+            'callLog.connection',
+            'crmSyncs.crmConnection.provider',
+        ]);
+    }
+
+    private function reanalyzeFailureMessage(Call $call): string
+    {
+        $job = $call->processingJob;
+
+        if ($job && in_array($job->status, [
+            ProcessingJobStatus::Queued,
+            ProcessingJobStatus::Processing,
+            ProcessingJobStatus::Uploading,
+        ], true)) {
+            return __('ui.intelligence.reanalyze_one_already_queued');
+        }
+
+        if ($call->processing_status === CallProcessingStatus::Skipped && filled($call->processing_error)) {
+            return (string) $call->processing_error;
+        }
+
+        $recording = $call->recording;
+        $hasLocalRecording = $recording
+            && $recording->status === 'completed'
+            && filled($recording->storage_path)
+            && ! $recording->is_expired;
+        $hasRecordingUrl = filled($call->voipCallLog?->recording_url) || filled($recording?->source_url);
+
+        if (! $hasLocalRecording && ! $hasRecordingUrl) {
+            return __('ui.processing.retry_missing_recording');
+        }
+
+        if (! $call->organization_user_id) {
+            return __('ui.intelligence.reanalyze_one_employee_required');
+        }
+
+        try {
+            app(AiBillingService::class)->assertCanAnalyze($call->organization_id);
+        } catch (InsufficientWalletBalanceException) {
+            return __('ui.wallet.insufficient');
+        }
+
+        return __('ui.intelligence.reanalyze_one_failed');
     }
 }

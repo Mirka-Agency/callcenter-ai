@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Call;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use Illuminate\Support\Collection;
 
 class CustomerCompanyService
@@ -58,12 +60,20 @@ class CustomerCompanyService
     public function summaryStats(CustomerCompany $company): array
     {
         $contacts = $company->contacts()->get();
-        $analyzedCalls = (int) $contacts->sum(fn (Customer $contact) => $contact->total_calls);
+        $contactIds = $contacts->pluck('id');
+        $totalCalls = $contactIds->isEmpty()
+            ? 0
+            : app(DefinedExtensionCallConstraint::class)->apply(
+                Call::query()
+                    ->where('organization_id', $company->organization_id)
+                    ->whereIn('customer_id', $contactIds),
+                $company->organization_id,
+            )->count();
 
         return [
             'contacts' => $contacts->count(),
-            'total_calls' => (int) $contacts->sum('total_calls'),
-            'analyzed_calls' => $analyzedCalls,
+            'total_calls' => $totalCalls,
+            'analyzed_calls' => $totalCalls,
             'high_lead_contacts' => $contacts->where('latest_lead_level', 'high')->count(),
         ];
     }

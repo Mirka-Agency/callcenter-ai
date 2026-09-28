@@ -149,7 +149,7 @@
     </section>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <x-saas.stat-card label="کل تماس‌ها" :value="$customer->total_calls" :hint="$customer->total_answered_calls.' پاسخ‌داده'" />
+        <x-saas.stat-card label="کل تماس‌ها" :value="$analytics['total_calls']" :hint="$analytics['answered_calls'].' پاسخ‌داده'" />
         <x-saas.stat-card label="تماس‌های تحلیل‌شده" :value="$analytics['analyzed_calls']" hint="بر اساس هوش مکالمه" />
         <x-saas.stat-card label="میانگین امتیاز" :value="$analytics['average_score'] ?: '—'" hint="از تماس‌های تحلیل‌شده" />
         <x-saas.stat-card
@@ -264,7 +264,13 @@
         <div class="flex items-center justify-between">
             <div>
                 <h2 class="text-lg font-semibold">تاریخچه تماس‌ها</h2>
-                <p class="mt-1 text-sm text-zinc-500">{{ count($timeline) }} تماس ثبت‌شده</p>
+                <p class="mt-1 text-sm text-zinc-500">
+                    @if (($timelineTotal ?? count($timeline)) > count($timeline))
+                        {{ count($timeline) }} تماس اخیر از {{ $timelineTotal }}
+                    @else
+                        {{ count($timeline) }} تماس ثبت‌شده
+                    @endif
+                </p>
             </div>
         </div>
         <div class="mt-6 space-y-4">

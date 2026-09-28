@@ -5,15 +5,18 @@ namespace App\Services;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Models\EmployeePerformanceSnapshot;
 use App\Models\OrganizationUser;
 use App\Services\Performance\Calculators\JsonFieldAggregator;
+use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Support\ChartDayFilter;
 use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
 use App\Support\OrganizationHolidays;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class EmployeeDashboardAnalytics
@@ -27,8 +30,6 @@ class EmployeeDashboardAnalytics
     {
         return new self($employee, app(JsonFieldAggregator::class));
     }
-
-    private ?Collection $cachedWorkdayAnalyses = null;
 
     private ?Collection $cachedTrendAnalyses = null;
 
@@ -50,29 +51,31 @@ class EmployeeDashboardAnalytics
     /** @return array<string, mixed> */
     private function buildCockpit(): array
     {
-        $analyses = $this->workdayAnalyses();
-
         $weekly = $this->periodAverage(now()->subWeek());
         $monthly = $this->periodAverage(now()->startOfMonth());
         $previousWeek = $this->periodAverage(now()->subWeeks(2), now()->subWeek());
         $previousMonth = $this->periodAverage(now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth());
 
-        $callCount = Call::query()
-            ->where('organization_user_id', $this->employee->id)
-            ->count();
+        $callCount = app(DefinedExtensionCallConstraint::class)->apply(
+            Call::query()->where('organization_user_id', $this->employee->id),
+            $this->employee->organization_id,
+        )->count();
 
-        $evaluable = $analyses->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable());
-        $avgScore = $evaluable->isNotEmpty() ? round((float) $evaluable->avg('score'), 1) : 0.0;
-        $latestEvaluable = $evaluable->sortByDesc('analyzed_at')->first();
+        $evaluable = $this->evaluableWorkdayQuery();
+        $sampleCount = (clone $evaluable)->count();
+        $avgScore = $sampleCount > 0 ? round((float) (clone $evaluable)->avg('conversation_analyses.score'), 1) : 0.0;
+        $latestScore = (clone $evaluable)
+            ->orderByDesc('conversation_analyses.analyzed_at')
+            ->value('conversation_analyses.score');
 
         return [
-            'performance_score' => $latestEvaluable?->score ?? $avgScore,
+            'performance_score' => $latestScore ?? $avgScore,
             'weekly_progress' => $weekly,
             'monthly_progress' => $monthly,
             'weekly_delta' => $weekly && $previousWeek ? round($weekly - $previousWeek, 1) : 0,
             'monthly_delta' => $monthly && $previousMonth ? round($monthly - $previousMonth, 1) : 0,
             'call_count' => $callCount,
-            'analyzed_count' => $analyses->count(),
+            'analyzed_count' => $this->workdayQuery()->count(),
             'average_call_score' => $avgScore,
             'customer_satisfaction' => $this->sentimentScore(),
             'improvement_trend' => $this->improvementTrend(),
@@ -187,28 +190,31 @@ class EmployeeDashboardAnalytics
     private function analysisQuery()
     {
         return ConversationAnalysis::query()
-            ->where('organization_user_id', $this->employee->id);
+            ->where('conversation_analyses.organization_user_id', $this->employee->id);
     }
 
-    /** @return Collection<int, ConversationAnalysis> */
-    private function workdayAnalyses(): Collection
+    /** @return Builder<ConversationAnalysis> */
+    private function workdayQuery(): Builder
     {
-        return $this->cachedWorkdayAnalyses ??= $this->analysisQuery()
-            ->with('call:id,conversation_date,started_at,created_at')
-            ->get([
-                'id',
-                'call_id',
-                'score',
-                'is_evaluable',
-                'sentiment',
-                'analyzed_at',
-            ])
-            ->reject(function (ConversationAnalysis $analysis): bool {
-                $at = $analysis->occurredAt() ?? $analysis->analyzed_at;
+        $moment = 'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, conversation_analyses.analyzed_at)';
 
-                return $at instanceof CarbonInterface && CompanyWorkCalendar::isHolidayMoment($at, $this->holidayWeekdays());
+        return CompanyWorkCalendar::whereWorkday(
+            $this->analysisQuery()
+                ->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id'),
+            $moment,
+            $this->holidayWeekdays(),
+        );
+    }
+
+    /** @return Builder<ConversationAnalysis> */
+    private function evaluableWorkdayQuery(): Builder
+    {
+        return $this->workdayQuery()
+            ->where(function (Builder $query): void {
+                $query->where('conversation_analyses.is_evaluable', true)
+                    ->orWhereNull('conversation_analyses.is_evaluable');
             })
-            ->values();
+            ->where('conversation_analyses.score', '>', 0);
     }
 
     /** @return Collection<int, ConversationAnalysis> */
@@ -284,46 +290,34 @@ class EmployeeDashboardAnalytics
 
     private function periodAverage(?CarbonInterface $from = null, ?CarbonInterface $to = null): ?float
     {
-        $scores = $this->workdayAnalyses()->filter(function (ConversationAnalysis $analysis) use ($from, $to): bool {
-            if (! $analysis->isEvaluable() || $analysis->analyzed_at === null) {
-                return false;
-            }
+        $scores = $this->evaluableWorkdayQuery()
+            ->whereNotNull('conversation_analyses.analyzed_at')
+            ->when($from, fn (Builder $query) => $query->where('conversation_analyses.analyzed_at', '>=', $from))
+            ->when($to, fn (Builder $query) => $query->where('conversation_analyses.analyzed_at', '<=', $to));
 
-            if ($from && $analysis->analyzed_at->lt($from)) {
-                return false;
-            }
-
-            if ($to && $analysis->analyzed_at->gt($to)) {
-                return false;
-            }
-
-            return true;
-        });
-
-        if ($scores->isEmpty()) {
+        if (! (clone $scores)->exists()) {
             return null;
         }
 
-        return round((float) $scores->avg('score'), 1);
+        return round((float) $scores->avg('conversation_analyses.score'), 1);
     }
 
     private function sentimentScore(): float
     {
-        $weights = [
-            AnalysisSentiment::Positive->value => 100,
-            AnalysisSentiment::Mixed->value => 60,
-            AnalysisSentiment::Neutral->value => 50,
-            AnalysisSentiment::Negative->value => 20,
-        ];
+        $weight = SentimentScoreCalculator::weightExpression('conversation_analyses.sentiment');
+        $stats = $this->workdayQuery()->toBase();
+        $stats->columns = [];
+        $row = $stats
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(COALESCE('.$weight.', 50)) as weighted')
+            ->first();
+        $total = (int) ($row->total ?? 0);
 
-        $analyses = $this->workdayAnalyses();
-        if ($analyses->isEmpty()) {
+        if ($total === 0) {
             return 0;
         }
 
-        $total = $analyses->sum(fn ($a) => $weights[$a->sentiment->value] ?? 50);
-
-        return round($total / $analyses->count(), 1);
+        return round(((float) $row->weighted) / $total, 1);
     }
 
     private function improvementTrend(): array

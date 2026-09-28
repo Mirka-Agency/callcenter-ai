@@ -17,3 +17,4 @@ Artisan::command('integrations:sync-meta-definitions', function () {
 
 Schedule::command('recordings:purge-expired')->daily();
 Schedule::command('demo:refresh-analytics-clock')->daily();
+Schedule::command('voip:resolve-outcomes')->everyFiveMinutes()->withoutOverlapping();

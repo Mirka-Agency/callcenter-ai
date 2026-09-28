@@ -7,6 +7,7 @@ use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Livewire\Employer\Dashboard\Overview;
 use App\Models\Call;
+use App\Models\CallRecording;
 use App\Models\ConversationAnalysis;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
@@ -143,6 +144,15 @@ class DemoAnalyticsClockTest extends TestCase
             'ended_at' => $startedAt->copy()->addMinutes(6),
             'conversation_date' => $startedAt,
             'duration_seconds' => 360,
+        ]);
+
+        CallRecording::query()->create([
+            'call_id' => $call->id,
+            'source_url' => 'demo://recordings/'.$call->id.'.wav',
+            'storage_disk' => 'local',
+            'storage_path' => 'recordings/demo/'.$call->id.'.wav',
+            'status' => 'completed',
+            'is_expired' => false,
         ]);
 
         ConversationAnalysis::query()->create([

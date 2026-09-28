@@ -111,6 +111,18 @@ class CompanyWorkCalendar
     }
 
     /**
+     * Calendar date in Asia/Tehran for a UTC timestamp expression.
+     */
+    public static function sqlDayKey(string $utcTimestampSql, string $driver): string
+    {
+        return match ($driver) {
+            'pgsql' => "((($utcTimestampSql) AT TIME ZONE 'UTC') AT TIME ZONE '".self::TIMEZONE."')::date",
+            'mysql', 'mariadb' => "DATE(CONVERT_TZ($utcTimestampSql, '+00:00', '+03:30'))",
+            default => "date($utcTimestampSql, '+210 minutes')",
+        };
+    }
+
+    /**
      * @return list<int>
      */
     public static function normalizeWeekdays(mixed $holidayWeekdays): array

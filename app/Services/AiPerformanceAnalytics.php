@@ -2,16 +2,18 @@
 
 namespace App\Services;
 
-use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\DTOs\ReportFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Models\OrganizationUser;
+use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Support\CompanyWorkCalendar;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class AiPerformanceAnalytics
 {
@@ -33,7 +35,10 @@ class AiPerformanceAnalytics
         $query = $this->baseQuery();
 
         $totalAnalyzed = (clone $query)->count();
-        $totalCalls = Call::query()->where('organization_id', $this->organizationId)->count();
+        $totalCalls = app(DefinedExtensionCallConstraint::class)->apply(
+            Call::query()->where('organization_id', $this->organizationId),
+            $this->organizationId,
+        )->count();
         $avgScore = round((float) (clone $query)->evaluable()->avg('score'), 1);
         $totalCost = round((float) (clone $query)->sum('cost'), 4);
         $totalTokens = (int) (clone $query)->sum('total_tokens');
@@ -92,7 +97,10 @@ class AiPerformanceAnalytics
             $query->whereKey($filters['employee_id']);
         }
 
-        return $query->get()->map(fn (OrganizationUser $employee) => [
+        $employees = $query->get();
+        $recent = $this->recentItemsByEmployee($employees->pluck('id'));
+
+        return $employees->map(fn (OrganizationUser $employee) => [
             'id' => $employee->id,
             'name' => $employee->full_name,
             'department' => $employee->department,
@@ -100,8 +108,8 @@ class AiPerformanceAnalytics
             'total_analyzed' => $employee->conversation_analyses_count,
             'best_score' => $employee->conversation_analyses_max_score,
             'worst_score' => $employee->conversation_analyses_min_score,
-            'common_strengths' => $this->commonItems($employee->id, 'strengths_json'),
-            'common_weaknesses' => $this->commonItems($employee->id, 'weaknesses_json'),
+            'common_strengths' => $this->commonItemsFromRows($recent->get($employee->id, collect()), 'strengths_json'),
+            'common_weaknesses' => $this->commonItemsFromRows($recent->get($employee->id, collect()), 'weaknesses_json'),
         ]);
     }
 
@@ -157,6 +165,77 @@ class AiPerformanceAnalytics
         $from ??= now()->subDays(30);
         $to ??= now();
 
+        if ($period === 'week') {
+            return $this->weeklyScoreTrend($from, $to, $employeeId);
+        }
+
+        return $this->bucketedScoreTrend($period, $from, $to, $employeeId);
+    }
+
+    /** @return list<array{period: string, avg_score: float, count: int}> */
+    private function bucketedScoreTrend(string $period, Carbon $from, Carbon $to, ?int $employeeId): array
+    {
+        $driver = DB::connection()->getDriverName();
+        $query = ConversationAnalysis::query()
+            ->where('conversation_analyses.organization_id', $this->organizationId)
+            ->whereBetween('conversation_analyses.analyzed_at', [$from, $to]);
+
+        if ($employeeId) {
+            $query->where('conversation_analyses.organization_user_id', $employeeId);
+        }
+
+        if ($period === 'day') {
+            $query->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id');
+            $bucket = CompanyWorkCalendar::sqlDayKey(
+                'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, conversation_analyses.analyzed_at)',
+                $driver,
+            );
+        } else {
+            $bucket = match ($driver) {
+                'pgsql' => "to_char(conversation_analyses.analyzed_at, 'YYYY-MM')",
+                'mysql', 'mariadb' => "DATE_FORMAT(conversation_analyses.analyzed_at, '%Y-%m')",
+                default => "strftime('%Y-%m', conversation_analyses.analyzed_at)",
+            };
+        }
+
+        $evaluable = $driver === 'pgsql'
+            ? '(conversation_analyses.is_evaluable IS NULL OR conversation_analyses.is_evaluable IS TRUE)'
+            : '(conversation_analyses.is_evaluable IS NULL OR conversation_analyses.is_evaluable = 1)';
+        $base = $query->toBase();
+        $base->columns = [];
+        $closedDays = $period === 'day'
+            ? app(ChartHolidayCalendar::class)->forRange($this->organizationId, $from, $to)
+            : null;
+        $series = [];
+
+        foreach ($base
+            ->selectRaw($bucket.' as period_key')
+            ->selectRaw('AVG(CASE WHEN '.$evaluable.' AND conversation_analyses.score > 0 THEN conversation_analyses.score END) as avg_score')
+            ->selectRaw('COUNT(*) as aggregate')
+            ->groupByRaw($bucket)
+            ->orderByRaw($bucket)
+            ->get() as $row) {
+            $key = $period === 'day'
+                ? substr((string) $row->period_key, 0, 10)
+                : substr((string) $row->period_key, 0, 7);
+
+            if ($key === '' || ($closedDays !== null && $closedDays->hides($key))) {
+                continue;
+            }
+
+            $series[] = [
+                'period' => $key,
+                'avg_score' => round((float) ($row->avg_score ?? 0), 1),
+                'count' => (int) $row->aggregate,
+            ];
+        }
+
+        return $series;
+    }
+
+    /** @return list<array{period: string, avg_score: float, count: int}> */
+    private function weeklyScoreTrend(Carbon $from, Carbon $to, ?int $employeeId): array
+    {
         $query = $this->baseQuery()
             ->whereBetween('analyzed_at', [$from, $to])
             ->orderBy('analyzed_at');
@@ -165,16 +244,8 @@ class AiPerformanceAnalytics
             $query->where('organization_user_id', $employeeId);
         }
 
-        $closedDays = app(ChartHolidayCalendar::class)->forRange($this->organizationId, $from, $to);
-        $grouped = $query->with('call:id,conversation_date,started_at,created_at')->get()->groupBy(function (ConversationAnalysis $analysis) use ($period) {
-            return match ($period) {
-                'week' => $analysis->analyzed_at->format('Y-W'),
-                'month' => $analysis->analyzed_at->format('Y-m'),
-                default => ($at = $analysis->occurredAt() ?? $analysis->analyzed_at)
-                ? CompanyWorkCalendar::dayKey($at)
-                : '',
-            };
-        })->reject(fn (Collection $items, string $key) => $period === 'day' && $closedDays->hides($key));
+        $grouped = $query->get(['id', 'score', 'is_evaluable', 'analyzed_at'])
+            ->groupBy(fn (ConversationAnalysis $analysis) => $analysis->analyzed_at->format('Y-W'));
 
         return $grouped->map(fn (Collection $items, string $key) => [
             'period' => $key,
@@ -185,36 +256,71 @@ class AiPerformanceAnalytics
 
     private function averageSentimentScore(): float
     {
-        $weights = [
-            AnalysisSentiment::Positive->value => 100,
-            AnalysisSentiment::Mixed->value => 60,
-            AnalysisSentiment::Neutral->value => 50,
-            AnalysisSentiment::Negative->value => 20,
-        ];
+        $weight = SentimentScoreCalculator::weightExpression('sentiment');
+        $stats = $this->baseQuery()->toBase();
+        $stats->columns = [];
+        $row = $stats
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(COALESCE('.$weight.', 50)) as weighted')
+            ->first();
+        $total = (int) ($row->total ?? 0);
 
-        $analyses = $this->baseQuery()->get(['sentiment']);
-
-        if ($analyses->isEmpty()) {
+        if ($total === 0) {
             return 0;
         }
 
-        $total = $analyses->sum(fn (ConversationAnalysis $analysis) => $weights[$analysis->sentiment->value] ?? 50);
-
-        return round($total / $analyses->count(), 1);
+        return round(((float) $row->weighted) / $total, 1);
     }
 
-    private function commonItems(int $employeeId, string $column): array
+    /**
+     * Latest 20 analyses per employee, loaded once for the whole team.
+     *
+     * @param  Collection<int, int>  $employeeIds
+     * @return Collection<int|string, Collection<int, object>>
+     */
+    private function recentItemsByEmployee(Collection $employeeIds): Collection
     {
-        $analyses = $this->baseQuery()
-            ->where('organization_user_id', $employeeId)
-            ->latest('analyzed_at')
-            ->limit(20)
-            ->get();
+        if ($employeeIds->isEmpty()) {
+            return collect();
+        }
 
+        return DB::query()
+            ->fromSub(function ($query) use ($employeeIds): void {
+                $query->from('conversation_analyses')
+                    ->select(['organization_user_id', 'strengths_json', 'weaknesses_json'])
+                    ->selectRaw('ROW_NUMBER() OVER (PARTITION BY organization_user_id ORDER BY analyzed_at DESC, id DESC) as item_rank')
+                    ->where('organization_id', $this->organizationId)
+                    ->whereIn('organization_user_id', $employeeIds->all());
+            }, 'ranked_analyses')
+            ->where('item_rank', '<=', 20)
+            ->get()
+            ->groupBy('organization_user_id');
+    }
+
+    /**
+     * @param  Collection<int, object>  $rows
+     * @return list<mixed>
+     */
+    private function commonItemsFromRows(Collection $rows, string $column): array
+    {
         $counts = [];
 
-        foreach ($analyses as $analysis) {
-            foreach ($analysis->{$column} ?? [] as $item) {
+        foreach ($rows as $row) {
+            $items = $row->{$column} ?? [];
+
+            if (is_string($items)) {
+                $items = json_decode($items, true) ?: [];
+            }
+
+            if (! is_array($items)) {
+                continue;
+            }
+
+            foreach ($items as $item) {
+                if (! is_string($item) && ! is_int($item)) {
+                    continue;
+                }
+
                 $counts[$item] = ($counts[$item] ?? 0) + 1;
             }
         }

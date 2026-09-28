@@ -3,44 +3,30 @@
 namespace App\Services\Reports;
 
 use App\DTOs\ReportFilter;
-use App\Models\Call;
 use App\Models\VoipCallLog;
 use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class CallMetricsAnalytics
 {
     public function totalCalls(ReportFilter $filter): int
     {
-        $voip = $filter->applyToVoipQuery(VoipCallLog::query())->count();
-
-        $manualQuery = Call::query()
-            ->where('organization_id', $filter->organizationId)
-            ->whereBetween('created_at', [$filter->from, $filter->to]);
-
-        return $voip + $manualQuery->count();
+        return app(OrganizationCallMetrics::class)->countBetween(
+            $filter->organizationId,
+            $filter->from,
+            $filter->to,
+        );
     }
 
     /** @return list<array{period: string, label: string, count: int}> */
     public function callActivityTrend(ReportFilter $filter): array
     {
         $granularity = $filter->granularity();
-        $voipCalls = $filter->applyToVoipQuery(VoipCallLog::query())
-            ->get(['started_at', 'created_at']);
-
-        $buckets = [];
-
-        foreach ($voipCalls as $call) {
-            $occurredAt = $call->started_at ?? $call->created_at;
-
-            if ($occurredAt === null) {
-                continue;
-            }
-
-            $key = $this->periodKey($occurredAt, $granularity);
-            $buckets[$key] = ($buckets[$key] ?? 0) + 1;
-        }
+        $buckets = $granularity === 'day'
+            ? $this->dailyVoipCounts($filter)
+            : $this->weeklyVoipCounts($filter);
 
         ksort($buckets);
 
@@ -57,16 +43,64 @@ class CallMetricsAnalytics
 
     public function averageCallDurationSeconds(ReportFilter $filter): int
     {
-        $durations = $filter->applyToVoipQuery(VoipCallLog::query())
+        $average = app(DefinedExtensionCallConstraint::class)->applyToVoipLogs(
+            $filter->applyToVoipQuery(VoipCallLog::query()),
+            $filter->organizationId,
+        )
             ->whereNotNull('duration')
             ->where('duration', '>', 0)
-            ->pluck('duration');
+            ->avg('duration');
 
-        if ($durations->isEmpty()) {
-            return 0;
+        return $average === null ? 0 : (int) round((float) $average);
+    }
+
+    /** @return array<string, int> */
+    private function dailyVoipCounts(ReportFilter $filter): array
+    {
+        $moment = 'COALESCE(voip_call_logs.started_at, voip_call_logs.created_at)';
+        $day = CompanyWorkCalendar::sqlDayKey($moment, DB::connection()->getDriverName());
+        $query = app(DefinedExtensionCallConstraint::class)->applyToVoipLogs(
+            $filter->applyToVoipQuery(VoipCallLog::query()),
+            $filter->organizationId,
+        )->whereRaw($moment.' IS NOT NULL');
+        $base = $query->toBase();
+        $base->columns = [];
+
+        $buckets = [];
+
+        foreach ($base->selectRaw($day.' as day_key')->selectRaw('COUNT(*) as aggregate')->groupByRaw($day)->get() as $row) {
+            $key = substr((string) $row->day_key, 0, 10);
+
+            if ($key === '') {
+                continue;
+            }
+
+            $buckets[$key] = (int) $row->aggregate;
         }
 
-        return (int) round($durations->avg());
+        return $buckets;
+    }
+
+    /** @return array<string, int> */
+    private function weeklyVoipCounts(ReportFilter $filter): array
+    {
+        $buckets = [];
+
+        foreach (app(DefinedExtensionCallConstraint::class)->applyToVoipLogs(
+            $filter->applyToVoipQuery(VoipCallLog::query()),
+            $filter->organizationId,
+        )->get(['started_at', 'created_at']) as $call) {
+            $occurredAt = $call->started_at ?? $call->created_at;
+
+            if ($occurredAt === null) {
+                continue;
+            }
+
+            $key = $this->periodKey($occurredAt, 'week');
+            $buckets[$key] = ($buckets[$key] ?? 0) + 1;
+        }
+
+        return $buckets;
     }
 
     public function formatDuration(int $seconds): string

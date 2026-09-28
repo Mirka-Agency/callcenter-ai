@@ -15,7 +15,17 @@ class ProcessVoipIngestionJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 3;
+
+    public int $timeout = 180;
+
     public bool $forceReplay = false;
+
+    /** @return list<int> */
+    public function backoff(): array
+    {
+        return [15, 60];
+    }
 
     /** @param array<string, mixed> $normalizedEvent */
     public function __construct(

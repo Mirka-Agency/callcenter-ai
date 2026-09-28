@@ -5,6 +5,7 @@ namespace App\Services\Performance\Data;
 use App\DTOs\ReportFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Models\OrganizationUser;
 use App\Support\CompanyWorkCalendar;
 use App\Support\OrganizationHolidays;
@@ -52,6 +53,11 @@ class PerformanceDataLoader
 
     public function load(ReportFilter $filter, bool $withPreviousPeriod = true, bool $withCoaching = false): LoadedPerformanceData
     {
+        return $this->loadFresh($filter, $withPreviousPeriod, $withCoaching);
+    }
+
+    private function loadFresh(ReportFilter $filter, bool $withPreviousPeriod, bool $withCoaching): LoadedPerformanceData
+    {
         $employees = $this->employees($filter);
         $employeeIds = $employees->pluck('id')->all();
 
@@ -68,7 +74,7 @@ class PerformanceDataLoader
         );
 
         $previous = $withPreviousPeriod
-            ? $this->load($filter->previousPeriod(), withPreviousPeriod: false, withCoaching: $withCoaching)
+            ? $this->loadFresh($filter->previousPeriod(), false, $withCoaching)
             : null;
 
         return new LoadedPerformanceData($filter, $employees, $analyses, $calls, $previous);
@@ -112,11 +118,21 @@ class PerformanceDataLoader
             $columns[] = 'coaching_analysis_json';
         }
 
-        return $filter->applyToAnalysisQuery(ConversationAnalysis::query())
-            ->whereIn('organization_user_id', $employeeIds)
+        $moment = 'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, conversation_analyses.analyzed_at)';
+        $query = ConversationAnalysis::query()
+            ->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id')
+            ->where('conversation_analyses.organization_id', $filter->organizationId)
+            ->whereBetween('conversation_analyses.analyzed_at', [$filter->from, $filter->to])
+            ->whereIn('conversation_analyses.organization_user_id', $employeeIds)
+            ->select(array_map(
+                fn (string $column): string => 'conversation_analyses.'.$column,
+                $columns,
+            ))
             ->with(['call:'.implode(',', self::ANALYSIS_CALL_COLUMNS)])
-            ->orderBy('analyzed_at')
-            ->get($columns);
+            ->orderBy('conversation_analyses.analyzed_at');
+
+        return CompanyWorkCalendar::whereWorkday($query, $moment, OrganizationHolidays::weekdays($filter->organizationId))
+            ->get();
     }
 
     /** @param  list<int>  $employeeIds */
@@ -126,14 +142,22 @@ class PerformanceDataLoader
             return collect();
         }
 
-        return Call::query()
-            ->where('organization_id', $filter->organizationId)
-            ->whereIn('organization_user_id', $employeeIds)
-            ->where(function (Builder $q) use ($filter) {
-                $q->whereBetween('started_at', [$filter->from, $filter->to])
-                    ->orWhereBetween('created_at', [$filter->from, $filter->to]);
-            })
-            ->get(self::CALL_COLUMNS);
+        $query = app(DefinedExtensionCallConstraint::class)->apply(
+            Call::query()
+                ->where('organization_id', $filter->organizationId)
+                ->whereIn('organization_user_id', $employeeIds)
+                ->where(function (Builder $q) use ($filter) {
+                    $q->whereBetween('started_at', [$filter->from, $filter->to])
+                        ->orWhereBetween('created_at', [$filter->from, $filter->to]);
+                }),
+            $filter->organizationId,
+        );
+
+        return CompanyWorkCalendar::whereWorkday(
+            $query,
+            'COALESCE(conversation_date, started_at, created_at)',
+            OrganizationHolidays::weekdays($filter->organizationId),
+        )->get(self::CALL_COLUMNS);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Application\Call\Services;
 
+use App\Application\Call\Jobs\BackfillVoipExtensionJob;
 use App\Application\Intelligence\Services\CallAnalysisQueueService;
 use App\Domain\Voip\Enums\CallDirection;
 use App\Models\Call;
@@ -203,16 +204,18 @@ class UnmatchedVoipExtensionService
 
         $this->assertEmployeeHasNoExtensionOnConnection($employee, $connection, $extension, 'employee');
 
-        return DB::transaction(function () use ($organization, $extension, $connectionId, $employee, $current): int {
+        DB::transaction(function () use ($extension, $employee, $current, $connection): void {
             $current?->delete();
 
-            return $this->assignExtensionToEmployee(
-                organization: $organization,
-                extension: $extension,
-                connectionId: $connectionId,
-                organizationUserId: (int) $employee->id,
-            );
+            EmployeeIntegrationMetaService::assignVoipExtension($employee, $connection, $extension);
         });
+
+        return $this->queueBackfill(
+            organization: $organization,
+            extension: $extension,
+            connectionId: $connectionId,
+            organizationUserId: (int) $employee->id,
+        );
     }
 
     public function removeExtension(
@@ -241,13 +244,52 @@ class UnmatchedVoipExtensionService
 
         EmployeeIntegrationMetaService::assignVoipExtension($employee, $connection, $extension);
 
-        return $this->backfillCalls(
+        return $this->queueBackfill(
             organization: $organization,
             extension: $extension,
             connectionId: $connectionId,
             days: $days,
             organizationUserId: $organizationUserId,
         );
+    }
+
+    public function backfillRunsInline(): bool
+    {
+        return config('queue.default') === 'sync';
+    }
+
+    public function queueBackfill(
+        Organization $organization,
+        string $extension,
+        int $connectionId,
+        ?int $days = null,
+        ?int $organizationUserId = null,
+    ): int {
+        $extension = $this->normalizeExtension($extension);
+
+        if ($extension === '') {
+            return 0;
+        }
+
+        if ($this->backfillRunsInline()) {
+            return $this->backfillCalls(
+                organization: $organization,
+                extension: $extension,
+                connectionId: $connectionId,
+                days: $days,
+                organizationUserId: $organizationUserId,
+            );
+        }
+
+        BackfillVoipExtensionJob::dispatch(
+            $organization->id,
+            $extension,
+            $connectionId,
+            $days,
+            $organizationUserId,
+        );
+
+        return 0;
     }
 
     /**

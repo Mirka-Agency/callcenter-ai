@@ -4,11 +4,11 @@ namespace App\Livewire\Employer\Voip;
 
 use App\Application\Call\Services\CallEmployeeResolver;
 use App\Application\Call\Services\UnmatchedVoipExtensionService;
-use App\Domain\Voip\Enums\CallStatus;
 use App\Enums\IntegrationSetupStatus;
 use App\Models\VoipCallLog;
 use App\Services\EmployerContext;
 use App\Services\EmployerIntegrationGate;
+use App\Services\Reports\OrganizationCallMetrics;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -78,22 +78,13 @@ class Index extends Component
             'recentCallsHint' => $recentCallsHint,
             'canManageIntegrations' => EmployerIntegrationGate::allowsFullManagement($organization),
             'todayCalls' => $isComplete
-                ? VoipCallLog::query()
-                    ->where('organization_id', $organizationId)
-                    ->occurredBetween(now()->startOfDay(), now()->endOfDay())
-                    ->count()
+                ? app(OrganizationCallMetrics::class)->countToday($organizationId)
                 : 0,
             'monthCalls' => $isComplete
-                ? VoipCallLog::query()
-                    ->where('organization_id', $organizationId)
-                    ->occurredBetween(now()->startOfMonth()->startOfDay(), now()->endOfDay())
-                    ->count()
+                ? app(OrganizationCallMetrics::class)->countThisMonth($organizationId)
                 : 0,
             'missedCalls' => $isComplete
-                ? VoipCallLog::query()
-                    ->where('organization_id', $organizationId)
-                    ->whereIn('status', CallStatus::lostValues())
-                    ->count()
+                ? app(OrganizationCallMetrics::class)->countLost($organizationId)
                 : 0,
             'recentCallRows' => $recentCallRows,
             'assignedExtensionCount' => count($assignedExtensions),

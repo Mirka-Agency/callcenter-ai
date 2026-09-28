@@ -7,6 +7,7 @@ use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
 use App\Models\Call;
+use App\Models\CallRecording;
 use App\Models\EmployeeIntegrationMeta;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
@@ -15,9 +16,11 @@ use App\Models\User;
 use App\Models\VoipCallLog;
 use App\Models\VoipProvider;
 use App\Services\EmployerDashboardAnalytics;
+use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\OrganizationCallMetrics;
 use Database\Seeders\PlatformFoundationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class OrganizationCallMetricsTest extends TestCase
@@ -222,6 +225,95 @@ class OrganizationCallMetricsTest extends TestCase
         $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
     }
 
+    public function test_defined_extension_call_without_a_recording_is_not_counted(): void
+    {
+        $this->seed(PlatformFoundationSeeder::class);
+
+        $organization = $this->organization();
+        $employee = $this->employee($organization);
+        $connection = $this->voipConnection($organization);
+
+        EmployeeIntegrationMeta::query()->create([
+            'organization_user_id' => $employee->id,
+            'integratable_type' => OrganizationVoipConnection::class,
+            'integratable_id' => $connection->id,
+            'key' => 'extension',
+            'value' => '101',
+        ]);
+
+        $this->createCall($organization, [
+            'organization_user_id' => $employee->id,
+            'organization_voip_connection_id' => $connection->id,
+            'external_call_id' => 'recorded-101',
+            'receiver_number' => '101',
+        ]);
+        $unrecorded = $this->createCall($organization, [
+            'organization_user_id' => $employee->id,
+            'organization_voip_connection_id' => $connection->id,
+            'external_call_id' => 'silent-101',
+            'receiver_number' => '101',
+        ], withRecording: false);
+
+        $this->assertNull($unrecorded->recording);
+        $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
+    }
+
+    public function test_extension_activity_days_are_loaded_once_per_request(): void
+    {
+        $this->seed(PlatformFoundationSeeder::class);
+
+        $organization = $this->organization();
+        $employee = $this->employee($organization);
+        $connection = $this->voipConnection($organization);
+
+        EmployeeIntegrationMeta::query()->create([
+            'organization_user_id' => $employee->id,
+            'integratable_type' => OrganizationVoipConnection::class,
+            'integratable_id' => $connection->id,
+            'key' => 'extension',
+            'value' => '101',
+        ]);
+
+        foreach (range(1, 6) as $index) {
+            $log = VoipCallLog::query()->create([
+                'organization_id' => $organization->id,
+                'organization_voip_connection_id' => $connection->id,
+                'provider_code' => VoipProviderCode::Custom->value,
+                'external_call_id' => 'activity-day-'.$index,
+                'direction' => 'inbound',
+                'source_number' => '091200000'.$index,
+                'destination_number' => '101',
+                'status' => 'completed',
+                'started_at' => now()->startOfDay()->addHours(8 + $index),
+                'raw_payload' => ['resolved_extension' => '101'],
+            ]);
+            $this->createCall($organization, [
+                'organization_user_id' => null,
+                'organization_voip_connection_id' => $connection->id,
+                'voip_call_log_id' => $log->id,
+                'external_call_id' => 'activity-day-'.$index,
+                'receiver_number' => '101',
+                'started_at' => now()->startOfDay()->addHours(8 + $index),
+            ]);
+        }
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $from = now()->startOfDay();
+        $to = now()->endOfDay();
+        $first = app(ChartHolidayCalendar::class)->forRange($organization->id, $from, $to);
+        $firstQueries = count(DB::getQueryLog());
+
+        DB::flushQueryLog();
+        $second = app(ChartHolidayCalendar::class)->forRange($organization->id, $from, $to);
+
+        $this->assertFalse($first->hides(now()->timezone('Asia/Tehran')->toDateString()));
+        $this->assertSame(0, count(DB::getQueryLog()));
+        $this->assertLessThan(12, $firstQueries);
+        $this->assertFalse($second->hides(now()->timezone('Asia/Tehran')->toDateString()));
+    }
+
     private function organization(): Organization
     {
         $employer = User::factory()->employer()->create();
@@ -263,11 +355,11 @@ class OrganizationCallMetricsTest extends TestCase
     }
 
     /** @param  array<string, mixed>  $overrides */
-    private function createCall(Organization $organization, array $overrides): Call
+    private function createCall(Organization $organization, array $overrides, bool $withRecording = true): Call
     {
         $startedAt = $overrides['started_at'] ?? now()->startOfDay()->addHours(10);
 
-        return Call::query()->create(array_merge([
+        $call = Call::query()->create(array_merge([
             'organization_id' => $organization->id,
             'external_call_id' => 'metrics-call',
             'provider_code' => 'demo',
@@ -281,5 +373,18 @@ class OrganizationCallMetricsTest extends TestCase
             'ended_at' => $startedAt?->copy()->addMinutes(5),
             'duration_seconds' => 300,
         ], $overrides));
+
+        if ($withRecording) {
+            CallRecording::query()->create([
+                'call_id' => $call->id,
+                'source_url' => 'https://pbx.example/'.$call->id.'.wav',
+                'storage_disk' => 'local',
+                'storage_path' => 'recordings/'.$call->id.'.wav',
+                'status' => 'completed',
+                'is_expired' => false,
+            ]);
+        }
+
+        return $call;
     }
 }

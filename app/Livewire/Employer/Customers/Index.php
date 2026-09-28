@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Employer\Customers;
 
+use App\Models\Call;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
 use App\Services\EmployerContext;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -21,7 +23,10 @@ class Index extends Component
         $stats = [
             'companies' => CustomerCompany::query()->forOrganization($organizationId)->excludingOwnOrganization($organization)->count(),
             'contacts' => Customer::query()->forOrganization($organizationId)->count(),
-            'calls' => (int) Customer::query()->forOrganization($organizationId)->sum('total_calls'),
+            'calls' => app(DefinedExtensionCallConstraint::class)->apply(
+                Call::query()->where('organization_id', $organizationId)->whereNotNull('customer_id'),
+                $organizationId,
+            )->count(),
         ];
 
         $recentCompanies = CustomerCompany::query()

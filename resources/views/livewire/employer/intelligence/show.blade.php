@@ -13,4 +13,5 @@
     'canAssignEmployee' => $canAssignEmployee ?? false,
     'employees' => $employees ?? collect(),
     'createEmployeeUrl' => $createEmployeeUrl ?? null,
+    'canReanalyze' => $canReanalyze ?? false,
 ])

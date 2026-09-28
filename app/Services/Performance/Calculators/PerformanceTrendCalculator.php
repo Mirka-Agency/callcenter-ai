@@ -16,6 +16,8 @@ use Illuminate\Support\Collection;
 
 class PerformanceTrendCalculator
 {
+    /** @var array<string, Collection<string, Collection<int, ConversationAnalysis>>> */
+    private array $periodGroups = [];
     /**
      * @param  Collection<int, ConversationAnalysis>  $analyses
      * @return list<array{
@@ -176,9 +178,7 @@ class PerformanceTrendCalculator
     {
         $granularity = $filter->granularity();
 
-        return $analyses
-            ->filter(fn (ConversationAnalysis $a) => $a->occurredAt() !== null)
-            ->groupBy(fn (ConversationAnalysis $a) => $this->periodKey($a->occurredAt(), $granularity))
+        return $this->analysesByPeriod($filter, $analyses)
             ->sortKeys()
             ->map(function (Collection $items, string $period) use ($granularity, $aggregator) {
                 return array_merge([
@@ -203,10 +203,30 @@ class PerformanceTrendCalculator
             return collect();
         }
 
-        return $analyses
-            ->filter(fn (ConversationAnalysis $analysis) => $analysis->occurredAt() !== null
-                && $this->periodKey($analysis->occurredAt(), $granularity) === $period)
+        return $this->analysesByPeriod($filter, $analyses)
+            ->get($period, collect())
             ->values();
+    }
+
+    /**
+     * One pass over the analyses, reused by every trend and by the per-day insight.
+     *
+     * @param  Collection<int, ConversationAnalysis>  $analyses
+     * @return Collection<string, Collection<int, ConversationAnalysis>>
+     */
+    private function analysesByPeriod(ReportFilter $filter, Collection $analyses): Collection
+    {
+        $key = spl_object_id($analyses).'|'.$filter->granularity();
+
+        if (isset($this->periodGroups[$key])) {
+            return $this->periodGroups[$key];
+        }
+
+        $granularity = $filter->granularity();
+
+        return $this->periodGroups[$key] = $analyses
+            ->filter(fn (ConversationAnalysis $analysis) => $analysis->occurredAt() !== null)
+            ->groupBy(fn (ConversationAnalysis $analysis) => $this->periodKey($analysis->occurredAt(), $granularity));
     }
 
     /**
@@ -235,10 +255,8 @@ class PerformanceTrendCalculator
 
     private function isHolidayPeriod(string $period, ReportFilter $filter): bool
     {
-        $day = Carbon::parse($period, CompanyWorkCalendar::TIMEZONE);
-
         return app(ChartHolidayCalendar::class)
-            ->forRange($filter->organizationId, $day->copy()->startOfDay(), $day->copy()->endOfDay())
+            ->forRange($filter->organizationId, $filter->from, $filter->to)
             ->hides($period);
     }
 

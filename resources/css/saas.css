@@ -602,47 +602,64 @@
         text-align: center;
     }
 
-    .saas-forgotten-carousel {
-        --forgotten-gap: 1.5rem;
+    .saas-forgotten-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        max-height: 32rem;
         min-width: 0;
-        overflow: clip;
+        overflow-y: auto;
+        scrollbar-gutter: stable;
         padding: 0 1rem 1.25rem;
     }
 
     @media (min-width: 640px) {
-        .saas-forgotten-carousel {
+        .saas-forgotten-list {
             padding-inline: 1.5rem;
         }
     }
 
-    .saas-forgotten-track {
-        display: flex;
-        flex-wrap: nowrap;
-        gap: var(--forgotten-gap);
-        width: 100%;
-        transition: transform 350ms ease;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .saas-forgotten-track {
-            transition: none;
-        }
-    }
-
-    .saas-forgotten-slide {
-        flex: 0 0 100%;
-        width: 100%;
-        max-width: 100%;
-        min-width: 100%;
-        box-sizing: border-box;
-    }
-
     .saas-forgotten-item {
-        @apply w-full rounded-lg border border-red-200 bg-white p-3.5 dark:border-red-900/70 dark:bg-zinc-900;
+        @apply rounded-lg border border-zinc-200 bg-white p-3.5 transition hover:shadow-sm dark:bg-zinc-900;
+        border-inline-start-width: 3px;
     }
 
-    .saas-forgotten-sort {
-        @apply inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800;
+    .saas-forgotten-item--delayed {
+        border-inline-start-color: rgb(245 158 11);
+        @apply border-amber-200 hover:border-amber-300 dark:border-amber-900/60 dark:hover:border-amber-700;
+    }
+
+    .saas-forgotten-item--urgent {
+        border-inline-start-color: rgb(239 68 68);
+        @apply border-red-200 hover:border-red-300 dark:border-red-900/70 dark:hover:border-red-700;
+    }
+
+    .saas-forgotten-filters {
+        @apply flex flex-wrap items-center gap-2;
+    }
+
+    .saas-forgotten-filter {
+        @apply inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 transition hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-400/40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800;
+    }
+
+    .saas-forgotten-filter.is-active {
+        @apply border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800 dark:border-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100;
+    }
+
+    .saas-forgotten-filter.is-urgent.is-active {
+        @apply border-red-600 bg-red-600 text-white hover:bg-red-700 dark:border-red-500 dark:bg-red-500 dark:text-white dark:hover:bg-red-400;
+    }
+
+    .saas-forgotten-filter.is-delayed.is-active {
+        @apply border-amber-500 bg-amber-500 text-white hover:bg-amber-600 dark:border-amber-500 dark:bg-amber-500 dark:text-white dark:hover:bg-amber-400;
+    }
+
+    .saas-forgotten-link {
+        @apply inline-flex items-center rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-400/40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800;
+    }
+
+    .saas-forgotten-link--urgent {
+        @apply border-transparent bg-red-600 text-white hover:bg-red-700 focus:ring-red-400/40 dark:bg-red-500 dark:text-white dark:hover:bg-red-400;
     }
 
     .saas-sentiment-tabs {

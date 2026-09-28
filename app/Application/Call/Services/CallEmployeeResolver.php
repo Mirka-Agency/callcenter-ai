@@ -8,6 +8,9 @@ use App\Models\VoipCallLog;
 
 class CallEmployeeResolver
 {
+    /** @var array<int, array<string, int>> */
+    private array $extensionMaps = [];
+
     public function resolveFromCallLog(VoipCallLog $log): ?int
     {
         foreach ($this->extensionCandidates($log) as $extension) {
@@ -50,7 +53,20 @@ class CallEmployeeResolver
      *
      * @return array<string, int> keys: "{connectionId}|{extension}"
      */
+    public function forgetExtensionMap(int $organizationId): void
+    {
+        unset($this->extensionMaps[$organizationId]);
+    }
+
     public function extensionEmployeeMapForOrganization(int $organizationId): array
+    {
+        return $this->extensionMaps[$organizationId] ??= $this->loadExtensionEmployeeMap($organizationId);
+    }
+
+    /**
+     * @return array<string, int> keys: "{connectionId}|{extension}"
+     */
+    private function loadExtensionEmployeeMap(int $organizationId): array
     {
         $map = [];
 

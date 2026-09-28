@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Call;
+use App\Models\CallRecording;
 use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
@@ -54,6 +55,7 @@ class CustomerIntelligenceTest extends TestCase
             'processing_status' => 'analyzed',
             'started_at' => now()->subDay(),
         ]);
+        $this->attachRecording($call);
 
         $analysis = ConversationAnalysis::query()->create([
             'organization_id' => $organization->id,
@@ -284,6 +286,7 @@ class CustomerIntelligenceTest extends TestCase
             'processing_status' => 'analyzed',
             'started_at' => $data['analyzed_at'],
         ]);
+        $this->attachRecording($call);
 
         return ConversationAnalysis::query()->create([
             'organization_id' => $organization->id,
@@ -307,6 +310,18 @@ class CustomerIntelligenceTest extends TestCase
     /**
      * @param  array{company_name: string, person_name?: string, confidence?: float}  $identity
      */
+    private function attachRecording(Call $call): void
+    {
+        CallRecording::query()->create([
+            'call_id' => $call->id,
+            'source_url' => 'https://pbx.example/'.$call->id.'.wav',
+            'storage_disk' => 'local',
+            'storage_path' => 'recordings/test-'.$call->id.'.wav',
+            'status' => 'completed',
+            'is_expired' => false,
+        ]);
+    }
+
     private function makeIdentityAnalysis(
         Organization $organization,
         array $identity,
@@ -336,6 +351,7 @@ class CustomerIntelligenceTest extends TestCase
             'processing_status' => 'analyzed',
             'started_at' => now()->subDay(),
         ]);
+        $this->attachRecording($call);
 
         return ConversationAnalysis::query()->create([
             'organization_id' => $organization->id,

@@ -32,6 +32,7 @@
         <a
             href="{{ route(($portal ?? 'employer').'.profile.edit') }}"
             class="saas-sidebar-user"
+            wire:navigate
             @click="$store.layout.closeSidebar()"
         >
             <x-saas.avatar :user="$user" size="sm" ring person />
@@ -53,6 +54,7 @@
             <a
                 href="{{ route($item['route']) }}"
                 data-tour-nav="{{ $item['route'] }}"
+                wire:navigate
                 @class([
                     'saas-nav-item',
                     'saas-nav-item-active' => $isActive,

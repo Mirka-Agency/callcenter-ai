@@ -8,11 +8,13 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
 use App\Services\Reports\CallMetricsAnalytics;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class EmployeeActivityAnalytics
 {
@@ -59,14 +61,15 @@ class EmployeeActivityAnalytics
         $days = max(1, $from->diffInDays($to) + 1);
         $closedDays = app(ChartHolidayCalendar::class)->forRange($employee->organization_id, $from, $to);
 
-        $analysisGroups = $this->analysisQuery($filter, $employee)
-            ->with('call:id,conversation_date,started_at,created_at')
-            ->get()
-            ->groupBy(fn (ConversationAnalysis $analysis) => CompanyWorkCalendar::dayKey($analysis->occurredAt() ?? $analysis->analyzed_at));
-
-        $uploadGroups = $this->uploadQuery($filter, $employee)
-            ->get(['created_at'])
-            ->groupBy(fn (Call $call) => CompanyWorkCalendar::dayKey($call->created_at));
+        $analysisGroups = $this->countsByTehranDay(
+            $this->analysisQuery($filter, $employee)
+                ->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id'),
+            'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, conversation_analyses.analyzed_at)',
+        );
+        $uploadGroups = $this->countsByTehranDay(
+            $this->uploadQuery($filter, $employee),
+            'created_at',
+        );
 
         $series = [];
 
@@ -76,8 +79,8 @@ class EmployeeActivityAnalytics
             if ($closedDays->hides($key)) {
                 continue;
             }
-            $analysisCount = $analysisGroups->get($key, collect())->count();
-            $uploadCount = $uploadGroups->get($key, collect())->count();
+            $analysisCount = $analysisGroups[$key] ?? 0;
+            $uploadCount = $uploadGroups[$key] ?? 0;
 
             $series[] = [
                 'label' => JalaliDate::monthDay($key),
@@ -203,23 +206,50 @@ class EmployeeActivityAnalytics
             ->all();
     }
 
+    /**
+     * @param  Builder<ConversationAnalysis>|Builder<Call>  $query
+     * @return array<string, int>
+     */
+    private function countsByTehranDay(Builder $query, string $momentSql): array
+    {
+        $day = CompanyWorkCalendar::sqlDayKey($momentSql, DB::connection()->getDriverName());
+        $base = $query->toBase();
+        $base->columns = [];
+        $counts = [];
+
+        foreach ($base->selectRaw($day.' as day_key')->selectRaw('COUNT(*) as aggregate')->groupByRaw($day)->get() as $row) {
+            $key = substr((string) $row->day_key, 0, 10);
+
+            if ($key === '') {
+                continue;
+            }
+
+            $counts[$key] = (int) $row->aggregate;
+        }
+
+        return $counts;
+    }
+
     /** @return Builder<ConversationAnalysis> */
     private function analysisQuery(ReportFilter $filter, OrganizationUser $employee): Builder
     {
         return ConversationAnalysis::query()
-            ->where('organization_id', $filter->organizationId)
-            ->where('organization_user_id', $employee->id)
-            ->whereBetween('analyzed_at', [$filter->from, $filter->to]);
+            ->where('conversation_analyses.organization_id', $filter->organizationId)
+            ->where('conversation_analyses.organization_user_id', $employee->id)
+            ->whereBetween('conversation_analyses.analyzed_at', [$filter->from, $filter->to]);
     }
 
     /** @return Builder<Call> */
     private function uploadQuery(ReportFilter $filter, OrganizationUser $employee): Builder
     {
-        return Call::query()
-            ->where('organization_id', $filter->organizationId)
-            ->where('organization_user_id', $employee->id)
-            ->where('source', ConversationSource::ManualUpload)
-            ->whereBetween('created_at', [$filter->from, $filter->to]);
+        return app(DefinedExtensionCallConstraint::class)->applyToQueueCalls(
+            Call::query()
+                ->where('organization_id', $filter->organizationId)
+                ->where('organization_user_id', $employee->id)
+                ->where('source', ConversationSource::ManualUpload)
+                ->whereBetween('created_at', [$filter->from, $filter->to]),
+            $filter->organizationId,
+        );
     }
 
     /** @return array<string, mixed> */

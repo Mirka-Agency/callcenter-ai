@@ -22,10 +22,20 @@ use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class AnalysisListQuery
 {
+    /** @var array<int, Collection<int, ConversationAnalysis>> */
+    private array $factsByFilter = [];
+
+    /** @var array<int, Collection<int, object>> */
+    private array $dailyBucketsByFilter = [];
+
+    /** @var array<int, array{lead: array{high: int, medium: int, low: int, total: int, average_score: float}, sentiment: list<array{key: string, label: string, count: int}>, concerns: list<array{type: string, label: string, count: int}>}> */
+    private array $factRollups = [];
+
     public function __construct(
         private CallMetricsAnalytics $callMetrics,
         private DefinedExtensionCallConstraint $definedExtensions,
@@ -35,7 +45,20 @@ class AnalysisListQuery
     public function baseQuery(AnalysisListFilter $filter): Builder
     {
         return $this->filteredQuery($filter)
-            ->select('conversation_analyses.*')
+            ->select([
+                'conversation_analyses.id',
+                'conversation_analyses.organization_id',
+                'conversation_analyses.organization_user_id',
+                'conversation_analyses.call_id',
+                'conversation_analyses.voip_call_log_id',
+                'conversation_analyses.score',
+                'conversation_analyses.is_evaluable',
+                'conversation_analyses.needs_attention',
+                'conversation_analyses.summary',
+                'conversation_analyses.source',
+                'conversation_analyses.analyzed_at',
+                'conversation_analyses.sentiment',
+            ])
             ->tap(fn (Builder $query) => $filter->applySort($query));
     }
 
@@ -73,32 +96,26 @@ class AnalysisListQuery
     public function overview(AnalysisListFilter $filter): array
     {
         $query = $this->analyticsQuery($filter);
-
-        // Score and the other analysis cards still follow analyzed_at.
-        $avgScore = round((float) (clone $query)->evaluable()->avg('conversation_analyses.score'), 1);
+        $facts = $this->analysisFacts($filter);
+        $evaluableFacts = $facts->filter(fn (ConversationAnalysis $analysis): bool => (bool) $analysis->is_evaluable && (int) $analysis->score > 0);
+        $avgScore = $evaluableFacts->isNotEmpty()
+            ? round((float) $evaluableFacts->avg('score'), 1)
+            : 0.0;
 
         // Call-dated metrics (occurredAt via applyToCallQuery) — volume and outcomes
         // must follow when the call happened, not when AI finished analyzing.
         // Once the organization has registered extensions, only calls placed on
         // those extensions count (an unknown extension such as 112 is ignored).
-        $callQuery = $this->definedExtensions->apply(
-            $filter->applyToCallQuery(Call::query()),
-            $filter->organizationId,
-        );
-        $totalCalls = (clone $callQuery)->count();
+        $callStats = $this->callStats($filter);
         // Missed calls plus finished calls equal the total. The only remainder
         // is a call still queued or being processed.
-        $missedCount = (clone $callQuery)
-            ->whereIn('status', CallStatus::lostValues())
-            ->count();
-        $inFlightCount = $this->inFlightCount(clone $callQuery);
+        $totalCalls = $callStats['total_calls'];
+        $missedCount = $callStats['missed_count'];
+        $inFlightCount = $callStats['in_flight_count'];
         $analyzedCalls = $totalCalls - $missedCount - $inFlightCount;
-        $avgDuration = (int) round((float) (clone $callQuery)
-            ->where('duration_seconds', '>', 0)
-            ->avg('duration_seconds'));
-
-        $inboundCount = (clone $callQuery)->where('direction', 'inbound')->count();
-        $outboundCount = (clone $callQuery)->where('direction', 'outbound')->count();
+        $avgDuration = $callStats['average_duration_seconds'];
+        $inboundCount = $callStats['inbound_count'];
+        $outboundCount = $callStats['outbound_count'];
 
         $lead = $this->leadDistribution($filter);
         $sentiment = $this->sentimentBreakdown($filter);
@@ -155,31 +172,77 @@ class AnalysisListQuery
         ];
     }
 
-    /** @param  Builder<Call>  $callQuery */
-    private function inFlightCount(Builder $callQuery): int
+    /**
+     * One pass over the call window. Repeating this scan for each card was the slow part of the page.
+     *
+     * @return array{
+     *     total_calls: int,
+     *     missed_count: int,
+     *     in_flight_count: int,
+     *     inbound_count: int,
+     *     outbound_count: int,
+     *     average_duration_seconds: int
+     * }
+     */
+    private function callStats(AnalysisListFilter $filter): array
     {
-        return $callQuery
-            ->where(function (Builder $query): void {
-                $query->whereNull('status')
-                    ->orWhereNotIn('status', CallStatus::lostValues());
-            })
-            ->where(function (Builder $query): void {
-                $query->whereIn('processing_status', [
-                    CallProcessingStatus::Pending->value,
-                    CallProcessingStatus::Downloading->value,
-                    CallProcessingStatus::Analyzing->value,
-                ])->orWhere(function (Builder $unmarked) {
-                    $unmarked->whereNull('processing_status')
-                        ->whereHas('processingJobs', function (Builder $jobs): void {
-                            $jobs->whereIn('status', [
-                                ProcessingJobStatus::Queued->value,
-                                ProcessingJobStatus::Uploading->value,
-                                ProcessingJobStatus::Processing->value,
-                            ]);
-                        });
-                });
-            })
-            ->count();
+        $extensionKey = md5(json_encode($this->definedExtensions->matchSetFingerprint($filter->organizationId)) ?: '');
+        $cacheKey = implode(':', [
+            'analysis-call-stats-recorded',
+            $filter->organizationId,
+            $filter->from->getTimestamp(),
+            $filter->to->getTimestamp(),
+            $filter->employeeId ?? 'all',
+            $filter->direction ?? '',
+            implode(',', $filter->statuses),
+            $filter->minDurationSeconds ?? '',
+            $filter->maxDurationSeconds ?? '',
+            $extensionKey,
+        ]);
+
+        return Cache::remember($cacheKey, 90, function () use ($filter): array {
+            $callQuery = $this->definedExtensions->apply(
+                $filter->applyToCallQuery(Call::query()),
+                $filter->organizationId,
+            );
+            $lost = CallStatus::lostValues();
+            $marked = [
+                CallProcessingStatus::Pending->value,
+                CallProcessingStatus::Downloading->value,
+                CallProcessingStatus::Analyzing->value,
+            ];
+            $activeJobs = [
+                ProcessingJobStatus::Queued->value,
+                ProcessingJobStatus::Uploading->value,
+                ProcessingJobStatus::Processing->value,
+            ];
+            $lostSql = implode(', ', array_fill(0, count($lost), '?'));
+            $markedSql = implode(', ', array_fill(0, count($marked), '?'));
+            $jobsSql = implode(', ', array_fill(0, count($activeJobs), '?'));
+            $row = (clone $callQuery)
+                ->selectRaw('COUNT(*) as total_calls')
+                ->selectRaw(
+                    "SUM(CASE WHEN status IN ($lostSql) THEN 1 ELSE 0 END) as missed_count",
+                    $lost,
+                )
+                ->selectRaw("SUM(CASE WHEN direction = 'inbound' THEN 1 ELSE 0 END) as inbound_count")
+                ->selectRaw("SUM(CASE WHEN direction = 'outbound' THEN 1 ELSE 0 END) as outbound_count")
+                ->selectRaw('AVG(CASE WHEN duration_seconds > 0 THEN duration_seconds END) as avg_duration')
+                ->selectRaw(
+                    "SUM(CASE WHEN (status IS NULL OR status NOT IN ($lostSql)) AND (processing_status IN ($markedSql) OR (processing_status IS NULL AND EXISTS (SELECT 1 FROM call_processing_jobs WHERE call_processing_jobs.call_id = calls.id AND call_processing_jobs.status IN ($jobsSql)))) THEN 1 ELSE 0 END) as in_flight_count",
+                    [...$lost, ...$marked, ...$activeJobs],
+                )
+                ->first();
+
+            return [
+                'total_calls' => (int) ($row->total_calls ?? 0),
+                'missed_count' => (int) ($row->missed_count ?? 0),
+                'in_flight_count' => (int) ($row->in_flight_count ?? 0),
+                'inbound_count' => (int) ($row->inbound_count ?? 0),
+                'outbound_count' => (int) ($row->outbound_count ?? 0),
+                'average_duration_seconds' => (int) round((float) ($row->avg_duration ?? 0)),
+            ];
+        });
     }
 
     /** @return array<string, mixed> */
@@ -199,19 +262,18 @@ class AnalysisListQuery
     {
         $granularity = $this->granularity($filter);
         $days = $this->chartDays($filter);
+        $buckets = $this->chartBuckets($filter, $granularity);
 
-        $grouped = $this->chartRows($filter)
-            ->groupBy(fn (ConversationAnalysis $analysis) => $this->periodKey($this->chartOccurredAt($analysis), $granularity));
-
-        return $grouped->map(function (Collection $items, string $period) use ($granularity) {
-            $scored = $items->filter(fn (ConversationAnalysis $analysis) => $analysis->isEvaluable());
+        return $buckets->map(function (object $bucket) use ($granularity): array {
+            $scored = (int) $bucket->scored_count;
+            $period = $this->bucketPeriod($bucket, $granularity);
 
             return [
                 'period' => $period,
                 'label' => $this->periodLabel($period, $granularity),
                 'tooltip_label' => $this->periodTooltipLabel($period, $granularity),
-                'avg_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : null,
-                'count' => $items->count(),
+                'avg_score' => $scored > 0 ? round(((float) $bucket->score_sum) / $scored, 1) : null,
+                'count' => (int) $bucket->total_count,
             ];
         })
             ->reject(fn (array $row) => $granularity === 'day' && $days->hides((string) $row['period']))
@@ -225,17 +287,18 @@ class AnalysisListQuery
         $granularity = $this->granularity($filter);
         $days = $this->chartDays($filter);
 
-        $grouped = $this->chartRows($filter)
-            ->groupBy(fn (ConversationAnalysis $analysis) => $this->periodKey($this->chartOccurredAt($analysis), $granularity));
+        return $this->chartBuckets($filter, $granularity)
+            ->map(function (object $bucket) use ($granularity): array {
+                $period = $this->bucketPeriod($bucket, $granularity);
 
-        return $grouped->map(function (Collection $items, string $period) use ($granularity) {
-            return [
-                'period' => $period,
-                'label' => $this->periodLabel($period, $granularity),
-                'tooltip_label' => $this->periodTooltipLabel($period, $granularity),
-                'count' => $items->count(),
-            ];
-        })->reject(fn (array $row) => $granularity === 'day' && $days->hides((string) $row['period']))
+                return [
+                    'period' => $period,
+                    'label' => $this->periodLabel($period, $granularity),
+                    'tooltip_label' => $this->periodTooltipLabel($period, $granularity),
+                    'count' => (int) $bucket->total_count,
+                ];
+            })
+            ->reject(fn (array $row) => $granularity === 'day' && $days->hides((string) $row['period']))
             ->values()
             ->all();
     }
@@ -243,106 +306,106 @@ class AnalysisListQuery
     /** @return array{high: int, medium: int, low: int, total: int, average_score: float} */
     private function leadDistribution(AnalysisListFilter $filter): array
     {
-        $distribution = ['high' => 0, 'medium' => 0, 'low' => 0];
-        $scores = [];
-
-        $this->analyticsQuery($filter)
-            ->select(['conversation_analyses.id', 'conversation_analyses.lead_quality_json', 'conversation_analyses.is_evaluable', 'conversation_analyses.score'])
-            ->chunkById(200, function (Collection $chunk) use (&$distribution, &$scores): void {
-                foreach ($chunk as $analysis) {
-                    if (! $analysis->isEvaluable()) {
-                        continue;
-                    }
-
-                    $lead = $analysis->lead_quality_json;
-                    if (! is_array($lead) || $lead === []) {
-                        continue;
-                    }
-
-                    $level = strtolower((string) ($lead['level'] ?? 'medium'));
-                    if (! isset($distribution[$level])) {
-                        $level = 'medium';
-                    }
-                    $distribution[$level]++;
-
-                    if (isset($lead['score'])) {
-                        $scores[] = (int) $lead['score'];
-                    }
-                }
-            }, 'conversation_analyses.id', 'id');
-
-        return [
-            'high' => $distribution['high'],
-            'medium' => $distribution['medium'],
-            'low' => $distribution['low'],
-            'total' => array_sum($distribution),
-            'average_score' => $scores !== [] ? round(array_sum($scores) / count($scores), 1) : 0,
-        ];
+        return $this->factRollup($filter)['lead'];
     }
 
     /** @return list<array{key: string, label: string, count: int}> */
     private function sentimentBreakdown(AnalysisListFilter $filter): array
     {
-        $counts = [];
-
-        $this->analyticsQuery($filter)
-            ->select(['conversation_analyses.id', 'conversation_analyses.sentiment'])
-            ->chunkById(200, function (Collection $chunk) use (&$counts): void {
-                foreach ($chunk as $analysis) {
-                    if (! $analysis->sentiment) {
-                        continue;
-                    }
-
-                    $key = $analysis->sentiment->value;
-                    $counts[$key] = ($counts[$key] ?? 0) + 1;
-                }
-            }, 'conversation_analyses.id', 'id');
-
-        return collect($counts)
-            ->map(function (int $count, string $key) {
-                $sentiment = AnalysisSentiment::tryFrom($key);
-
-                return [
-                    'key' => $key,
-                    'label' => $sentiment?->label() ?? $key,
-                    'count' => $count,
-                ];
-            })
-            ->sortByDesc('count')
-            ->values()
-            ->all();
+        return $this->factRollup($filter)['sentiment'];
     }
 
     /** @return list<array{type: string, label: string, count: int}> */
     private function concernsByType(AnalysisListFilter $filter): array
     {
-        $counts = [];
+        return $this->factRollup($filter)['concerns'];
+    }
 
-        $this->analyticsQuery($filter)
-            ->select(['conversation_analyses.id', 'conversation_analyses.concerns_json'])
-            ->chunkById(200, function (Collection $chunk) use (&$counts): void {
-                foreach ($chunk as $analysis) {
-                    foreach ($analysis->concerns_json ?? [] as $concern) {
-                        if (! is_array($concern)) {
-                            continue;
-                        }
+    /**
+     * Lead, sentiment, and concerns share one read of the analysis rows.
+     *
+     * @return array{lead: array{high: int, medium: int, low: int, total: int, average_score: float}, sentiment: list<array{key: string, label: string, count: int}>, concerns: list<array{type: string, label: string, count: int}>}
+     */
+    private function factRollup(AnalysisListFilter $filter): array
+    {
+        $key = spl_object_id($filter);
 
-                        $type = strtolower((string) ($concern['type'] ?? 'other'));
-                        $counts[$type] = ($counts[$type] ?? 0) + 1;
-                    }
+        if (isset($this->factRollups[$key])) {
+            return $this->factRollups[$key];
+        }
+
+        $distribution = ['high' => 0, 'medium' => 0, 'low' => 0];
+        $scores = [];
+        $sentimentCounts = [];
+        $concernCounts = [];
+
+        foreach ($this->analysisFacts($filter) as $analysis) {
+            if ($analysis->sentiment) {
+                $sentimentKey = $analysis->sentiment->value;
+                $sentimentCounts[$sentimentKey] = ($sentimentCounts[$sentimentKey] ?? 0) + 1;
+            }
+
+            foreach ($analysis->concerns_json ?? [] as $concern) {
+                if (! is_array($concern)) {
+                    continue;
                 }
-            }, 'conversation_analyses.id', 'id');
 
-        return collect($counts)
-            ->map(fn (int $count, string $type) => [
-                'type' => $type,
-                'label' => CustomerPresenter::concernLabel($type),
-                'count' => $count,
-            ])
-            ->sortByDesc('count')
-            ->values()
-            ->take(5)
-            ->all();
+                $type = strtolower((string) ($concern['type'] ?? 'other'));
+                $concernCounts[$type] = ($concernCounts[$type] ?? 0) + 1;
+            }
+
+            if (! $analysis->isEvaluable()) {
+                continue;
+            }
+
+            $lead = $analysis->lead_quality_json;
+            if (! is_array($lead) || $lead === []) {
+                continue;
+            }
+
+            $level = strtolower((string) ($lead['level'] ?? 'medium'));
+            if (! isset($distribution[$level])) {
+                $level = 'medium';
+            }
+            $distribution[$level]++;
+
+            if (isset($lead['score'])) {
+                $scores[] = (int) $lead['score'];
+            }
+        }
+
+        return $this->factRollups[$key] = [
+            'lead' => [
+                'high' => $distribution['high'],
+                'medium' => $distribution['medium'],
+                'low' => $distribution['low'],
+                'total' => array_sum($distribution),
+                'average_score' => $scores !== [] ? round(array_sum($scores) / count($scores), 1) : 0,
+            ],
+            'sentiment' => collect($sentimentCounts)
+                ->map(function (int $count, string $sentimentKey): array {
+                    $sentiment = AnalysisSentiment::tryFrom($sentimentKey);
+
+                    return [
+                        'key' => $sentimentKey,
+                        'label' => $sentiment?->label() ?? $sentimentKey,
+                        'count' => $count,
+                    ];
+                })
+                ->sortByDesc('count')
+                ->values()
+                ->all(),
+            'concerns' => collect($concernCounts)
+                ->map(fn (int $count, string $type) => [
+                    'type' => $type,
+                    'label' => CustomerPresenter::concernLabel($type),
+                    'count' => $count,
+                ])
+                ->sortByDesc('count')
+                ->values()
+                ->take(5)
+                ->all(),
+        ];
     }
 
     /** @return list<int> */
@@ -368,32 +431,77 @@ class AnalysisListQuery
     }
 
     /** @return Collection<int, ConversationAnalysis> */
-    private function chartRows(AnalysisListFilter $filter): Collection
+    private function analysisFacts(AnalysisListFilter $filter): Collection
     {
-        return $this->analyticsQuery($filter)
-            ->whereNotNull('conversation_analyses.analyzed_at')
-            ->orderBy('conversation_analyses.analyzed_at')
-            ->get([
-                'conversation_analyses.analyzed_at',
-                'conversation_analyses.score',
-                'conversation_analyses.is_evaluable',
-                'calls.conversation_date as call_conversation_date',
-                'calls.started_at as call_started_at',
-                'calls.created_at as call_created_at',
-            ]);
+        $key = spl_object_id($filter);
+
+        return $this->factsByFilter[$key] ??= $this->analyticsQuery($filter)->get([
+            'conversation_analyses.id',
+            'conversation_analyses.score',
+            'conversation_analyses.is_evaluable',
+            'conversation_analyses.sentiment',
+            'conversation_analyses.lead_quality_json',
+            'conversation_analyses.concerns_json',
+        ]);
     }
 
-    private function chartOccurredAt(ConversationAnalysis $analysis): Carbon
+    /**
+     * Daily totals from SQL, rolled up to weeks only when the range is long.
+     *
+     * @return Collection<int, object>
+     */
+    private function chartBuckets(AnalysisListFilter $filter, string $granularity): Collection
     {
-        foreach (['call_conversation_date', 'call_started_at', 'call_created_at', 'analyzed_at'] as $attribute) {
-            $value = $analysis->getAttribute($attribute);
+        $key = spl_object_id($filter);
+        $daily = $this->dailyBucketsByFilter[$key] ??= $this->dailyChartBuckets($filter);
 
-            if ($value) {
-                return Carbon::parse($value);
-            }
+        if ($granularity !== 'week') {
+            return $daily;
         }
 
-        return Carbon::parse($analysis->analyzed_at);
+        return $daily
+            ->groupBy(fn (object $bucket): string => $this->periodKey(Carbon::parse((string) $bucket->period), 'week'))
+            ->map(function (Collection $items, string $period): object {
+                return (object) [
+                    'period' => $period,
+                    'total_count' => (int) $items->sum('total_count'),
+                    'scored_count' => (int) $items->sum('scored_count'),
+                    'score_sum' => (float) $items->sum('score_sum'),
+                ];
+            })
+            ->sortKeys()
+            ->values();
+    }
+
+    /** @return Collection<int, object> */
+    private function dailyChartBuckets(AnalysisListFilter $filter): Collection
+    {
+        $driver = DB::connection()->getDriverName();
+        $moment = 'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, conversation_analyses.analyzed_at)';
+        $day = CompanyWorkCalendar::sqlDayKey($moment, $driver);
+        $truth = $driver === 'pgsql' ? 'TRUE' : '1';
+        $evaluable = "(conversation_analyses.is_evaluable IS NULL OR conversation_analyses.is_evaluable = $truth) AND conversation_analyses.score > 0";
+
+        return $this->analyticsQuery($filter)
+            ->whereNotNull('conversation_analyses.analyzed_at')
+            ->selectRaw("$day as period")
+            ->selectRaw('COUNT(*) as total_count')
+            ->selectRaw("SUM(CASE WHEN $evaluable THEN 1 ELSE 0 END) as scored_count")
+            ->selectRaw("SUM(CASE WHEN $evaluable THEN conversation_analyses.score ELSE 0 END) as score_sum")
+            ->groupByRaw($day)
+            ->orderByRaw($day)
+            ->get();
+    }
+
+    private function bucketPeriod(object $bucket, string $granularity): string
+    {
+        $period = (string) $bucket->period;
+
+        if ($granularity === 'day') {
+            return Carbon::parse($period)->toDateString();
+        }
+
+        return $period;
     }
 
     private function periodKey(Carbon $date, string $granularity): string

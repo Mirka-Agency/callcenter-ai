@@ -14,7 +14,17 @@ class ProcessVoipWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 3;
+
+    public int $timeout = 120;
+
     public bool $forceReplay = false;
+
+    /** @return list<int> */
+    public function backoff(): array
+    {
+        return [15, 60];
+    }
 
     public function __construct(
         public int $connectionId,

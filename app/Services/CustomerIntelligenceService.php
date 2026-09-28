@@ -8,6 +8,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
 use App\Models\OrganizationUser;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Support\CompanyName;
 use App\Support\CustomerNextActionAggregator;
 use App\Support\CustomerPresenter;
@@ -78,16 +79,10 @@ class CustomerIntelligenceService
             ->where('organization_id', $customer->organization_id)
             ->whereNull('customer_id')
             ->where(function ($query) use ($customer) {
-                $query->whereRaw(
-                    "REPLACE(REPLACE(REPLACE(caller_number, '+', ''), '-', ''), ' ', '') = ?",
-                    [$customer->normalized_phone],
-                )->orWhereRaw(
-                    "REPLACE(REPLACE(REPLACE(receiver_number, '+', ''), '-', ''), ' ', '') = ?",
-                    [$customer->normalized_phone],
-                )->orWhereRaw(
-                    "REPLACE(REPLACE(REPLACE(customer_phone, '+', ''), '-', ''), ' ', '') = ?",
-                    [$customer->normalized_phone],
-                );
+                $phone = $customer->normalized_phone;
+                $query->where('normalized_caller_number', $phone)
+                    ->orWhere('normalized_receiver_number', $phone)
+                    ->orWhere('normalized_customer_phone', $phone);
             })
             ->update(['customer_id' => $customer->id]);
     }
@@ -121,8 +116,16 @@ class CustomerIntelligenceService
             ->get();
     }
 
+    public function timelineCount(Customer $customer): int
+    {
+        return Call::query()
+            ->where('organization_id', $customer->organization_id)
+            ->where('customer_id', $customer->id)
+            ->count();
+    }
+
     /** @return list<array<string, mixed>> */
-    public function timeline(Customer $customer): array
+    public function timeline(Customer $customer, int $limit = 80): array
     {
         $calls = Call::query()
             ->where('organization_id', $customer->organization_id)
@@ -130,6 +133,7 @@ class CustomerIntelligenceService
             ->with(['employee', 'latestAnalysis'])
             ->orderByDesc('started_at')
             ->orderByDesc('created_at')
+            ->limit(max(1, $limit))
             ->get();
 
         return $calls->map(function (Call $call) {
@@ -171,21 +175,36 @@ class CustomerIntelligenceService
     public function profileAnalytics(Customer $customer): array
     {
         $analyses = ConversationAnalysis::query()
-            ->where('organization_id', $customer->organization_id)
-            ->whereHas('call', fn ($q) => $q->where('customer_id', $customer->id))
-            ->orderBy('analyzed_at')
-            ->get();
+            ->where('conversation_analyses.organization_id', $customer->organization_id)
+            ->whereHas('call', fn ($q) => $q
+                ->where('customer_id', $customer->id)
+                ->where('organization_id', $customer->organization_id));
 
-        $calls = Call::query()
-            ->where('organization_id', $customer->organization_id)
-            ->where('customer_id', $customer->id)
-            ->get();
+        $stats = (clone $analyses)->toBase();
+        $stats->columns = [];
+        $row = $stats
+            ->selectRaw('COUNT(*) as analyzed_calls')
+            ->selectRaw('AVG(CASE WHEN score IS NOT NULL AND score != 0 THEN score END) as average_score')
+            ->first();
 
-        $scores = $analyses->pluck('score')->filter();
-        $durations = $calls->pluck('duration_seconds')->filter(fn (?int $seconds) => $seconds && $seconds > 0);
+        $recordedCalls = app(DefinedExtensionCallConstraint::class)->apply(
+            Call::query()
+                ->where('organization_id', $customer->organization_id)
+                ->where('customer_id', $customer->id),
+            $customer->organization_id,
+        );
+        $totalCalls = (clone $recordedCalls)->count();
+        $answeredCalls = (clone $recordedCalls)->where('status', 'completed')->count();
+        $averageDuration = (clone $recordedCalls)
+            ->where('duration_seconds', '>', 0)
+            ->avg('duration_seconds');
 
-        $scoreSeries = $analyses
-            ->filter(fn (ConversationAnalysis $analysis) => $analysis->score !== null)
+        $scoreSeries = (clone $analyses)
+            ->whereNotNull('conversation_analyses.score')
+            ->orderByDesc('conversation_analyses.analyzed_at')
+            ->limit(60)
+            ->get(['conversation_analyses.analyzed_at', 'conversation_analyses.score', 'conversation_analyses.lead_quality_json'])
+            ->reverse()
             ->map(function (ConversationAnalysis $analysis) {
                 $leadScore = $analysis->lead_quality_json['score'] ?? null;
 
@@ -198,24 +217,21 @@ class CustomerIntelligenceService
             ->values()
             ->all();
 
-        $sentimentCounts = [];
-        foreach ($analyses as $analysis) {
-            if (! $analysis->sentiment) {
-                continue;
-            }
-
-            $key = $analysis->sentiment->value;
-            $sentimentCounts[$key] = ($sentimentCounts[$key] ?? 0) + 1;
-        }
-
-        $sentimentBreakdown = collect($sentimentCounts)
-            ->map(function (int $count, string $key) {
-                $sentiment = AnalysisSentiment::tryFrom($key);
+        $sentimentRows = (clone $analyses)->toBase();
+        $sentimentRows->columns = [];
+        $sentimentBreakdown = $sentimentRows
+            ->whereNotNull('sentiment')
+            ->select('sentiment')
+            ->selectRaw('COUNT(*) as aggregate')
+            ->groupBy('sentiment')
+            ->get()
+            ->map(function (object $row) {
+                $sentiment = AnalysisSentiment::tryFrom((string) $row->sentiment);
 
                 return [
-                    'key' => $key,
-                    'label' => $sentiment?->label() ?? $key,
-                    'count' => $count,
+                    'key' => (string) $row->sentiment,
+                    'label' => $sentiment?->label() ?? (string) $row->sentiment,
+                    'count' => (int) $row->aggregate,
                 ];
             })
             ->values()
@@ -231,11 +247,13 @@ class CustomerIntelligenceService
             ->all();
 
         return [
-            'average_score' => $scores->isNotEmpty() ? round((float) $scores->avg(), 1) : null,
-            'analyzed_calls' => $analyses->count(),
-            'answer_rate' => CustomerPresenter::answerRate($customer),
+            'average_score' => $row->average_score !== null ? round((float) $row->average_score, 1) : null,
+            'total_calls' => $totalCalls,
+            'answered_calls' => $answeredCalls,
+            'analyzed_calls' => (int) $row->analyzed_calls,
+            'answer_rate' => $totalCalls > 0 ? (int) round(($answeredCalls / $totalCalls) * 100) : null,
             'average_duration_label' => $this->formatDuration(
-                $durations->isNotEmpty() ? (int) round($durations->avg()) : null,
+                $averageDuration !== null ? (int) round((float) $averageDuration) : null,
             ),
             'score_series' => $scoreSeries,
             'sentiment_breakdown' => $sentimentBreakdown,
@@ -398,9 +416,12 @@ class CustomerIntelligenceService
 
     private function refreshAggregates(Customer $customer): void
     {
-        $calls = Call::query()
-            ->where('organization_id', $customer->organization_id)
-            ->where('customer_id', $customer->id)
+        $calls = app(DefinedExtensionCallConstraint::class)->apply(
+            Call::query()
+                ->where('organization_id', $customer->organization_id)
+                ->where('customer_id', $customer->id),
+            $customer->organization_id,
+        )
             ->orderBy('started_at')
             ->orderBy('created_at')
             ->get();

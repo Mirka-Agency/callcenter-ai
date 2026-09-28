@@ -5,6 +5,7 @@ namespace App\Application\Intelligence\Jobs;
 use App\Application\Intelligence\Services\CallAnalysisQueueService;
 use App\Application\Llm\AnalysisManager;
 use App\Domain\Call\Enums\CallProcessingStatus;
+use App\Domain\Llm\Exceptions\LlmTransientException;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Domain\Recording\Contracts\RecordingDownloaderInterface;
 use App\Domain\Recording\Contracts\RecordingRepositoryInterface;
@@ -30,9 +31,15 @@ class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 1;
+    public int $tries = 3;
 
     public int $timeout = 600;
+
+    /** @return list<int> */
+    public function backoff(): array
+    {
+        return [30, 120];
+    }
 
     public int $uniqueFor = 1800;
 
@@ -103,9 +110,28 @@ class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
 
             $this->scheduleRetentionAfterAnalysis($call->id, $retention);
         } catch (\Throwable $e) {
+            if ($this->canRetry($e)) {
+                $call->update([
+                    'processing_status' => CallProcessingStatus::Pending,
+                    'processing_error' => null,
+                ]);
+
+                throw $e;
+            }
+
             $this->markPermanentFailure($call, $job, $tracker, $e);
             $this->failWithoutRetry($e);
         }
+    }
+
+    private function canRetry(\Throwable $e): bool
+    {
+        if ($this->attempts() >= $this->tries) {
+            return false;
+        }
+
+        return $e instanceof LlmTransientException
+            || LlmTransientException::isTransientMessage($e->getMessage());
     }
 
     public function failed(\Throwable $exception): void
