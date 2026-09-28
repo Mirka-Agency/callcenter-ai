@@ -62,6 +62,26 @@ class DefinedExtensionCallConstraint
     }
 
     /**
+     * VoIP calls on extensions that are not registered for the organization.
+     * These are ingested but intentionally skipped from analysis and report totals.
+     * When the organization has no registered extensions, nothing is "outside".
+     *
+     * @param  Builder<Call>  $query
+     * @return Builder<Call>
+     */
+    public function applyOutsideAnalysis(Builder $query, int $organizationId): Builder
+    {
+        $query = $query->withRecording()
+            ->where($query->getModel()->getTable().'.source', ConversationSource::Voip->value);
+
+        if ($this->matchSets($organizationId) === []) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        return $query->where($query->getModel()->getTable().'.counts_for_extension_reports', false);
+    }
+
+    /**
      * Same rule as the report filter, stored on the call so page loads do not scan recordings.
      */
     public function countsForReports(Call $call): bool

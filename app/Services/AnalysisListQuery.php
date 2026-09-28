@@ -111,6 +111,7 @@ class AnalysisListQuery
         // those extensions count (an unknown extension such as 112 is ignored).
         $callStats = $this->callStats($filter);
         $totalCalls = $callStats['total_calls'];
+        $outsideAnalysisCount = $callStats['outside_analysis_count'];
         $missedCount = $callStats['missed_count'];
         $inFlightCount = $callStats['in_flight_count'];
         // Same completed definition as the queue "تکمیل‌شده" card, scoped by this page's filters.
@@ -156,6 +157,7 @@ class AnalysisListQuery
         return [
             'total' => $analyzedCalls,
             'total_calls' => $totalCalls,
+            'outside_analysis_count' => $outsideAnalysisCount,
             'average_score' => $avgScore,
             'average_duration_seconds' => $avgDuration,
             'average_duration_label' => $this->callMetrics->formatDuration($avgDuration),
@@ -179,6 +181,7 @@ class AnalysisListQuery
      *
      * @return array{
      *     total_calls: int,
+     *     outside_analysis_count: int,
      *     missed_count: int,
      *     in_flight_count: int,
      *     completed_count: int,
@@ -191,7 +194,7 @@ class AnalysisListQuery
     {
         $extensionKey = md5(json_encode($this->definedExtensions->matchSetFingerprint($filter->organizationId)) ?: '');
         $cacheKey = implode(':', [
-            'analysis-call-stats-recorded-v2',
+            'analysis-call-stats-recorded-v3',
             $filter->organizationId,
             $filter->from->getTimestamp(),
             $filter->to->getTimestamp(),
@@ -242,8 +245,14 @@ class AnalysisListQuery
                 $filter->organizationId,
             );
 
+            $outsideAnalysisCount = $this->definedExtensions->applyOutsideAnalysis(
+                $filter->applyToCallQuery(Call::query()),
+                $filter->organizationId,
+            )->count();
+
             return [
                 'total_calls' => (int) ($row->total_calls ?? 0),
+                'outside_analysis_count' => $outsideAnalysisCount,
                 'missed_count' => (int) ($row->missed_count ?? 0),
                 'in_flight_count' => (int) ($row->in_flight_count ?? 0),
                 'completed_count' => $this->queueCallStats->completedForQuery($completedQuery),

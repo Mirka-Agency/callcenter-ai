@@ -165,7 +165,7 @@
         @include('livewire.employer.intelligence.partials.analysis-list')
     @endif
 
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-tour="analysis-stats">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5" data-tour="analysis-stats">
         <x-saas.stat-card label="تعداد کل تماس‌ها" :value="number_format($overview['total_calls'])" />
         <x-saas.stat-card
             label="تماس‌های تحلیل‌شده"
@@ -173,6 +173,11 @@
             :hint="($overview['in_flight_count'] ?? 0) > 0
                 ? number_format($overview['in_flight_count']).' در صف یا در حال پردازش'
                 : null"
+        />
+        <x-saas.stat-card
+            label="تماس‌های خارج از تحلیل"
+            :value="number_format($overview['outside_analysis_count'] ?? 0)"
+            hint="داخلی‌های تعریف‌نشده"
         />
         <x-saas.stat-card
             label="تماس از دست رفته"
