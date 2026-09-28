@@ -54,7 +54,7 @@ class AgentPerformanceCardFeedTest extends TestCase
             ->assertSee('دیروز')
             ->assertSee('۷ روز گذشته')
             ->assertSee('۳۰ روز گذشته')
-            ->assertSee('این ماه')
+            ->assertDontSee('این ماه')
             ->assertSee('ماه قبل')
             ->assertSee('فصل جاری')
             ->assertSee('سال جاری')

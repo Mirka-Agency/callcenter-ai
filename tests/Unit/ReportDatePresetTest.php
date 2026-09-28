@@ -14,7 +14,6 @@ class ReportDatePresetTest extends TestCase
             ReportDatePreset::Yesterday,
             ReportDatePreset::Last7,
             ReportDatePreset::Last30,
-            ReportDatePreset::ThisMonth,
             ReportDatePreset::PreviousMonth,
             ReportDatePreset::CurrentQuarter,
             ReportDatePreset::CurrentYear,

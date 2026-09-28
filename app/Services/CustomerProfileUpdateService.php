@@ -122,8 +122,9 @@ class CustomerProfileUpdateService
     private function normalizedUniquePhone(int $organizationId, string $phoneNumber, ?int $exceptCustomerId = null): string
     {
         $normalized = $this->phoneResolver->normalize($phoneNumber);
+        $keys = $this->phoneResolver->equivalentKeys($phoneNumber);
 
-        if (! $normalized) {
+        if (! $normalized || $keys === []) {
             throw ValidationException::withMessages([
                 'phone_number' => 'شماره تماس معتبر نیست.',
             ]);
@@ -131,7 +132,7 @@ class CustomerProfileUpdateService
 
         $duplicate = Customer::query()
             ->where('organization_id', $organizationId)
-            ->where('normalized_phone', $normalized)
+            ->whereIn('normalized_phone', $keys)
             ->when($exceptCustomerId, fn ($query) => $query->whereKeyNot($exceptCustomerId))
             ->exists();
 

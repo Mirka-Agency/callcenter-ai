@@ -63,7 +63,6 @@ class Index extends Component
             'periodPresets' => [
                 ReportDatePreset::Last7,
                 ReportDatePreset::Last30,
-                ReportDatePreset::ThisMonth,
                 ReportDatePreset::CurrentQuarter,
             ],
             'activePreset' => $preset,

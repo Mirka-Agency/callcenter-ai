@@ -14,6 +14,7 @@ use App\Services\Reports\CallMetricsAnalytics;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Services\Reports\ProcessingQueueCallStats;
+use App\Support\AnalysisInsightPresenter;
 use App\Support\ChartDayFilter;
 use App\Support\CompanyWorkCalendar;
 use App\Support\CustomerPresenter;
@@ -340,6 +341,178 @@ class AnalysisListQuery
     }
 
     /**
+     * Calls in the current filter whose analysis includes the selected concern type.
+     *
+     * @return array{total: int, calls: list<array{
+     *     analysis_id: int,
+     *     customer: string,
+     *     employee: string,
+     *     date: string,
+     *     duration_label: string,
+     *     quality_score: int|null,
+     *     summary: string|null,
+     *     concerns: list<array{text: string, severity: string}>
+     * }>}
+     */
+    public function callsForConcern(AnalysisListFilter $filter, ?string $type, int $limit = 20): array
+    {
+        $type = is_string($type) ? strtolower(trim($type)) : '';
+
+        if ($type === '' || mb_strlen($type) > 32) {
+            return ['total' => 0, 'calls' => []];
+        }
+
+        $allowed = collect($this->concernsByType($filter))->pluck('type')->all();
+
+        if (! in_array($type, $allowed, true)) {
+            return ['total' => 0, 'calls' => []];
+        }
+
+        $matchingIds = [];
+
+        foreach ($this->analysisFacts($filter) as $analysis) {
+            if ($this->analysisHasConcernType($analysis, $type)) {
+                $matchingIds[] = (int) $analysis->id;
+            }
+        }
+
+        if ($matchingIds === []) {
+            return ['total' => 0, 'calls' => []];
+        }
+
+        $calls = ConversationAnalysis::query()
+            ->where('organization_id', $filter->organizationId)
+            ->whereIn('id', $matchingIds)
+            ->with([
+                'employee:id,first_name,last_name',
+                'call:id,customer_id,customer_name,caller_number,duration_seconds,started_at,conversation_date,created_at',
+                'call.customer:id,name,company_name,phone_number',
+            ])
+            ->orderByDesc('analyzed_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get([
+                'id',
+                'call_id',
+                'organization_user_id',
+                'score',
+                'is_evaluable',
+                'summary',
+                'concerns_json',
+                'customer_identity_json',
+                'analyzed_at',
+            ])
+            ->map(function (ConversationAnalysis $analysis) use ($type): array {
+                $call = $analysis->call;
+
+                return [
+                    'analysis_id' => $analysis->id,
+                    'customer' => AnalysisInsightPresenter::customerName($analysis)
+                        ?? $call?->customer?->displayName()
+                        ?? $call?->caller_number
+                        ?? 'مشتری نامشخص',
+                    'employee' => $analysis->employee?->full_name ?: '—',
+                    'date' => JalaliDate::datetime($call?->occurredAt() ?? $analysis->analyzed_at),
+                    'duration_label' => $this->callMetrics->formatDuration((int) ($call?->duration_seconds ?? 0)),
+                    'quality_score' => $analysis->isEvaluable() ? $analysis->score : null,
+                    'summary' => $analysis->summary,
+                    'concerns' => $this->matchingConcernQuotes($analysis, $type),
+                ];
+            })
+            ->all();
+
+        return [
+            'total' => count($matchingIds),
+            'calls' => $calls,
+        ];
+    }
+
+    /**
+     * Calls in the current filter with the selected sentiment.
+     * Only the negative slice of the sentiment chart is opened from the page.
+     *
+     * @return array{total: int, calls: list<array{
+     *     analysis_id: int,
+     *     customer: string,
+     *     employee: string,
+     *     date: string,
+     *     duration_label: string,
+     *     quality_score: int|null,
+     *     summary: string|null
+     * }>}
+     */
+    public function callsForSentiment(AnalysisListFilter $filter, ?string $sentiment, int $limit = 20): array
+    {
+        $sentiment = is_string($sentiment) ? strtolower(trim($sentiment)) : '';
+
+        if ($sentiment !== AnalysisSentiment::Negative->value) {
+            return ['total' => 0, 'calls' => []];
+        }
+
+        $allowed = collect($this->sentimentBreakdown($filter))->pluck('key')->all();
+
+        if (! in_array($sentiment, $allowed, true)) {
+            return ['total' => 0, 'calls' => []];
+        }
+
+        $matchingIds = [];
+
+        foreach ($this->analysisFacts($filter) as $analysis) {
+            if ($analysis->sentiment?->value === $sentiment) {
+                $matchingIds[] = (int) $analysis->id;
+            }
+        }
+
+        if ($matchingIds === []) {
+            return ['total' => 0, 'calls' => []];
+        }
+
+        $calls = ConversationAnalysis::query()
+            ->where('organization_id', $filter->organizationId)
+            ->whereIn('id', $matchingIds)
+            ->with([
+                'employee:id,first_name,last_name',
+                'call:id,customer_id,customer_name,caller_number,duration_seconds,started_at,conversation_date,created_at',
+                'call.customer:id,name,company_name,phone_number',
+            ])
+            ->orderByDesc('analyzed_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get([
+                'id',
+                'call_id',
+                'organization_user_id',
+                'score',
+                'is_evaluable',
+                'summary',
+                'customer_identity_json',
+                'analyzed_at',
+            ])
+            ->map(function (ConversationAnalysis $analysis): array {
+                $call = $analysis->call;
+
+                return [
+                    'analysis_id' => $analysis->id,
+                    'customer' => AnalysisInsightPresenter::customerName($analysis)
+                        ?? $call?->customer?->displayName()
+                        ?? $call?->caller_number
+                        ?? 'مشتری نامشخص',
+                    'employee' => $analysis->employee?->full_name ?: '—',
+                    'date' => JalaliDate::datetime($call?->occurredAt() ?? $analysis->analyzed_at),
+                    'duration_label' => $this->callMetrics->formatDuration((int) ($call?->duration_seconds ?? 0)),
+                    'quality_score' => $analysis->isEvaluable() ? $analysis->score : null,
+                    'summary' => $analysis->summary,
+                ];
+            })
+            ->all();
+
+        return [
+            'total' => count($matchingIds),
+            'calls' => $calls,
+        ];
+    }
+
+    /**
      * Lead, sentiment, and concerns share one read of the analysis rows.
      *
      * @return array{lead: array{high: int, medium: int, low: int, total: int, average_score: float}, sentiment: list<array{key: string, label: string, count: int}>, concerns: list<array{type: string, label: string, count: int}>}
@@ -364,11 +537,12 @@ class AnalysisListQuery
             }
 
             foreach ($analysis->concerns_json ?? [] as $concern) {
-                if (! is_array($concern)) {
+                $type = $this->concernTypeOf($concern);
+
+                if ($type === null) {
                     continue;
                 }
 
-                $type = strtolower((string) ($concern['type'] ?? 'other'));
                 $concernCounts[$type] = ($concernCounts[$type] ?? 0) + 1;
             }
 
@@ -424,6 +598,59 @@ class AnalysisListQuery
                 ->take(5)
                 ->all(),
         ];
+    }
+
+    private function concernTypeOf(mixed $concern): ?string
+    {
+        if (! is_array($concern)) {
+            return null;
+        }
+
+        return strtolower((string) ($concern['type'] ?? 'other'));
+    }
+
+    private function analysisHasConcernType(ConversationAnalysis $analysis, string $type): bool
+    {
+        foreach ($analysis->concerns_json ?? [] as $concern) {
+            if ($this->concernTypeOf($concern) === $type) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return list<array{text: string, severity: string}>
+     */
+    private function matchingConcernQuotes(ConversationAnalysis $analysis, string $type): array
+    {
+        $quotes = [];
+
+        foreach ($analysis->concerns_json ?? [] as $concern) {
+            if ($this->concernTypeOf($concern) !== $type) {
+                continue;
+            }
+
+            $text = trim((string) ($concern['text'] ?? ''));
+
+            if ($text === '') {
+                continue;
+            }
+
+            $severity = strtolower((string) ($concern['severity'] ?? 'medium'));
+
+            if (! in_array($severity, ['low', 'medium', 'high'], true)) {
+                $severity = 'medium';
+            }
+
+            $quotes[] = [
+                'text' => $text,
+                'severity' => $severity,
+            ];
+        }
+
+        return $quotes;
     }
 
     /** @return list<int> */
@@ -533,7 +760,7 @@ class AnalysisListQuery
     private function periodLabel(string $key, string $granularity): string
     {
         if ($granularity === 'week') {
-            return 'هفته '.$key;
+            return JalaliDate::isoWeekAxisLabel($key);
         }
 
         return JalaliDate::monthDay($key);
@@ -542,7 +769,7 @@ class AnalysisListQuery
     private function periodTooltipLabel(string $key, string $granularity): string
     {
         if ($granularity === 'week') {
-            return $this->periodLabel($key, $granularity);
+            return JalaliDate::isoWeekTooltipLabel($key);
         }
 
         return JalaliDate::monthDayWithWeekday($key);

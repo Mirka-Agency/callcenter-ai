@@ -67,7 +67,6 @@ enum ReportDatePreset: string
             self::Yesterday,
             self::Last7,
             self::Last30,
-            self::ThisMonth,
             self::PreviousMonth,
             self::CurrentQuarter,
             self::CurrentYear,

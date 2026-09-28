@@ -14,6 +14,7 @@ use App\Support\CompanyWorkCalendar;
 use App\Support\FollowUpDueDateParser;
 use App\Support\ForgottenCallbackMatcher;
 use App\Support\JalaliDate;
+use App\Support\PersonName;
 use App\Support\PaymentFollowUpSentiment;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -373,8 +374,14 @@ class EmployerDashboardAnalytics
             ->unique()
             ->values()
             ->all();
+        $phoneKeys = $this->phoneKeysForMany($phones);
+        $names = $analyses
+            ->flatMap(fn (ConversationAnalysis $analysis) => $this->contactLookupNames($analysis))
+            ->unique()
+            ->values()
+            ->all();
 
-        if ($customerIds === [] && $phones === []) {
+        if ($customerIds === [] && $phoneKeys === [] && $names === []) {
             return collect();
         }
 
@@ -392,7 +399,7 @@ class EmployerDashboardAnalytics
                         $created->whereNull('started_at')->where('created_at', '>', $earliest);
                     });
             }))
-            ->where(function ($query) use ($customerIds, $phones) {
+            ->where(function ($query) use ($customerIds, $phones, $phoneKeys, $names) {
                 if ($customerIds !== []) {
                     $query->orWhereIn('customer_id', $customerIds);
                 }
@@ -401,18 +408,27 @@ class EmployerDashboardAnalytics
                         ->orWhereIn('caller_number', $phones)
                         ->orWhereIn('receiver_number', $phones);
                 }
+                if ($phoneKeys !== []) {
+                    $query->orWhereIn('normalized_customer_phone', $phoneKeys)
+                        ->orWhereIn('normalized_caller_number', $phoneKeys)
+                        ->orWhereIn('normalized_receiver_number', $phoneKeys);
+                }
+                if ($names !== []) {
+                    $query->orWhereIn('customer_name', $names);
+                }
             })
-            ->get(['id', 'customer_id', 'customer_phone', 'caller_number', 'receiver_number', 'started_at', 'created_at']);
+            ->get(['id', 'customer_id', 'customer_name', 'customer_phone', 'caller_number', 'receiver_number', 'started_at', 'created_at']);
     }
 
     /**
      * @param  Collection<int, Call>  $laterCalls
-     * @return array{by_customer_id: array<int, list<Call>>, by_phone: array<string, list<Call>>}
+     * @return array{by_customer_id: array<int, list<Call>>, by_phone: array<string, list<Call>>, by_name: array<string, list<Call>>}
      */
     private function indexLaterCalls(Collection $laterCalls): array
     {
         $byCustomerId = [];
         $byPhone = [];
+        $byName = [];
 
         foreach ($laterCalls as $call) {
             if ($call->customer_id) {
@@ -420,22 +436,27 @@ class EmployerDashboardAnalytics
             }
 
             foreach ([$call->customer_phone, $call->caller_number, $call->receiver_number] as $candidate) {
-                $phone = $this->normalizedPhone($candidate);
-
-                if ($phone !== null) {
+                foreach ($this->phoneKeys($candidate) as $phone) {
                     $byPhone[$phone][] = $call;
                 }
+            }
+
+            $name = PersonName::matchKey($call->customer_name);
+
+            if ($name !== null) {
+                $byName[$name][] = $call;
             }
         }
 
         return [
             'by_customer_id' => $byCustomerId,
             'by_phone' => $byPhone,
+            'by_name' => $byName,
         ];
     }
 
     /**
-     * @param  array{by_customer_id: array<int, list<Call>>, by_phone: array<string, list<Call>>}  $laterCalls
+     * @param  array{by_customer_id: array<int, list<Call>>, by_phone: array<string, list<Call>>, by_name: array<string, list<Call>>}  $laterCalls
      * @return array{
      *     analysis_id: int,
      *     customer: string,
@@ -592,14 +613,15 @@ class EmployerDashboardAnalytics
     }
 
     /**
-     * @param  array{by_customer_id: array<int, list<Call>>, by_phone: array<string, list<Call>>}  $laterCalls
+     * @param  array{by_customer_id: array<int, list<Call>>, by_phone: array<string, list<Call>>, by_name: array<string, list<Call>>}  $laterCalls
      */
     private function wasFollowedUp(ConversationAnalysis $analysis, array $laterCalls): bool
     {
         $originalCallId = $analysis->call_id;
         $originalAt = $analysis->call?->started_at ?? $analysis->analyzed_at;
         $customerId = $analysis->call?->customer_id;
-        $phone = $this->normalizedPhone($this->contactPhone($analysis));
+        $phones = $this->phoneKeys($this->contactPhone($analysis));
+        $name = $this->contactPersonKey($analysis);
 
         if (! $originalAt) {
             return false;
@@ -617,8 +639,17 @@ class EmployerDashboardAnalytics
             }
         }
 
-        if ($phone !== null) {
+        foreach ($phones as $phone) {
             foreach ($laterCalls['by_phone'][$phone] ?? [] as $call) {
+                if (! isset($seen[$call->id])) {
+                    $seen[$call->id] = true;
+                    $candidates[] = $call;
+                }
+            }
+        }
+
+        if ($name !== null) {
+            foreach ($laterCalls['by_name'][$name] ?? [] as $call) {
                 if (! isset($seen[$call->id])) {
                     $seen[$call->id] = true;
                     $candidates[] = $call;
@@ -838,9 +869,47 @@ class EmployerDashboardAnalytics
 
     private function normalizedPhone(?string $phone): ?string
     {
-        $digits = preg_replace('/\D+/', '', (string) $phone);
+        return app(CustomerPhoneResolver::class)->normalize($phone);
+    }
 
-        return $digits !== '' ? $digits : null;
+    /** @return list<string> */
+    private function phoneKeys(?string $phone): array
+    {
+        return app(CustomerPhoneResolver::class)->equivalentKeys($phone);
+    }
+
+    /**
+     * @param  list<string>  $phones
+     * @return list<string>
+     */
+    private function phoneKeysForMany(array $phones): array
+    {
+        return app(CustomerPhoneResolver::class)->equivalentKeysForMany($phones);
+    }
+
+    private function contactPersonKey(ConversationAnalysis $analysis): ?string
+    {
+        $call = $analysis->call;
+        $identity = $analysis->customer_identity_json ?? [];
+
+        return PersonName::matchKey(
+            $call?->customer?->name
+                ?: ($identity['person_name'] ?? null)
+                ?: $call?->customer_name
+        );
+    }
+
+    /** @return list<string> */
+    private function contactLookupNames(ConversationAnalysis $analysis): array
+    {
+        $call = $analysis->call;
+        $identity = $analysis->customer_identity_json ?? [];
+
+        return PersonName::lookupNames(
+            $call?->customer?->name
+                ?: ($identity['person_name'] ?? null)
+                ?: $call?->customer_name
+        );
     }
 
     /**

@@ -36,6 +36,17 @@ class JalaliDateTest extends TestCase
         $this->assertSame('2024-03-20', $gregorian);
     }
 
+    public function test_iso_week_axis_is_persian_week_number_only(): void
+    {
+        $this->assertSame('۳۹', JalaliDate::isoWeekAxisLabel('2026-39'));
+        $this->assertSame('۱', JalaliDate::isoWeekAxisLabel('2026-01'));
+    }
+
+    public function test_iso_week_tooltip_names_the_jalali_year(): void
+    {
+        $this->assertSame('39امین هفته ۱۴۰۵', JalaliDate::isoWeekTooltipLabel('2026-39'));
+    }
+
     public function test_returns_empty_placeholder_for_null(): void
     {
         $this->assertSame('—', JalaliDate::date(null));

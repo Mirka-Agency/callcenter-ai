@@ -335,6 +335,46 @@ class ForgottenFollowUpsDashboardTest extends TestCase
             ->assertSee('اگر مشتری درخواست داشته، کارشناس باید دوباره زنگ می‌زده و تماس نگرفته باشد، اینجا دیده می‌شود.');
     }
 
+    public function test_later_callback_with_the_same_number_or_person_clears_the_forgotten_follow_up(): void
+    {
+        $organization = Organization::factory()->create();
+
+        $this->seedFollowUp($organization, [
+            'external_id' => 'same-number-other-format',
+            'customer_name' => 'سارا کریمی',
+            'customer_phone' => '09123334455',
+            'follow_up' => 'تماس پیگیری فردا',
+            'analyzed_at' => now()->subDays(5),
+            'started_at' => now()->subDays(5),
+            'followed_up_at' => now()->subDays(1),
+            'follow_up_phone' => '+98 912 333 4455',
+            'follow_up_name' => 'اپراتور دیگر',
+        ]);
+        $this->seedFollowUp($organization, [
+            'external_id' => 'same-person-other-number',
+            'customer_name' => 'رضا محمدی',
+            'customer_phone' => '09124445566',
+            'follow_up' => 'تماس پیگیری فردا',
+            'analyzed_at' => now()->subDays(6),
+            'started_at' => now()->subDays(6),
+            'followed_up_at' => now()->subDay(),
+            'follow_up_phone' => '09351112233',
+            'follow_up_name' => 'رضا محمدی',
+        ]);
+        $this->seedFollowUp($organization, [
+            'external_id' => 'still-forgotten',
+            'customer_name' => 'مریم جعفری',
+            'customer_phone' => '09125556677',
+            'follow_up' => 'تماس پیگیری فردا',
+            'analyzed_at' => now()->subDays(4),
+            'started_at' => now()->subDays(4),
+        ]);
+
+        $forgotten = EmployerDashboardAnalytics::forOrganization($organization->id)->forgottenFollowUps();
+
+        $this->assertSame(['مریم جعفری'], array_column($forgotten, 'customer'));
+    }
+
     public function test_analytics_keeps_only_promised_phone_callbacks(): void
     {
         $organization = Organization::factory()->create();
@@ -521,13 +561,13 @@ class ForgottenFollowUpsDashboardTest extends TestCase
                 'external_call_id' => $data['external_id'].'-followup',
                 'direction' => $data['follow_up_direction'] ?? 'outbound',
                 'caller_number' => ($data['follow_up_direction'] ?? 'outbound') === 'inbound'
-                    ? ($data['customer_phone'] ?? '09120000000')
+                    ? ($data['follow_up_phone'] ?? $data['customer_phone'] ?? '09120000000')
                     : '02100000000',
-                'customer_name' => $data['customer_name'],
-                'customer_phone' => $data['customer_phone'] ?? '09120000000',
+                'customer_name' => $data['follow_up_name'] ?? $data['customer_name'],
+                'customer_phone' => $data['follow_up_phone'] ?? $data['customer_phone'] ?? '09120000000',
                 'receiver_number' => ($data['follow_up_direction'] ?? 'outbound') === 'inbound'
                     ? '02100000000'
-                    : ($data['customer_phone'] ?? '09120000000'),
+                    : ($data['follow_up_phone'] ?? $data['customer_phone'] ?? '09120000000'),
                 'title' => 'تماس پیگیری',
                 'category' => 'فروش',
                 'status' => 'completed',

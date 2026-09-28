@@ -48,7 +48,6 @@ class Index extends Component
                 ReportDatePreset::Yesterday,
                 ReportDatePreset::Last7,
                 ReportDatePreset::Last30,
-                ReportDatePreset::ThisMonth,
             ],
             'moreDatePresets' => [
                 ReportDatePreset::PreviousMonth,

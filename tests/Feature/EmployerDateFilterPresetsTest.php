@@ -71,7 +71,6 @@ class EmployerDateFilterPresetsTest extends TestCase
             'دیروز',
             '۷ روز گذشته',
             '۳۰ روز گذشته',
-            'این ماه',
             'ماه قبل',
             'فصل جاری',
             'سال جاری',

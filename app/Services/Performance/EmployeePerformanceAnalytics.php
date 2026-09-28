@@ -5,7 +5,6 @@ namespace App\Services\Performance;
 use App\DTOs\ReportFilter;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
-use App\Services\Coaching\AgentCoachingAggregator;
 use App\Services\Performance\Calculators\EmployeeMetricsCalculator;
 use App\Services\Performance\Calculators\JsonFieldAggregator;
 use App\Services\Performance\Calculators\PerformanceTrendCalculator;
@@ -22,7 +21,6 @@ use App\Support\JalaliDate;
 use App\Support\OrganizationHolidays;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 
 class EmployeePerformanceAnalytics
 {
@@ -33,7 +31,6 @@ class EmployeePerformanceAnalytics
         private JsonFieldAggregator $jsonAggregator,
         private SentimentScoreCalculator $sentimentCalculator,
         private CoachingRecommendationBuilder $coachingBuilder,
-        private AgentCoachingAggregator $agentCoaching,
         private ProgressInsightFormatter $insightFormatter,
         private LeadConcernsAnalytics $leadConcerns,
         private CallMetricsAnalytics $callMetrics,
@@ -448,7 +445,6 @@ class EmployeePerformanceAnalytics
             'weaknesses' => $weaknesses,
             'improvement_areas' => array_slice($weaknesses, 0, 5),
             'coaching' => $this->coachingBuilder->build($weaknesses),
-            'agent_coaching' => $this->agentCoachingProfile($filter, $employee, $data),
             'recent_calls' => $this->recentCallsWithRelations($filter, $employee),
             'quality_trend' => $this->trendCalculator->qualityTrend($filter, $data->analyses),
             'lead_trend' => $this->trendCalculator->leadTrend($filter, $data->analyses),
@@ -461,26 +457,6 @@ class EmployeePerformanceAnalytics
         $profile['executive_summary'] = $this->summaryService->employeeSummaryFromProfile($employee, $profile);
 
         return $profile;
-    }
-
-    /** @return array<string, mixed> */
-    private function agentCoachingProfile(ReportFilter $filter, OrganizationUser $employee, LoadedPerformanceData $data): array
-    {
-        try {
-            return $this->agentCoaching->aggregate(
-                $filter,
-                $data->analyses,
-                $data->previousPeriod?->analyses ?? collect(),
-            );
-        } catch (\Throwable $exception) {
-            Log::warning('coaching_aggregation_failed', [
-                'organization_id' => $filter->organizationId,
-                'employee_id' => $employee->id,
-                'error' => $exception->getMessage(),
-            ]);
-
-            return $this->agentCoaching->errorPayload();
-        }
     }
 
     /** @return list<array<string, mixed>> */

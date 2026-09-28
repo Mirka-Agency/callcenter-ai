@@ -83,6 +83,49 @@ class JalaliDate
         return self::format($value, self::MONTH_DAY_WEEKDAY, $empty);
     }
 
+    public static function isoWeekAxisLabel(string $yearWeek): string
+    {
+        return self::persianDigits(self::isoWeekNumber($yearWeek));
+    }
+
+    public static function isoWeekTooltipLabel(string $yearWeek): string
+    {
+        $week = self::isoWeekNumber($yearWeek);
+        $year = self::persianDigits((int) Jalalian::fromCarbon(self::mondayOfIsoWeek($yearWeek))->format('Y'));
+
+        return $week.'امین هفته '.$year;
+    }
+
+    public static function persianDigits(int|string $value): string
+    {
+        return strtr((string) $value, [
+            '0' => '۰',
+            '1' => '۱',
+            '2' => '۲',
+            '3' => '۳',
+            '4' => '۴',
+            '5' => '۵',
+            '6' => '۶',
+            '7' => '۷',
+            '8' => '۸',
+            '9' => '۹',
+        ]);
+    }
+
+    private static function isoWeekNumber(string $yearWeek): int
+    {
+        $parts = explode('-', $yearWeek, 2);
+
+        return (int) ($parts[1] ?? $parts[0]);
+    }
+
+    private static function mondayOfIsoWeek(string $yearWeek): Carbon
+    {
+        [$year, $week] = array_pad(explode('-', $yearWeek, 2), 2, '1');
+
+        return Carbon::create((int) $year, 1, 4)->setISODate((int) $year, max(1, (int) $week))->startOfDay();
+    }
+
     public static function ago(DateTimeInterface|string|int|null $value, ?string $empty = '—'): string
     {
         if ($value === null || $value === '') {

@@ -265,15 +265,6 @@
             @endforelse
         </div>
     </section>
-
-    @include('livewire.employer.intelligence.partials.agent-coaching', [
-        'agentCoaching' => $profile['agent_coaching'] ?? [
-            'status' => 'empty',
-            'title' => __('ui.empty.agent_coaching.empty_title'),
-            'description' => __('ui.empty.agent_coaching.empty_description'),
-            'trend' => ['has_data' => false, 'labels' => [], 'datasets' => []],
-        ],
-    ])
     </div>
 
     <div
@@ -356,8 +347,7 @@
         }
 
         #emp-quality-trend,
-        #emp-volume-trend,
-        #agent-coaching-trend {
+        #emp-volume-trend {
             display: block !important;
             width: 100% !important;
             height: 14rem !important;
