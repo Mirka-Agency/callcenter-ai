@@ -11,6 +11,7 @@ use App\Domain\Intelligence\Enums\ReanalyzeScope;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Enums\UserRole;
 use App\Livewire\Employer\Intelligence\Index;
+use App\Livewire\Employer\Intelligence\Show;
 use App\Models\Call;
 use App\Models\CallRecording;
 use App\Models\ConversationAnalysis;
@@ -63,6 +64,33 @@ class ReanalyzeConversationsTest extends TestCase
         Livewire::test(Index::class)
             ->call('reanalyzeConversations', 'under_50')
             ->assertHasNoErrors();
+    }
+
+    public function test_employer_can_reanalyze_one_conversation_from_its_page(): void
+    {
+        Bus::fake();
+        PlatformAiSettings::current()->update(['allow_negative_balance' => true]);
+
+        [, $employer, $call] = $this->seedCalls();
+        $analysis = ConversationAnalysis::query()->where('call_id', $call->id)->firstOrFail();
+
+        $this->actingAs($employer);
+
+        Livewire::test(Show::class, ['analysis' => $analysis])
+            ->assertSee(__('ui.intelligence.reanalyze_one'))
+            ->call('reanalyze')
+            ->assertHasNoErrors()
+            ->assertSee(__('ui.intelligence.reanalyze_one_queued'));
+
+        Bus::assertChained([
+            AnalyzeAudioJob::class,
+            UpdateEmployeeMetricsJob::class,
+            SyncCrmJob::class,
+        ]);
+        $this->assertDatabaseHas('call_processing_jobs', [
+            'call_id' => $call->id,
+            'status' => 'queued',
+        ]);
     }
 
     public function test_reanalyze_under_20_respects_date_range(): void

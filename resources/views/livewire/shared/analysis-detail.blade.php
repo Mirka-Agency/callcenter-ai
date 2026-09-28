@@ -26,6 +26,11 @@
             {{ session('status') }}
         </div>
     @endif
+    @if (session('error'))
+        <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100">
+            {{ session('error') }}
+        </div>
+    @endif
 
     <section class="saas-hero">
         <div class="flex flex-col gap-6 p-6 lg:flex-row lg:items-start lg:justify-between lg:p-8">
@@ -59,6 +64,21 @@
                     <span class="hidden text-zinc-300 sm:inline" aria-hidden="true">|</span>
                     <span>{{ $analysis->source?->label() ?? 'VoIP' }}</span>
                 </div>
+                @if ($canReanalyze ?? false)
+                    <div class="mt-5">
+                        <button
+                            type="button"
+                            class="saas-btn-secondary"
+                            wire:click="reanalyze"
+                            wire:confirm="{{ __('ui.intelligence.reanalyze_one_confirm') }}"
+                            wire:loading.attr="disabled"
+                            wire:target="reanalyze"
+                        >
+                            <span wire:loading.remove wire:target="reanalyze">{{ __('ui.intelligence.reanalyze_one') }}</span>
+                            <span wire:loading wire:target="reanalyze">{{ __('ui.intelligence.reanalyze_one_sending') }}</span>
+                        </button>
+                    </div>
+                @endif
                 <div class="mt-4 flex flex-wrap gap-2">
                     <span @class(['saas-badge', AnalysisInsightPresenter::sentimentBadgeClass($analysis->sentiment)])>
                         احساس: {{ $analysis->sentiment->label() }}
