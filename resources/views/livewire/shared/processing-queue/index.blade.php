@@ -1,5 +1,5 @@
 
-<div class="space-y-8" @if($autoRefresh) wire:poll.5s @endif>
+<div class="space-y-8" @if($autoRefresh && (($stats['queued'] ?? 0) + ($stats['processing'] ?? 0)) > 0) wire:poll.5s @endif>
 
     <div class="flex flex-wrap items-center justify-between gap-4" data-tour="queue-header">
         <div>

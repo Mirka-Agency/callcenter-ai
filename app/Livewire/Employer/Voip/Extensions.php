@@ -75,7 +75,9 @@ class Extensions extends Component
         $this->resetAddForm();
         $this->showAddForm = false;
 
-        session()->flash('status', __('ui.voip.extensions_created', ['count' => $backfilled]));
+        session()->flash('status', $service->backfillRunsInline()
+            ? __('ui.voip.extensions_created', ['count' => $backfilled])
+            : __('ui.voip.extensions_backfill_queued'));
     }
 
     public function toggleAddForm(): void
@@ -115,7 +117,9 @@ class Extensions extends Component
             ]);
         }
 
-        session()->flash('status', __('ui.voip.extensions_updated', ['count' => $backfilled]));
+        session()->flash('status', app(UnmatchedVoipExtensionService::class)->backfillRunsInline()
+            ? __('ui.voip.extensions_updated', ['count' => $backfilled])
+            : __('ui.voip.extensions_reassign_queued'));
     }
 
     public function deleteExtension(string $extension, int $connectionId): void

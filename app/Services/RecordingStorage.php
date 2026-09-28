@@ -21,6 +21,12 @@ class RecordingStorage
             throw RecordingNotFoundException::storageWriteFailed($path, $this->disk());
         }
 
+        $directory = dirname($path);
+
+        if ($directory !== '' && $directory !== '.') {
+            Storage::disk($this->disk())->makeDirectory($directory);
+        }
+
         try {
             $this->putStream($path, $stream, $mimeType, filesize($sourcePath) ?: null);
         } finally {
@@ -76,6 +82,23 @@ class RecordingStorage
     }
 
     /**
+     * Encoded audio for providers that only accept inline base64.
+     * The raw file bytes stay inside this method so callers do not hold both copies.
+     *
+     * @return array{disk: string, content: string, format: string}
+     */
+    public function base64ForAnalysis(string $path, ?string $preferredDisk = null): array
+    {
+        $payload = $this->readForAnalysis($path, $preferredDisk);
+
+        return [
+            'disk' => $payload['disk'],
+            'content' => base64_encode($payload['content']),
+            'format' => $payload['format'],
+        ];
+    }
+
+    /**
      * @return array{disk: string, content: string, format: string}
      */
     public function readForAnalysis(string $path, ?string $preferredDisk = null): array
@@ -112,8 +135,12 @@ class RecordingStorage
 
         for ($attempt = 0; $attempt < $attempts; $attempt++) {
             foreach ($disks as $disk) {
-                if (Storage::disk($disk)->exists($path)) {
-                    return $disk;
+                try {
+                    if (Storage::disk($disk)->exists($path)) {
+                        return $disk;
+                    }
+                } catch (\Throwable) {
+                    continue;
                 }
             }
 

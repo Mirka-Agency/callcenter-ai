@@ -17,6 +17,7 @@ use App\Services\Performance\Support\ProgressInsightFormatter;
 use App\Services\Reports\CallMetricsAnalytics;
 use App\Services\Reports\LeadConcernsAnalytics;
 use App\Support\AgentPerformancePresenter;
+use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
 use App\Support\OrganizationHolidays;
 use Illuminate\Support\Collection;
@@ -49,7 +50,7 @@ class EmployeePerformanceAnalytics
     {
         return Cache::remember(
             self::teamDashboardCacheKey($filter),
-            120,
+            300,
             fn () => $this->buildTeamDashboard($filter),
         );
     }
@@ -259,16 +260,75 @@ class EmployeePerformanceAnalytics
     /** @return array<string, float|null> */
     public function teamKpiPointDeltas(ReportFilter $filter): array
     {
-        $current = $this->loader->load($filter, withPreviousPeriod: false);
-        $previous = $this->loader->load($filter->previousPeriod(), withPreviousPeriod: false);
+        $previous = $filter->previousPeriod();
 
-        $currentKpis = $this->computeTeamKpis($filter, $current);
-        $previousKpis = $this->computeTeamKpis($filter->previousPeriod(), $previous);
+        return Cache::remember(
+            'performance:kpi-point-deltas:'.$filter->cacheKey().':'.$previous->cacheKey().':'.OrganizationHolidays::cacheToken($filter->organizationId),
+            300,
+            function () use ($filter, $previous): array {
+                $current = $this->pointAverages($filter);
+                $previousAverages = $this->pointAverages($previous);
+
+                return [
+                    'average_quality_score' => $this->pointDelta($current['average_quality_score'], $previousAverages['average_quality_score']),
+                    'average_lead_score' => $this->pointDelta($current['average_lead_score'], $previousAverages['average_lead_score']),
+                    'average_sentiment' => $this->pointDelta($current['average_sentiment'], $previousAverages['average_sentiment']),
+                ];
+            },
+        );
+    }
+
+    /**
+     * Week-over-week cards only need three averages, so this stays in SQL
+     * instead of hydrating every analysis in both windows.
+     *
+     * @return array{average_quality_score: float, average_lead_score: float, average_sentiment: float}
+     */
+    private function pointAverages(ReportFilter $filter): array
+    {
+        $employeeIds = OrganizationUser::query()
+            ->where('organization_id', $filter->organizationId)
+            ->where('is_active', true)
+            ->when($filter->employeeIds !== [], fn ($query) => $query->whereIn('id', $filter->employeeIds))
+            ->pluck('id');
+
+        if ($employeeIds->isEmpty()) {
+            return [
+                'average_quality_score' => 0.0,
+                'average_lead_score' => 0.0,
+                'average_sentiment' => 0.0,
+            ];
+        }
+
+        $moment = 'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, conversation_analyses.analyzed_at)';
+        $weight = SentimentScoreCalculator::weightExpression('conversation_analyses.sentiment');
+        $query = CompanyWorkCalendar::whereWorkday(
+            ConversationAnalysis::query()
+                ->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id')
+                ->where('conversation_analyses.organization_id', $filter->organizationId)
+                ->whereBetween('conversation_analyses.analyzed_at', [$filter->from, $filter->to])
+                ->whereIn('conversation_analyses.organization_user_id', $employeeIds)
+                ->where(function ($evaluable): void {
+                    $evaluable->where('conversation_analyses.is_evaluable', true)
+                        ->orWhereNull('conversation_analyses.is_evaluable');
+                })
+                ->where('conversation_analyses.score', '>', 0),
+            $moment,
+            OrganizationHolidays::weekdays($filter->organizationId),
+        );
+        $stats = $query->toBase();
+        $stats->columns = [];
+        $row = $stats
+            ->selectRaw('COUNT(*) as sample_count')
+            ->selectRaw('AVG(conversation_analyses.score) as quality_avg')
+            ->selectRaw('AVG(COALESCE('.$weight.', 50)) as sentiment_avg')
+            ->first();
+        $sampleCount = (int) ($row->sample_count ?? 0);
 
         return [
-            'average_quality_score' => $this->pointDelta($currentKpis['average_quality_score'], $previousKpis['average_quality_score']),
-            'average_lead_score' => $this->pointDelta($currentKpis['average_lead_score'], $previousKpis['average_lead_score']),
-            'average_sentiment' => $this->pointDelta($currentKpis['average_sentiment'], $previousKpis['average_sentiment']),
+            'average_quality_score' => $sampleCount > 0 ? round((float) $row->quality_avg, 1) : 0.0,
+            'average_lead_score' => $this->leadConcerns->leadQualityDistribution($filter)['average_score'],
+            'average_sentiment' => $sampleCount > 0 ? round((float) $row->sentiment_avg, 1) : 0.0,
         ];
     }
 

@@ -191,7 +191,7 @@ class GeminiProvider extends AbstractLlmProvider
     private function resolveAudioFromStorageOrUrl(AudioAnalysisRequestData $request): array
     {
         if ($request->storagePath) {
-            $payload = app(RecordingStorage::class)->readForAnalysis(
+            $payload = app(RecordingStorage::class)->base64ForAnalysis(
                 $request->storagePath,
                 $request->storageDisk,
             );
@@ -199,7 +199,7 @@ class GeminiProvider extends AbstractLlmProvider
             $format = $payload['format'];
 
             return [
-                base64_encode($payload['content']),
+                $payload['content'],
                 $request->mimeType ?? $this->mimeTypeForFormat($format),
             ];
         }

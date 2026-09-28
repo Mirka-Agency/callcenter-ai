@@ -13,6 +13,7 @@ use App\Services\EmployerContext;
 use App\Services\EmployerDashboardAnalytics;
 use App\Services\Performance\EmployeePerformanceAnalytics;
 use App\Services\Reports\OrganizationCallMetrics;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -66,9 +67,9 @@ class Overview extends Component
             'teamWeaknessCalls' => $selectedWeakness
                 ? $performance->teamWeaknessCalls($performanceFilter, $selectedWeakness)
                 : [],
-            'tradingOpportunities' => $analytics->tradingOpportunities(),
+            'tradingOpportunities' => array_slice($analytics->tradingOpportunities(), 0, 30),
             'sentimentCustomers' => $analytics->sentimentCustomers(),
-            'forgottenFollowUps' => $analytics->forgottenFollowUps(),
+            'forgottenFollowUps' => array_slice($analytics->forgottenFollowUps(), 0, 40),
             'qualityTrend' => $performanceDashboard['quality_trend'],
             'qualityTrendInsights' => $performanceDashboard['quality_trend_insights'] ?? [],
             'qualityTrendInsight' => $selectedQualityPeriod
@@ -93,16 +94,35 @@ class Overview extends Component
             return [];
         }
 
+        $employeeIds = $attention->pluck('id')->all();
+        $latestPerEmployee = ConversationAnalysis::query()
+            ->selectRaw('organization_user_id, MAX(analyzed_at) as analyzed_at')
+            ->whereIn('organization_user_id', $employeeIds)
+            ->where(function ($evaluable): void {
+                $evaluable->where('is_evaluable', true)->orWhereNull('is_evaluable');
+            })
+            ->where('score', '>', 0)
+            ->groupBy('organization_user_id');
+        $latestIds = DB::query()
+            ->from('conversation_analyses as analyses')
+            ->joinSub($latestPerEmployee, 'latest', function ($join): void {
+                $join->on('analyses.organization_user_id', '=', 'latest.organization_user_id')
+                    ->on('analyses.analyzed_at', '=', 'latest.analyzed_at');
+            })
+            ->where(function ($evaluable): void {
+                $evaluable->where('analyses.is_evaluable', true)->orWhereNull('analyses.is_evaluable');
+            })
+            ->where('analyses.score', '>', 0)
+            ->groupBy('analyses.organization_user_id')
+            ->selectRaw('MAX(analyses.id) as id')
+            ->pluck('id');
         $latest = ConversationAnalysis::query()
-            ->whereIn('organization_user_id', $attention->pluck('id'))
-            ->evaluable()
+            ->whereIn('id', $latestIds)
             ->with([
                 'call:id,customer_id,customer_name,customer_phone,caller_number',
                 'call.customer:id,name,company_name,phone_number',
             ])
-            ->orderByDesc('analyzed_at')
             ->get()
-            ->unique('organization_user_id')
             ->keyBy('organization_user_id');
 
         return $attention->map(function (array $agent) use ($latest): array {

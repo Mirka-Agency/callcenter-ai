@@ -132,7 +132,7 @@ class OpenAiProvider extends AbstractLlmProvider
     private function resolveAudioPayload(AudioAnalysisRequestData $request): array
     {
         if ($request->storagePath) {
-            $payload = app(RecordingStorage::class)->readForAnalysis(
+            $payload = app(RecordingStorage::class)->base64ForAnalysis(
                 $request->storagePath,
                 $request->storageDisk,
             );
@@ -140,7 +140,7 @@ class OpenAiProvider extends AbstractLlmProvider
             $format = $payload['format'];
 
             return [
-                base64_encode($payload['content']),
+                $payload['content'],
                 $format,
                 $request->mimeType ?? $this->mimeTypeForFormat($format),
             ];

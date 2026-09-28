@@ -56,7 +56,7 @@ class AnalyzeAudioJobTest extends TestCase
         $this->assertDatabaseMissing('conversation_analyses', ['call_id' => $call->id]);
     }
 
-    public function test_transient_llm_error_is_recorded_once_without_retry(): void
+    public function test_transient_llm_error_is_released_for_another_attempt(): void
     {
         Storage::fake('local');
         [$call, $processingJob] = $this->seedCallWithRecording();
@@ -69,6 +69,37 @@ class AnalyzeAudioJobTest extends TestCase
         });
 
         $job = (new AnalyzeAudioJob($call->id))->withFakeQueueInteractions();
+
+        try {
+            $this->app->call([$job, 'handle']);
+            $this->fail('A transient provider error should leave the job retryable.');
+        } catch (LlmTransientException $exception) {
+            $this->assertStringContainsString('429', $exception->getMessage());
+        }
+
+        $job->assertNotFailed();
+        $call->refresh();
+        $processingJob->refresh();
+
+        $this->assertSame(CallProcessingStatus::Pending, $call->processing_status);
+        $this->assertNull($call->processing_error);
+        $this->assertNotSame(ProcessingJobStatus::Failed, $processingJob->status);
+    }
+
+    public function test_transient_llm_error_is_permanent_after_the_last_attempt(): void
+    {
+        Storage::fake('local');
+        [$call, $processingJob] = $this->seedCallWithRecording();
+        $this->seedPlatformLlm();
+
+        $this->mock(AudioAnalyzer::class, function ($mock) {
+            $mock->shouldReceive('analyze')
+                ->once()
+                ->andThrow(LlmTransientException::fromProviderError('OpenAI API error (HTTP 429): rate_limit_exceeded'));
+        });
+
+        $job = (new AnalyzeAudioJob($call->id))->withFakeQueueInteractions();
+        $job->tries = 1;
         $this->app->call([$job, 'handle']);
 
         $job->assertFailed();

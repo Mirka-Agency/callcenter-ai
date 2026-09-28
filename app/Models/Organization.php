@@ -136,5 +136,11 @@ class Organization extends Model
         static::created(function (Organization $organization): void {
             app(WalletService::class)->forOrganization($organization->id);
         });
+
+        static::saved(function (Organization $organization): void {
+            if ($organization->wasChanged('holiday_weekdays')) {
+                app()->forgetInstance('organization.holiday_weekdays.'.$organization->id);
+            }
+        });
     }
 }

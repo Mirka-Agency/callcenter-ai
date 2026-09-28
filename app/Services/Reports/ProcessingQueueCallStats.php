@@ -5,11 +5,12 @@ namespace App\Services\Reports;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Models\Call;
-use Illuminate\Database\Eloquent\Builder;
+use App\Models\CallProcessingJob;
 
 /**
  * Employer queue cards count calls, using the latest processing job when one exists.
  * A finished analysis with no queue row still counts as completed.
+ * Only defined-extension calls that have a recording are included.
  */
 class ProcessingQueueCallStats
 {
@@ -21,30 +22,35 @@ class ProcessingQueueCallStats
     public function forOrganization(int $organizationId): array
     {
         $query = $this->definedExtensions->applyToQueueCalls(
-            Call::query()->where('organization_id', $organizationId),
+            Call::query()->where('organization_id', $organizationId)->withRecording(),
             $organizationId,
         );
 
-        $queued = $this->countBucket($query, 'queued');
-        $processing = $this->countBucket($query, 'processing');
-        $completed = $this->countBucket($query, 'completed');
-        $failed = $this->countBucket($query, 'failed');
+        $latestJobs = CallProcessingJob::query()
+            ->select('call_processing_jobs.call_id', 'call_processing_jobs.status')
+            ->joinSub(
+                CallProcessingJob::query()
+                    ->selectRaw('MAX(id) as id')
+                    ->groupBy('call_id'),
+                'latest_job_ids',
+                'latest_job_ids.id',
+                '=',
+                'call_processing_jobs.id',
+            );
+        $bucket = $this->bucketSql();
+        $counts = $query
+            ->leftJoinSub($latestJobs, 'latest_jobs', 'latest_jobs.call_id', '=', 'calls.id')
+            ->selectRaw($bucket.' as bucket, COUNT(*) as aggregate')
+            ->groupByRaw($bucket)
+            ->pluck('aggregate', 'bucket');
 
         return [
-            'queued' => $queued,
-            'processing' => $processing,
-            'completed' => $completed,
-            'failed' => $failed,
-            'total' => (clone $query)->count(),
+            'queued' => (int) ($counts['queued'] ?? 0),
+            'processing' => (int) ($counts['processing'] ?? 0),
+            'completed' => (int) ($counts['completed'] ?? 0),
+            'failed' => (int) ($counts['failed'] ?? 0),
+            'total' => (int) $counts->sum(),
         ];
-    }
-
-    /** @param  Builder<Call>  $query */
-    private function countBucket(Builder $query, string $bucket): int
-    {
-        return (clone $query)
-            ->whereRaw('('.$this->bucketSql().') = ?', [$bucket])
-            ->count();
     }
 
     /**
@@ -53,7 +59,7 @@ class ProcessingQueueCallStats
      */
     private function bucketSql(): string
     {
-        $latest = '(select cpj.status from call_processing_jobs as cpj where cpj.call_id = calls.id order by cpj.id desc limit 1)';
+        $latest = 'latest_jobs.status';
         $processing = "'".ProcessingJobStatus::Uploading->value."', '".ProcessingJobStatus::Processing->value."'";
         $failed = "'".ProcessingJobStatus::Failed->value."', '".ProcessingJobStatus::Cancelled->value."'";
 

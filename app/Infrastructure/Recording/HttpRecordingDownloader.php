@@ -23,33 +23,55 @@ class HttpRecordingDownloader implements RecordingDownloaderInterface
             $lastError = 'Failed to download recording.';
 
             foreach ($this->candidatesFor($url, $callId) as $candidate) {
-                $response = Http::timeout(120)->get($candidate);
+                $temporary = tempnam(sys_get_temp_dir(), 'rec');
 
-                if (! $response->successful()) {
+                if ($temporary === false) {
                     $lastError = 'Failed to download recording.';
 
                     continue;
                 }
 
-                $body = $response->body();
-                $mimeType = $response->header('Content-Type') ?? 'audio/mpeg';
+                try {
+                    $response = Http::timeout(120)->sink($temporary)->get($candidate);
 
-                if (! $this->looksLikeAudio($body, $mimeType)) {
-                    $lastError = 'Recording URL did not return audio.';
+                    if (! $response->successful()) {
+                        $lastError = 'Failed to download recording.';
 
-                    continue;
+                        continue;
+                    }
+
+                    if ((filesize($temporary) ?: 0) < self::MIN_AUDIO_BYTES) {
+                        $body = $response->body();
+
+                        if ($body !== '') {
+                            file_put_contents($temporary, $body);
+                        }
+                    }
+
+                    $mimeType = $response->header('Content-Type') ?? 'audio/mpeg';
+
+                    if (! $this->fileLooksLikeAudio($temporary, $mimeType)) {
+                        $lastError = 'Recording URL did not return audio.';
+
+                        continue;
+                    }
+
+                    $path = "recordings/{$callId}/".now()->format('YmdHis').'.mp3';
+                    $bytes = filesize($temporary);
+                    $this->recordingStorage->putFromLocalPath($temporary, $path, $mimeType);
+
+                    return new RecordingDownloadResult(
+                        success: true,
+                        storagePath: $path,
+                        storageDisk: $this->recordingStorage->disk(),
+                        mimeType: $mimeType,
+                        fileSizeBytes: $bytes === false ? null : $bytes,
+                    );
+                } finally {
+                    if (is_file($temporary)) {
+                        unlink($temporary);
+                    }
                 }
-
-                $path = "recordings/{$callId}/".now()->format('YmdHis').'.mp3';
-                $this->recordingStorage->put($path, $body, $mimeType);
-
-                return new RecordingDownloadResult(
-                    success: true,
-                    storagePath: $path,
-                    storageDisk: $this->recordingStorage->disk(),
-                    mimeType: $mimeType,
-                    fileSizeBytes: strlen($body),
-                );
             }
 
             return new RecordingDownloadResult(success: false, error: $lastError);
@@ -114,9 +136,11 @@ class HttpRecordingDownloader implements RecordingDownloaderInterface
         return null;
     }
 
-    private function looksLikeAudio(string $body, string $mimeType): bool
+    private function fileLooksLikeAudio(string $path, string $mimeType): bool
     {
-        if (strlen($body) < self::MIN_AUDIO_BYTES) {
+        $size = filesize($path);
+
+        if ($size === false || $size < self::MIN_AUDIO_BYTES) {
             return false;
         }
 
@@ -126,7 +150,7 @@ class HttpRecordingDownloader implements RecordingDownloaderInterface
             return false;
         }
 
-        $head = strtolower(ltrim(substr($body, 0, 64)));
+        $head = strtolower(ltrim((string) file_get_contents($path, false, null, 0, 64)));
 
         return ! str_starts_with($head, '<!doctype')
             && ! str_starts_with($head, '<html')

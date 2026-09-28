@@ -15,9 +15,11 @@ use App\Models\User;
 use App\Models\VoipCallLog;
 use App\Models\VoipProvider;
 use App\Services\EmployerDashboardAnalytics;
+use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\OrganizationCallMetrics;
 use Database\Seeders\PlatformFoundationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class OrganizationCallMetricsTest extends TestCase
@@ -220,6 +222,62 @@ class OrganizationCallMetricsTest extends TestCase
         ]);
 
         $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
+    }
+
+    public function test_extension_activity_days_are_loaded_once_per_request(): void
+    {
+        $this->seed(PlatformFoundationSeeder::class);
+
+        $organization = $this->organization();
+        $employee = $this->employee($organization);
+        $connection = $this->voipConnection($organization);
+
+        EmployeeIntegrationMeta::query()->create([
+            'organization_user_id' => $employee->id,
+            'integratable_type' => OrganizationVoipConnection::class,
+            'integratable_id' => $connection->id,
+            'key' => 'extension',
+            'value' => '101',
+        ]);
+
+        foreach (range(1, 6) as $index) {
+            $log = VoipCallLog::query()->create([
+                'organization_id' => $organization->id,
+                'organization_voip_connection_id' => $connection->id,
+                'provider_code' => VoipProviderCode::Custom->value,
+                'external_call_id' => 'activity-day-'.$index,
+                'direction' => 'inbound',
+                'source_number' => '091200000'.$index,
+                'destination_number' => '101',
+                'status' => 'completed',
+                'started_at' => now()->startOfDay()->addHours(8 + $index),
+                'raw_payload' => ['resolved_extension' => '101'],
+            ]);
+            $this->createCall($organization, [
+                'organization_user_id' => null,
+                'organization_voip_connection_id' => $connection->id,
+                'voip_call_log_id' => $log->id,
+                'external_call_id' => 'activity-day-'.$index,
+                'receiver_number' => '101',
+                'started_at' => now()->startOfDay()->addHours(8 + $index),
+            ]);
+        }
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $from = now()->startOfDay();
+        $to = now()->endOfDay();
+        $first = app(ChartHolidayCalendar::class)->forRange($organization->id, $from, $to);
+        $firstQueries = count(DB::getQueryLog());
+
+        DB::flushQueryLog();
+        $second = app(ChartHolidayCalendar::class)->forRange($organization->id, $from, $to);
+
+        $this->assertFalse($first->hides(now()->timezone('Asia/Tehran')->toDateString()));
+        $this->assertSame(0, count(DB::getQueryLog()));
+        $this->assertLessThan(12, $firstQueries);
+        $this->assertFalse($second->hides(now()->timezone('Asia/Tehran')->toDateString()));
     }
 
     private function organization(): Organization

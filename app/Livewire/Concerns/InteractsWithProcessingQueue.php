@@ -6,7 +6,6 @@ use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Models\CallProcessingJob;
 use App\Services\ProcessingQueueFlusher;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\On;
 use Livewire\WithPagination;
 
@@ -65,12 +64,6 @@ trait InteractsWithProcessingQueue
                 })
                 ->latest(),
         );
-
-        Log::info('Queue fetch result', [
-            'organization_id' => $this->queueOrganizationId(),
-            'active_count' => (clone $query)->whereIn('status', ['uploading', 'queued', 'processing'])->count(),
-            'total_count' => (clone $query)->count(),
-        ]);
 
         return $query;
     }

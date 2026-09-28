@@ -281,7 +281,7 @@ class EmployeeIntegrationMetaService
 
         foreach ($voipExtensions as $item) {
             // All historical «تماس‌های بدون کارشناس» for this extension, not only recent days.
-            $backfill->backfillCalls(
+            $backfill->queueBackfill(
                 organization: $organization,
                 extension: $item['extension'],
                 connectionId: (int) $item['connection']->id,

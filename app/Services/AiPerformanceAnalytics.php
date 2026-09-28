@@ -2,16 +2,17 @@
 
 namespace App\Services;
 
-use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\DTOs\ReportFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
+use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Support\CompanyWorkCalendar;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class AiPerformanceAnalytics
 {
@@ -92,7 +93,10 @@ class AiPerformanceAnalytics
             $query->whereKey($filters['employee_id']);
         }
 
-        return $query->get()->map(fn (OrganizationUser $employee) => [
+        $employees = $query->get();
+        $recent = $this->recentItemsByEmployee($employees->pluck('id'));
+
+        return $employees->map(fn (OrganizationUser $employee) => [
             'id' => $employee->id,
             'name' => $employee->full_name,
             'department' => $employee->department,
@@ -100,8 +104,8 @@ class AiPerformanceAnalytics
             'total_analyzed' => $employee->conversation_analyses_count,
             'best_score' => $employee->conversation_analyses_max_score,
             'worst_score' => $employee->conversation_analyses_min_score,
-            'common_strengths' => $this->commonItems($employee->id, 'strengths_json'),
-            'common_weaknesses' => $this->commonItems($employee->id, 'weaknesses_json'),
+            'common_strengths' => $this->commonItemsFromRows($recent->get($employee->id, collect()), 'strengths_json'),
+            'common_weaknesses' => $this->commonItemsFromRows($recent->get($employee->id, collect()), 'weaknesses_json'),
         ]);
     }
 
@@ -185,36 +189,71 @@ class AiPerformanceAnalytics
 
     private function averageSentimentScore(): float
     {
-        $weights = [
-            AnalysisSentiment::Positive->value => 100,
-            AnalysisSentiment::Mixed->value => 60,
-            AnalysisSentiment::Neutral->value => 50,
-            AnalysisSentiment::Negative->value => 20,
-        ];
+        $weight = SentimentScoreCalculator::weightExpression('sentiment');
+        $stats = $this->baseQuery()->toBase();
+        $stats->columns = [];
+        $row = $stats
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(COALESCE('.$weight.', 50)) as weighted')
+            ->first();
+        $total = (int) ($row->total ?? 0);
 
-        $analyses = $this->baseQuery()->get(['sentiment']);
-
-        if ($analyses->isEmpty()) {
+        if ($total === 0) {
             return 0;
         }
 
-        $total = $analyses->sum(fn (ConversationAnalysis $analysis) => $weights[$analysis->sentiment->value] ?? 50);
-
-        return round($total / $analyses->count(), 1);
+        return round(((float) $row->weighted) / $total, 1);
     }
 
-    private function commonItems(int $employeeId, string $column): array
+    /**
+     * Latest 20 analyses per employee, loaded once for the whole team.
+     *
+     * @param  Collection<int, int>  $employeeIds
+     * @return Collection<int|string, Collection<int, object>>
+     */
+    private function recentItemsByEmployee(Collection $employeeIds): Collection
     {
-        $analyses = $this->baseQuery()
-            ->where('organization_user_id', $employeeId)
-            ->latest('analyzed_at')
-            ->limit(20)
-            ->get();
+        if ($employeeIds->isEmpty()) {
+            return collect();
+        }
 
+        return DB::query()
+            ->fromSub(function ($query) use ($employeeIds): void {
+                $query->from('conversation_analyses')
+                    ->select(['organization_user_id', 'strengths_json', 'weaknesses_json'])
+                    ->selectRaw('ROW_NUMBER() OVER (PARTITION BY organization_user_id ORDER BY analyzed_at DESC, id DESC) as item_rank')
+                    ->where('organization_id', $this->organizationId)
+                    ->whereIn('organization_user_id', $employeeIds->all());
+            }, 'ranked_analyses')
+            ->where('item_rank', '<=', 20)
+            ->get()
+            ->groupBy('organization_user_id');
+    }
+
+    /**
+     * @param  Collection<int, object>  $rows
+     * @return list<mixed>
+     */
+    private function commonItemsFromRows(Collection $rows, string $column): array
+    {
         $counts = [];
 
-        foreach ($analyses as $analysis) {
-            foreach ($analysis->{$column} ?? [] as $item) {
+        foreach ($rows as $row) {
+            $items = $row->{$column} ?? [];
+
+            if (is_string($items)) {
+                $items = json_decode($items, true) ?: [];
+            }
+
+            if (! is_array($items)) {
+                continue;
+            }
+
+            foreach ($items as $item) {
+                if (! is_string($item) && ! is_int($item)) {
+                    continue;
+                }
+
                 $counts[$item] = ($counts[$item] ?? 0) + 1;
             }
         }

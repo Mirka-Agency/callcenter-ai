@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use Database\Factories\OrganizationVoipConnectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -52,6 +53,11 @@ class OrganizationVoipConnection extends Model
         });
 
         static::saved(function (OrganizationVoipConnection $connection): void {
+            if ($connection->wasChanged('settings')) {
+                app(DefinedExtensionCallConstraint::class)
+                    ->refreshOrganization((int) $connection->organization_id);
+            }
+
             if ($connection->is_default) {
                 static::query()
                     ->where('organization_id', $connection->organization_id)

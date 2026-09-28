@@ -2,10 +2,16 @@
 
 namespace App\Providers;
 
+use App\Application\Call\Services\CallEmployeeResolver;
 use App\Filament\Support\FluentWidgetConfiguration;
 use App\Listeners\RecordUserLastLogin;
+use App\Services\Performance\Data\PerformanceDataLoader;
+use App\Services\Reports\ChartHolidayCalendar;
+use App\Services\Reports\OrganizationCallMetrics;
+use App\Support\JalaliDate;
 use Filament\Widgets\WidgetConfiguration;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -15,6 +21,12 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(WidgetConfiguration::class, FluentWidgetConfiguration::class);
+        // Chart pages ask for the same extension calendar many times per request.
+        // Keep one instance so that work is not repeated for every sidebar page.
+        $this->app->scoped(CallEmployeeResolver::class);
+        $this->app->scoped(OrganizationCallMetrics::class);
+        $this->app->scoped(ChartHolidayCalendar::class);
+        $this->app->scoped(PerformanceDataLoader::class);
     }
 
     public function boot(): void
@@ -31,9 +43,9 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        \Illuminate\Support\Carbon::macro('jalali', function (?string $format = null) {
-            /** @var \Illuminate\Support\Carbon $this */
-            return \App\Support\JalaliDate::format($this, $format ?? \App\Support\JalaliDate::DATE);
+        Carbon::macro('jalali', function (?string $format = null) {
+            /** @var Carbon $this */
+            return JalaliDate::format($this, $format ?? JalaliDate::DATE);
         });
     }
 }

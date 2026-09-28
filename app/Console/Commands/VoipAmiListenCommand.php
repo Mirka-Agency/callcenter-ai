@@ -35,12 +35,15 @@ class VoipAmiListenCommand extends Command
             $query->whereKey((int) $connectionId);
         }
 
-        $connections = $query->get();
+        while (true) {
+            $connections = (clone $query)->get();
 
-        if ($connections->isEmpty()) {
-            $this->error('No active AMI VoIP connections found.');
+            if ($connections->isNotEmpty()) {
+                break;
+            }
 
-            return self::FAILURE;
+            $this->warn('No active AMI VoIP connections found. Retrying in '.$reconnectDelay.'s.');
+            sleep($reconnectDelay);
         }
 
         if ($connections->count() > 1) {

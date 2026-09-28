@@ -13,6 +13,7 @@ use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
 use App\Livewire\Employer\ProcessingQueue\Index;
 use App\Models\Call;
 use App\Models\CallProcessingJob;
+use App\Models\CallRecording;
 use App\Models\EmployeeIntegrationMeta;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
@@ -81,6 +82,10 @@ class EmployerProcessingQueueStatsTest extends TestCase
         $cancelled = $this->voipCall($organization, $agent, $connection, '111', 'defined-cancelled', CallProcessingStatus::Failed);
         $this->job($uploading, ProcessingJobStatus::Uploading);
         $this->job($cancelled, ProcessingJobStatus::Cancelled);
+        $unrecorded = $this->voipCall($organization, $agent, $connection, '111', 'defined-without-recording', CallProcessingStatus::Pending, null);
+        $this->job($unrecorded, ProcessingJobStatus::Queued);
+
+        $this->recording($manual);
 
         $component = Livewire::actingAs($employer)->test(Index::class);
 
@@ -93,6 +98,19 @@ class EmployerProcessingQueueStatsTest extends TestCase
         $this->assertSame(2, $stats['failed']);
         $this->assertSame(7, $stats['total']);
         $component->assertDontSee('undefined-112');
+        $component->assertDontSee('defined-without-recording');
+    }
+
+    private function recording(Call $call): void
+    {
+        CallRecording::query()->create([
+            'call_id' => $call->id,
+            'source_url' => 'https://pbx.example/'.$call->external_call_id.'.wav',
+            'storage_disk' => 'local',
+            'storage_path' => 'recordings/'.$call->id.'.wav',
+            'status' => 'completed',
+            'is_expired' => false,
+        ]);
     }
 
     private function job(Call $call, ProcessingJobStatus $status): CallProcessingJob
@@ -136,6 +154,7 @@ class EmployerProcessingQueueStatsTest extends TestCase
         string $extension,
         string $externalCallId,
         CallProcessingStatus $processingStatus = CallProcessingStatus::Pending,
+        ?string $recordingUrl = 'https://pbx.example/rec.wav',
     ): Call {
         $log = VoipCallLog::query()->create([
             'organization_id' => $organization->id,
@@ -148,6 +167,7 @@ class EmployerProcessingQueueStatsTest extends TestCase
             'status' => CallStatus::Completed->value,
             'started_at' => now(),
             'duration' => 40,
+            'recording_url' => $recordingUrl,
             'raw_payload' => [],
         ]);
 

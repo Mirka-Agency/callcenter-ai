@@ -15,13 +15,20 @@ class OrganizationHolidays
      */
     public static function weekdays(int $organizationId): array
     {
-        $organization = Organization::query()->find($organizationId);
+        $key = 'organization.holiday_weekdays.'.$organizationId;
 
-        if ($organization === null) {
-            return CompanyWorkCalendar::DEFAULT_HOLIDAY_WEEKDAYS;
+        if (app()->bound($key)) {
+            return app($key);
         }
 
-        return $organization->holidayWeekdays();
+        $organization = Organization::query()->find($organizationId);
+        $weekdays = $organization === null
+            ? CompanyWorkCalendar::DEFAULT_HOLIDAY_WEEKDAYS
+            : $organization->holidayWeekdays();
+
+        app()->instance($key, $weekdays);
+
+        return $weekdays;
     }
 
     public static function cacheToken(int $organizationId): string
