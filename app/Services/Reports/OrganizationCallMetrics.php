@@ -3,6 +3,7 @@
 namespace App\Services\Reports;
 
 use App\Application\Call\Services\CallEmployeeResolver;
+use App\Domain\Voip\Enums\CallStatus;
 use App\Models\Call;
 use App\Models\VoipCallLog;
 use App\Support\CompanyWorkCalendar;
@@ -25,7 +26,7 @@ class OrganizationCallMetrics
     public function countToday(int $organizationId): int
     {
         return Cache::remember(
-            'calls-today:'.$organizationId.':'.now()->toDateString(),
+            'calls-today:'.$organizationId.':'.now()->toDateString().':recorded',
             60,
             fn (): int => $this->countBetween(
                 $organizationId,
@@ -56,6 +57,7 @@ class OrganizationCallMetrics
                 ->where('organization_id', $organizationId)
                 ->occurredBetween($from, $to)
                 ->whereNotNull('organization_user_id')
+                ->withRecording()
                 ->count();
         }
 
@@ -74,6 +76,35 @@ class OrganizationCallMetrics
         return $callCount + $orphanCount;
     }
 
+    public function countLost(int $organizationId): int
+    {
+        $extensionMap = $this->resolver->extensionEmployeeMapForOrganization($organizationId);
+
+        if ($extensionMap === []) {
+            return Call::query()
+                ->where('organization_id', $organizationId)
+                ->whereNotNull('organization_user_id')
+                ->whereIn('status', CallStatus::lostValues())
+                ->withRecording()
+                ->count();
+        }
+
+        $callCount = $this->definedExtensions->apply(
+            Call::query()
+                ->where('organization_id', $organizationId)
+                ->whereIn('status', CallStatus::lostValues()),
+            $organizationId,
+        )->count();
+
+        $orphanCount = $this->definedExtensions->applyToVoipLogs(
+            $this->orphanLogQuery($organizationId, now()->subYears(20), now()->endOfDay())
+                ->whereIn('voip_call_logs.status', CallStatus::lostValues()),
+            $organizationId,
+        )->count();
+
+        return $callCount + $orphanCount;
+    }
+
     /**
      * Tehran days that had at least one call on a registered extension.
      * Null means the organization has no extensions, so quiet days are not holidays.
@@ -85,7 +116,7 @@ class OrganizationCallMetrics
         $from = $from->copy()->timezone(CompanyWorkCalendar::TIMEZONE)->startOfDay()->utc();
         $to = $to->copy()->timezone(CompanyWorkCalendar::TIMEZONE)->endOfDay()->utc();
         $fingerprint = md5(json_encode($this->definedExtensions->matchSetFingerprint($organizationId)) ?: '');
-        $cacheKey = $organizationId.'|'.$from->getTimestamp().'|'.$to->getTimestamp().'|'.$fingerprint;
+        $cacheKey = $organizationId.'|'.$from->getTimestamp().'|'.$to->getTimestamp().'|'.$fingerprint.'|recorded';
 
         if (array_key_exists($cacheKey, $this->activityDays)) {
             return $this->activityDays[$cacheKey];

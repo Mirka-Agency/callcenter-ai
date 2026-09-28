@@ -6,6 +6,7 @@ use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Call;
+use App\Models\CallRecording;
 use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
@@ -100,6 +101,18 @@ class DemoAnalyticsBuilder
                     'notes' => $content['call_notes'],
                     'metadata' => $content['metadata'],
                     'conversation_date' => $startedAt,
+                ],
+            );
+
+            CallRecording::query()->updateOrCreate(
+                ['call_id' => $call->id],
+                [
+                    'source_url' => 'demo://recordings/'.$call->id.'.wav',
+                    'storage_disk' => 'local',
+                    'storage_path' => 'recordings/demo/'.$call->id.'.wav',
+                    'status' => 'completed',
+                    'is_expired' => false,
+                    'duration_seconds' => $duration,
                 ],
             );
 

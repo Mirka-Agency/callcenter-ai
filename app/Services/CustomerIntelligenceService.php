@@ -8,6 +8,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
 use App\Models\OrganizationUser;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Support\CompanyName;
 use App\Support\CustomerNextActionAggregator;
 use App\Support\CustomerPresenter;
@@ -407,9 +408,12 @@ class CustomerIntelligenceService
 
     private function refreshAggregates(Customer $customer): void
     {
-        $calls = Call::query()
-            ->where('organization_id', $customer->organization_id)
-            ->where('customer_id', $customer->id)
+        $calls = app(DefinedExtensionCallConstraint::class)->apply(
+            Call::query()
+                ->where('organization_id', $customer->organization_id)
+                ->where('customer_id', $customer->id),
+            $customer->organization_id,
+        )
             ->orderBy('started_at')
             ->orderBy('created_at')
             ->get();

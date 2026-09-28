@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Models\EmployeePerformanceSnapshot;
 use App\Models\OrganizationUser;
 use App\Services\Performance\Calculators\JsonFieldAggregator;
@@ -55,9 +56,10 @@ class EmployeeDashboardAnalytics
         $previousWeek = $this->periodAverage(now()->subWeeks(2), now()->subWeek());
         $previousMonth = $this->periodAverage(now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth());
 
-        $callCount = Call::query()
-            ->where('organization_user_id', $this->employee->id)
-            ->count();
+        $callCount = app(DefinedExtensionCallConstraint::class)->apply(
+            Call::query()->where('organization_user_id', $this->employee->id),
+            $this->employee->organization_id,
+        )->count();
 
         $evaluable = $this->evaluableWorkdayQuery();
         $sampleCount = (clone $evaluable)->count();

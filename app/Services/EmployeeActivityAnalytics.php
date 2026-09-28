@@ -8,6 +8,7 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
 use App\Services\Reports\CallMetricsAnalytics;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
@@ -241,11 +242,14 @@ class EmployeeActivityAnalytics
     /** @return Builder<Call> */
     private function uploadQuery(ReportFilter $filter, OrganizationUser $employee): Builder
     {
-        return Call::query()
-            ->where('organization_id', $filter->organizationId)
-            ->where('organization_user_id', $employee->id)
-            ->where('source', ConversationSource::ManualUpload)
-            ->whereBetween('created_at', [$filter->from, $filter->to]);
+        return app(DefinedExtensionCallConstraint::class)->applyToQueueCalls(
+            Call::query()
+                ->where('organization_id', $filter->organizationId)
+                ->where('organization_user_id', $employee->id)
+                ->where('source', ConversationSource::ManualUpload)
+                ->whereBetween('created_at', [$filter->from, $filter->to]),
+            $filter->organizationId,
+        );
     }
 
     /** @return array<string, mixed> */

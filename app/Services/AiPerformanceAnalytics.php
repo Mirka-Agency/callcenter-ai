@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DTOs\ReportFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Models\OrganizationUser;
 use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Services\Reports\ChartHolidayCalendar;
@@ -34,7 +35,10 @@ class AiPerformanceAnalytics
         $query = $this->baseQuery();
 
         $totalAnalyzed = (clone $query)->count();
-        $totalCalls = Call::query()->where('organization_id', $this->organizationId)->count();
+        $totalCalls = app(DefinedExtensionCallConstraint::class)->apply(
+            Call::query()->where('organization_id', $this->organizationId),
+            $this->organizationId,
+        )->count();
         $avgScore = round((float) (clone $query)->evaluable()->avg('score'), 1);
         $totalCost = round((float) (clone $query)->sum('cost'), 4);
         $totalTokens = (int) (clone $query)->sum('total_tokens');

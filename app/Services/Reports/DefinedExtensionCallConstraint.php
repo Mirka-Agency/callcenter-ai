@@ -30,6 +30,7 @@ class DefinedExtensionCallConstraint
      */
     public function apply(Builder $query, int $organizationId): Builder
     {
+        $query = $query->withRecording();
         $sets = $this->matchSets($organizationId);
 
         if ($sets === []) {
@@ -48,6 +49,8 @@ class DefinedExtensionCallConstraint
      */
     public function applyToQueueCalls(Builder $query, int $organizationId): Builder
     {
+        $query = $query->withRecording();
+
         if ($this->matchSets($organizationId) === []) {
             return $query;
         }
@@ -121,7 +124,6 @@ class DefinedExtensionCallConstraint
     public function applyToProcessingJobs(Builder $query, int $organizationId): Builder
     {
         return $query->whereHas('call', function (Builder $call) use ($organizationId): void {
-            $call->withRecording();
             $this->applyToQueueCalls($call, $organizationId);
         });
     }
@@ -135,6 +137,9 @@ class DefinedExtensionCallConstraint
      */
     public function applyToVoipLogs(Builder $query, int $organizationId): Builder
     {
+        $query->whereNotNull('voip_call_logs.recording_url')
+            ->where('voip_call_logs.recording_url', '!=', '');
+
         $sets = $this->matchSets($organizationId);
 
         if ($sets === []) {

@@ -22,7 +22,7 @@ class ProcessingQueueCallStats
     public function forOrganization(int $organizationId): array
     {
         $query = $this->definedExtensions->applyToQueueCalls(
-            Call::query()->where('organization_id', $organizationId)->withRecording(),
+            Call::query()->where('organization_id', $organizationId),
             $organizationId,
         );
 

@@ -147,6 +147,7 @@ class DemoAnalyticsClock
     {
         $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
         Cache::forget(EmployeePerformanceAnalytics::teamDashboardCacheKey($filter));
+        Cache::forget('calls-today:'.$organization->id.':'.now()->toDateString().':recorded');
 
         $sinceKey = blank(config('dashboard.insight_lists_since'))
             ? 'none'

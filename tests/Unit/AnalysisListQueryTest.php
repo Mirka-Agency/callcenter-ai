@@ -10,6 +10,7 @@ use App\DTOs\AnalysisListFilter;
 use App\Enums\ReportDatePreset;
 use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
 use App\Models\Call;
+use App\Models\CallRecording;
 use App\Models\ConversationAnalysis;
 use App\Models\EmployeeIntegrationMeta;
 use App\Models\Organization;
@@ -27,15 +28,39 @@ class AnalysisListQueryTest extends TestCase
 {
     use RefreshDatabase;
 
+    private static bool $attachRecordings = false;
+
+    private static bool $recordingListenerRegistered = false;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         Carbon::setTestNow(Carbon::parse('2026-09-16 12:00:00', 'UTC'));
+        self::$attachRecordings = true;
+
+        if (! self::$recordingListenerRegistered) {
+            Call::created(function (Call $call): void {
+                if (! self::$attachRecordings || CallRecording::query()->where('call_id', $call->id)->exists()) {
+                    return;
+                }
+
+                CallRecording::query()->create([
+                    'call_id' => $call->id,
+                    'source_url' => 'https://pbx.example/'.$call->id.'.wav',
+                    'storage_disk' => 'local',
+                    'storage_path' => 'recordings/test-'.$call->id.'.wav',
+                    'status' => 'completed',
+                    'is_expired' => false,
+                ]);
+            });
+            self::$recordingListenerRegistered = true;
+        }
     }
 
     protected function tearDown(): void
     {
+        self::$attachRecordings = false;
         Carbon::setTestNow();
 
         parent::tearDown();
@@ -551,6 +576,18 @@ class AnalysisListQueryTest extends TestCase
             'duration_seconds' => 10,
             'started_at' => now(),
         ]);
+
+        self::$attachRecordings = false;
+        $this->createExtensionCall($organization, $agent, $connection, [
+            'external_call_id' => 'defined-without-recording',
+            'direction' => 'inbound',
+            'source_number' => '09120000010',
+            'destination_number' => '111',
+            'status' => CallStatus::Completed->value,
+            'duration_seconds' => 90,
+            'recording_url' => null,
+        ]);
+        self::$attachRecordings = true;
 
         $overview = app(AnalysisListQuery::class)->overview(AnalysisListFilter::make(
             organizationId: $organization->id,

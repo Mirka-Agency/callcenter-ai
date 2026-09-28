@@ -7,6 +7,7 @@ use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
 use App\Models\Call;
+use App\Models\CallRecording;
 use App\Models\EmployeeIntegrationMeta;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
@@ -224,6 +225,39 @@ class OrganizationCallMetricsTest extends TestCase
         $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
     }
 
+    public function test_defined_extension_call_without_a_recording_is_not_counted(): void
+    {
+        $this->seed(PlatformFoundationSeeder::class);
+
+        $organization = $this->organization();
+        $employee = $this->employee($organization);
+        $connection = $this->voipConnection($organization);
+
+        EmployeeIntegrationMeta::query()->create([
+            'organization_user_id' => $employee->id,
+            'integratable_type' => OrganizationVoipConnection::class,
+            'integratable_id' => $connection->id,
+            'key' => 'extension',
+            'value' => '101',
+        ]);
+
+        $this->createCall($organization, [
+            'organization_user_id' => $employee->id,
+            'organization_voip_connection_id' => $connection->id,
+            'external_call_id' => 'recorded-101',
+            'receiver_number' => '101',
+        ]);
+        $unrecorded = $this->createCall($organization, [
+            'organization_user_id' => $employee->id,
+            'organization_voip_connection_id' => $connection->id,
+            'external_call_id' => 'silent-101',
+            'receiver_number' => '101',
+        ], withRecording: false);
+
+        $this->assertNull($unrecorded->recording);
+        $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
+    }
+
     public function test_extension_activity_days_are_loaded_once_per_request(): void
     {
         $this->seed(PlatformFoundationSeeder::class);
@@ -321,11 +355,11 @@ class OrganizationCallMetricsTest extends TestCase
     }
 
     /** @param  array<string, mixed>  $overrides */
-    private function createCall(Organization $organization, array $overrides): Call
+    private function createCall(Organization $organization, array $overrides, bool $withRecording = true): Call
     {
         $startedAt = $overrides['started_at'] ?? now()->startOfDay()->addHours(10);
 
-        return Call::query()->create(array_merge([
+        $call = Call::query()->create(array_merge([
             'organization_id' => $organization->id,
             'external_call_id' => 'metrics-call',
             'provider_code' => 'demo',
@@ -339,5 +373,18 @@ class OrganizationCallMetricsTest extends TestCase
             'ended_at' => $startedAt?->copy()->addMinutes(5),
             'duration_seconds' => 300,
         ], $overrides));
+
+        if ($withRecording) {
+            CallRecording::query()->create([
+                'call_id' => $call->id,
+                'source_url' => 'https://pbx.example/'.$call->id.'.wav',
+                'storage_disk' => 'local',
+                'storage_path' => 'recordings/'.$call->id.'.wav',
+                'status' => 'completed',
+                'is_expired' => false,
+            ]);
+        }
+
+        return $call;
     }
 }

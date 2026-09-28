@@ -5,6 +5,7 @@ namespace App\Services\Performance\Data;
 use App\DTOs\ReportFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Models\OrganizationUser;
 use App\Support\CompanyWorkCalendar;
 use App\Support\OrganizationHolidays;
@@ -141,13 +142,16 @@ class PerformanceDataLoader
             return collect();
         }
 
-        $query = Call::query()
-            ->where('organization_id', $filter->organizationId)
-            ->whereIn('organization_user_id', $employeeIds)
-            ->where(function (Builder $q) use ($filter) {
-                $q->whereBetween('started_at', [$filter->from, $filter->to])
-                    ->orWhereBetween('created_at', [$filter->from, $filter->to]);
-            });
+        $query = app(DefinedExtensionCallConstraint::class)->apply(
+            Call::query()
+                ->where('organization_id', $filter->organizationId)
+                ->whereIn('organization_user_id', $employeeIds)
+                ->where(function (Builder $q) use ($filter) {
+                    $q->whereBetween('started_at', [$filter->from, $filter->to])
+                        ->orWhereBetween('created_at', [$filter->from, $filter->to]);
+                }),
+            $filter->organizationId,
+        );
 
         return CompanyWorkCalendar::whereWorkday(
             $query,
