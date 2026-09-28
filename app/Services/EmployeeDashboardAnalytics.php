@@ -190,6 +190,7 @@ class EmployeeDashboardAnalytics
     private function analysisQuery()
     {
         return ConversationAnalysis::query()
+            ->business()
             ->where('conversation_analyses.organization_user_id', $this->employee->id);
     }
 

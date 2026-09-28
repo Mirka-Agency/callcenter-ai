@@ -20,6 +20,8 @@ class EloquentConversationAnalysisRepository implements ConversationAnalysisRepo
             'prompt_version' => $data->promptVersion,
             'score' => $data->score,
             'is_evaluable' => $data->isEvaluable,
+            'is_personal' => $data->isPersonal,
+            'personal_reason' => $data->personalReason !== '' ? $data->personalReason : null,
             'needs_attention' => $data->needsAttention,
             'attention_json' => $data->attention ?: null,
             'coaching_analysis_json' => $data->coachingAnalysis ?: null,
@@ -119,6 +121,8 @@ class EloquentConversationAnalysisRepository implements ConversationAnalysisRepo
             needsAttention: (bool) $analysis->needs_attention,
             attention: $analysis->attention_json ?? [],
             coachingAnalysis: $analysis->coaching_analysis_json ?: null,
+            isPersonal: (bool) $analysis->is_personal,
+            personalReason: $analysis->personal_reason,
         );
     }
 }

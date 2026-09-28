@@ -304,6 +304,7 @@ class EmployeePerformanceAnalytics
         $weight = SentimentScoreCalculator::weightExpression('conversation_analyses.sentiment');
         $query = CompanyWorkCalendar::whereWorkday(
             ConversationAnalysis::query()
+                ->business()
                 ->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id')
                 ->where('conversation_analyses.organization_id', $filter->organizationId)
                 ->whereBetween('conversation_analyses.analyzed_at', [$filter->from, $filter->to])
@@ -486,6 +487,7 @@ class EmployeePerformanceAnalytics
     private function recentCallsWithRelations(ReportFilter $filter, OrganizationUser $employee, int $limit = 15): array
     {
         return ConversationAnalysis::query()
+            ->business()
             ->where('organization_id', $filter->organizationId)
             ->where('organization_user_id', $employee->id)
             ->whereBetween('analyzed_at', [$filter->from, $filter->to])

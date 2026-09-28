@@ -8,6 +8,7 @@ use App\Enums\ReportDatePreset;
 use App\Livewire\Employee\Calls\Concerns\HasEmployeeCallListFilters;
 use App\Services\AnalysisListQuery;
 use App\Services\EmployeeContext;
+use App\Services\PersonalCallQuery;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -29,6 +30,12 @@ class Index extends Component
     {
         $filter = $this->employeeCallListFilter();
         $query = app(AnalysisListQuery::class);
+        $personalCalls = app(PersonalCallQuery::class)->forEmployee(
+            $filter->organizationId,
+            (int) $filter->employeeId,
+            $filter->from,
+            $filter->to,
+        );
 
         return view('livewire.employee.calls.index', [
             'membership' => EmployeeContext::membership()->load('user'),
@@ -50,6 +57,8 @@ class Index extends Component
             ],
             'callStatuses' => CallStatus::cases(),
             'directions' => CallDirection::cases(),
+            'personalCalls' => $personalCalls['items'],
+            'personalCallTotal' => $personalCalls['total'],
         ]);
     }
 }

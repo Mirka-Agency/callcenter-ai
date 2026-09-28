@@ -214,6 +214,12 @@
         </div>
     @endif
 
+    @include('livewire.shared.personal-calls-list', [
+        'personalCalls' => $personalCalls,
+        'personalCallTotal' => $personalCallTotal,
+        'showRoute' => 'employee.calls.show',
+    ])
+
     <div class="saas-card saas-analysis-list-panel overflow-hidden p-0" data-tour="calls-list">
         <div class="saas-list-toolbar flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200/80 px-4 py-4 dark:border-zinc-800 sm:px-6">
             <div class="min-w-0">

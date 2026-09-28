@@ -177,6 +177,7 @@ class AiPerformanceAnalytics
     {
         $driver = DB::connection()->getDriverName();
         $query = ConversationAnalysis::query()
+            ->business()
             ->where('conversation_analyses.organization_id', $this->organizationId)
             ->whereBetween('conversation_analyses.analyzed_at', [$from, $to]);
 
@@ -237,6 +238,7 @@ class AiPerformanceAnalytics
     private function weeklyScoreTrend(Carbon $from, Carbon $to, ?int $employeeId): array
     {
         $query = $this->baseQuery()
+            ->business()
             ->whereBetween('analyzed_at', [$from, $to])
             ->orderBy('analyzed_at');
 
@@ -257,7 +259,7 @@ class AiPerformanceAnalytics
     private function averageSentimentScore(): float
     {
         $weight = SentimentScoreCalculator::weightExpression('sentiment');
-        $stats = $this->baseQuery()->toBase();
+        $stats = $this->baseQuery()->business()->toBase();
         $stats->columns = [];
         $row = $stats
             ->selectRaw('COUNT(*) as total')

@@ -82,6 +82,7 @@ class EmployerDashboardAnalytics
         $day = CompanyWorkCalendar::sqlDayKey($moment, DB::connection()->getDriverName());
         $weight = SentimentScoreCalculator::weightExpression();
         $query = ConversationAnalysis::query()
+            ->business()
             ->where('conversation_analyses.organization_id', $this->organizationId)
             ->where('conversation_analyses.analyzed_at', '>=', $from)
             ->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id');

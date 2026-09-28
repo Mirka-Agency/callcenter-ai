@@ -39,6 +39,7 @@ class Index extends Component
         $profile = app(EmployeePerformanceAnalytics::class)->employeeProfile($filter, $membership);
 
         $analyses = ConversationAnalysis::query()
+            ->business()
             ->where('organization_user_id', $membership->id)
             ->whereBetween('analyzed_at', [$filter->from, $filter->to])
             ->latest('analyzed_at')
