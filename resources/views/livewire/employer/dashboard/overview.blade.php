@@ -28,7 +28,7 @@
     </section>
 
     @php
-        $analysisBasis = fn (int $count): string => 'بر اساس '.$count.' تماس از '.$teamKpis['total_analyzed'].' تماس تحلیل شده';
+        $analysisBasis = fn (int $count): string => 'براساس '.\App\Support\PersianNumber::format($count, 0).' تماس در ۳۰ روز گذشته محاسبه شد';
     @endphp
 
     <div data-tour="dashboard-stats">

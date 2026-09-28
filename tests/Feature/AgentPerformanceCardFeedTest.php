@@ -167,13 +167,17 @@ class AgentPerformanceCardFeedTest extends TestCase
         $this->assertStringContainsString('لحن محترمانه', $html);
         $this->assertStringNotContainsString('جمع‌بندی ضعیف انتهای تماس (2)', $html);
 
-        Livewire::test(Performance::class)
+        $performance = Livewire::test(Performance::class)
             ->assertSee('ضعف‌های پرتکرار تیم')
             ->assertSee('مهمترین نقاط ضعف شناسایی شده در مکالمات تیم')
             ->assertSee('جمع‌بندی ضعیف انتهای تماس')
             ->assertSee('موضوع')
-            ->assertSee('روند')
             ->assertDontSee('جمع‌بندی ضعیف انتهای تماس (2)');
+
+        $performanceHtml = $performance->html();
+        $weaknessesCard = mb_substr($performanceHtml, (int) mb_strpos($performanceHtml, 'ضعف‌های پرتکرار تیم'));
+        $this->assertStringNotContainsString('>تعداد<', $weaknessesCard);
+        $this->assertStringNotContainsString('>روند<', $weaknessesCard);
     }
 
     public function test_performance_page_shows_attention_agents_above_performance_cards(): void

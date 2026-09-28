@@ -7,13 +7,11 @@ use App\Enums\ReportDatePreset;
 use App\Livewire\Employer\Concerns\HasAgentPerformanceCardFeed;
 use App\Livewire\Employer\Concerns\HasQualityTrendDrilldown;
 use App\Livewire\Employer\Concerns\HasTeamWeaknessDrilldown;
-use App\Models\ConversationAnalysis;
 use App\Services\Demo\DemoAnalyticsClock;
 use App\Services\EmployerContext;
 use App\Services\EmployerDashboardAnalytics;
 use App\Services\Performance\EmployeePerformanceAnalytics;
 use App\Services\Reports\OrganizationCallMetrics;
-use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -76,73 +74,25 @@ class Overview extends Component
                 ? ($performanceDashboard['quality_trend_insights'][$selectedQualityPeriod] ?? null)
                 : null,
             'agentProfileBase' => preg_replace('#/\d+$#', '', route('employer.intelligence.performance.show', 1)),
-            'progressAgentCalls' => $this->progressAgentCalls($agents),
+            'progressAgentCalls' => $this->progressAgents($performanceDashboard['attention_employees']),
         ]);
     }
 
     /**
-     * Latest analyzed call for each agent who needs to improve.
+     * Agents whose repeated weaknesses show they need to improve.
      *
      * @param  list<array<string, mixed>>  $agents
      * @return list<array{name: string, url: string}>
      */
-    private function progressAgentCalls(array $agents): array
+    private function progressAgents(array $agents): array
     {
-        $attention = collect($agents)->where('tier', 'attention')->values();
-
-        if ($attention->isEmpty()) {
-            return [];
-        }
-
-        $employeeIds = $attention->pluck('id')->all();
-        $latestPerEmployee = ConversationAnalysis::query()
-            ->selectRaw('organization_user_id, MAX(analyzed_at) as analyzed_at')
-            ->whereIn('organization_user_id', $employeeIds)
-            ->where(function ($evaluable): void {
-                $evaluable->where('is_evaluable', true)->orWhereNull('is_evaluable');
-            })
-            ->where('score', '>', 0)
-            ->groupBy('organization_user_id');
-        $latestIds = DB::query()
-            ->from('conversation_analyses as analyses')
-            ->joinSub($latestPerEmployee, 'latest', function ($join): void {
-                $join->on('analyses.organization_user_id', '=', 'latest.organization_user_id')
-                    ->on('analyses.analyzed_at', '=', 'latest.analyzed_at');
-            })
-            ->where(function ($evaluable): void {
-                $evaluable->where('analyses.is_evaluable', true)->orWhereNull('analyses.is_evaluable');
-            })
-            ->where('analyses.score', '>', 0)
-            ->groupBy('analyses.organization_user_id')
-            ->selectRaw('MAX(analyses.id) as id')
-            ->pluck('id');
-        $latest = ConversationAnalysis::query()
-            ->whereIn('id', $latestIds)
-            ->with([
-                'call:id,customer_id,customer_name,customer_phone,caller_number',
-                'call.customer:id,name,company_name,phone_number',
+        return collect($agents)
+            ->map(fn (array $agent): array => [
+                'name' => $agent['name'] ?? '—',
+                'url' => route('employer.intelligence.performance.show', $agent['id']),
             ])
-            ->get()
-            ->keyBy('organization_user_id');
-
-        return $attention->map(function (array $agent) use ($latest): array {
-            $analysis = $latest->get($agent['id']);
-            $call = $analysis?->call;
-            $customer = $call?->customer;
-            $name = $customer?->displayName()
-                ?: ($call?->customer_name ?: null)
-                ?: ($customer?->phone_number ?: null)
-                ?: ($call?->customer_phone ?: null)
-                ?: ($call?->caller_number ?: null)
-                ?: ($agent['name'] ?? '—');
-
-            return [
-                'name' => $name,
-                'url' => $analysis
-                    ? route('employer.intelligence.show', $analysis->id)
-                    : route('employer.intelligence.performance.show', $agent['id']),
-            ];
-        })->all();
+            ->values()
+            ->all();
     }
 
     /**
