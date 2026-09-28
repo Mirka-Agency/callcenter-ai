@@ -13,6 +13,7 @@ use App\Models\OrganizationUser;
 use App\Services\Reports\CallMetricsAnalytics;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\DefinedExtensionCallConstraint;
+use App\Services\Reports\ProcessingQueueCallStats;
 use App\Support\ChartDayFilter;
 use App\Support\CompanyWorkCalendar;
 use App\Support\CustomerPresenter;
@@ -39,6 +40,7 @@ class AnalysisListQuery
     public function __construct(
         private CallMetricsAnalytics $callMetrics,
         private DefinedExtensionCallConstraint $definedExtensions,
+        private ProcessingQueueCallStats $queueCallStats,
     ) {}
 
     /** @return Builder<ConversationAnalysis> */
@@ -66,6 +68,7 @@ class AnalysisListQuery
     private function filteredQuery(AnalysisListFilter $filter): Builder
     {
         $query = ConversationAnalysis::query()
+            ->business()
             ->leftJoin('calls', 'conversation_analyses.call_id', '=', 'calls.id')
             ->leftJoin('voip_call_logs', 'conversation_analyses.voip_call_log_id', '=', 'voip_call_logs.id')
             ->leftJoin('organization_user', 'conversation_analyses.organization_user_id', '=', 'organization_user.id');
@@ -107,12 +110,11 @@ class AnalysisListQuery
         // Once the organization has registered extensions, only calls placed on
         // those extensions count (an unknown extension such as 112 is ignored).
         $callStats = $this->callStats($filter);
-        // Missed calls plus finished calls equal the total. The only remainder
-        // is a call still queued or being processed.
         $totalCalls = $callStats['total_calls'];
         $missedCount = $callStats['missed_count'];
         $inFlightCount = $callStats['in_flight_count'];
-        $analyzedCalls = $totalCalls - $missedCount - $inFlightCount;
+        // Same completed definition as the queue "تکمیل‌شده" card, scoped by this page's filters.
+        $analyzedCalls = $callStats['completed_count'];
         $avgDuration = $callStats['average_duration_seconds'];
         $inboundCount = $callStats['inbound_count'];
         $outboundCount = $callStats['outbound_count'];
@@ -179,6 +181,7 @@ class AnalysisListQuery
      *     total_calls: int,
      *     missed_count: int,
      *     in_flight_count: int,
+     *     completed_count: int,
      *     inbound_count: int,
      *     outbound_count: int,
      *     average_duration_seconds: int
@@ -188,7 +191,7 @@ class AnalysisListQuery
     {
         $extensionKey = md5(json_encode($this->definedExtensions->matchSetFingerprint($filter->organizationId)) ?: '');
         $cacheKey = implode(':', [
-            'analysis-call-stats-recorded',
+            'analysis-call-stats-recorded-v2',
             $filter->organizationId,
             $filter->from->getTimestamp(),
             $filter->to->getTimestamp(),
@@ -234,10 +237,16 @@ class AnalysisListQuery
                 )
                 ->first();
 
+            $completedQuery = $this->definedExtensions->applyToQueueCalls(
+                $filter->applyToCallQuery(Call::query()),
+                $filter->organizationId,
+            );
+
             return [
                 'total_calls' => (int) ($row->total_calls ?? 0),
                 'missed_count' => (int) ($row->missed_count ?? 0),
                 'in_flight_count' => (int) ($row->in_flight_count ?? 0),
+                'completed_count' => $this->queueCallStats->completedForQuery($completedQuery),
                 'inbound_count' => (int) ($row->inbound_count ?? 0),
                 'outbound_count' => (int) ($row->outbound_count ?? 0),
                 'average_duration_seconds' => (int) round((float) ($row->avg_duration ?? 0)),

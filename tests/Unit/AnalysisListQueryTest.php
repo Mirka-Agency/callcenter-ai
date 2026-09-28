@@ -20,6 +20,8 @@ use App\Models\User;
 use App\Models\VoipCallLog;
 use App\Models\VoipProvider;
 use App\Services\AnalysisListQuery;
+use App\Services\Reports\DefinedExtensionCallConstraint;
+use App\Services\Reports\ProcessingQueueCallStats;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -350,7 +352,7 @@ class AnalysisListQueryTest extends TestCase
         $this->assertSame(100, $overview['average_duration_seconds']);
     }
 
-    public function test_analyzed_plus_missed_does_not_exceed_total_calls(): void
+    public function test_overview_analyzed_uses_queue_completed_definition(): void
     {
         $organization = Organization::factory()->create();
         $user = User::factory()->create();
@@ -363,7 +365,20 @@ class AnalysisListQueryTest extends TestCase
         ]);
 
         $this->seedAnalysis($organization, $agent, 'completed', 300, 90);
-        $this->seedAnalysis($organization, $agent, CallStatus::Missed->value, 0, 10);
+        $this->makeRecordedCall([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09120000020',
+            'receiver_number' => '02100000000',
+            'status' => CallStatus::Missed->value,
+            'processing_status' => 'pending',
+            'duration_seconds' => 0,
+            'started_at' => now(),
+        ]);
 
         $oldCall = $this->makeRecordedCall([
             'organization_id' => $organization->id,
@@ -425,19 +440,27 @@ class AnalysisListQueryTest extends TestCase
             'started_at' => now(),
         ]);
 
-        $overview = app(AnalysisListQuery::class)->overview(AnalysisListFilter::make(
+        $filter = AnalysisListFilter::make(
             organizationId: $organization->id,
             preset: ReportDatePreset::Last30,
-        ));
+        );
+        $overview = app(AnalysisListQuery::class)->overview($filter);
 
         $this->assertSame(4, $overview['total_calls']);
-        $this->assertSame(2, $overview['total']);
+        $this->assertSame(1, $overview['total'], 'only successfully completed analyses count, not skipped/failed');
         $this->assertSame(1, $overview['missed_count']);
         $this->assertSame(1, $overview['in_flight_count']);
-        $this->assertSame(
-            $overview['total_calls'],
-            $overview['total'] + $overview['missed_count'] + $overview['in_flight_count'],
+
+        $queueCompletedInRange = app(ProcessingQueueCallStats::class)->completedForQuery(
+            app(DefinedExtensionCallConstraint::class)->applyToQueueCalls(
+                $filter->applyToCallQuery(Call::query()),
+                $organization->id,
+            ),
         );
+        $this->assertSame($queueCompletedInRange, $overview['total']);
+
+        $queueAllTime = app(ProcessingQueueCallStats::class)->forOrganization($organization->id);
+        $this->assertSame(2, $queueAllTime['completed'], 'queue card stays all-time; old analyzed call still counts');
     }
 
     public function test_overview_total_calls_counts_only_defined_extensions(): void
