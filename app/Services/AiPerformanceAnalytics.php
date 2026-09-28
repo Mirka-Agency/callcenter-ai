@@ -161,6 +161,77 @@ class AiPerformanceAnalytics
         $from ??= now()->subDays(30);
         $to ??= now();
 
+        if ($period === 'week') {
+            return $this->weeklyScoreTrend($from, $to, $employeeId);
+        }
+
+        return $this->bucketedScoreTrend($period, $from, $to, $employeeId);
+    }
+
+    /** @return list<array{period: string, avg_score: float, count: int}> */
+    private function bucketedScoreTrend(string $period, Carbon $from, Carbon $to, ?int $employeeId): array
+    {
+        $driver = DB::connection()->getDriverName();
+        $query = ConversationAnalysis::query()
+            ->where('conversation_analyses.organization_id', $this->organizationId)
+            ->whereBetween('conversation_analyses.analyzed_at', [$from, $to]);
+
+        if ($employeeId) {
+            $query->where('conversation_analyses.organization_user_id', $employeeId);
+        }
+
+        if ($period === 'day') {
+            $query->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id');
+            $bucket = CompanyWorkCalendar::sqlDayKey(
+                'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, conversation_analyses.analyzed_at)',
+                $driver,
+            );
+        } else {
+            $bucket = match ($driver) {
+                'pgsql' => "to_char(conversation_analyses.analyzed_at, 'YYYY-MM')",
+                'mysql', 'mariadb' => "DATE_FORMAT(conversation_analyses.analyzed_at, '%Y-%m')",
+                default => "strftime('%Y-%m', conversation_analyses.analyzed_at)",
+            };
+        }
+
+        $evaluable = $driver === 'pgsql'
+            ? '(conversation_analyses.is_evaluable IS NULL OR conversation_analyses.is_evaluable IS TRUE)'
+            : '(conversation_analyses.is_evaluable IS NULL OR conversation_analyses.is_evaluable = 1)';
+        $base = $query->toBase();
+        $base->columns = [];
+        $closedDays = $period === 'day'
+            ? app(ChartHolidayCalendar::class)->forRange($this->organizationId, $from, $to)
+            : null;
+        $series = [];
+
+        foreach ($base
+            ->selectRaw($bucket.' as period_key')
+            ->selectRaw('AVG(CASE WHEN '.$evaluable.' AND conversation_analyses.score > 0 THEN conversation_analyses.score END) as avg_score')
+            ->selectRaw('COUNT(*) as aggregate')
+            ->groupByRaw($bucket)
+            ->orderByRaw($bucket)
+            ->get() as $row) {
+            $key = $period === 'day'
+                ? substr((string) $row->period_key, 0, 10)
+                : substr((string) $row->period_key, 0, 7);
+
+            if ($key === '' || ($closedDays !== null && $closedDays->hides($key))) {
+                continue;
+            }
+
+            $series[] = [
+                'period' => $key,
+                'avg_score' => round((float) ($row->avg_score ?? 0), 1),
+                'count' => (int) $row->aggregate,
+            ];
+        }
+
+        return $series;
+    }
+
+    /** @return list<array{period: string, avg_score: float, count: int}> */
+    private function weeklyScoreTrend(Carbon $from, Carbon $to, ?int $employeeId): array
+    {
         $query = $this->baseQuery()
             ->whereBetween('analyzed_at', [$from, $to])
             ->orderBy('analyzed_at');
@@ -169,16 +240,8 @@ class AiPerformanceAnalytics
             $query->where('organization_user_id', $employeeId);
         }
 
-        $closedDays = app(ChartHolidayCalendar::class)->forRange($this->organizationId, $from, $to);
-        $grouped = $query->with('call:id,conversation_date,started_at,created_at')->get()->groupBy(function (ConversationAnalysis $analysis) use ($period) {
-            return match ($period) {
-                'week' => $analysis->analyzed_at->format('Y-W'),
-                'month' => $analysis->analyzed_at->format('Y-m'),
-                default => ($at = $analysis->occurredAt() ?? $analysis->analyzed_at)
-                ? CompanyWorkCalendar::dayKey($at)
-                : '',
-            };
-        })->reject(fn (Collection $items, string $key) => $period === 'day' && $closedDays->hides($key));
+        $grouped = $query->get(['id', 'score', 'is_evaluable', 'analyzed_at'])
+            ->groupBy(fn (ConversationAnalysis $analysis) => $analysis->analyzed_at->format('Y-W'));
 
         return $grouped->map(fn (Collection $items, string $key) => [
             'period' => $key,

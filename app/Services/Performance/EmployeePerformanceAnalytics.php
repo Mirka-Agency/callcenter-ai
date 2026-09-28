@@ -368,7 +368,7 @@ class EmployeePerformanceAnalytics
     private function buildTeamDashboard(ReportFilter $filter): array
     {
         $data = $this->loader->load($filter);
-        $leadDistribution = $this->leadConcerns->leadQualityDistribution($filter);
+        $leadDistribution = $this->leadConcerns->summarizeLoaded($data->analyses);
         $kpis = $this->computeTeamKpis($filter, $data, $leadDistribution);
         $deltas = $this->computeTeamKpiDeltas($filter, $data, $kpis);
         $kpis['team_improvement_trend'] = $deltas['average_quality_score'];

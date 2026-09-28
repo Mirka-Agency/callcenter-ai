@@ -5,7 +5,6 @@ namespace App\Providers;
 use App\Application\Call\Services\CallEmployeeResolver;
 use App\Filament\Support\FluentWidgetConfiguration;
 use App\Listeners\RecordUserLastLogin;
-use App\Services\Performance\Data\PerformanceDataLoader;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\OrganizationCallMetrics;
 use App\Support\JalaliDate;
@@ -26,7 +25,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(CallEmployeeResolver::class);
         $this->app->scoped(OrganizationCallMetrics::class);
         $this->app->scoped(ChartHolidayCalendar::class);
-        $this->app->scoped(PerformanceDataLoader::class);
     }
 
     public function boot(): void

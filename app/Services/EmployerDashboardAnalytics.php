@@ -6,6 +6,7 @@ use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationActivity;
+use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\OrganizationCallMetrics;
 use App\Support\CallCoachingRules;
@@ -20,6 +21,7 @@ use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class EmployerDashboardAnalytics
 {
@@ -74,26 +76,41 @@ class EmployerDashboardAnalytics
 
     public function sentimentTrend(int $days = 14): array
     {
-        $weights = [
-            'positive' => 100, 'mixed' => 60, 'neutral' => 50, 'negative' => 20,
-        ];
-
         $from = now()->subDays($days);
         $closedDays = app(ChartHolidayCalendar::class)->forRange($this->organizationId, $from, now());
-        $grouped = ConversationAnalysis::query()
-            ->where('organization_id', $this->organizationId)
-            ->where('analyzed_at', '>=', $from)
-            ->with('call:id,conversation_date,started_at,created_at')
-            ->orderBy('analyzed_at')
-            ->get()
-            ->groupBy(fn ($a) => CompanyWorkCalendar::dayKey($a->occurredAt() ?? $a->analyzed_at))
-            ->reject(fn ($items, $date) => $closedDays->hides((string) $date));
+        $moment = 'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, conversation_analyses.analyzed_at)';
+        $day = CompanyWorkCalendar::sqlDayKey($moment, DB::connection()->getDriverName());
+        $weight = SentimentScoreCalculator::weightExpression();
+        $query = ConversationAnalysis::query()
+            ->where('conversation_analyses.organization_id', $this->organizationId)
+            ->where('conversation_analyses.analyzed_at', '>=', $from)
+            ->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id');
+        $base = $query->toBase();
+        $base->columns = [];
 
-        return $grouped->map(fn ($items, $date) => [
-            'period' => $date,
-            'sentiment' => round($items->avg(fn ($a) => $weights[$a->sentiment->value] ?? 50), 1),
-            'count' => $items->count(),
-        ])->values()->all();
+        $series = [];
+
+        foreach ($base
+            ->selectRaw($day.' as day_key')
+            ->selectRaw('AVG(COALESCE('.$weight.', 50)) as sentiment_avg')
+            ->selectRaw('COUNT(*) as aggregate')
+            ->groupByRaw($day)
+            ->orderByRaw($day)
+            ->get() as $row) {
+            $period = substr((string) $row->day_key, 0, 10);
+
+            if ($period === '' || $closedDays->hides($period)) {
+                continue;
+            }
+
+            $series[] = [
+                'period' => $period,
+                'sentiment' => round((float) $row->sentiment_avg, 1),
+                'count' => (int) $row->aggregate,
+            ];
+        }
+
+        return $series;
     }
 
     public function teamRanking(): array

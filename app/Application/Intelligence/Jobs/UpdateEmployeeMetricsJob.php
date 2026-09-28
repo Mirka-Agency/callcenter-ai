@@ -16,6 +16,8 @@ class UpdateEmployeeMetricsJob implements ShouldQueue
 
     public int $tries = 2;
 
+    public int $timeout = 120;
+
     public function __construct(public int $callId) {}
 
     public function handle(EmployeePerformanceRepositoryInterface $performance): void
@@ -26,10 +28,10 @@ class UpdateEmployeeMetricsJob implements ShouldQueue
             return;
         }
 
-        if ($call->organization_user_id) {
-            $performance->recalculateForEmployee($call->organization_id, $call->organization_user_id);
-        } else {
-            $performance->recalculateForOrganization($call->organization_id);
+        if (! $call->organization_user_id) {
+            return;
         }
+
+        $performance->recalculateForEmployee($call->organization_id, $call->organization_user_id);
     }
 }

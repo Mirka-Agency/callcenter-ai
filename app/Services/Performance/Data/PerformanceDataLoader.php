@@ -14,9 +14,6 @@ use Illuminate\Support\Collection;
 
 class PerformanceDataLoader
 {
-    /** @var array<string, LoadedPerformanceData> */
-    private array $loaded = [];
-
     private const ANALYSIS_COLUMNS = [
         'id',
         'organization_id',
@@ -55,14 +52,7 @@ class PerformanceDataLoader
 
     public function load(ReportFilter $filter, bool $withPreviousPeriod = true, bool $withCoaching = false): LoadedPerformanceData
     {
-        $key = implode('|', [
-            $filter->cacheKey(),
-            OrganizationHolidays::cacheToken($filter->organizationId),
-            $withPreviousPeriod ? '1' : '0',
-            $withCoaching ? '1' : '0',
-        ]);
-
-        return $this->loaded[$key] ??= $this->loadFresh($filter, $withPreviousPeriod, $withCoaching);
+        return $this->loadFresh($filter, $withPreviousPeriod, $withCoaching);
     }
 
     private function loadFresh(ReportFilter $filter, bool $withPreviousPeriod, bool $withCoaching): LoadedPerformanceData

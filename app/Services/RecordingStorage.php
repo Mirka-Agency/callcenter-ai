@@ -132,8 +132,9 @@ class RecordingStorage
     private function locate(string $path, ?string $preferredDisk = null, int $attempts = 1): ?string
     {
         $disks = $this->disksToTry($preferredDisk);
+        $retries = $this->waitsForObjectStorage($preferredDisk) ? $attempts : 1;
 
-        for ($attempt = 0; $attempt < $attempts; $attempt++) {
+        for ($attempt = 0; $attempt < $retries; $attempt++) {
             foreach ($disks as $disk) {
                 try {
                     if (Storage::disk($disk)->exists($path)) {
@@ -144,12 +145,19 @@ class RecordingStorage
                 }
             }
 
-            if ($attempt < $attempts - 1) {
+            if ($attempt < $retries - 1) {
                 usleep(500_000);
             }
         }
 
         return null;
+    }
+
+    private function waitsForObjectStorage(?string $preferredDisk): bool
+    {
+        $target = $preferredDisk ?: $this->disk();
+
+        return $target === 's3';
     }
 
     /** @return list<string> */

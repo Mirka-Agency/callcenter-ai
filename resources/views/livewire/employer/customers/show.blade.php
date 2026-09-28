@@ -264,7 +264,13 @@
         <div class="flex items-center justify-between">
             <div>
                 <h2 class="text-lg font-semibold">تاریخچه تماس‌ها</h2>
-                <p class="mt-1 text-sm text-zinc-500">{{ count($timeline) }} تماس ثبت‌شده</p>
+                <p class="mt-1 text-sm text-zinc-500">
+                    @if (($timelineTotal ?? count($timeline)) > count($timeline))
+                        {{ count($timeline) }} تماس اخیر از {{ $timelineTotal }}
+                    @else
+                        {{ count($timeline) }} تماس ثبت‌شده
+                    @endif
+                </p>
             </div>
         </div>
         <div class="mt-6 space-y-4">

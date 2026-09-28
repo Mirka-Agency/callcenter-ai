@@ -6,6 +6,7 @@ use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Call\Enums\UploaderType;
 use App\Models\Concerns\OccurredBetween;
+use App\Services\CustomerPhoneResolver;
 use App\Services\Reports\DefinedExtensionCallConstraint;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -74,6 +75,13 @@ class Call extends Model
         static::saving(function (Call $call): void {
             $call->counts_for_extension_reports = app(DefinedExtensionCallConstraint::class)
                 ->countsForReports($call);
+        });
+
+        static::saving(function (Call $call): void {
+            $resolver = app(CustomerPhoneResolver::class);
+            $call->normalized_caller_number = $resolver->normalize($call->caller_number);
+            $call->normalized_receiver_number = $resolver->normalize($call->receiver_number);
+            $call->normalized_customer_phone = $resolver->normalize($call->customer_phone);
         });
     }
 

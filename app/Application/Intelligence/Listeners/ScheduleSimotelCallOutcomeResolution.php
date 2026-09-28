@@ -18,6 +18,12 @@ class ScheduleSimotelCallOutcomeResolution
             return;
         }
 
+        // The sync driver runs delayed jobs immediately and would call Simotel
+        // before the call has a disposition. The scheduled resolver covers that case.
+        if (config('queue.default') === 'sync') {
+            return;
+        }
+
         $delaySeconds = max(30, (int) config('voip.simotel_outcome_resolve_delay_seconds', 90));
 
         ResolveSimotelCallOutcomeJob::dispatch(

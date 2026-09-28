@@ -29,6 +29,7 @@ class Show extends Component
         return view('livewire.employer.customers.show', [
             'analytics' => $service->profileAnalytics($this->customer),
             'timeline' => $service->timeline($this->customer),
+            'timelineTotal' => $service->timelineCount($this->customer),
             'employees' => $service->assignedEmployees($this->customer),
             'nextActions' => $service->aggregatedNextActions($this->customer),
             'visibilityMode' => 'full',
