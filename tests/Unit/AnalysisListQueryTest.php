@@ -9,7 +9,9 @@ use App\Domain\Voip\Enums\VoipProviderCode;
 use App\DTOs\AnalysisListFilter;
 use App\Enums\ReportDatePreset;
 use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
+use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Models\Call;
+use App\Models\CallProcessingJob;
 use App\Models\CallRecording;
 use App\Models\ConversationAnalysis;
 use App\Models\EmployeeIntegrationMeta;
@@ -444,10 +446,36 @@ class AnalysisListQueryTest extends TestCase
             organizationId: $organization->id,
             preset: ReportDatePreset::Last30,
         );
+
+        $stale = $this->makeRecordedCall([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => uniqid('call-', true),
+            'direction' => 'inbound',
+            'caller_number' => '09120000024',
+            'receiver_number' => '02100000000',
+            'status' => 'completed',
+            'processing_status' => 'analyzed',
+            'duration_seconds' => 120,
+            'started_at' => now(),
+        ]);
+        CallProcessingJob::query()->create([
+            'job_uuid' => (string) str()->uuid(),
+            'call_id' => $stale->id,
+            'organization_id' => $organization->id,
+            'organization_user_id' => $agent->id,
+            'file_name' => 'stale.wav',
+            'status' => ProcessingJobStatus::Completed,
+            'progress_percentage' => 100,
+            'completed_at' => now(),
+        ]);
+
         $overview = app(AnalysisListQuery::class)->overview($filter);
 
-        $this->assertSame(4, $overview['total_calls']);
-        $this->assertSame(1, $overview['total'], 'only successfully completed analyses count, not skipped/failed');
+        $this->assertSame(5, $overview['total_calls']);
+        $this->assertSame(1, $overview['total'], 'a call only counts after its analysis row still exists');
         $this->assertSame(1, $overview['missed_count']);
         $this->assertSame(1, $overview['in_flight_count']);
 
@@ -457,10 +485,11 @@ class AnalysisListQueryTest extends TestCase
                 $organization->id,
             ),
         );
-        $this->assertSame($queueCompletedInRange, $overview['total']);
+        $this->assertSame(2, $queueCompletedInRange);
+        $this->assertNotSame($queueCompletedInRange, $overview['total']);
 
         $queueAllTime = app(ProcessingQueueCallStats::class)->forOrganization($organization->id);
-        $this->assertSame(2, $queueAllTime['completed'], 'queue card stays all-time; old analyzed call still counts');
+        $this->assertSame(3, $queueAllTime['completed'], 'queue card stays all-time and still counts a call whose analysis row is gone');
     }
 
     public function test_overview_total_calls_counts_only_defined_extensions(): void

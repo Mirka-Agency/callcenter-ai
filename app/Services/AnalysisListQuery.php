@@ -115,7 +115,8 @@ class AnalysisListQuery
         $outsideAnalysisCount = $callStats['outside_analysis_count'];
         $missedCount = $callStats['missed_count'];
         $inFlightCount = $callStats['in_flight_count'];
-        // Same completed definition as the queue "تکمیل‌شده" card, scoped by this page's filters.
+        // Calls that still have a stored analysis. A processing flag left behind
+        // after the analysis rows are removed does not keep this card filled.
         $analyzedCalls = $callStats['completed_count'];
         $avgDuration = $callStats['average_duration_seconds'];
         $inboundCount = $callStats['inbound_count'];
@@ -195,7 +196,7 @@ class AnalysisListQuery
     {
         $extensionKey = md5(json_encode($this->definedExtensions->matchSetFingerprint($filter->organizationId)) ?: '');
         $cacheKey = implode(':', [
-            'analysis-call-stats-recorded-v3',
+            'analysis-call-stats-recorded-v4',
             $filter->organizationId,
             $filter->from->getTimestamp(),
             $filter->to->getTimestamp(),
@@ -256,7 +257,7 @@ class AnalysisListQuery
                 'outside_analysis_count' => $outsideAnalysisCount,
                 'missed_count' => (int) ($row->missed_count ?? 0),
                 'in_flight_count' => (int) ($row->in_flight_count ?? 0),
-                'completed_count' => $this->queueCallStats->completedForQuery($completedQuery),
+                'completed_count' => (clone $completedQuery)->whereHas('analyses')->count(),
                 'inbound_count' => (int) ($row->inbound_count ?? 0),
                 'outbound_count' => (int) ($row->outbound_count ?? 0),
                 'average_duration_seconds' => (int) round((float) ($row->avg_duration ?? 0)),
