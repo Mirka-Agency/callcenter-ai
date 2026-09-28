@@ -187,9 +187,15 @@ class CustomerIntelligenceService
             ->selectRaw('AVG(CASE WHEN score IS NOT NULL AND score != 0 THEN score END) as average_score')
             ->first();
 
-        $averageDuration = Call::query()
-            ->where('organization_id', $customer->organization_id)
-            ->where('customer_id', $customer->id)
+        $recordedCalls = app(DefinedExtensionCallConstraint::class)->apply(
+            Call::query()
+                ->where('organization_id', $customer->organization_id)
+                ->where('customer_id', $customer->id),
+            $customer->organization_id,
+        );
+        $totalCalls = (clone $recordedCalls)->count();
+        $answeredCalls = (clone $recordedCalls)->where('status', 'completed')->count();
+        $averageDuration = (clone $recordedCalls)
             ->where('duration_seconds', '>', 0)
             ->avg('duration_seconds');
 
@@ -242,8 +248,10 @@ class CustomerIntelligenceService
 
         return [
             'average_score' => $row->average_score !== null ? round((float) $row->average_score, 1) : null,
+            'total_calls' => $totalCalls,
+            'answered_calls' => $answeredCalls,
             'analyzed_calls' => (int) $row->analyzed_calls,
-            'answer_rate' => CustomerPresenter::answerRate($customer),
+            'answer_rate' => $totalCalls > 0 ? (int) round(($answeredCalls / $totalCalls) * 100) : null,
             'average_duration_label' => $this->formatDuration(
                 $averageDuration !== null ? (int) round((float) $averageDuration) : null,
             ),

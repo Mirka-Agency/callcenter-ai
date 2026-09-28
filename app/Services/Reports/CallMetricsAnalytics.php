@@ -2,9 +2,7 @@
 
 namespace App\Services\Reports;
 
-use App\Domain\Call\Enums\ConversationSource;
 use App\DTOs\ReportFilter;
-use App\Models\Call;
 use App\Models\VoipCallLog;
 use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
@@ -15,20 +13,11 @@ class CallMetricsAnalytics
 {
     public function totalCalls(ReportFilter $filter): int
     {
-        $voip = app(DefinedExtensionCallConstraint::class)->applyToVoipLogs(
-            $filter->applyToVoipQuery(VoipCallLog::query()),
+        return app(OrganizationCallMetrics::class)->countBetween(
             $filter->organizationId,
-        )->count();
-
-        $manualQuery = app(DefinedExtensionCallConstraint::class)->applyToQueueCalls(
-            Call::query()
-                ->where('organization_id', $filter->organizationId)
-                ->where('source', ConversationSource::ManualUpload->value)
-                ->whereBetween('created_at', [$filter->from, $filter->to]),
-            $filter->organizationId,
+            $filter->from,
+            $filter->to,
         );
-
-        return $voip + $manualQuery->count();
     }
 
     /** @return list<array{period: string, label: string, count: int}> */
@@ -54,7 +43,10 @@ class CallMetricsAnalytics
 
     public function averageCallDurationSeconds(ReportFilter $filter): int
     {
-        $average = $filter->applyToVoipQuery(VoipCallLog::query())
+        $average = app(DefinedExtensionCallConstraint::class)->applyToVoipLogs(
+            $filter->applyToVoipQuery(VoipCallLog::query()),
+            $filter->organizationId,
+        )
             ->whereNotNull('duration')
             ->where('duration', '>', 0)
             ->avg('duration');
@@ -67,8 +59,10 @@ class CallMetricsAnalytics
     {
         $moment = 'COALESCE(voip_call_logs.started_at, voip_call_logs.created_at)';
         $day = CompanyWorkCalendar::sqlDayKey($moment, DB::connection()->getDriverName());
-        $query = $filter->applyToVoipQuery(VoipCallLog::query())
-            ->whereRaw($moment.' IS NOT NULL');
+        $query = app(DefinedExtensionCallConstraint::class)->applyToVoipLogs(
+            $filter->applyToVoipQuery(VoipCallLog::query()),
+            $filter->organizationId,
+        )->whereRaw($moment.' IS NOT NULL');
         $base = $query->toBase();
         $base->columns = [];
 
@@ -92,7 +86,10 @@ class CallMetricsAnalytics
     {
         $buckets = [];
 
-        foreach ($filter->applyToVoipQuery(VoipCallLog::query())->get(['started_at', 'created_at']) as $call) {
+        foreach (app(DefinedExtensionCallConstraint::class)->applyToVoipLogs(
+            $filter->applyToVoipQuery(VoipCallLog::query()),
+            $filter->organizationId,
+        )->get(['started_at', 'created_at']) as $call) {
             $occurredAt = $call->started_at ?? $call->created_at;
 
             if ($occurredAt === null) {

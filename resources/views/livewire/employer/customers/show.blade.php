@@ -149,7 +149,7 @@
     </section>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <x-saas.stat-card label="کل تماس‌ها" :value="$customer->total_calls" :hint="$customer->total_answered_calls.' پاسخ‌داده'" />
+        <x-saas.stat-card label="کل تماس‌ها" :value="$analytics['total_calls']" :hint="$analytics['answered_calls'].' پاسخ‌داده'" />
         <x-saas.stat-card label="تماس‌های تحلیل‌شده" :value="$analytics['analyzed_calls']" hint="بر اساس هوش مکالمه" />
         <x-saas.stat-card label="میانگین امتیاز" :value="$analytics['average_score'] ?: '—'" hint="از تماس‌های تحلیل‌شده" />
         <x-saas.stat-card

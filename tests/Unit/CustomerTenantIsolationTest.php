@@ -6,6 +6,7 @@ use App\Application\Llm\Services\PromptBuilder;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Call;
+use App\Models\CallRecording;
 use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\Organization;
@@ -140,6 +141,15 @@ class CustomerTenantIsolationTest extends TestCase
                 'status' => 'completed',
                 'processing_status' => 'analyzed',
                 'started_at' => now()->subDays($callCount - $i),
+            ]);
+
+            CallRecording::query()->create([
+                'call_id' => $call->id,
+                'source_url' => 'https://pbx.example/'.$call->id.'.wav',
+                'storage_disk' => 'local',
+                'storage_path' => 'recordings/test-'.$call->id.'.wav',
+                'status' => 'completed',
+                'is_expired' => false,
             ]);
 
             $analysis = ConversationAnalysis::query()->create([

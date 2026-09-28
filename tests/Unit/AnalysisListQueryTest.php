@@ -28,39 +28,15 @@ class AnalysisListQueryTest extends TestCase
 {
     use RefreshDatabase;
 
-    private static bool $attachRecordings = false;
-
-    private static bool $recordingListenerRegistered = false;
-
     protected function setUp(): void
     {
         parent::setUp();
 
         Carbon::setTestNow(Carbon::parse('2026-09-16 12:00:00', 'UTC'));
-        self::$attachRecordings = true;
-
-        if (! self::$recordingListenerRegistered) {
-            Call::created(function (Call $call): void {
-                if (! self::$attachRecordings || CallRecording::query()->where('call_id', $call->id)->exists()) {
-                    return;
-                }
-
-                CallRecording::query()->create([
-                    'call_id' => $call->id,
-                    'source_url' => 'https://pbx.example/'.$call->id.'.wav',
-                    'storage_disk' => 'local',
-                    'storage_path' => 'recordings/test-'.$call->id.'.wav',
-                    'status' => 'completed',
-                    'is_expired' => false,
-                ]);
-            });
-            self::$recordingListenerRegistered = true;
-        }
     }
 
     protected function tearDown(): void
     {
-        self::$attachRecordings = false;
         Carbon::setTestNow();
 
         parent::tearDown();
@@ -178,7 +154,7 @@ class AnalysisListQueryTest extends TestCase
         ]);
 
         $this->seedAnalysis($organization, $agent, 'completed', 300, 90);
-        Call::query()->create([
+        $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => $agent->id,
             'source' => ConversationSource::Voip,
@@ -215,7 +191,7 @@ class AnalysisListQueryTest extends TestCase
         ]);
 
         $this->seedAnalysis($organization, $agent, 'completed', 300, 90);
-        Call::query()->create([
+        $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => $agent->id,
             'source' => ConversationSource::Voip,
@@ -229,7 +205,7 @@ class AnalysisListQueryTest extends TestCase
             'duration_seconds' => 0,
             'started_at' => now(),
         ]);
-        Call::query()->create([
+        $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => null,
             'source' => ConversationSource::Voip,
@@ -243,7 +219,7 @@ class AnalysisListQueryTest extends TestCase
             'duration_seconds' => 0,
             'started_at' => now(),
         ]);
-        Call::query()->create([
+        $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => $agent->id,
             'source' => ConversationSource::Voip,
@@ -257,7 +233,7 @@ class AnalysisListQueryTest extends TestCase
             'duration_seconds' => 0,
             'started_at' => now(),
         ]);
-        Call::query()->create([
+        $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => $agent->id,
             'source' => ConversationSource::Voip,
@@ -296,7 +272,7 @@ class AnalysisListQueryTest extends TestCase
         ]);
 
         // Analyzed today, but the call happened 40 days ago → outside Last30 by call date.
-        $oldCall = Call::query()->create([
+        $oldCall = $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => $agent->id,
             'source' => ConversationSource::Voip,
@@ -329,7 +305,7 @@ class AnalysisListQueryTest extends TestCase
         ]);
 
         // Call in Last30, never analyzed — must count in total_calls / directions.
-        Call::query()->create([
+        $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => $agent->id,
             'source' => ConversationSource::Voip,
@@ -345,7 +321,7 @@ class AnalysisListQueryTest extends TestCase
         ]);
 
         // conversation_date in range, started_at outside — still a Last30 call.
-        Call::query()->create([
+        $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => $agent->id,
             'source' => ConversationSource::Voip,
@@ -389,7 +365,7 @@ class AnalysisListQueryTest extends TestCase
         $this->seedAnalysis($organization, $agent, 'completed', 300, 90);
         $this->seedAnalysis($organization, $agent, CallStatus::Missed->value, 0, 10);
 
-        $oldCall = Call::query()->create([
+        $oldCall = $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => $agent->id,
             'source' => ConversationSource::Voip,
@@ -420,7 +396,7 @@ class AnalysisListQueryTest extends TestCase
             'analyzed_at' => now(),
         ]);
 
-        Call::query()->create([
+        $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => $agent->id,
             'source' => ConversationSource::Voip,
@@ -434,7 +410,7 @@ class AnalysisListQueryTest extends TestCase
             'duration_seconds' => 90,
             'started_at' => now(),
         ]);
-        Call::query()->create([
+        $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => $agent->id,
             'source' => ConversationSource::Voip,
@@ -562,7 +538,7 @@ class AnalysisListQueryTest extends TestCase
             'direction' => 'inbound',
             'duration_seconds' => 20,
         ]);
-        Call::query()->create([
+        $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => $agent->id,
             'source' => ConversationSource::Imported,
@@ -577,7 +553,6 @@ class AnalysisListQueryTest extends TestCase
             'started_at' => now(),
         ]);
 
-        self::$attachRecordings = false;
         $this->createExtensionCall($organization, $agent, $connection, [
             'external_call_id' => 'defined-without-recording',
             'direction' => 'inbound',
@@ -587,7 +562,6 @@ class AnalysisListQueryTest extends TestCase
             'duration_seconds' => 90,
             'recording_url' => null,
         ]);
-        self::$attachRecordings = true;
 
         $overview = app(AnalysisListQuery::class)->overview(AnalysisListFilter::make(
             organizationId: $organization->id,
@@ -659,7 +633,7 @@ class AnalysisListQueryTest extends TestCase
 
     private function seedUnassignedAnalysis(Organization $organization): void
     {
-        $call = Call::query()->create([
+        $call = $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => null,
             'source' => ConversationSource::Voip,
@@ -700,7 +674,7 @@ class AnalysisListQueryTest extends TestCase
         bool $needsAttention = false,
         ?array $leadQuality = null,
     ): ConversationAnalysis {
-        $call = Call::query()->create([
+        $call = $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => $employee->id,
             'source' => ConversationSource::Voip,
@@ -778,6 +752,7 @@ class AnalysisListQueryTest extends TestCase
             'status' => CallStatus::Completed->value,
             'started_at' => now(),
             'duration' => $logOverrides['duration_seconds'] ?? 0,
+            'recording_url' => 'https://pbx.example/rec.wav',
             'raw_payload' => [],
         ], $logOverrides));
 
@@ -809,7 +784,7 @@ class AnalysisListQueryTest extends TestCase
     ): Call {
         $direction = $overrides['direction'] ?? 'inbound';
 
-        return Call::query()->create(array_merge([
+        return $this->makeRecordedCall(array_merge([
             'organization_id' => $organization->id,
             'organization_user_id' => $agent->id,
             'organization_voip_connection_id' => $connection->id,
@@ -824,5 +799,22 @@ class AnalysisListQueryTest extends TestCase
             'duration_seconds' => 0,
             'started_at' => now(),
         ], $overrides));
+    }
+
+    /** @param  array<string, mixed>  $attributes */
+    private function makeRecordedCall(array $attributes): Call
+    {
+        $call = Call::query()->create($attributes);
+
+        CallRecording::query()->create([
+            'call_id' => $call->id,
+            'source_url' => 'https://pbx.example/'.$call->id.'.wav',
+            'storage_disk' => 'local',
+            'storage_path' => 'recordings/test-'.$call->id.'.wav',
+            'status' => 'completed',
+            'is_expired' => false,
+        ]);
+
+        return $call;
     }
 }
