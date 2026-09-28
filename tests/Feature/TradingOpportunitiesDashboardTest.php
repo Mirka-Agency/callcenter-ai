@@ -114,6 +114,14 @@ class TradingOpportunitiesDashboardTest extends TestCase
             'lead_score' => 95,
             'analyzed_at' => now()->subDay(),
         ]);
+        $this->seedOpportunity($organization, [
+            'external_id' => 'skip-personal',
+            'customer_name' => 'خرید شخصی کارشناس',
+            'lead_level' => 'high',
+            'lead_score' => 92,
+            'is_personal' => true,
+            'analyzed_at' => now()->subDay(),
+        ]);
 
         $opportunities = EmployerDashboardAnalytics::forOrganization($organization->id)->tradingOpportunities();
 
@@ -270,6 +278,7 @@ class TradingOpportunitiesDashboardTest extends TestCase
             'model_name' => 'gpt-4o-mini',
             'score' => 80,
             'is_evaluable' => true,
+            'is_personal' => $data['is_personal'] ?? false,
             'summary' => 'خلاصه '.$data['customer_name'],
             'sentiment' => $data['sentiment'] ?? AnalysisSentiment::Positive,
             'strengths_json' => [],

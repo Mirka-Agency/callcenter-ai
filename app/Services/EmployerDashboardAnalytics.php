@@ -198,6 +198,7 @@ class EmployerDashboardAnalytics
         $query = ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId)
             ->evaluable()
+            ->business()
             ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay())
             ->where('lead_quality_json->level', 'high');
 
