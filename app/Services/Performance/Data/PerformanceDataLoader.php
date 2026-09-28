@@ -120,6 +120,7 @@ class PerformanceDataLoader
 
         $moment = 'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, conversation_analyses.analyzed_at)';
         $query = ConversationAnalysis::query()
+            ->business()
             ->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id')
             ->where('conversation_analyses.organization_id', $filter->organizationId)
             ->whereBetween('conversation_analyses.analyzed_at', [$filter->from, $filter->to])

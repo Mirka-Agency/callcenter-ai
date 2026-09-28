@@ -47,6 +47,28 @@ class RecordingRetentionService
         return $recording->expires_at->isPast();
     }
 
+    /**
+     * Browser-openable PBX URL. Used after the stored file has been deleted.
+     */
+    public function browserRecordingUrl(?string ...$candidates): ?string
+    {
+        foreach ($candidates as $candidate) {
+            $url = trim((string) $candidate);
+
+            if ($url === '' || filter_var($url, FILTER_VALIDATE_URL) === false) {
+                continue;
+            }
+
+            $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+
+            if (in_array($scheme, ['http', 'https'], true)) {
+                return $url;
+            }
+        }
+
+        return null;
+    }
+
     /** @return array{url: ?string, expired: bool} */
     public function playbackState(?CallRecording $recording, ?string $fallbackUrl = null): array
     {

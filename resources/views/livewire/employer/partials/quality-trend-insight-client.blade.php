@@ -67,7 +67,7 @@
                         <a
                             :href="agentUrl(agent.id)"
                             wire:navigate
-                            class="flex items-center justify-between gap-3 rounded-lg border border-zinc-200/80 bg-white px-3 py-2.5 transition hover:border-indigo-300 hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-800"
+                            class="flex items-center justify-between gap-3 rounded-lg border border-zinc-200/80 bg-white px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900"
                         >
                             <div class="min-w-0">
                                 <p class="truncate text-sm font-medium text-zinc-900 dark:text-white" x-text="agent.name"></p>

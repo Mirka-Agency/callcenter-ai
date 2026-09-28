@@ -21,7 +21,7 @@ class SyncCustomerFromAnalysis implements ShouldQueue
     {
         $analysis = ConversationAnalysis::query()->find($event->analysisId);
 
-        if (! $analysis) {
+        if (! $analysis || $analysis->is_personal) {
             return;
         }
 

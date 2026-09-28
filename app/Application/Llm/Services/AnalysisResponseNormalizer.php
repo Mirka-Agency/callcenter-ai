@@ -7,6 +7,7 @@ use App\Support\CallCoachingRules;
 use App\Support\CompanyName;
 use App\Support\NeedsAttention;
 use App\Support\PaymentFollowUpSentiment;
+use App\Support\PersonalCall;
 
 class AnalysisResponseNormalizer
 {
@@ -137,6 +138,16 @@ class AnalysisResponseNormalizer
             $response['evaluable'] = false;
         }
 
+        $response['is_personal'] = PersonalCall::isFlag($response['is_personal'] ?? false);
+        $response['personal_reason'] = PersonalCall::reason(
+            $response['personal_reason'] ?? null,
+            $response['is_personal'],
+        );
+
+        if ($response['is_personal']) {
+            $response['evaluable'] = false;
+        }
+
         $response['evaluable'] = $this->resolveEvaluable($response);
 
         if (! $response['evaluable']) {
@@ -146,6 +157,54 @@ class AnalysisResponseNormalizer
             $response = CallCoachingRules::clearUnevaluableCoaching($response);
         } else {
             $response = CallCoachingRules::moveRedirectsToFollowUp($response);
+        }
+
+        if ($response['is_personal']) {
+            $response = $this->stripPersonalCall($response);
+        }
+
+        return $response;
+    }
+
+    /**
+     * A personal call is not a customer conversation. Keep a short reason and
+     * drop scoring, coaching, identity, and follow-up so it cannot enter
+     * performance or the customer file.
+     *
+     * @param  array<string, mixed>  $response
+     * @return array<string, mixed>
+     */
+    private function stripPersonalCall(array $response): array
+    {
+        $response['evaluable'] = false;
+        $response['score'] = 0;
+        $response['sentiment'] = 'neutral';
+        $response['overall_evaluation'] = 'این تماس شخصی است و عملکرد کارشناس در آن ارزیابی نمی‌شود.';
+        $response['customer_insights'] = [
+            'sentiment' => 'neutral',
+            'intent' => '',
+            'purchase_probability' => 0,
+            'urgency_level' => 'low',
+            'risk_level' => 'low',
+        ];
+        $response['customer_identity'] = [
+            'person_name' => '',
+            'company_name' => '',
+            'email' => '',
+            'job_title' => '',
+            'phone_number' => '',
+            'confidence' => 0.0,
+            'evidence' => '',
+        ];
+        $response['lead_quality']['score'] = 0;
+        $response['lead_quality']['level'] = 'low';
+        $response['lead_quality']['reason'] = '';
+        $response['lead_quality']['buying_intent_signals'] = [];
+        $response = CallCoachingRules::clearUnevaluableCoaching($response);
+
+        $summary = trim((string) ($response['summary'] ?? ''));
+        if ($summary === '') {
+            $response['summary'] = $response['personal_reason'];
         }
 
         return $response;

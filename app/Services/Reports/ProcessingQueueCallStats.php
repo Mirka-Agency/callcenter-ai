@@ -6,11 +6,15 @@ use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Models\Call;
 use App\Models\CallProcessingJob;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Employer queue cards count calls, using the latest processing job when one exists.
  * A finished analysis with no queue row still counts as completed.
  * Only defined-extension calls that have a recording are included.
+ *
+ * The intelligence page "تماس‌های تحلیل‌شده" card uses the same completed bucket,
+ * scoped by that page's filters.
  */
 class ProcessingQueueCallStats
 {
@@ -21,11 +25,30 @@ class ProcessingQueueCallStats
      */
     public function forOrganization(int $organizationId): array
     {
-        $query = $this->definedExtensions->applyToQueueCalls(
-            Call::query()->where('organization_id', $organizationId),
-            $organizationId,
+        return $this->forQuery(
+            $this->definedExtensions->applyToQueueCalls(
+                Call::query()->where('organization_id', $organizationId),
+                $organizationId,
+            ),
         );
+    }
 
+    /**
+     * Same completed definition as the queue "تکمیل‌شده" card, for an already-scoped call query.
+     *
+     * @param  Builder<Call>  $query
+     */
+    public function completedForQuery(Builder $query): int
+    {
+        return $this->forQuery($query)['completed'];
+    }
+
+    /**
+     * @param  Builder<Call>  $query
+     * @return array{queued: int, processing: int, completed: int, failed: int, total: int}
+     */
+    public function forQuery(Builder $query): array
+    {
         $latestJobs = CallProcessingJob::query()
             ->select('call_processing_jobs.call_id', 'call_processing_jobs.status')
             ->joinSub(
@@ -38,7 +61,7 @@ class ProcessingQueueCallStats
                 'call_processing_jobs.id',
             );
         $bucket = $this->bucketSql();
-        $counts = $query
+        $counts = (clone $query)
             ->leftJoinSub($latestJobs, 'latest_jobs', 'latest_jobs.call_id', '=', 'calls.id')
             ->selectRaw($bucket.' as bucket, COUNT(*) as aggregate')
             ->groupByRaw($bucket)

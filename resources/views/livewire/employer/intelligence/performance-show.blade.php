@@ -220,6 +220,12 @@
         </div>
     @endif
 
+    @include('livewire.shared.personal-calls-list', [
+        'personalCalls' => $personalCalls,
+        'personalCallTotal' => $personalCallTotal,
+        'showRoute' => 'employer.intelligence.show',
+    ])
+
     <section class="space-y-4">
         <div class="flex items-center justify-between gap-4">
             <div>

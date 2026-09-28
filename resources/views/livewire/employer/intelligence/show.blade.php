@@ -2,6 +2,7 @@
     'analysis' => $analysis,
     'recordingUrl' => $recordingUrl,
     'recordingExpired' => $recordingExpired ?? false,
+    'deletedRecordingUrl' => $deletedRecordingUrl ?? null,
     'visibilityMode' => 'full',
     'backUrl' => route('employer.intelligence.index'),
     'queueUrl' => $analysis->call?->processingJob

@@ -30,6 +30,8 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $this->assertStringContainsString('"level": "medium"', $sample);
         $this->assertStringContainsString('"needs_attention"', $sample);
         $this->assertStringContainsString('"needed": false', $sample);
+        $this->assertStringContainsString('"is_personal": false', $sample);
+        $this->assertStringContainsString('"personal_reason": ""', $sample);
     }
 
     public function test_attention_policy_requires_complaint_detection(): void
@@ -60,6 +62,27 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $this->assertStringContainsString('تماس پیگیری ۳ روز دیگر برای اتصال به بخش یا داخلی معرفی‌شده', $policy);
         $this->assertStringContainsString('این نقطه ضعف «عدم پیگیری» نیست', PromptBuilder::weaknessEvaluationPolicy());
         $this->assertStringContainsString('مشتری یا طرف مقابل اصلاً پاسخ نداده', PromptBuilder::evaluableConversationPolicy());
+    }
+
+    public function test_personal_call_policy_separates_private_calls_from_work(): void
+    {
+        $policy = PromptBuilder::personalCallPolicy();
+
+        $this->assertStringContainsString('is_personal را فقط وقتی درست بگذارید', $policy);
+        $this->assertStringContainsString('صحبت با خانواده یا دوست', $policy);
+        $this->assertStringContainsString('اگر حتی بخشی از مکالمه به کار سازمان مربوط است', $policy);
+        $this->assertStringContainsString('اگر مطمئن نیستید شخصی است یا کاری', $policy);
+        $this->assertStringContainsString('جزئیات خصوصی', $policy);
+        $this->assertStringContainsString('coaching_analysis را تهی بگذارید', $policy);
+        $this->assertStringContainsString('customer_identity را خالی بگذارید', $policy);
+    }
+
+    public function test_system_prompt_includes_personal_call_policy(): void
+    {
+        $prompt = (new PromptBuilder)->systemPrompt();
+
+        $this->assertStringContainsString(PromptBuilder::personalCallPolicy(), $prompt);
+        $this->assertStringContainsString('is_personal (درست فقط اگر مکالمه شخصی است', $prompt);
     }
 
     public function test_system_prompt_includes_follow_up_policy(): void
@@ -111,6 +134,7 @@ class PromptBuilderPersianLanguageTest extends TestCase
             PromptBuilder::attentionPolicy(),
             PromptBuilder::followUpPolicy(),
             PromptBuilder::customerIdentityPolicy(),
+            PromptBuilder::personalCallPolicy(),
             PromptBuilder::persianStrictRetryPolicy(),
         ]);
 

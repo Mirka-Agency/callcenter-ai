@@ -234,6 +234,7 @@ class EmployeeActivityAnalytics
     private function analysisQuery(ReportFilter $filter, OrganizationUser $employee): Builder
     {
         return ConversationAnalysis::query()
+            ->business()
             ->where('conversation_analyses.organization_id', $filter->organizationId)
             ->where('conversation_analyses.organization_user_id', $employee->id)
             ->whereBetween('conversation_analyses.analyzed_at', [$filter->from, $filter->to]);

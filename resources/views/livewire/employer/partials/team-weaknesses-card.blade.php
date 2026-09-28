@@ -107,7 +107,7 @@
 
                 <div class="mt-3 space-y-3">
                     @forelse ($teamWeaknessCalls as $call)
-                        <a href="{{ route('employer.intelligence.show', $call['analysis_id']) }}" class="block rounded-lg border border-zinc-200/80 bg-white p-4 transition hover:border-indigo-300 hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-indigo-800">
+                        <a href="{{ route('employer.intelligence.show', $call['analysis_id']) }}" class="block rounded-lg border border-zinc-200/80 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div class="min-w-0 flex-1">
                                     <div class="flex flex-wrap items-center gap-2">

@@ -80,9 +80,13 @@
                     </div>
                 @endif
                 <div class="mt-4 flex flex-wrap gap-2">
-                    <span @class(['saas-badge', AnalysisInsightPresenter::sentimentBadgeClass($analysis->sentiment)])>
-                        احساس: {{ $analysis->sentiment->label() }}
-                    </span>
+                    @if ($analysis->is_personal)
+                        <span class="saas-badge bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200">تماس شخصی</span>
+                    @else
+                        <span @class(['saas-badge', AnalysisInsightPresenter::sentimentBadgeClass($analysis->sentiment)])>
+                            احساس: {{ $analysis->sentiment->label() }}
+                        </span>
+                    @endif
                     @if ($analysis->needs_attention)
                         <span class="saas-badge bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">نیازمند توجه</span>
                     @endif
@@ -99,7 +103,12 @@
             </div>
 
             <div class="flex shrink-0 flex-wrap items-center gap-4 lg:justify-end">
-                @if ($showEmployeePerformance && $analysis->isEvaluable())
+                @if ($analysis->is_personal)
+                    <div class="saas-inline-stat text-center">
+                        <p class="text-xs font-medium text-zinc-500">امتیاز مکالمه</p>
+                        <p class="mt-1 text-lg font-semibold text-amber-700 dark:text-amber-300">شخصی</p>
+                    </div>
+                @elseif ($showEmployeePerformance && $analysis->isEvaluable())
                     <x-saas.score-ring :score="$analysis->score" size="md" label="امتیاز مکالمه" />
                 @elseif ($showEmployeePerformance)
                     <div class="saas-inline-stat text-center">
@@ -119,6 +128,18 @@
             </div>
         </div>
     </section>
+
+    @if ($analysis->is_personal)
+        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-950/30">
+            <h2 class="text-sm font-semibold text-amber-900 dark:text-amber-200">این تماس شخصی است</h2>
+            <p class="mt-2 text-sm leading-relaxed text-amber-950/90 dark:text-amber-100/90">
+                با تلفن شرکت انجام شده، اما موضوع آن به کار سازمان مربوط نیست و در امتیاز عملکرد، کوچینگ و پرونده مشتریان محاسبه نمی‌شود.
+            </p>
+            @if (filled($analysis->personal_reason))
+                <p class="mt-2 text-sm font-medium text-amber-950 dark:text-amber-50">{{ $analysis->personal_reason }}</p>
+            @endif
+        </div>
+    @endif
 
     @if ($analysis->needs_attention)
         @php
@@ -151,13 +172,23 @@
                         'recordingExpired' => $recordingExpired ?? false,
                         'embedded' => true,
                     ])
+                    @if (($recordingExpired ?? false) && filled($deletedRecordingUrl ?? null))
+                        <a
+                            href="{{ $deletedRecordingUrl }}"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="saas-btn-secondary mt-4"
+                        >
+                            لینک تماس
+                        </a>
+                    @endif
                 </div>
             @endif
 
             <div class="saas-card">
                 <h2 class="text-lg font-semibold">خلاصه مکالمه</h2>
                 <p class="mt-4 whitespace-pre-wrap text-base leading-8 text-zinc-700 dark:text-zinc-300">{{ $analysis->summary }}</p>
-                @if ($showEmployeePerformance && $analysis->overall_evaluation)
+                @if ($showEmployeePerformance && ! $analysis->is_personal && $analysis->overall_evaluation)
                     <div class="mt-6 rounded-lg border border-indigo-200/60 bg-indigo-50/50 p-4 dark:border-indigo-500/20 dark:bg-indigo-950/20">
                         <h3 class="text-sm font-semibold text-indigo-900 dark:text-indigo-200">ارزیابی کلی</h3>
                         <p class="mt-2 text-sm leading-relaxed text-indigo-950/90 dark:text-indigo-100/90">{{ $analysis->overall_evaluation }}</p>
@@ -165,7 +196,7 @@
                 @endif
             </div>
 
-            @if ($showEmployeePerformance && $analysis->performance_dimensions_json)
+            @if ($showEmployeePerformance && ! $analysis->is_personal && $analysis->performance_dimensions_json)
                 <div class="saas-card">
                     <h2 class="text-lg font-semibold">ابعاد عملکرد</h2>
                     <div class="mt-5 space-y-4">
@@ -188,7 +219,7 @@
                 </div>
             @endif
 
-            @if ($showEmployeePerformance)
+            @if ($showEmployeePerformance && ! $analysis->is_personal)
                 <div class="grid gap-4 md:grid-cols-3">
                     <x-saas.analysis-insight-list
                         title="نقاط قوت"
@@ -206,7 +237,7 @@
                         tone="action"
                     />
                 </div>
-            @else
+            @elseif (! $analysis->is_personal)
                 <x-saas.analysis-insight-list
                     title="اقدامات بعدی"
                     :items="$analysis->next_actions_json ?? []"
@@ -215,7 +246,9 @@
                 />
             @endif
 
-            @include('livewire.shared.analysis-lead-and-concerns')
+            @unless ($analysis->is_personal)
+                @include('livewire.shared.analysis-lead-and-concerns')
+            @endunless
 
             @if ($showEmployeePerformance && $analysis->transcript)
                 <div class="saas-card" x-data="{ open: false }">
@@ -235,7 +268,7 @@
                 </div>
             @endif
 
-            @if ($showEmployeePerformance && $analysis->operational_insights_json)
+            @if ($showEmployeePerformance && ! $analysis->is_personal && $analysis->operational_insights_json)
                 @php
                     $sectionLabels = [
                         'missed_opportunities' => 'فرصت‌های از دست رفته',
@@ -272,9 +305,11 @@
                 ])
             @endif
 
-            @include('livewire.shared.analysis-customer-identity')
+            @unless ($analysis->is_personal)
+                @include('livewire.shared.analysis-customer-identity')
+            @endunless
 
-            @if ($analysis->customer_insights_json)
+            @if (! $analysis->is_personal && $analysis->customer_insights_json)
                 <div class="saas-card">
                     <h2 class="text-sm font-semibold uppercase tracking-wider text-zinc-500">بینش مشتری</h2>
                     <dl class="mt-4 space-y-3 text-sm">

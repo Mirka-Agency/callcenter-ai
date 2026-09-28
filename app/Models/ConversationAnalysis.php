@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'prompt_version',
     'score',
     'is_evaluable',
+    'is_personal',
+    'personal_reason',
     'needs_attention',
     'attention_json',
     'coaching_analysis_json',
@@ -67,6 +69,7 @@ class ConversationAnalysis extends Model
             'concerns_json' => 'array',
             'customer_identity_json' => 'array',
             'is_evaluable' => 'boolean',
+            'is_personal' => 'boolean',
             'needs_attention' => 'boolean',
             'attention_json' => 'array',
             'coaching_analysis_json' => 'array',
@@ -128,5 +131,24 @@ class ConversationAnalysis extends Model
         $table = $query->getModel()->getTable();
 
         return $query->where($table.'.is_evaluable', true)->where($table.'.score', '>', 0);
+    }
+
+    /** @param Builder<ConversationAnalysis> $query */
+    public function scopeBusiness(Builder $query): Builder
+    {
+        $table = $query->getModel()->getTable();
+
+        return $query->where(function (Builder $inner) use ($table): void {
+            $inner->where($table.'.is_personal', false)
+                ->orWhereNull($table.'.is_personal');
+        });
+    }
+
+    /** @param Builder<ConversationAnalysis> $query */
+    public function scopePersonal(Builder $query): Builder
+    {
+        $table = $query->getModel()->getTable();
+
+        return $query->where($table.'.is_personal', true);
     }
 }

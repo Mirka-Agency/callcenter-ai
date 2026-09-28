@@ -6,6 +6,7 @@ use App\Livewire\Employer\Intelligence\Concerns\HasPerformanceFilters;
 use App\Models\OrganizationUser;
 use App\Services\EmployerContext;
 use App\Services\Performance\EmployeePerformanceAnalytics;
+use App\Services\PersonalCallQuery;
 use Carbon\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -92,10 +93,18 @@ class PerformanceShow extends Component
     {
         $filter = $this->performanceFilter($this->employee->id);
         $profile = app(EmployeePerformanceAnalytics::class)->employeeProfile($filter, $this->employee);
+        $personalCalls = app(PersonalCallQuery::class)->forEmployee(
+            $filter->organizationId,
+            $this->employee->id,
+            $filter->from,
+            $filter->to,
+        );
 
         return view('livewire.employer.intelligence.performance-show', [
             'profile' => $profile,
             'filter' => $filter,
+            'personalCalls' => $personalCalls['items'],
+            'personalCallTotal' => $personalCalls['total'],
         ]);
     }
 }

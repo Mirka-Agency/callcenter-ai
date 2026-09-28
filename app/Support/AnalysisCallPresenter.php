@@ -42,6 +42,35 @@ class AnalysisCallPresenter
         return app(CallMetricsAnalytics::class)->formatDuration(self::durationSeconds($analysis) ?? 0);
     }
 
+    public static function counterpartyNumber(ConversationAnalysis $analysis): ?string
+    {
+        $direction = self::direction($analysis);
+        $call = $analysis->call;
+
+        if ($call) {
+            $number = $direction === CallDirection::Outbound
+                ? ($call->receiver_number ?: $call->caller_number)
+                : ($call->caller_number ?: $call->receiver_number);
+
+            $number = trim((string) $number);
+
+            return $number !== '' ? $number : null;
+        }
+
+        $log = $analysis->callLog;
+        if ($log === null) {
+            return null;
+        }
+
+        $number = $direction === CallDirection::Outbound
+            ? ($log->destination_number ?: $log->source_number)
+            : ($log->source_number ?: $log->destination_number);
+
+        $number = trim((string) $number);
+
+        return $number !== '' ? $number : null;
+    }
+
     public static function statusBadgeClass(?CallStatus $status): string
     {
         return match ($status) {

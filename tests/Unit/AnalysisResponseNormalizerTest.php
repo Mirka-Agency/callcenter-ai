@@ -298,4 +298,74 @@ class AnalysisResponseNormalizerTest extends TestCase
         $this->assertSame(['عدم پیگیری درخواست مشتری'], $result['weaknesses']);
         $this->assertSame([], $result['operational_insights']['follow_up_suggestions'] ?? []);
     }
+
+    public function test_personal_call_is_removed_from_business_scoring(): void
+    {
+        $result = $this->normalizer->apply([
+            'is_personal' => true,
+            'personal_reason' => 'هماهنگی قرار خانوادگی',
+            'evaluable' => true,
+            'score' => 80,
+            'summary' => 'کارشناس با یکی از اعضای خانواده درباره قرار عصر صحبت کرد.',
+            'sentiment' => 'negative',
+            'strengths' => ['لحن خوب'],
+            'weaknesses' => ['عدم فروش'],
+            'customer_identity' => [
+                'person_name' => 'مادر',
+                'company_name' => 'خانه',
+                'confidence' => 0.9,
+                'evidence' => 'سلام مامان',
+            ],
+            'needs_attention' => [
+                'needed' => true,
+                'categories' => ['agent'],
+                'reason' => 'اعتراض',
+            ],
+            'lead_quality' => [
+                'score' => 90,
+                'level' => 'high',
+                'reason' => 'آماده خرید',
+                'buying_intent_signals' => ['پرسش قیمت'],
+            ],
+        ]);
+
+        $this->assertTrue($result['is_personal']);
+        $this->assertSame('هماهنگی قرار خانوادگی', $result['personal_reason']);
+        $this->assertFalse($result['evaluable']);
+        $this->assertSame(0, $result['score']);
+        $this->assertSame('neutral', $result['sentiment']);
+        $this->assertSame([], $result['strengths']);
+        $this->assertSame([], $result['weaknesses']);
+        $this->assertSame('', $result['customer_identity']['person_name']);
+        $this->assertSame('', $result['lead_quality']['reason']);
+        $this->assertFalse($result['needs_attention']['needed']);
+        $this->assertNull($result['coaching_analysis']);
+    }
+
+    public function test_personal_flag_accepts_persian_true_and_business_call_stays_scored(): void
+    {
+        $personal = $this->normalizer->apply([
+            'is_personal' => 'درست',
+            'personal_reason' => 'تماس با دوست',
+            'summary' => 'گفتگوی دوستانه',
+            'score' => 40,
+        ]);
+
+        $this->assertTrue($personal['is_personal']);
+        $this->assertFalse($personal['evaluable']);
+        $this->assertSame(0, $personal['score']);
+
+        $business = $this->normalizer->apply([
+            'is_personal' => false,
+            'evaluable' => true,
+            'score' => 70,
+            'summary' => 'مشتری قیمت را پرسید.',
+            'strengths' => ['توضیح شفاف'],
+        ]);
+
+        $this->assertFalse($business['is_personal']);
+        $this->assertSame('', $business['personal_reason']);
+        $this->assertTrue($business['evaluable']);
+        $this->assertSame(['توضیح شفاف'], $business['strengths']);
+    }
 }

@@ -28,6 +28,10 @@ class CustomerIntelligenceService
 
     public function syncFromAnalysis(ConversationAnalysis $analysis): ?Customer
     {
+        if ($analysis->is_personal) {
+            return null;
+        }
+
         $analysis->loadMissing(['call']);
 
         $phone = $this->phoneResolver->resolveFromAnalysis($analysis);

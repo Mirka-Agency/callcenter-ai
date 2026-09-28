@@ -4,6 +4,7 @@ namespace App\Domain\Llm\DTOs;
 
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
+use App\Support\PersonalCall;
 
 readonly class AnalysisResultData
 {
@@ -46,6 +47,8 @@ readonly class AnalysisResultData
         public bool $needsAttention = false,
         public array $attention = [],
         public ?array $coachingAnalysis = null,
+        public bool $isPersonal = false,
+        public ?string $personalReason = null,
     ) {}
 
     public function totalTokens(): int
@@ -94,6 +97,8 @@ readonly class AnalysisResultData
             needsAttention: $this->needsAttention,
             attention: $this->attention,
             coachingAnalysis: $this->coachingAnalysis,
+            isPersonal: $this->isPersonal,
+            personalReason: $this->personalReason,
         );
     }
 
@@ -128,7 +133,8 @@ readonly class AnalysisResultData
         $attention = (array) ($response['needs_attention'] ?? []);
         $coaching = $response['coaching_analysis'] ?? null;
         $score = (int) ($response['score'] ?? $performance['overall_score'] ?? 0);
-        $isEvaluable = (bool) ($response['evaluable'] ?? true) && $score > 0;
+        $isPersonal = PersonalCall::isFlag($response['is_personal'] ?? false);
+        $isEvaluable = ! $isPersonal && (bool) ($response['evaluable'] ?? true) && $score > 0;
 
         return new self(
             organizationId: $organizationId,
@@ -168,6 +174,8 @@ readonly class AnalysisResultData
             needsAttention: (bool) ($attention['needed'] ?? false),
             attention: $attention,
             coachingAnalysis: is_array($coaching) ? $coaching : null,
+            isPersonal: $isPersonal,
+            personalReason: PersonalCall::reason($response['personal_reason'] ?? null, $isPersonal),
         );
     }
 }

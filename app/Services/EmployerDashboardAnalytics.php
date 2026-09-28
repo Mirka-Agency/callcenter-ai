@@ -82,6 +82,7 @@ class EmployerDashboardAnalytics
         $day = CompanyWorkCalendar::sqlDayKey($moment, DB::connection()->getDriverName());
         $weight = SentimentScoreCalculator::weightExpression();
         $query = ConversationAnalysis::query()
+            ->business()
             ->where('conversation_analyses.organization_id', $this->organizationId)
             ->where('conversation_analyses.analyzed_at', '>=', $from)
             ->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id');
@@ -283,8 +284,7 @@ class EmployerDashboardAnalytics
      *     sort_call_date: int,
      *     days_overdue: int,
      *     forgotten_actions: list<string>,
-     *     summary: ?string,
-     *     recording_url: ?string
+     *     summary: ?string
      * }>
      */
     public function forgottenFollowUps(int $days = 90): array
@@ -312,8 +312,7 @@ class EmployerDashboardAnalytics
      *     sort_call_date: int,
      *     days_overdue: int,
      *     forgotten_actions: list<string>,
-     *     summary: ?string,
-     *     recording_url: ?string
+     *     summary: ?string
      * }>
      */
     private function buildForgottenFollowUps(int $days): array
@@ -334,17 +333,13 @@ class EmployerDashboardAnalytics
         $analyses = $query
             ->with([
                 'employee:id,first_name,last_name,user_id',
-                'call:id,voip_call_log_id,customer_id,customer_name,customer_phone,caller_number,started_at,conversation_date,created_at',
+                'call:id,customer_id,customer_name,customer_phone,caller_number,started_at,conversation_date,created_at',
                 'call.customer:id,name,company_name,phone_number',
-                'call.recording',
-                'call.voipCallLog:id,recording_url',
-                'callLog:id,recording_url',
             ])
             ->latest('analyzed_at')
             ->get([
                 'id',
                 'call_id',
-                'voip_call_log_id',
                 'organization_user_id',
                 'summary',
                 'next_actions_json',
@@ -451,8 +446,7 @@ class EmployerDashboardAnalytics
      *     sort_call_date: int,
      *     days_overdue: int,
      *     forgotten_actions: list<string>,
-     *     summary: ?string,
-     *     recording_url: ?string
+     *     summary: ?string
      * }|null
      */
     private function mapForgottenFollowUp(ConversationAnalysis $analysis, CarbonInterface $today, array $laterCalls): ?array
@@ -479,47 +473,7 @@ class EmployerDashboardAnalytics
             'days_overdue' => $primary['days_overdue'],
             'forgotten_actions' => array_values(array_unique(array_column($actions, 'text'))),
             'summary' => $this->nullableText($analysis->summary),
-            'recording_url' => $this->forgottenRecordingLink($analysis, $callAt),
         ];
-    }
-
-    /**
-     * Original PBX recording URL, kept after our stored file is purged.
-     */
-    private function forgottenRecordingLink(ConversationAnalysis $analysis, ?CarbonInterface $callAt): ?string
-    {
-        $retentionDays = app(RecordingRetentionService::class)->retentionDays();
-
-        if ($callAt === null || $callAt->greaterThan(now()->subDays($retentionDays))) {
-            return null;
-        }
-
-        $recording = $analysis->call?->recording;
-        $fileAvailable = $recording
-            && filled($recording->storage_path)
-            && ! app(RecordingRetentionService::class)->isExpired($recording);
-
-        if ($fileAvailable) {
-            return null;
-        }
-
-        return $this->browserRecordingUrl(
-            $analysis->call?->voipCallLog?->recording_url
-                ?? $analysis->callLog?->recording_url,
-        );
-    }
-
-    private function browserRecordingUrl(?string $url): ?string
-    {
-        $url = trim((string) $url);
-
-        if ($url === '' || filter_var($url, FILTER_VALIDATE_URL) === false) {
-            return null;
-        }
-
-        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
-
-        return in_array($scheme, ['http', 'https'], true) ? $url : null;
     }
 
     /**

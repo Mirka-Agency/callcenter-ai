@@ -8,6 +8,7 @@ use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Enums\UserRole;
 use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
 use App\Livewire\Employer\Dashboard\Overview;
+use App\Livewire\Employer\Intelligence\Show as IntelligenceShow;
 use App\Models\Call;
 use App\Models\CallRecording;
 use App\Models\ConversationAnalysis;
@@ -275,12 +276,13 @@ class ForgottenFollowUpsDashboardTest extends TestCase
         $this->assertLessThan($newer, $delayed);
     }
 
-    public function test_purged_recording_keeps_the_voip_link_on_old_forgotten_follow_ups(): void
+    public function test_deleted_recording_link_is_only_on_the_analysis_page(): void
     {
         config(['recordings.retention_days' => 30]);
 
         $organization = $this->actingAsEmployer();
         $recordingUrl = 'http://10.0.0.20/recordings/old-call.wav';
+        $recentUrl = 'http://10.0.0.20/recordings/recent-call.wav';
 
         $this->seedFollowUp($organization, [
             'external_id' => 'forgotten-old-link',
@@ -300,18 +302,27 @@ class ForgottenFollowUpsDashboardTest extends TestCase
             'analyzed_at' => now()->subDays(4),
             'started_at' => now()->subDays(4),
         ]);
-        $this->attachVoipRecording($organization, 'forgotten-recent-link', 'http://10.0.0.20/recordings/recent-call.wav', expired: false);
-
-        $forgotten = collect(EmployerDashboardAnalytics::forOrganization($organization->id)->forgottenFollowUps())
-            ->keyBy('customer');
-
-        $this->assertSame($recordingUrl, $forgotten['تماس قدیمی']['recording_url']);
-        $this->assertNull($forgotten['تماس تازه']['recording_url']);
+        $this->attachVoipRecording($organization, 'forgotten-recent-link', $recentUrl, expired: false);
 
         Livewire::test(Overview::class)
+            ->assertDontSee('لینک تماس')
+            ->assertDontSee($recordingUrl)
+            ->assertDontSee($recentUrl);
+
+        $deleted = ConversationAnalysis::query()
+            ->whereHas('call', fn ($query) => $query->where('external_call_id', 'forgotten-old-link'))
+            ->firstOrFail();
+        $kept = ConversationAnalysis::query()
+            ->whereHas('call', fn ($query) => $query->where('external_call_id', 'forgotten-recent-link'))
+            ->firstOrFail();
+
+        Livewire::test(IntelligenceShow::class, ['analysis' => $deleted])
             ->assertSee('لینک تماس')
-            ->assertSee($recordingUrl)
-            ->assertDontSee('http://10.0.0.20/recordings/recent-call.wav');
+            ->assertSee($recordingUrl);
+
+        Livewire::test(IntelligenceShow::class, ['analysis' => $kept])
+            ->assertDontSee('لینک تماس')
+            ->assertDontSee($recentUrl);
     }
 
     public function test_empty_state_is_shown_when_there_are_no_forgotten_follow_ups(): void
