@@ -8,7 +8,7 @@
     use App\Support\AgentPerformancePresenter;
 
     $tier = $agent['tier'] ?? AgentPerformancePresenter::tier($agent);
-    $cardClass = 'group block rounded-lg border bg-white p-5 shadow-sm transition hover:border-zinc-300 hover:shadow-md dark:bg-zinc-900 dark:hover:border-zinc-700 '.AgentPerformancePresenter::tierBorderClass($tier);
+    $cardClass = 'block rounded-lg border bg-white p-5 shadow-sm dark:bg-zinc-900 '.AgentPerformancePresenter::tierBorderClass($tier);
 @endphp
 
 @if ($href)

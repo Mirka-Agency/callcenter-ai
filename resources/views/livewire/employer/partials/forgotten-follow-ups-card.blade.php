@@ -133,19 +133,9 @@
 
                                     <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
                                         <div class="flex flex-wrap items-center gap-2">
-                                            @if (! empty($followUp['recording_url']))
-                                                <a
-                                                    href="{{ $followUp['recording_url'] }}"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    @class(['saas-forgotten-link', 'saas-forgotten-link--urgent' => $key === 'urgent'])
-                                                >
-                                                    لینک تماس
-                                                </a>
-                                            @endif
                                             <a
                                                 href="{{ route('employer.intelligence.show', $followUp['analysis_id']) }}"
-                                                @class(['saas-forgotten-link', 'saas-forgotten-link--urgent' => $key === 'urgent' && empty($followUp['recording_url'])])
+                                                @class(['saas-forgotten-link', 'saas-forgotten-link--urgent' => $key === 'urgent'])
                                             >
                                                 نمایش تحلیل
                                             </a>

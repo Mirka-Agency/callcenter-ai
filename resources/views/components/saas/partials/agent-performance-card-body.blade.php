@@ -20,7 +20,7 @@
             @if ($showRank && ($agent['rank'] ?? null))
                 <p class="text-xs font-medium text-zinc-400">رتبه #{{ $agent['rank'] }}</p>
             @endif
-            <h3 class="mt-0.5 text-lg font-bold leading-snug text-zinc-900 group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">
+            <h3 class="mt-0.5 text-lg font-bold leading-snug text-zinc-900 dark:text-white">
                 {{ $agent['name'] }}
             </h3>
             <p class="mt-0.5 text-sm text-zinc-500">{{ $subtitle }}</p>

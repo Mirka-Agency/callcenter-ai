@@ -126,6 +126,11 @@ class Show extends Component
         return view('livewire.employer.intelligence.show', [
             'recordingUrl' => $playback['url'],
             'recordingExpired' => $playback['expired'],
+            'deletedRecordingUrl' => $this->deletedRecordingUrl(
+                $playback['expired'],
+                $this->analysis->call?->voipCallLog?->recording_url,
+                $this->analysis->callLog?->recording_url,
+            ),
             'callLog' => $callLog,
             'extension' => $extension,
             'resolvedEmployeeId' => $resolvedEmployeeId,
@@ -146,6 +151,7 @@ class Show extends Component
         $this->analysis->load([
             'employee.user',
             'call.recording',
+            'call.voipCallLog',
             'call.processingJob',
             'call.customer.company',
             'callLog.connection',

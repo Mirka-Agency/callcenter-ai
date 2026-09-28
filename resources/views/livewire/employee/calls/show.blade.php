@@ -10,5 +10,6 @@
     'analysis' => $analysis,
     'recordingUrl' => $recordingUrl,
     'recordingExpired' => $recordingExpired ?? false,
+    'deletedRecordingUrl' => $deletedRecordingUrl ?? null,
     'visibilityMode' => $visibilityMode,
 ])

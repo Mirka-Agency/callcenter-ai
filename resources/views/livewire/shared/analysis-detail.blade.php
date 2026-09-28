@@ -151,6 +151,16 @@
                         'recordingExpired' => $recordingExpired ?? false,
                         'embedded' => true,
                     ])
+                    @if (($recordingExpired ?? false) && filled($deletedRecordingUrl ?? null))
+                        <a
+                            href="{{ $deletedRecordingUrl }}"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="saas-btn-secondary mt-4"
+                        >
+                            لینک تماس
+                        </a>
+                    @endif
                 </div>
             @endif
 

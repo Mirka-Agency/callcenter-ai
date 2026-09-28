@@ -38,4 +38,16 @@ trait ResolvesRecordingPlayback
     {
         return $this->recordingPlaybackState($recording, $fallbackUrl)['url'];
     }
+
+    /**
+     * Original call-recording link, only after the stored file has been deleted.
+     */
+    protected function deletedRecordingUrl(bool $expired, ?string ...$candidates): ?string
+    {
+        if (! $expired) {
+            return null;
+        }
+
+        return app(RecordingRetentionService::class)->browserRecordingUrl(...$candidates);
+    }
 }

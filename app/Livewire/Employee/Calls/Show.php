@@ -27,6 +27,7 @@ class Show extends Component
         $this->analysis = $analysis->load([
             'employee',
             'call.recording',
+            'call.voipCallLog',
             'call.processingJob',
             'call.customer.company',
             'callLog',
@@ -49,6 +50,11 @@ class Show extends Component
         return view('livewire.employee.calls.show', [
             'recordingUrl' => $playback['url'],
             'recordingExpired' => $playback['expired'],
+            'deletedRecordingUrl' => $this->deletedRecordingUrl(
+                $playback['expired'],
+                $this->analysis->call?->voipCallLog?->recording_url,
+                $this->analysis->callLog?->recording_url,
+            ),
         ]);
     }
 }
