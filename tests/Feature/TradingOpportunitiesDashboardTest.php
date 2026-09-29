@@ -8,10 +8,13 @@ use App\Enums\UserRole;
 use App\Livewire\Employer\Dashboard\Overview;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
+use App\Models\Customer;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\User;
 use App\Services\EmployerDashboardAnalytics;
+use App\Support\AnalysisInsightPresenter;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -131,6 +134,81 @@ class TradingOpportunitiesDashboardTest extends TestCase
         $this->assertSame('high', $opportunities[0]['lead_level']);
         $this->assertSame('اشتراک سازمانی', $opportunities[0]['product']);
         $this->assertArrayHasKey('sort_date', $opportunities[0]);
+    }
+
+    public function test_opportunity_name_matches_the_name_shown_on_the_call_detail(): void
+    {
+        $organization = Organization::factory()->create();
+        $this->seedOpportunity($organization, [
+            'external_id' => 'opp-linked-to-shared-company-phone',
+            'customer_name' => 'رفیعیان',
+            'lead_level' => 'high',
+            'lead_score' => 91,
+            'analyzed_at' => now()->subDay(),
+        ]);
+
+        $analysis = ConversationAnalysis::query()->latest('id')->firstOrFail();
+        $customer = Customer::query()->create([
+            'organization_id' => $organization->id,
+            'phone_number' => '09121111111',
+            'normalized_phone' => '09121111111',
+            'name' => 'حسینعلی',
+            'company_name' => 'ترکیب بار',
+        ]);
+        $analysis->call()->update([
+            'customer_id' => $customer->id,
+            'customer_name' => null,
+        ]);
+
+        $analysis = $analysis->fresh(['call.customer']);
+        $opportunities = EmployerDashboardAnalytics::forOrganization($organization->id)->tradingOpportunities();
+
+        $this->assertSame('رفیعیان', AnalysisInsightPresenter::customerName($analysis));
+        $this->assertSame('رفیعیان', $opportunities[0]['customer']);
+    }
+
+    public function test_today_summary_only_lists_high_probability_opportunities_from_today(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-29 10:00:00', 'UTC'));
+
+        try {
+            $organization = $this->actingAsEmployer();
+            $this->seedOpportunity($organization, [
+                'external_id' => 'today-high-probability',
+                'customer_name' => 'فرصت امروز',
+                'lead_level' => 'high',
+                'lead_score' => 90,
+                'purchase_probability' => 85,
+                'analyzed_at' => Carbon::parse('2026-09-29 11:00:00', 'Asia/Tehran')->utc(),
+            ]);
+            $this->seedOpportunity($organization, [
+                'external_id' => 'today-low-probability',
+                'customer_name' => 'احتمال پایین امروز',
+                'lead_level' => 'high',
+                'lead_score' => 82,
+                'purchase_probability' => 60,
+                'analyzed_at' => Carbon::parse('2026-09-29 12:00:00', 'Asia/Tehran')->utc(),
+            ]);
+            $this->seedOpportunity($organization, [
+                'external_id' => 'yesterday-high-probability',
+                'customer_name' => 'فرصت دیروز',
+                'lead_level' => 'high',
+                'lead_score' => 94,
+                'purchase_probability' => 95,
+                'analyzed_at' => Carbon::parse('2026-09-28 23:30:00', 'Asia/Tehran')->utc(),
+            ]);
+
+            $html = Livewire::test(Overview::class)->html();
+            $start = mb_strpos($html, 'فرصت فروش با احتمال بالا');
+            $end = mb_strpos($html, '</article>', (int) $start);
+            $section = mb_substr($html, (int) $start, (int) $end - (int) $start);
+
+            $this->assertStringContainsString('فرصت امروز', $section);
+            $this->assertStringNotContainsString('احتمال پایین امروز', $section);
+            $this->assertStringNotContainsString('فرصت دیروز', $section);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_dashboard_sorts_trading_opportunities_by_clicked_column_titles(): void

@@ -9,13 +9,14 @@ use App\Models\OrganizationActivity;
 use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\OrganizationCallMetrics;
+use App\Support\AnalysisInsightPresenter;
 use App\Support\CallCoachingRules;
 use App\Support\CompanyWorkCalendar;
 use App\Support\FollowUpDueDateParser;
 use App\Support\ForgottenCallbackMatcher;
 use App\Support\JalaliDate;
-use App\Support\PersonName;
 use App\Support\PaymentFollowUpSentiment;
+use App\Support\PersonName;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use DateTimeInterface;
@@ -958,9 +959,7 @@ class EmployerDashboardAnalytics
 
         return [
             'analysis_id' => $analysis->id,
-            'customer' => $customer?->displayName()
-                ?: ($identity['person_name'] ?? null)
-                ?: ($call?->customer_name ?: null)
+            'customer' => AnalysisInsightPresenter::customerName($analysis)
                 ?: ($phone ?: '—'),
             'phone' => $this->nullableText($phone),
             'company' => $this->nullableText($company),

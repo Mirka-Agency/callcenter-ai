@@ -82,9 +82,21 @@ class AnalysisInsightPresenter
     {
         $identity = $analysis->customer_identity_json ?? [];
 
-        return $identity['person_name']
-            ?? $analysis->call?->customer_name
-            ?? null;
+        $identityName = trim((string) ($identity['person_name'] ?? ''));
+
+        if ($identityName !== '') {
+            return $identityName;
+        }
+
+        $callName = trim((string) ($analysis->call?->customer_name ?? ''));
+
+        if ($callName !== '') {
+            return $callName;
+        }
+
+        $linkedCustomerName = trim((string) ($analysis->call?->customer?->displayName() ?? ''));
+
+        return $linkedCustomerName !== '' ? $linkedCustomerName : null;
     }
 
     public static function customerInsightLabel(string $key): string
