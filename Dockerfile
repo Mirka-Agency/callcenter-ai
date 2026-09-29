@@ -100,6 +100,10 @@ COPY --chown=www-data:www-data . .
 COPY --from=vendor --chown=www-data:www-data /app/vendor ./vendor
 COPY --from=assets --chown=www-data:www-data /app/public/build ./public/build
 
+# Never ship the Vite HMR marker; @vite would point browsers at :5173.
+RUN rm -f public/hot \
+    && find public -name '._*' -delete
+
 RUN mkdir -p \
     storage/framework/cache/data \
     storage/framework/sessions \

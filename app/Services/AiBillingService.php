@@ -49,6 +49,7 @@ class AiBillingService
         ?ConversationSource $source = null,
         ?string $transcript = null,
         ?array $crmContext = null,
+        ?\DateTimeInterface $analyzedAt = null,
     ): AnalysisResultData {
         $response = app(AnalysisResponseNormalizer::class)->apply(
             app(WeaknessEvaluationFilter::class)->filterResponse($response),
@@ -78,6 +79,7 @@ class AiBillingService
             outputPriceSnapshot: $pricing['output_price'],
             cachedInputPriceSnapshot: $pricing['cached_price'],
             reasoningPriceSnapshot: $pricing['reasoning_price'],
+            analyzedAt: $analyzedAt,
         );
     }
 

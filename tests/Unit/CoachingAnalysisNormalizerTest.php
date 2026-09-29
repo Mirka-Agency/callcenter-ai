@@ -137,6 +137,33 @@ class CoachingAnalysisNormalizerTest extends TestCase
         $this->assertSame(AnalysisSentiment::Positive, $dto->sentiment);
     }
 
+    public function test_analysis_date_can_be_the_call_day_instead_of_today(): void
+    {
+        $callDay = now()->subMonths(2)->startOfDay();
+
+        $dto = AnalysisResultData::fromProviderResponse(
+            response: [
+                'score' => 70,
+                'summary' => 'خلاصه',
+                'sentiment' => 'neutral',
+                'strengths' => [],
+            ],
+            organizationId: 1,
+            organizationUserId: null,
+            voipCallLogId: null,
+            organizationLlmConnectionId: null,
+            llmProvider: 'gemini',
+            modelName: 'gemini-3.8-flash',
+            inputTokens: 1,
+            outputTokens: 1,
+            cost: 0,
+            processingDurationMs: 1,
+            analyzedAt: $callDay,
+        );
+
+        $this->assertTrue($dto->analyzedAt?->equalTo($callDay));
+    }
+
     public function test_unevaluable_call_clears_coaching(): void
     {
         $result = (new AnalysisResponseNormalizer)->apply([

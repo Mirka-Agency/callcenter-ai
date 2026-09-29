@@ -41,11 +41,8 @@ class Overview extends Component
         );
         $performance = app(EmployeePerformanceAnalytics::class);
         $performanceDashboard = $performance->teamDashboard($performanceFilter);
-        $weekComparisons = $this->weekComparisons(
-            $performance->teamKpiPointDeltas(ReportFilter::make(
-                organizationId: $organizationId,
-                preset: ReportDatePreset::Last7,
-            )),
+        $monthComparisons = $this->monthComparisons(
+            $performance->teamKpiPointDeltas($performanceFilter),
         );
         $selectedWeakness = $this->resolvedTeamWeakness($performanceDashboard['team_weaknesses']);
 
@@ -59,7 +56,7 @@ class Overview extends Component
             ],
             'agentCardFeed' => $this->agentCardFeed($agents),
             'teamKpis' => $performanceDashboard['kpis'],
-            'weekComparisons' => $weekComparisons,
+            'monthComparisons' => $monthComparisons,
             'teamWeaknesses' => $performanceDashboard['team_weaknesses'],
             'selectedTeamWeakness' => $selectedWeakness,
             'teamWeaknessCalls' => $selectedWeakness
@@ -99,7 +96,7 @@ class Overview extends Component
      * @param  array<string, float|null>  $deltas
      * @return array{average_quality_score: ?float, average_lead_score: ?float, average_sentiment: ?float}
      */
-    private function weekComparisons(array $deltas): array
+    private function monthComparisons(array $deltas): array
     {
         return [
             'average_quality_score' => $deltas['average_quality_score'] ?? null,

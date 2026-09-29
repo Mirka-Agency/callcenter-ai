@@ -276,7 +276,7 @@ class EmployeePerformanceAnalytics
     }
 
     /**
-     * Week-over-week cards only need three averages, so this stays in SQL
+     * Month-over-month cards only need three averages, so this stays in SQL
      * instead of hydrating every analysis in both windows.
      *
      * @return array{average_quality_score: float, average_lead_score: float, average_sentiment: float}

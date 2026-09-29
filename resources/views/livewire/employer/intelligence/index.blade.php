@@ -277,18 +277,22 @@
                         ></canvas>
                     </div>
                 </div>
+            </div>
+        @endif
+    </div>
 
-                <div
-                    wire:loading.delay.short.flex
-                    wire:target="drilldown,selectConcern"
-                    class="mt-4 items-center gap-2 text-sm text-zinc-500"
-                >
-                    <span class="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" aria-hidden="true"></span>
-                    در حال آوردن تماس‌ها…
-                </div>
+    @if ($hasConcerns)
+        <div
+            wire:loading.delay.short.flex
+            wire:target="drilldown,selectConcern"
+            class="hidden items-center gap-2 text-sm text-zinc-500"
+        >
+            <span class="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" aria-hidden="true"></span>
+            در حال آوردن تماس‌ها…
+        </div>
 
-                @if ($selectedConcern)
-                    <div id="concern-call-list" wire:key="concern-call-list-{{ $selectedConcern }}" class="mt-4 overflow-hidden rounded-xl border border-zinc-200/80 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-950/40">
+        @if ($selectedConcern)
+            <div id="concern-call-list" wire:key="concern-call-list-{{ $selectedConcern }}" class="overflow-hidden rounded-xl border border-zinc-200/80 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-950/40">
                         <div class="flex items-center justify-between gap-3 border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-800">
                             <div class="min-w-0">
                                 <p class="truncate text-sm font-semibold text-zinc-900 dark:text-white">
@@ -352,22 +356,21 @@
                                 <p class="px-4 py-8 text-center text-sm text-zinc-500">تماسی با این نگرانی پیدا نشد.</p>
                             @endforelse
                         </div>
-                    </div>
-                @endif
             </div>
         @endif
+    @endif
 
-        <div
-            wire:loading.delay.short.flex
-            wire:target="selectNegativeSentiment"
-            class="mt-0 items-center gap-2 text-sm text-zinc-500 lg:col-span-4"
-        >
+    <div
+        wire:loading.delay.short.flex
+        wire:target="selectNegativeSentiment"
+        class="hidden items-center gap-2 text-sm text-zinc-500"
+    >
             <span class="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-rose-500 border-t-transparent" aria-hidden="true"></span>
             در حال آوردن تماس‌های منفی…
         </div>
 
         @if ($selectedSentiment)
-            <div id="sentiment-call-list" wire:key="sentiment-call-list" class="overflow-hidden rounded-xl border border-rose-200/80 bg-rose-50/40 lg:col-span-4 dark:border-rose-900/50 dark:bg-rose-950/20">
+            <div id="sentiment-call-list" wire:key="sentiment-call-list" class="overflow-hidden rounded-xl border border-rose-200/80 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20">
                 <div class="flex items-center justify-between gap-3 border-b border-rose-200/70 px-4 py-3 dark:border-rose-900/40">
                     <div class="min-w-0">
                         <p class="truncate text-sm font-semibold text-zinc-900 dark:text-white">تماس‌های با احساس منفی</p>
@@ -421,7 +424,6 @@
                 </div>
             </div>
         @endif
-    </div>
 
     @unless ($pinAnalysisListUnderFilters)
         @include('livewire.employer.intelligence.partials.analysis-list')

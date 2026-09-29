@@ -24,3 +24,7 @@ Dockerfile
 docker-compose*.yml
 .agent
 terminals
+# Vite HMR marker — if copied into a production image, @vite points at :5173
+# and Chart.js / saas.js never load on on-prem browsers.
+public/hot
+**/._*

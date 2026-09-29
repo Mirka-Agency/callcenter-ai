@@ -34,7 +34,7 @@ class DashboardWeekComparisonTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_dashboard_metric_cards_say_whether_they_rose_or_fell_versus_last_week(): void
+    public function test_dashboard_metric_cards_say_whether_they_rose_or_fell_versus_last_month(): void
     {
         $organization = $this->actingAsEmployer();
         $employee = OrganizationUser::query()->create([
@@ -45,6 +45,7 @@ class DashboardWeekComparisonTest extends TestCase
             'is_active' => true,
         ]);
 
+        $this->seedAnalysis($organization, $employee, Carbon::parse('2026-08-12 12:00:00', 'UTC'), 40, AnalysisSentiment::Negative, 30);
         $this->seedAnalysis($organization, $employee, now()->subDays(10), 40, AnalysisSentiment::Negative, 30);
         $this->seedAnalysis($organization, $employee, now()->subDay(), 90, AnalysisSentiment::Positive, 80);
 
@@ -64,9 +65,10 @@ class DashboardWeekComparisonTest extends TestCase
             ->assertSee('رضایت مشتری')
             ->assertSee('براساس ۲ تماس در ۳۰ روز گذشته محاسبه شد')
             ->assertDontSee('تماس تحلیل شده')
-            ->assertSee('50 نسبت به هفته قبل')
-            ->assertSee('80٪ نسبت به هفته قبل')
-            ->assertDontSee('50٪ نسبت به هفته قبل')
+            ->assertSee('25 نسبت به ماه قبل')
+            ->assertSee('40٪ نسبت به ماه قبل')
+            ->assertDontSee('نسبت به هفته قبل')
+            ->assertDontSee('25٪ نسبت به ماه قبل')
             ->assertDontSee('⬆')
             ->assertDontSee('⬇')
             ->html();
@@ -80,8 +82,8 @@ class DashboardWeekComparisonTest extends TestCase
         $this->assertLessThan($summaryAt, $callsTodayAt);
         $this->assertLessThan($trendAt, $summaryAt);
 
-        $this->assertSame(2, mb_substr_count($html, '50 نسبت به هفته قبل'));
-        $this->assertSame(1, mb_substr_count($html, '80٪ نسبت به هفته قبل'));
+        $this->assertSame(2, mb_substr_count($html, '25 نسبت به ماه قبل'));
+        $this->assertSame(1, mb_substr_count($html, '40٪ نسبت به ماه قبل'));
     }
 
     public function test_today_summary_lists_agents_who_need_progress_not_their_customers(): void

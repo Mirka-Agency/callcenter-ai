@@ -19,6 +19,10 @@ if [ "$DB_CONNECTION" = "sqlite" ] && [ ! -f database/database.sqlite ]; then
     chown www-data:www-data database/database.sqlite 2>/dev/null || true
 fi
 
+# Vite writes public/hot during local `npm run dev`. If that file is present in
+# production, @vite serves http://[::1]:5173 and charts/JS never load.
+rm -f public/hot
+
 php artisan package:discover --ansi
 
 if [ "$APP_ENV" = "production" ]; then
