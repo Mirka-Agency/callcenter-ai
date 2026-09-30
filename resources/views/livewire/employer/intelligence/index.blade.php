@@ -1,4 +1,7 @@
 @php
+    use App\Support\AgentPerformancePresenter;
+    use App\Support\AnalysisInsightPresenter;
+
     $qualityTrend = $charts['quality_trend'] ?? [];
     $volumeTrend = $charts['volume_trend'] ?? [];
     $sentimentBreakdown = $charts['sentiment_breakdown'] ?? [];
@@ -7,6 +10,7 @@
     $hasQualityTrend = collect($qualityTrend)->isNotEmpty();
     $hasVolumeTrend = collect($volumeTrend)->isNotEmpty();
     $hasSentiment = count($sentimentBreakdown) > 0;
+    $hasNegativeSentiment = collect($sentimentBreakdown)->contains(fn (array $item): bool => ($item['key'] ?? '') === 'negative' && (int) ($item['count'] ?? 0) > 0);
     $hasConcerns = count($concerns) > 0;
 
     $qualityChart = [
@@ -165,7 +169,7 @@
         @include('livewire.employer.intelligence.partials.analysis-list')
     @endif
 
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-tour="analysis-stats">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5" data-tour="analysis-stats">
         <x-saas.stat-card label="تعداد کل تماس‌ها" :value="number_format($overview['total_calls'])" />
         <x-saas.stat-card
             label="تماس‌های تحلیل‌شده"
@@ -173,6 +177,11 @@
             :hint="($overview['in_flight_count'] ?? 0) > 0
                 ? number_format($overview['in_flight_count']).' در صف یا در حال پردازش'
                 : null"
+        />
+        <x-saas.stat-card
+            label="تماس‌های خارج از تحلیل"
+            :value="number_format($overview['outside_analysis_count'] ?? 0)"
+            hint="داخلی‌های تعریف‌نشده"
         />
         <x-saas.stat-card
             label="تماس از دست رفته"
@@ -186,28 +195,15 @@
         <x-saas.stat-card label="میانگین مدت تماس" :value="$overview['average_duration_label']" />
     </div>
 
-    @if ($overview['top_agent_name'] || $overview['top_concern'])
-        <div class="flex flex-wrap gap-2">
-            @if ($overview['top_agent_name'])
-                <span class="inline-flex items-center gap-2 rounded-full border border-indigo-200/80 bg-indigo-50/80 px-3 py-1.5 text-xs font-medium text-indigo-800 dark:border-indigo-500/30 dark:bg-indigo-950/30 dark:text-indigo-300">
-                    پرتحلیل‌ترین کارشناس: {{ $overview['top_agent_name'] }} ({{ $overview['top_agent_count'] }} تماس)
-                </span>
-            @endif
-            @if ($overview['top_concern'])
-                <span class="inline-flex items-center gap-2 rounded-full border border-amber-200/80 bg-amber-50/80 px-3 py-1.5 text-xs font-medium text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-200">
-                    نگرانی غالب: {{ $overview['top_concern'] }}
-                </span>
-            @endif
-        </div>
-    @endif
-
-    <div class="grid gap-6 lg:grid-cols-4" data-tour="analysis-charts">
+    <div class="grid items-start gap-6 lg:grid-cols-4" data-tour="analysis-charts">
         <div class="saas-card lg:col-span-2">
             <h2 class="text-lg font-semibold">روند کیفیت مکالمه</h2>
             <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز در بازه فیلتر فعلی</p>
             @if ($hasQualityTrend)
-                <div class="mt-4 h-56" wire:key="intel-quality-{{ md5(json_encode($qualityTrend)) }}">
-                    <canvas id="intel-quality-trend" data-report-chart data-type="line" data-config='@json($qualityChart)'></canvas>
+                <div wire:key="intel-quality-{{ md5(json_encode($qualityTrend)) }}">
+                    <div class="mt-4 h-56" wire:ignore>
+                        <canvas id="intel-quality-trend" data-report-chart data-type="line" data-config='@json($qualityChart)'></canvas>
+                    </div>
                 </div>
             @else
                 <div class="mt-4">
@@ -220,8 +216,10 @@
             <h2 class="text-lg font-semibold">حجم تحلیل‌ها</h2>
             <p class="mt-1 text-sm text-zinc-500">تعداد تحلیل‌های انجام‌شده در هر بازه</p>
             @if ($hasVolumeTrend)
-                <div class="mt-4 h-56" wire:key="intel-volume-{{ md5(json_encode($volumeTrend)) }}">
-                    <canvas id="intel-volume-trend" data-report-chart data-type="bar" data-config='@json($volumeChart)'></canvas>
+                <div wire:key="intel-volume-{{ md5(json_encode($volumeTrend)) }}">
+                    <div class="mt-4 h-56" wire:ignore>
+                        <canvas id="intel-volume-trend" data-report-chart data-type="bar" data-config='@json($volumeChart)'></canvas>
+                    </div>
                 </div>
             @else
                 <div class="mt-4">
@@ -230,12 +228,30 @@
             @endif
         </div>
 
-        <div class="saas-card lg:col-span-1">
+        <div class="saas-card lg:col-span-1" data-drilldown-selected="{{ $selectedSentiment ?? '' }}">
             <h2 class="text-lg font-semibold">احساسات مشتری</h2>
-            <p class="mt-1 text-sm text-zinc-500">توزیع احساس در مکالمات</p>
+            <p class="mt-1 text-sm text-zinc-500">
+                توزیع احساس در مکالمات
+                @if ($hasNegativeSentiment)
+                    · برای دیدن تماس‌ها، بخش قرمز را انتخاب کنید
+                @endif
+            </p>
             @if ($hasSentiment)
-                <div class="mx-auto mt-4 aspect-square w-full" wire:key="intel-sentiment-{{ md5(json_encode($sentimentBreakdown)) }}">
-                    <canvas id="intel-sentiment-dist" data-report-chart data-type="doughnut" data-config='@json($sentimentChart)'></canvas>
+                <div wire:key="intel-sentiment-{{ md5(json_encode($sentimentBreakdown)) }}">
+                    <div class="mx-auto mt-4 aspect-square w-full" wire:ignore>
+                        <canvas
+                            id="intel-sentiment-dist"
+                            data-report-chart
+                            data-type="doughnut"
+                            data-config='@json($sentimentChart)'
+                            @if ($hasNegativeSentiment)
+                                data-drilldown="sentiment"
+                                data-drilldown-method="selectNegativeSentiment"
+                                data-drilldown-allow="negative"
+                                data-drilldown-values='@json(collect($sentimentBreakdown)->pluck('key')->values()->all())'
+                            @endif
+                        ></canvas>
+                    </div>
                 </div>
             @else
                 <div class="mt-4">
@@ -245,15 +261,169 @@
         </div>
 
         @if ($hasConcerns)
-            <div class="saas-card lg:col-span-3">
+            <div class="saas-card lg:col-span-3" data-drilldown-selected="{{ $selectedConcern ?? '' }}">
                 <h2 class="text-lg font-semibold">نگرانی‌های پرتکرار</h2>
-                <p class="mt-1 text-sm text-zinc-500">موضوعاتی که بیشتر در مکالمات مطرح شده‌اند</p>
-                <div class="mt-4 h-56" wire:key="intel-concerns-{{ md5(json_encode($concerns)) }}">
-                    <canvas id="intel-concerns-chart" data-report-chart data-type="bar" data-config='@json($concernChart)'></canvas>
+                <p class="mt-1 text-sm text-zinc-500">موضوعاتی که بیشتر در مکالمات مطرح شده‌اند. برای دیدن تماس‌ها روی هر مورد کلیک کنید.</p>
+                <div wire:key="intel-concerns-{{ md5(json_encode($concerns)) }}">
+                    <div class="mt-4 h-56" wire:ignore>
+                        <canvas
+                            id="intel-concerns-chart"
+                            class="cursor-pointer"
+                            data-report-chart
+                            data-type="bar"
+                            data-config='@json($concernChart)'
+                            data-drilldown="concern"
+                            data-drilldown-values='@json(collect($concerns)->pluck('type')->values()->all())'
+                        ></canvas>
+                    </div>
                 </div>
             </div>
         @endif
     </div>
+
+    @if ($hasConcerns)
+        <div
+            wire:loading.delay.short.flex
+            wire:target="drilldown,selectConcern"
+            class="hidden items-center gap-2 text-sm text-zinc-500"
+        >
+            <span class="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" aria-hidden="true"></span>
+            در حال آوردن تماس‌ها…
+        </div>
+
+        @if ($selectedConcern)
+            <div id="concern-call-list" wire:key="concern-call-list-{{ $selectedConcern }}" class="overflow-hidden rounded-xl border border-zinc-200/80 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-950/40">
+                        <div class="flex items-center justify-between gap-3 border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-800">
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-semibold text-zinc-900 dark:text-white">
+                                    تماس‌های مرتبط با {{ $selectedConcernLabel }}
+                                </p>
+                                <p class="mt-0.5 text-xs text-zinc-500">
+                                    {{ number_format($concernCallTotal) }} تماس در بازه فعلی
+                                    @if (count($concernCalls) < $concernCallTotal)
+                                        · {{ number_format(count($concernCalls)) }} تماس اخیر
+                                    @endif
+                                </p>
+                            </div>
+                            <button type="button" wire:click="clearConcern" class="saas-btn-secondary shrink-0 px-3 py-1.5 text-xs">
+                                بستن
+                            </button>
+                        </div>
+
+                        <div class="max-h-80 divide-y divide-zinc-200/80 overflow-y-auto dark:divide-zinc-800">
+                            @forelse ($concernCalls as $call)
+                                <a
+                                    href="{{ route('employer.intelligence.show', $call['analysis_id']) }}"
+                                    wire:key="concern-call-{{ $selectedConcern }}-{{ $call['analysis_id'] }}"
+                                    class="group flex items-start gap-3 px-4 py-3 transition hover:bg-white dark:hover:bg-zinc-900"
+                                >
+                                    <div class="flex w-12 shrink-0 flex-col items-center rounded-lg bg-white px-1 py-1.5 text-center ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-zinc-800">
+                                        <span @class(['text-sm font-bold tabular-nums leading-none', AgentPerformancePresenter::scoreTextClass($call['quality_score'])])>
+                                            {{ $call['quality_score'] ?? '—' }}
+                                        </span>
+                                        <span class="mt-1 text-[10px] text-zinc-400">امتیاز</span>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                            <p class="truncate font-semibold text-zinc-900 dark:text-white">{{ $call['customer'] }}</p>
+                                            <span class="text-xs text-zinc-400">{{ $call['date'] }}</span>
+                                        </div>
+                                        <p class="mt-0.5 text-xs text-zinc-500">
+                                            {{ $call['employee'] }}
+                                            <span class="text-zinc-300 dark:text-zinc-600">·</span>
+                                            {{ $call['duration_label'] }}
+                                        </p>
+                                        @if ($call['concerns'] !== [])
+                                            <div class="mt-2 space-y-1.5">
+                                                @foreach ($call['concerns'] as $concern)
+                                                    <p class="text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+                                                        <span @class(['me-1.5 inline-flex rounded-md px-1.5 py-0.5 text-[11px] font-medium align-middle', AnalysisInsightPresenter::severityBadgeClass($concern['severity'])])>
+                                                            شدت {{ AnalysisInsightPresenter::severityLabel($concern['severity']) }}
+                                                        </span>
+                                                        {{ $concern['text'] }}
+                                                    </p>
+                                                @endforeach
+                                            </div>
+                                        @elseif ($call['summary'])
+                                            <p class="mt-1.5 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">{{ $call['summary'] }}</p>
+                                        @endif
+                                    </div>
+                                    <span class="mt-1 shrink-0 text-xs font-medium text-zinc-400 transition group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                                        جزئیات
+                                    </span>
+                                </a>
+                            @empty
+                                <p class="px-4 py-8 text-center text-sm text-zinc-500">تماسی با این نگرانی پیدا نشد.</p>
+                            @endforelse
+                        </div>
+            </div>
+        @endif
+    @endif
+
+    <div
+        wire:loading.delay.short.flex
+        wire:target="selectNegativeSentiment"
+        class="hidden items-center gap-2 text-sm text-zinc-500"
+    >
+            <span class="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-rose-500 border-t-transparent" aria-hidden="true"></span>
+            در حال آوردن تماس‌های منفی…
+        </div>
+
+        @if ($selectedSentiment)
+            <div id="sentiment-call-list" wire:key="sentiment-call-list" class="overflow-hidden rounded-xl border border-rose-200/80 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20">
+                <div class="flex items-center justify-between gap-3 border-b border-rose-200/70 px-4 py-3 dark:border-rose-900/40">
+                    <div class="min-w-0">
+                        <p class="truncate text-sm font-semibold text-zinc-900 dark:text-white">تماس‌های با احساس منفی</p>
+                        <p class="mt-0.5 text-xs text-zinc-500">
+                            {{ number_format($sentimentCallTotal) }} تماس در بازه فعلی
+                            @if (count($sentimentCalls) < $sentimentCallTotal)
+                                · {{ number_format(count($sentimentCalls)) }} تماس اخیر
+                            @endif
+                        </p>
+                    </div>
+                    <button type="button" wire:click="clearSentiment" class="saas-btn-secondary shrink-0 px-3 py-1.5 text-xs">
+                        بستن
+                    </button>
+                </div>
+
+                <div class="max-h-80 divide-y divide-rose-200/60 overflow-y-auto bg-white dark:divide-rose-950/40 dark:bg-zinc-950">
+                    @forelse ($sentimentCalls as $call)
+                        <a
+                            href="{{ route('employer.intelligence.show', $call['analysis_id']) }}"
+                            wire:key="sentiment-call-{{ $call['analysis_id'] }}"
+                            class="group flex items-start gap-3 px-4 py-3 transition hover:bg-rose-50/60 dark:hover:bg-rose-950/20"
+                        >
+                            <div class="flex w-12 shrink-0 flex-col items-center rounded-lg bg-rose-50 px-1 py-1.5 text-center ring-1 ring-rose-200/80 dark:bg-rose-950/40 dark:ring-rose-900/50">
+                                <span @class(['text-sm font-bold tabular-nums leading-none', AgentPerformancePresenter::scoreTextClass($call['quality_score'])])>
+                                    {{ $call['quality_score'] ?? '—' }}
+                                </span>
+                                <span class="mt-1 text-[10px] text-rose-400">امتیاز</span>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <p class="truncate font-semibold text-zinc-900 dark:text-white">{{ $call['customer'] }}</p>
+                                    <span class="rounded-md bg-rose-100 px-1.5 py-0.5 text-[11px] font-medium text-rose-700 dark:bg-rose-950/50 dark:text-rose-300">منفی</span>
+                                    <span class="text-xs text-zinc-400">{{ $call['date'] }}</span>
+                                </div>
+                                <p class="mt-0.5 text-xs text-zinc-500">
+                                    {{ $call['employee'] }}
+                                    <span class="text-zinc-300 dark:text-zinc-600">·</span>
+                                    {{ $call['duration_label'] }}
+                                </p>
+                                @if ($call['summary'])
+                                    <p class="mt-1.5 line-clamp-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{{ $call['summary'] }}</p>
+                                @endif
+                            </div>
+                            <span class="mt-1 shrink-0 text-xs font-medium text-zinc-400 transition group-hover:text-rose-600 dark:group-hover:text-rose-400">
+                                جزئیات
+                            </span>
+                        </a>
+                    @empty
+                        <p class="px-4 py-8 text-center text-sm text-zinc-500">تماسی با احساس منفی پیدا نشد.</p>
+                    @endforelse
+                </div>
+            </div>
+        @endif
 
     @unless ($pinAnalysisListUnderFilters)
         @include('livewire.employer.intelligence.partials.analysis-list')

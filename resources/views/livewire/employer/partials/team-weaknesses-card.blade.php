@@ -9,16 +9,8 @@
     <div @class(['saas-card min-w-0', $cardClass ?? null])>
         @if ($variant === 'table')
             <div class="flex flex-col items-center text-center">
-                <div class="flex items-center gap-2.5">
-                    <h2 class="text-xl font-bold text-zinc-900 dark:text-white">ضعف‌های پرتکرار تیم</h2>
-                    <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-500 dark:bg-indigo-950/60 dark:text-indigo-300" aria-hidden="true">
-                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <rect x="4" y="5" width="16" height="14" rx="2" />
-                            <path stroke-linecap="round" d="M4 10h16M10 10v9" />
-                        </svg>
-                    </span>
-                </div>
-                <p class="mt-2 text-sm text-zinc-400">مهمترین نقاط ضعف شناسایی شده در مکالمات تیم</p>
+                <h2 class="w-full text-center text-xl font-bold text-zinc-900 dark:text-white">ضعف‌های پرتکرار تیم</h2>
+                <p class="mt-2 w-full text-center text-sm text-zinc-400">مهمترین نقاط ضعف شناسایی شده در مکالمات تیم</p>
                 @if ($selectedTeamWeakness)
                     <button type="button" wire:click="clearTeamWeakness" class="mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
                         بستن فهرست تماس‌ها
@@ -28,49 +20,24 @@
 
             <div class="mt-6 overflow-x-auto">
                 <div class="min-w-[20rem]">
-                    <div class="grid grid-cols-[2.25rem_minmax(0,1fr)_3.25rem_4.75rem] rounded-xl bg-zinc-100 px-1 py-3 text-center text-sm font-semibold text-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-300">
+                    <div class="grid grid-cols-[2.25rem_minmax(0,1fr)] rounded-xl bg-zinc-100 px-1 py-3 text-center text-sm font-semibold text-zinc-600 dark:bg-zinc-800/80 dark:text-zinc-300">
                         <span>#</span>
                         <span>موضوع</span>
-                        <span>تعداد</span>
-                        <span>روند</span>
                     </div>
 
                     <div>
                         @foreach (array_slice($teamWeaknesses, 0, 8) as $index => $weakness)
-                            @php
-                                $trend = $weakness['trend'] ?? null;
-                            @endphp
                             <button
                                 type="button"
                                 wire:click="selectTeamWeakness({{ Js::from($weakness['item']) }})"
                                 @class([
-                                    'grid w-full grid-cols-[2.25rem_minmax(0,1fr)_3.25rem_4.75rem] items-center border-b border-zinc-100 px-1 py-3.5 text-center text-sm transition last:border-b-0 dark:border-zinc-800',
+                                    'grid w-full grid-cols-[2.25rem_minmax(0,1fr)] items-center border-b border-zinc-100 px-1 py-3.5 text-center text-sm transition last:border-b-0 dark:border-zinc-800',
                                     'bg-indigo-50/80 dark:bg-indigo-950/30' => $selectedTeamWeakness === $weakness['item'],
                                     'hover:bg-zinc-50 dark:hover:bg-zinc-800/40' => $selectedTeamWeakness !== $weakness['item'],
                                 ])
                             >
                                 <span class="font-medium text-zinc-500">{{ $index + 1 }}</span>
                                 <span class="truncate px-2 font-medium text-zinc-800 dark:text-zinc-100">{{ $weakness['item'] }}</span>
-                                <span class="text-base font-bold tabular-nums text-zinc-900 dark:text-white">{{ $weakness['count'] }}</span>
-                                <span class="inline-flex items-center justify-center gap-1 font-semibold tabular-nums">
-                                    @if ($trend === null || $trend === 0)
-                                        <span class="text-zinc-400">{{ $trend === 0 ? '0%' : '—' }}</span>
-                                    @elseif ($trend > 0)
-                                        <span class="inline-flex items-center gap-1 text-red-500">
-                                            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5M6 11l6-6 6 6" />
-                                            </svg>
-                                            {{ $trend }}%
-                                        </span>
-                                    @else
-                                        <span class="inline-flex items-center gap-1 text-emerald-500">
-                                            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M6 13l6 6 6-6" />
-                                            </svg>
-                                            {{ abs($trend) }}%
-                                        </span>
-                                    @endif
-                                </span>
                             </button>
                         @endforeach
                     </div>

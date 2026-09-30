@@ -123,6 +123,7 @@ readonly class AnalysisResultData
         ?float $outputPriceSnapshot = null,
         ?float $cachedInputPriceSnapshot = null,
         ?float $reasoningPriceSnapshot = null,
+        ?\DateTimeInterface $analyzedAt = null,
     ): self {
         $performance = (array) ($response['performance_dimensions'] ?? $response['performance'] ?? []);
         $customer = (array) ($response['customer_insights'] ?? $response['customer'] ?? []);
@@ -155,7 +156,7 @@ readonly class AnalysisResultData
             cost: $cost,
             processingDurationMs: $processingDurationMs,
             promptVersion: $promptVersion,
-            analyzedAt: now(),
+            analyzedAt: $analyzedAt ?? now(),
             callId: $callId,
             source: $source,
             transcript: $transcript,

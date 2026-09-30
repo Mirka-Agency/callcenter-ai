@@ -68,10 +68,13 @@ class PromptBuilderPersianLanguageTest extends TestCase
     {
         $policy = PromptBuilder::personalCallPolicy();
 
-        $this->assertStringContainsString('is_personal را فقط وقتی درست بگذارید', $policy);
-        $this->assertStringContainsString('صحبت با خانواده یا دوست', $policy);
-        $this->assertStringContainsString('اگر حتی بخشی از مکالمه به کار سازمان مربوط است', $policy);
-        $this->assertStringContainsString('اگر مطمئن نیستید شخصی است یا کاری', $policy);
+        $this->assertStringContainsString('اگر کارشناس در این تماس مشتریِ طرف مقابل است', $policy);
+        $this->assertStringContainsString('سفارش غذا، رستوران، کافه', $policy);
+        $this->assertStringContainsString('خریدن چیزی برای خودش', $policy);
+        $this->assertStringContainsString('زمینه فعالیت سازمان را روی این تماس‌ها اعمال نکنید', $policy);
+        $this->assertStringContainsString('اگر حتی بخشی از مکالمه فروش یا پشتیبانی خود سازمان به مشتری سازمان است', $policy);
+        $this->assertStringContainsString('اگر کارشناس خریدار است و معلوم نیست کالا برای سازمان است یا برای خودش، is_personal را درست بگذارید', $policy);
+        $this->assertStringNotContainsString('موضوع غذا یا خرید روزمره شخصی نیست، is_personal را نادرست بگذارید', $policy);
         $this->assertStringContainsString('جزئیات خصوصی', $policy);
         $this->assertStringContainsString('coaching_analysis را تهی بگذارید', $policy);
         $this->assertStringContainsString('customer_identity را خالی بگذارید', $policy);
@@ -82,7 +85,8 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $prompt = (new PromptBuilder)->systemPrompt();
 
         $this->assertStringContainsString(PromptBuilder::personalCallPolicy(), $prompt);
-        $this->assertStringContainsString('is_personal (درست فقط اگر مکالمه شخصی است', $prompt);
+        $this->assertStringContainsString('is_personal (درست اگر کارشناس از خط شرکت برای کار شخصی استفاده کرده', $prompt);
+        $this->assertStringContainsString('اگر کارشناس خریدار است و از شخص، فروشگاه، رستوران یا شرکت دیگری کالا یا خدمت می‌خرد، این فرصت معاملاتی نیست', $prompt);
     }
 
     public function test_system_prompt_includes_follow_up_policy(): void

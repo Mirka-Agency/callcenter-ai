@@ -34,7 +34,7 @@ class DashboardWeekComparisonTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_dashboard_metric_cards_say_whether_they_rose_or_fell_versus_last_week(): void
+    public function test_dashboard_metric_cards_say_whether_they_rose_or_fell_versus_last_month(): void
     {
         $organization = $this->actingAsEmployer();
         $employee = OrganizationUser::query()->create([
@@ -45,6 +45,7 @@ class DashboardWeekComparisonTest extends TestCase
             'is_active' => true,
         ]);
 
+        $this->seedAnalysis($organization, $employee, Carbon::parse('2026-08-12 12:00:00', 'UTC'), 40, AnalysisSentiment::Negative, 30);
         $this->seedAnalysis($organization, $employee, now()->subDays(10), 40, AnalysisSentiment::Negative, 30);
         $this->seedAnalysis($organization, $employee, now()->subDay(), 90, AnalysisSentiment::Positive, 80);
 
@@ -62,10 +63,12 @@ class DashboardWeekComparisonTest extends TestCase
             ->assertSee('میانگین امتیاز تیم')
             ->assertSee('میانگین کیفیت لید')
             ->assertSee('رضایت مشتری')
-            ->assertSee('بر اساس 2 تماس از 2 تماس تحلیل شده')
-            ->assertSee('50 نسبت به هفته قبل')
-            ->assertSee('80٪ نسبت به هفته قبل')
-            ->assertDontSee('50٪ نسبت به هفته قبل')
+            ->assertSee('براساس ۲ تماس در ۳۰ روز گذشته محاسبه شد')
+            ->assertDontSee('تماس تحلیل شده')
+            ->assertSee('25 نسبت به ماه قبل')
+            ->assertSee('40٪ نسبت به ماه قبل')
+            ->assertDontSee('نسبت به هفته قبل')
+            ->assertDontSee('25٪ نسبت به ماه قبل')
             ->assertDontSee('⬆')
             ->assertDontSee('⬇')
             ->html();
@@ -79,8 +82,71 @@ class DashboardWeekComparisonTest extends TestCase
         $this->assertLessThan($summaryAt, $callsTodayAt);
         $this->assertLessThan($trendAt, $summaryAt);
 
-        $this->assertSame(2, mb_substr_count($html, '50 نسبت به هفته قبل'));
-        $this->assertSame(1, mb_substr_count($html, '80٪ نسبت به هفته قبل'));
+        $this->assertSame(2, mb_substr_count($html, '25 نسبت به ماه قبل'));
+        $this->assertSame(1, mb_substr_count($html, '40٪ نسبت به ماه قبل'));
+    }
+
+    public function test_today_summary_lists_agents_who_need_progress_not_their_customers(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $needsProgress = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => User::factory()->create(['role' => UserRole::Employee])->id,
+            'first_name' => 'نگین',
+            'last_name' => 'مرادی',
+            'is_active' => true,
+        ]);
+        $steady = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => User::factory()->create(['role' => UserRole::Employee])->id,
+            'first_name' => 'کامران',
+            'last_name' => 'یوسفی',
+            'is_active' => true,
+        ]);
+
+        foreach (range(1, 3) as $ignored) {
+            $this->seedAnalysis(
+                $organization,
+                $needsProgress,
+                now()->subDay(),
+                54,
+                AnalysisSentiment::Neutral,
+                40,
+                ['پیگیری ضعیف', 'جمع‌بندی ضعیف'],
+                'مشتری آزمایشی',
+            );
+        }
+
+        $this->seedAnalysis(
+            $organization,
+            $steady,
+            now()->subDay(),
+            88,
+            AnalysisSentiment::Positive,
+            80,
+            ['قطع مکالمه'],
+            'مشتری پایدار',
+        );
+        $this->seedAnalysis(
+            $organization,
+            $steady,
+            now()->subDays(2),
+            86,
+            AnalysisSentiment::Positive,
+            78,
+            ['توضیح ناقص محصول'],
+            'مشتری پایدار',
+        );
+
+        $html = Livewire::test(Overview::class)->html();
+        $start = mb_strpos($html, 'کارشناسان نیازمند پیشرفت');
+        $end = mb_strpos($html, 'فرصت فروش با احتمال بالا');
+        $section = mb_substr($html, (int) $start, (int) $end - (int) $start);
+
+        $this->assertStringContainsString('نگین مرادی', $section);
+        $this->assertStringContainsString(route('employer.intelligence.performance.show', $needsProgress->id), $section);
+        $this->assertStringNotContainsString('مشتری آزمایشی', $section);
+        $this->assertStringNotContainsString('کامران یوسفی', $section);
     }
 
     private function actingAsEmployer(): Organization
@@ -93,6 +159,9 @@ class DashboardWeekComparisonTest extends TestCase
         return $organization;
     }
 
+    /**
+     * @param  list<string>  $weaknesses
+     */
     private function seedAnalysis(
         Organization $organization,
         OrganizationUser $employee,
@@ -100,6 +169,8 @@ class DashboardWeekComparisonTest extends TestCase
         int $score,
         AnalysisSentiment $sentiment,
         int $leadScore,
+        array $weaknesses = [],
+        ?string $customerName = null,
     ): void {
         $call = Call::query()->create([
             'organization_id' => $organization->id,
@@ -110,6 +181,7 @@ class DashboardWeekComparisonTest extends TestCase
             'direction' => 'inbound',
             'caller_number' => '09120000000',
             'receiver_number' => '02100000000',
+            'customer_name' => $customerName,
             'status' => 'completed',
             'processing_status' => 'analyzed',
             'duration_seconds' => 180,
@@ -128,7 +200,7 @@ class DashboardWeekComparisonTest extends TestCase
             'summary' => 'خلاصه تست',
             'sentiment' => $sentiment,
             'strengths_json' => [],
-            'weaknesses_json' => [],
+            'weaknesses_json' => $weaknesses,
             'next_actions_json' => [],
             'lead_quality_json' => ['score' => $leadScore, 'level' => 'high', 'reason' => 'test'],
             'analyzed_at' => $at,

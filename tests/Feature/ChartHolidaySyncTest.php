@@ -96,6 +96,34 @@ class ChartHolidaySyncTest extends TestCase
         $this->assertNotContains('2026-09-10', $employeePeriods);
     }
 
+    public function test_current_quarter_quality_trend_labels_show_only_the_week_number(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-28 12:00:00', CompanyWorkCalendar::TIMEZONE));
+
+        $organization = Organization::factory()->create();
+        $employee = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => User::factory()->create(['role' => UserRole::Employee])->id,
+            'first_name' => 'سارا',
+            'last_name' => 'کریمی',
+            'is_active' => true,
+        ]);
+
+        $this->seedAnalysis(
+            $organization,
+            $employee,
+            Carbon::parse('2026-09-21 11:00:00', CompanyWorkCalendar::TIMEZONE),
+        );
+
+        $point = collect(app(AnalysisListQuery::class)->charts(
+            AnalysisListFilter::make($organization->id, ReportDatePreset::CurrentQuarter),
+        )['quality_trend'])->firstWhere('period', '2026-39');
+
+        $this->assertNotNull($point);
+        $this->assertSame('۳۹', $point['label']);
+        $this->assertSame('39امین هفته ۱۴۰۵', $point['tooltip_label']);
+    }
+
     public function test_days_without_calls_stay_on_charts_until_extensions_are_registered(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-09-16 12:00:00', CompanyWorkCalendar::TIMEZONE));

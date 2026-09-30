@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Application\AiUsage\Listeners\RecordAiUsageSnapshot;
 use App\Application\Customer\Listeners\SyncCustomerFromAnalysis;
 use App\Application\Llm\AnalysisManager;
+use App\Application\Llm\Listeners\ForgetPerformanceDashboardCache;
 use App\Application\Llm\Services\AudioAnalyzer;
 use App\Application\Llm\Services\LlmConnectionResolver;
 use App\Domain\Llm\Contracts\ConversationAnalysisRepositoryInterface;
@@ -51,5 +52,6 @@ class LlmServiceProvider extends ServiceProvider
 
         Event::listen(ConversationAnalyzed::class, RecordAiUsageSnapshot::class);
         Event::listen(ConversationAnalyzed::class, SyncCustomerFromAnalysis::class);
+        Event::listen(ConversationAnalyzed::class, ForgetPerformanceDashboardCache::class);
     }
 }

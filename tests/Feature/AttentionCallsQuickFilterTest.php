@@ -26,6 +26,7 @@ class AttentionCallsQuickFilterTest extends TestCase
         Livewire::test(IntelligenceIndex::class)
             ->assertSee('تعداد کل تماس‌ها')
             ->assertSee('تماس‌های تحلیل‌شده')
+            ->assertSee('تماس‌های خارج از تحلیل')
             ->assertSee('میانگین کیفیت لیدها')
             ->assertDontSee('لید بالا')
             ->assertSee('کل لیدها');

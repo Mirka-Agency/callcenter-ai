@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Voip\Enums\VoipProviderCode;
+use App\DTOs\AnalysisListFilter;
+use App\Enums\ReportDatePreset;
 use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
 use App\Models\Call;
 use App\Models\CallRecording;
@@ -15,6 +17,7 @@ use App\Models\OrganizationVoipConnection;
 use App\Models\User;
 use App\Models\VoipCallLog;
 use App\Models\VoipProvider;
+use App\Services\AnalysisListQuery;
 use App\Services\EmployerDashboardAnalytics;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\OrganizationCallMetrics;
@@ -45,6 +48,48 @@ class OrganizationCallMetricsTest extends TestCase
 
         $this->assertSame(1, $metrics->countToday($organization->id));
         $this->assertSame(1, EmployerDashboardAnalytics::forOrganization($organization->id)->cockpit()['calls_today']);
+    }
+
+    public function test_counts_todays_orphan_voip_logs_on_defined_extensions(): void
+    {
+        $this->seed(PlatformFoundationSeeder::class);
+
+        $organization = $this->organization();
+        $employee = $this->employee($organization);
+        $connection = $this->voipConnection($organization);
+
+        EmployeeIntegrationMeta::query()->create([
+            'organization_user_id' => $employee->id,
+            'integratable_type' => OrganizationVoipConnection::class,
+            'integratable_id' => $connection->id,
+            'key' => 'extension',
+            'value' => '101',
+        ]);
+
+        VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'orphan-defined-today',
+            'direction' => 'inbound',
+            'source_number' => '09120000099',
+            'destination_number' => '101',
+            'status' => 'completed',
+            'started_at' => now('Asia/Tehran')->startOfDay()->addHours(9)->utc(),
+            'recording_url' => 'https://pbx.example/monitor/exten-101-today.wav',
+            'raw_payload' => ['resolved_extension' => '101'],
+        ]);
+
+        $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
+
+        $overview = app(AnalysisListQuery::class)->overview(
+            AnalysisListFilter::make(
+                organizationId: $organization->id,
+                preset: ReportDatePreset::Today,
+            ),
+        );
+
+        $this->assertSame(1, $overview['total_calls'], 'analysis Today total_calls must match dashboard calls today');
     }
 
     public function test_ignores_calls_outside_today_window(): void

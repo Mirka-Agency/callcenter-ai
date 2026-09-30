@@ -2,8 +2,6 @@
 
 namespace App\Services\Demo;
 
-use App\DTOs\ReportFilter;
-use App\Enums\ReportDatePreset;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\Customer;
@@ -12,6 +10,7 @@ use App\Models\Organization;
 use App\Models\OrganizationActivity;
 use App\Services\CustomerCompanyService;
 use App\Services\Performance\EmployeePerformanceAnalytics;
+use App\Support\CompanyWorkCalendar;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -110,8 +109,8 @@ class DemoAnalyticsClock
 
     private function calendarDaysUntilToday(Carbon $latest): int
     {
-        $from = $latest->copy()->startOfDay();
-        $to = now()->copy()->startOfDay();
+        $from = $latest->copy()->timezone(CompanyWorkCalendar::TIMEZONE)->startOfDay();
+        $to = now(CompanyWorkCalendar::TIMEZONE)->startOfDay();
         $interval = $from->diff($to);
         $days = (int) $interval->days;
 
@@ -145,9 +144,11 @@ class DemoAnalyticsClock
 
     private function forgetCachedDashboard(Organization $organization): void
     {
-        $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
-        Cache::forget(EmployeePerformanceAnalytics::teamDashboardCacheKey($filter));
+        EmployeePerformanceAnalytics::forgetOrganizationCaches($organization->id);
+        $tehranDay = now(CompanyWorkCalendar::TIMEZONE)->toDateString();
+        Cache::forget('calls-today:'.$organization->id.':'.$tehranDay.':recorded-tehran-v1');
         Cache::forget('calls-today:'.$organization->id.':'.now()->toDateString().':recorded');
+        Cache::forget('calls-today:'.$organization->id.':'.$tehranDay.':recorded');
 
         $sinceKey = blank(config('dashboard.insight_lists_since'))
             ? 'none'

@@ -6,6 +6,9 @@
         ? (fmod($qualityScore, 1.0) === 0.0 ? (string) (int) $qualityScore : rtrim(rtrim(number_format($qualityScore, 1, '.', ''), '0'), '.'))
         : '—';
     $qualityWidth = max(0, min(100, $qualityScore));
+    $todayInTehran = now(\App\Support\CompanyWorkCalendar::TIMEZONE);
+    $todayStartTimestamp = $todayInTehran->copy()->startOfDay()->getTimestamp();
+    $todayEndTimestamp = $todayInTehran->copy()->endOfDay()->getTimestamp();
 
     $record = fn (string $name, string $url): array => ['name' => $name, 'url' => $url];
 
@@ -18,8 +21,15 @@
             ->all(),
         'کارشناسان نیازمند پیشرفت' => $progressAgentCalls ?? [],
         'فرصت فروش با احتمال بالا' => collect($tradingOpportunities ?? [])
-            ->filter(fn (array $opportunity): bool => is_numeric($opportunity['purchase_probability'] ?? null)
-                && (int) $opportunity['purchase_probability'] >= 70)
+            ->filter(function (array $opportunity) use ($todayStartTimestamp, $todayEndTimestamp): bool {
+                $callTimestamp = $opportunity['sort_date'] ?? null;
+
+                return is_numeric($callTimestamp)
+                    && (int) $callTimestamp >= $todayStartTimestamp
+                    && (int) $callTimestamp <= $todayEndTimestamp
+                    && is_numeric($opportunity['purchase_probability'] ?? null)
+                    && (int) $opportunity['purchase_probability'] >= 70;
+            })
             ->map(fn (array $opportunity): array => $record(
                 $opportunity['customer'] ?? '—',
                 route('employer.intelligence.show', $opportunity['analysis_id']),

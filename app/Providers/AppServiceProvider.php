@@ -12,7 +12,9 @@ use Filament\Widgets\WidgetConfiguration;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -31,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
     {
         Event::listen(Login::class, RecordUserLastLogin::class);
 
+        $this->ignoreViteHotFileOutsideLocal();
+
         // CapRover/cloud: APP_URL is https://… — force https URLs.
         // On-prem LAN HTTP: APP_URL is http://… — do not force https (breaks cookies/CSRF).
         if (config('app.force_https')) {
@@ -45,5 +49,37 @@ class AppServiceProvider extends ServiceProvider
             /** @var Carbon $this */
             return JalaliDate::format($this, $format ?? JalaliDate::DATE);
         });
+    }
+
+    /**
+     * Vite writes public/hot during `npm run dev`. If that marker reaches
+     * production/on-prem, @vite points browsers at :5173 and charts, audio
+     * playback, and Livewire clicks all die. Docker already strips the file;
+     * this is the app-level last line of defense.
+     */
+    private function ignoreViteHotFileOutsideLocal(): void
+    {
+        if ($this->app->environment('local')) {
+            return;
+        }
+
+        // Point @vite at a non-existent marker so public/hot is ignored even if
+        // a deploy/rsync left the file on disk. Do this for testing/staging too.
+        Vite::useHotFile(storage_path('framework/vite-hot-disabled'));
+
+        if (! $this->app->isProduction()) {
+            return;
+        }
+
+        $hotPath = public_path('hot');
+
+        if (! is_file($hotPath)) {
+            return;
+        }
+
+        Log::warning('vite_hot_file_removed_in_production', [
+            'path' => $hotPath,
+        ]);
+        @unlink($hotPath);
     }
 }

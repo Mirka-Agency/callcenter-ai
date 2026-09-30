@@ -13,7 +13,10 @@ use App\Models\OrganizationUser;
 use App\Services\Reports\CallMetricsAnalytics;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\DefinedExtensionCallConstraint;
+use App\Services\Reports\OrganizationCallMetrics;
 use App\Services\Reports\ProcessingQueueCallStats;
+use App\Services\Performance\Calculators\SentimentScoreCalculator;
+use App\Support\AnalysisInsightPresenter;
 use App\Support\ChartDayFilter;
 use App\Support\CompanyWorkCalendar;
 use App\Support\CustomerPresenter;
@@ -41,6 +44,7 @@ class AnalysisListQuery
         private CallMetricsAnalytics $callMetrics,
         private DefinedExtensionCallConstraint $definedExtensions,
         private ProcessingQueueCallStats $queueCallStats,
+        private OrganizationCallMetrics $organizationCallMetrics,
     ) {}
 
     /** @return Builder<ConversationAnalysis> */
@@ -111,10 +115,11 @@ class AnalysisListQuery
         // those extensions count (an unknown extension such as 112 is ignored).
         $callStats = $this->callStats($filter);
         $totalCalls = $callStats['total_calls'];
+        $outsideAnalysisCount = $callStats['outside_analysis_count'];
         $missedCount = $callStats['missed_count'];
         $inFlightCount = $callStats['in_flight_count'];
-        // Same completed definition as the queue "تکمیل‌شده" card, scoped by this page's filters.
-        $analyzedCalls = $callStats['completed_count'];
+        // Completion window — same definition as the employer dashboard "تماس‌های تحلیل‌شده" card.
+        $analyzedCalls = $this->analyzedCount($filter);
         $avgDuration = $callStats['average_duration_seconds'];
         $inboundCount = $callStats['inbound_count'];
         $outboundCount = $callStats['outbound_count'];
@@ -123,12 +128,7 @@ class AnalysisListQuery
         $sentiment = $this->sentimentBreakdown($filter);
         $topConcern = $this->concernsByType($filter)[0] ?? null;
 
-        $sentimentWeights = [
-            AnalysisSentiment::Positive->value => 100,
-            AnalysisSentiment::Mixed->value => 60,
-            AnalysisSentiment::Neutral->value => 50,
-            AnalysisSentiment::Negative->value => 20,
-        ];
+        $sentimentWeights = SentimentScoreCalculator::weights();
 
         $averageSentiment = null;
         if ($sentiment !== []) {
@@ -156,6 +156,7 @@ class AnalysisListQuery
         return [
             'total' => $analyzedCalls,
             'total_calls' => $totalCalls,
+            'outside_analysis_count' => $outsideAnalysisCount,
             'average_score' => $avgScore,
             'average_duration_seconds' => $avgDuration,
             'average_duration_label' => $this->callMetrics->formatDuration($avgDuration),
@@ -179,9 +180,9 @@ class AnalysisListQuery
      *
      * @return array{
      *     total_calls: int,
+     *     outside_analysis_count: int,
      *     missed_count: int,
      *     in_flight_count: int,
-     *     completed_count: int,
      *     inbound_count: int,
      *     outbound_count: int,
      *     average_duration_seconds: int
@@ -191,7 +192,7 @@ class AnalysisListQuery
     {
         $extensionKey = md5(json_encode($this->definedExtensions->matchSetFingerprint($filter->organizationId)) ?: '');
         $cacheKey = implode(':', [
-            'analysis-call-stats-recorded-v2',
+            'analysis-call-stats-recorded-v6',
             $filter->organizationId,
             $filter->from->getTimestamp(),
             $filter->to->getTimestamp(),
@@ -237,21 +238,55 @@ class AnalysisListQuery
                 )
                 ->first();
 
-            $completedQuery = $this->definedExtensions->applyToQueueCalls(
+            $outsideAnalysisCount = $this->definedExtensions->applyOutsideAnalysis(
                 $filter->applyToCallQuery(Call::query()),
                 $filter->organizationId,
-            );
+            )->count();
+
+            // Match dashboard "تماس‌های امروز" / countBetween when the page is only date-scoped:
+            // include orphan VoIP logs on defined extensions (no Call row yet).
+            $totalCalls = $filter->hasCallAttributeFilters()
+                ? (int) ($row->total_calls ?? 0)
+                : $this->organizationCallMetrics->countBetween(
+                    $filter->organizationId,
+                    $filter->from,
+                    $filter->to,
+                );
 
             return [
-                'total_calls' => (int) ($row->total_calls ?? 0),
+                'total_calls' => $totalCalls,
+                'outside_analysis_count' => $outsideAnalysisCount,
                 'missed_count' => (int) ($row->missed_count ?? 0),
                 'in_flight_count' => (int) ($row->in_flight_count ?? 0),
-                'completed_count' => $this->queueCallStats->completedForQuery($completedQuery),
                 'inbound_count' => (int) ($row->inbound_count ?? 0),
                 'outbound_count' => (int) ($row->outbound_count ?? 0),
                 'average_duration_seconds' => (int) round((float) ($row->avg_duration ?? 0)),
             ];
         });
+    }
+
+    /**
+     * Analyses completed in the filter window — mirrors EmployeePerformanceAnalytics::total_analyzed.
+     * Call occurrence date, extension queue rules, and holidays must not shrink this card.
+     */
+    private function analyzedCount(AnalysisListFilter $filter): int
+    {
+        $query = $this->filteredQuery($filter);
+
+        if ($filter->employeeId === null) {
+            $activeIds = OrganizationUser::query()
+                ->where('organization_id', $filter->organizationId)
+                ->where('is_active', true)
+                ->pluck('id');
+
+            if ($activeIds->isEmpty()) {
+                return 0;
+            }
+
+            $query->whereIn('conversation_analyses.organization_user_id', $activeIds->all());
+        }
+
+        return (int) $query->toBase()->selectRaw('count(distinct conversation_analyses.id) as aggregate')->value('aggregate');
     }
 
     /** @return array<string, mixed> */
@@ -331,6 +366,178 @@ class AnalysisListQuery
     }
 
     /**
+     * Calls in the current filter whose analysis includes the selected concern type.
+     *
+     * @return array{total: int, calls: list<array{
+     *     analysis_id: int,
+     *     customer: string,
+     *     employee: string,
+     *     date: string,
+     *     duration_label: string,
+     *     quality_score: int|null,
+     *     summary: string|null,
+     *     concerns: list<array{text: string, severity: string}>
+     * }>}
+     */
+    public function callsForConcern(AnalysisListFilter $filter, ?string $type, int $limit = 20): array
+    {
+        $type = is_string($type) ? strtolower(trim($type)) : '';
+
+        if ($type === '' || mb_strlen($type) > 32) {
+            return ['total' => 0, 'calls' => []];
+        }
+
+        $allowed = collect($this->concernsByType($filter))->pluck('type')->all();
+
+        if (! in_array($type, $allowed, true)) {
+            return ['total' => 0, 'calls' => []];
+        }
+
+        $matchingIds = [];
+
+        foreach ($this->analysisFacts($filter) as $analysis) {
+            if ($this->analysisHasConcernType($analysis, $type)) {
+                $matchingIds[] = (int) $analysis->id;
+            }
+        }
+
+        if ($matchingIds === []) {
+            return ['total' => 0, 'calls' => []];
+        }
+
+        $calls = ConversationAnalysis::query()
+            ->where('organization_id', $filter->organizationId)
+            ->whereIn('id', $matchingIds)
+            ->with([
+                'employee:id,first_name,last_name',
+                'call:id,customer_id,customer_name,caller_number,duration_seconds,started_at,conversation_date,created_at',
+                'call.customer:id,name,company_name,phone_number',
+            ])
+            ->orderByDesc('analyzed_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get([
+                'id',
+                'call_id',
+                'organization_user_id',
+                'score',
+                'is_evaluable',
+                'summary',
+                'concerns_json',
+                'customer_identity_json',
+                'analyzed_at',
+            ])
+            ->map(function (ConversationAnalysis $analysis) use ($type): array {
+                $call = $analysis->call;
+
+                return [
+                    'analysis_id' => $analysis->id,
+                    'customer' => AnalysisInsightPresenter::customerName($analysis)
+                        ?? $call?->customer?->displayName()
+                        ?? $call?->caller_number
+                        ?? 'مشتری نامشخص',
+                    'employee' => $analysis->employee?->full_name ?: '—',
+                    'date' => JalaliDate::datetime($call?->occurredAt() ?? $analysis->analyzed_at),
+                    'duration_label' => $this->callMetrics->formatDuration((int) ($call?->duration_seconds ?? 0)),
+                    'quality_score' => $analysis->isEvaluable() ? $analysis->score : null,
+                    'summary' => $analysis->summary,
+                    'concerns' => $this->matchingConcernQuotes($analysis, $type),
+                ];
+            })
+            ->all();
+
+        return [
+            'total' => count($matchingIds),
+            'calls' => $calls,
+        ];
+    }
+
+    /**
+     * Calls in the current filter with the selected sentiment.
+     * Only the negative slice of the sentiment chart is opened from the page.
+     *
+     * @return array{total: int, calls: list<array{
+     *     analysis_id: int,
+     *     customer: string,
+     *     employee: string,
+     *     date: string,
+     *     duration_label: string,
+     *     quality_score: int|null,
+     *     summary: string|null
+     * }>}
+     */
+    public function callsForSentiment(AnalysisListFilter $filter, ?string $sentiment, int $limit = 20): array
+    {
+        $sentiment = is_string($sentiment) ? strtolower(trim($sentiment)) : '';
+
+        if ($sentiment !== AnalysisSentiment::Negative->value) {
+            return ['total' => 0, 'calls' => []];
+        }
+
+        $allowed = collect($this->sentimentBreakdown($filter))->pluck('key')->all();
+
+        if (! in_array($sentiment, $allowed, true)) {
+            return ['total' => 0, 'calls' => []];
+        }
+
+        $matchingIds = [];
+
+        foreach ($this->analysisFacts($filter) as $analysis) {
+            if ($analysis->sentiment?->value === $sentiment) {
+                $matchingIds[] = (int) $analysis->id;
+            }
+        }
+
+        if ($matchingIds === []) {
+            return ['total' => 0, 'calls' => []];
+        }
+
+        $calls = ConversationAnalysis::query()
+            ->where('organization_id', $filter->organizationId)
+            ->whereIn('id', $matchingIds)
+            ->with([
+                'employee:id,first_name,last_name',
+                'call:id,customer_id,customer_name,caller_number,duration_seconds,started_at,conversation_date,created_at',
+                'call.customer:id,name,company_name,phone_number',
+            ])
+            ->orderByDesc('analyzed_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get([
+                'id',
+                'call_id',
+                'organization_user_id',
+                'score',
+                'is_evaluable',
+                'summary',
+                'customer_identity_json',
+                'analyzed_at',
+            ])
+            ->map(function (ConversationAnalysis $analysis): array {
+                $call = $analysis->call;
+
+                return [
+                    'analysis_id' => $analysis->id,
+                    'customer' => AnalysisInsightPresenter::customerName($analysis)
+                        ?? $call?->customer?->displayName()
+                        ?? $call?->caller_number
+                        ?? 'مشتری نامشخص',
+                    'employee' => $analysis->employee?->full_name ?: '—',
+                    'date' => JalaliDate::datetime($call?->occurredAt() ?? $analysis->analyzed_at),
+                    'duration_label' => $this->callMetrics->formatDuration((int) ($call?->duration_seconds ?? 0)),
+                    'quality_score' => $analysis->isEvaluable() ? $analysis->score : null,
+                    'summary' => $analysis->summary,
+                ];
+            })
+            ->all();
+
+        return [
+            'total' => count($matchingIds),
+            'calls' => $calls,
+        ];
+    }
+
+    /**
      * Lead, sentiment, and concerns share one read of the analysis rows.
      *
      * @return array{lead: array{high: int, medium: int, low: int, total: int, average_score: float}, sentiment: list<array{key: string, label: string, count: int}>, concerns: list<array{type: string, label: string, count: int}>}
@@ -349,22 +556,26 @@ class AnalysisListQuery
         $concernCounts = [];
 
         foreach ($this->analysisFacts($filter) as $analysis) {
-            if ($analysis->sentiment) {
-                $sentimentKey = $analysis->sentiment->value;
-                $sentimentCounts[$sentimentKey] = ($sentimentCounts[$sentimentKey] ?? 0) + 1;
-            }
-
             foreach ($analysis->concerns_json ?? [] as $concern) {
-                if (! is_array($concern)) {
+                $type = $this->concernTypeOf($concern);
+
+                if ($type === null) {
                     continue;
                 }
 
-                $type = strtolower((string) ($concern['type'] ?? 'other'));
                 $concernCounts[$type] = ($concernCounts[$type] ?? 0) + 1;
             }
 
+            // Match dashboard KPIs: score, lead, and sentiment all roll up from evaluable calls only.
+            // Personal / non-evaluable analyses often carry a neutral sentiment that would otherwise
+            // pull "رضایت مشتری" away from the employer dashboard card for the same 30-day window.
             if (! $analysis->isEvaluable()) {
                 continue;
+            }
+
+            if ($analysis->sentiment) {
+                $sentimentKey = $analysis->sentiment->value;
+                $sentimentCounts[$sentimentKey] = ($sentimentCounts[$sentimentKey] ?? 0) + 1;
             }
 
             $lead = $analysis->lead_quality_json;
@@ -415,6 +626,59 @@ class AnalysisListQuery
                 ->take(5)
                 ->all(),
         ];
+    }
+
+    private function concernTypeOf(mixed $concern): ?string
+    {
+        if (! is_array($concern)) {
+            return null;
+        }
+
+        return strtolower((string) ($concern['type'] ?? 'other'));
+    }
+
+    private function analysisHasConcernType(ConversationAnalysis $analysis, string $type): bool
+    {
+        foreach ($analysis->concerns_json ?? [] as $concern) {
+            if ($this->concernTypeOf($concern) === $type) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return list<array{text: string, severity: string}>
+     */
+    private function matchingConcernQuotes(ConversationAnalysis $analysis, string $type): array
+    {
+        $quotes = [];
+
+        foreach ($analysis->concerns_json ?? [] as $concern) {
+            if ($this->concernTypeOf($concern) !== $type) {
+                continue;
+            }
+
+            $text = trim((string) ($concern['text'] ?? ''));
+
+            if ($text === '') {
+                continue;
+            }
+
+            $severity = strtolower((string) ($concern['severity'] ?? 'medium'));
+
+            if (! in_array($severity, ['low', 'medium', 'high'], true)) {
+                $severity = 'medium';
+            }
+
+            $quotes[] = [
+                'text' => $text,
+                'severity' => $severity,
+            ];
+        }
+
+        return $quotes;
     }
 
     /** @return list<int> */
@@ -524,7 +788,7 @@ class AnalysisListQuery
     private function periodLabel(string $key, string $granularity): string
     {
         if ($granularity === 'week') {
-            return 'هفته '.$key;
+            return JalaliDate::isoWeekAxisLabel($key);
         }
 
         return JalaliDate::monthDay($key);
@@ -533,7 +797,7 @@ class AnalysisListQuery
     private function periodTooltipLabel(string $key, string $granularity): string
     {
         if ($granularity === 'week') {
-            return $this->periodLabel($key, $granularity);
+            return JalaliDate::isoWeekTooltipLabel($key);
         }
 
         return JalaliDate::monthDayWithWeekday($key);

@@ -4,6 +4,7 @@ namespace App\Services\Reports;
 
 use App\Application\Call\Services\CallEmployeeResolver;
 use App\Domain\Voip\Enums\CallStatus;
+use App\Enums\ReportDatePreset;
 use App\Models\Call;
 use App\Models\VoipCallLog;
 use App\Support\CompanyWorkCalendar;
@@ -25,23 +26,28 @@ class OrganizationCallMetrics
 
     public function countToday(int $organizationId): int
     {
+        [$from, $to] = ReportDatePreset::Today->resolve();
+        $dayKey = now(CompanyWorkCalendar::TIMEZONE)->toDateString();
+
         return Cache::remember(
-            'calls-today:'.$organizationId.':'.now()->toDateString().':recorded',
+            'calls-today:'.$organizationId.':'.$dayKey.':recorded-tehran-v1',
             60,
             fn (): int => $this->countBetween(
                 $organizationId,
-                now()->startOfDay(),
-                now()->endOfDay(),
+                $from,
+                $to,
             ),
         );
     }
 
     public function countThisMonth(int $organizationId): int
     {
+        [$from, $to] = ReportDatePreset::ThisMonth->resolve();
+
         return $this->countBetween(
             $organizationId,
-            now()->startOfMonth()->startOfDay(),
-            now()->endOfDay(),
+            $from,
+            $to,
         );
     }
 

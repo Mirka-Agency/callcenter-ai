@@ -92,6 +92,147 @@ class CustomerIntelligenceTest extends TestCase
         $this->assertSame($customer->id, $call->fresh()->customer_id);
     }
 
+    public function test_phone_resolver_treats_iranian_number_formats_as_the_same_number(): void
+    {
+        $resolver = app(CustomerPhoneResolver::class);
+
+        $this->assertSame(
+            $this->sortedPhoneKeys(['09121234567', '9121234567', '989121234567', '00989121234567']),
+            $this->sortedPhoneKeys($resolver->equivalentKeys('+98 912-123-4567')),
+        );
+        $this->assertSame(
+            $this->sortedPhoneKeys($resolver->equivalentKeys('09121234567')),
+            $this->sortedPhoneKeys($resolver->equivalentKeys('00989121234567')),
+        );
+    }
+
+    public function test_sync_reuses_existing_person_when_the_same_number_is_formatted_differently(): void
+    {
+        $organization = Organization::factory()->create();
+        $first = $this->makeIdentityAnalysis($organization, [
+            'person_name' => 'علی رضایی',
+            'company_name' => 'آلفا',
+            'confidence' => 0.9,
+        ], callerNumber: '09121234567');
+
+        $customer = app(CustomerIntelligenceService::class)->syncFromAnalysis($first);
+
+        $second = $this->makeIdentityAnalysis($organization, [
+            'person_name' => 'علی رضایی',
+            'company_name' => 'آلفا',
+            'confidence' => 0.8,
+        ], callerNumber: '+98 912 123 4567', externalCallId: 'test-call-plus98');
+
+        $reused = app(CustomerIntelligenceService::class)->syncFromAnalysis($second);
+
+        $this->assertSame($customer->id, $reused->id);
+        $this->assertSame(1, Customer::query()->where('organization_id', $organization->id)->count());
+        $this->assertSame($customer->id, $second->call->fresh()->customer_id);
+        $this->assertSame(2, $reused->total_calls);
+    }
+
+    public function test_sync_merges_people_already_split_by_equivalent_phone_numbers(): void
+    {
+        $organization = Organization::factory()->create();
+        $older = Customer::query()->create([
+            'organization_id' => $organization->id,
+            'name' => 'علی رضایی',
+            'phone_number' => '09121234567',
+            'normalized_phone' => '09121234567',
+        ]);
+        Customer::query()->create([
+            'organization_id' => $organization->id,
+            'phone_number' => '989121234567',
+            'normalized_phone' => '989121234567',
+        ]);
+
+        $analysis = $this->makeIdentityAnalysis($organization, [
+            'person_name' => 'علی رضایی',
+            'company_name' => 'آلفا',
+            'confidence' => 0.9,
+        ], callerNumber: '00989121234567');
+
+        $customer = app(CustomerIntelligenceService::class)->syncFromAnalysis($analysis);
+
+        $this->assertSame($older->id, $customer->id);
+        $this->assertSame(1, Customer::query()->where('organization_id', $organization->id)->count());
+        $this->assertSame($older->id, $analysis->call->fresh()->customer_id);
+    }
+
+    public function test_sync_reuses_existing_person_by_name_when_the_number_is_new(): void
+    {
+        $organization = Organization::factory()->create();
+        $existing = Customer::query()->create([
+            'organization_id' => $organization->id,
+            'name' => 'آقای علی رضایی',
+            'phone_number' => '09120000001',
+            'normalized_phone' => '09120000001',
+        ]);
+
+        $analysis = $this->makeIdentityAnalysis($organization, [
+            'person_name' => 'علی رضایی',
+            'company_name' => 'آلفا',
+            'confidence' => 0.9,
+        ], callerNumber: '09351234567');
+
+        $customer = app(CustomerIntelligenceService::class)->syncFromAnalysis($analysis);
+
+        $this->assertSame($existing->id, $customer->id);
+        $this->assertSame(1, Customer::query()->where('organization_id', $organization->id)->count());
+        $this->assertSame($existing->id, $analysis->call->fresh()->customer_id);
+    }
+
+    public function test_sync_does_not_guess_when_several_people_share_the_same_name(): void
+    {
+        $organization = Organization::factory()->create();
+        Customer::query()->create([
+            'organization_id' => $organization->id,
+            'name' => 'علی رضایی',
+            'phone_number' => '09120000001',
+            'normalized_phone' => '09120000001',
+        ]);
+        Customer::query()->create([
+            'organization_id' => $organization->id,
+            'name' => 'علی رضایی',
+            'phone_number' => '09120000002',
+            'normalized_phone' => '09120000002',
+        ]);
+
+        $analysis = $this->makeIdentityAnalysis($organization, [
+            'person_name' => 'علی رضایی',
+            'company_name' => 'آلفا',
+            'confidence' => 0.95,
+        ], callerNumber: '09350000003');
+
+        app(CustomerIntelligenceService::class)->syncFromAnalysis($analysis);
+
+        $this->assertSame(3, Customer::query()->where('organization_id', $organization->id)->count());
+    }
+
+    public function test_sync_reuses_existing_person_by_email_when_the_number_is_new(): void
+    {
+        $organization = Organization::factory()->create();
+        $existing = Customer::query()->create([
+            'organization_id' => $organization->id,
+            'name' => 'شخص قبلی',
+            'email' => 'ali@example.com',
+            'phone_number' => '09120000001',
+            'normalized_phone' => '09120000001',
+        ]);
+
+        $analysis = $this->makeIdentityAnalysis($organization, [
+            'person_name' => 'علی رضایی',
+            'company_name' => 'آلفا',
+            'email' => 'Ali@Example.com',
+            'confidence' => 0.4,
+        ], callerNumber: '09351234567');
+
+        $customer = app(CustomerIntelligenceService::class)->syncFromAnalysis($analysis);
+
+        $this->assertSame($existing->id, $customer->id);
+        $this->assertSame(1, Customer::query()->where('organization_id', $organization->id)->count());
+    }
+
     public function test_sync_does_not_create_own_organization_as_customer_company(): void
     {
         $organization = Organization::factory()->create(['title' => 'میرکو']);
@@ -310,6 +451,16 @@ class CustomerIntelligenceTest extends TestCase
     /**
      * @param  array{company_name: string, person_name?: string, confidence?: float}  $identity
      */
+    /** @param  list<string>  $keys
+     * @return list<string>
+     */
+    private function sortedPhoneKeys(array $keys): array
+    {
+        sort($keys, SORT_STRING);
+
+        return $keys;
+    }
+
     private function attachRecording(Call $call): void
     {
         CallRecording::query()->create([
@@ -370,6 +521,8 @@ class CustomerIntelligenceTest extends TestCase
             'customer_identity_json' => [
                 'person_name' => $identity['person_name'] ?? 'علی رضایی',
                 'company_name' => $identity['company_name'],
+                'email' => $identity['email'] ?? '',
+                'phone_number' => $identity['phone_number'] ?? '',
                 'confidence' => $identity['confidence'] ?? 0.9,
             ],
             'analyzed_at' => now(),

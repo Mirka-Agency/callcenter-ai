@@ -81,6 +81,19 @@ readonly class AnalysisListFilter
             || $this->needsAttention;
     }
 
+    /**
+     * Filters that reshape the Call query (not the date window alone).
+     * When none are set, total_calls can reuse OrganizationCallMetrics::countBetween.
+     */
+    public function hasCallAttributeFilters(): bool
+    {
+        return $this->employeeId !== null
+            || $this->statuses !== []
+            || $this->direction !== null
+            || $this->minDurationSeconds !== null
+            || $this->maxDurationSeconds !== null;
+    }
+
     /** @param  Builder<ConversationAnalysis>  $query */
     public function apply(Builder $query): Builder
     {

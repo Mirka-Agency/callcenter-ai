@@ -47,7 +47,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M8 3v10m0 0 4-4m-4 4L4 9" />
                     </svg>
                 @endif
-                <span>{{ $comparisonText }}{{ $comparisonUnit }} نسبت به هفته قبل</span>
+                <span>{{ $comparisonText }}{{ $comparisonUnit }} نسبت به ماه قبل</span>
             </p>
         @endif
     </div>

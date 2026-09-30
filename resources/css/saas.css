@@ -292,7 +292,20 @@
     }
 
     .saas-today-summary-list {
-        @apply mt-3 flex max-h-44 flex-col gap-1.5 overflow-y-auto pe-0.5;
+        @apply mt-3 flex min-h-0 flex-col gap-1.5 overflow-y-auto overscroll-contain pe-0.5;
+        max-height: min(16rem, 42vh);
+        scrollbar-gutter: stable;
+        scrollbar-width: thin;
+        scrollbar-color: rgb(139 92 246 / 0.75) transparent;
+    }
+
+    .saas-today-summary-list::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .saas-today-summary-list::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: rgb(139 92 246 / 0.7);
     }
 
     .saas-today-summary-row {

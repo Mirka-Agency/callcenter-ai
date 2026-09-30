@@ -28,7 +28,7 @@
     </section>
 
     @php
-        $analysisBasis = fn (int $count): string => 'بر اساس '.$count.' تماس از '.$teamKpis['total_analyzed'].' تماس تحلیل شده';
+        $analysisBasis = fn (int $count): string => 'براساس '.\App\Support\PersianNumber::format($count, 0).' تماس در ۳۰ روز گذشته محاسبه شد';
     @endphp
 
     <div data-tour="dashboard-stats">
@@ -36,9 +36,9 @@
             <x-saas.stat-card class="saas-stat--compact" label="کارشناسان فعال" :value="$teamKpis['active_employees']" />
             <x-saas.stat-card class="saas-stat--compact" label="تماس‌های تحلیل‌شده" :value="$teamKpis['total_analyzed']" />
             <x-saas.stat-card class="saas-stat--compact" label="تماس‌های امروز" :value="$cockpit['calls_today']" />
-            <x-saas.stat-card class="saas-stat--compact" label="میانگین امتیاز تیم" :value="$teamKpis['average_quality_score'] ?: '—'" :comparison="$teamKpis['average_quality_score'] ? $weekComparisons['average_quality_score'] : null" :tone="\App\Support\MetricTone::fromScore($teamKpis['average_quality_score'])" :tooltip="$analysisBasis($teamKpis['quality_sample_count'])" />
-            <x-saas.stat-card class="saas-stat--compact" label="میانگین کیفیت لید" :value="$teamKpis['average_lead_score'] ?: '—'" :comparison="$teamKpis['average_lead_score'] ? $weekComparisons['average_lead_score'] : null" :tone="\App\Support\MetricTone::fromScore($teamKpis['average_lead_score'])" :tooltip="$analysisBasis($teamKpis['lead_sample_count'])" />
-            <x-saas.stat-card class="saas-stat--compact" label="رضایت مشتری" :value="$teamKpis['average_sentiment'] ? $teamKpis['average_sentiment'].'%' : '—'" :comparison="$teamKpis['average_sentiment'] ? $weekComparisons['average_sentiment'] : null" comparison-unit="٪" :tone="\App\Support\MetricTone::fromScore($teamKpis['average_sentiment'])" :tooltip="$analysisBasis($teamKpis['sentiment_sample_count'])" />
+            <x-saas.stat-card class="saas-stat--compact" label="میانگین امتیاز تیم" :value="$teamKpis['average_quality_score'] ?: '—'" :comparison="$teamKpis['average_quality_score'] ? $monthComparisons['average_quality_score'] : null" :tone="\App\Support\MetricTone::fromScore($teamKpis['average_quality_score'])" :tooltip="$analysisBasis($teamKpis['quality_sample_count'])" />
+            <x-saas.stat-card class="saas-stat--compact" label="میانگین کیفیت لید" :value="$teamKpis['average_lead_score'] ?: '—'" :comparison="$teamKpis['average_lead_score'] ? $monthComparisons['average_lead_score'] : null" :tone="\App\Support\MetricTone::fromScore($teamKpis['average_lead_score'])" :tooltip="$analysisBasis($teamKpis['lead_sample_count'])" />
+            <x-saas.stat-card class="saas-stat--compact" label="رضایت مشتری" :value="$teamKpis['average_sentiment'] ? $teamKpis['average_sentiment'].'%' : '—'" :comparison="$teamKpis['average_sentiment'] ? $monthComparisons['average_sentiment'] : null" comparison-unit="٪" :tone="\App\Support\MetricTone::fromScore($teamKpis['average_sentiment'])" :tooltip="$analysisBasis($teamKpis['sentiment_sample_count'])" />
         </div>
     </div>
 

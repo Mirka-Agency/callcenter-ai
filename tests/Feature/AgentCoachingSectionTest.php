@@ -36,40 +36,20 @@ class AgentCoachingSectionTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_profile_shows_empty_insufficient_and_full_coaching_states(): void
+    public function test_profile_does_not_show_skill_assessment_section(): void
     {
         [$employer, $employee] = $this->employerAndAgent();
         $this->actingAs($employer);
 
-        Livewire::test(PerformanceShow::class, ['employee' => $employee])
-            ->assertSee('ارزیابی مهارت')
-            ->assertSee('هنوز ارزیابی مهارتی برای این کارشناس ثبت نشده است.')
-            ->assertSeeHtml('data-coaching-section')
-            ->assertSeeHtml('wire:loading.delay.300ms.flex');
-
-        $this->seedCoachingCalls($employee, 3, 54);
+        $this->seedCoachingCalls($employee, 5, 92, skill: 'call_opening', feedback: 'معرفی خودش روشن بود.', recommendation: 'همین شروع را در تماس‌های بعدی حفظ کند.');
         Cache::flush();
 
         Livewire::test(PerformanceShow::class, ['employee' => $employee])
-            ->assertSee('اطلاعات کافی برای ارزیابی مهارت این کارشناس وجود ندارد.')
-            ->assertSee('3 از حداقل 5 تماس مورد نیاز تحلیل شده است.')
-            ->assertDontSee('پیش از معرفی طرح، درباره بودجه بپرسد.');
-
-        $this->seedCoachingCalls($employee, 2, 92, skill: 'call_opening', feedback: 'معرفی خودش روشن بود.', recommendation: 'همین شروع را در تماس‌های بعدی حفظ کند.');
-        Cache::flush();
-
-        Livewire::test(PerformanceShow::class, ['employee' => $employee])
-            ->assertSee('امتیاز مهارت')
-            ->assertSee('کشف نیاز')
-            ->assertSee('نیاز به بهبود')
-            ->assertSee('شروع تماس')
-            ->assertSee('قوت')
-            ->assertSee('پرسش بودجه پرسیده نشد.')
-            ->assertSee('پیش از معرفی طرح، درباره بودجه بپرسد.')
-            ->assertSee('03:14 تا 03:42')
-            ->assertSee('مشاهده تماس')
-            ->assertSeeHtml('agent-coaching-trend')
-            ->assertSeeHtml('/app/intelligence/');
+            ->assertSee('سارا کریمی')
+            ->assertDontSeeHtml('data-coaching-section')
+            ->assertDontSeeHtml('agent-coaching-trend')
+            ->assertDontSee('هنوز ارزیابی مهارتی برای این کارشناس ثبت نشده است.')
+            ->assertDontSee('امتیاز مهارت');
     }
 
     public function test_error_payload_renders_without_skill_conclusions(): void

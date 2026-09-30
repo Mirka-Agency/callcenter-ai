@@ -514,6 +514,7 @@ function initChart(canvas) {
             options,
         });
 
+        chart.$saasConfig = canvas.dataset.config || '';
         charts.set(id, chart);
 
         if (canvas.closest('[data-drilldown-selected]')) {
@@ -551,18 +552,69 @@ function pinSelectedPoint(chart, selectedIndex) {
         return;
     }
 
+    const type = chart.config?.type;
+
+    if (type === 'bar') {
+        pinSelectedBars(chart, selectedIndex);
+    } else if (type === 'doughnut' || type === 'pie') {
+        pinSelectedArcs(chart, selectedIndex);
+    } else {
+        chart.data.datasets.forEach((dataset) => {
+            const count = dataset.data?.length ?? 0;
+
+            dataset.pointRadius = Array.from({ length: count }, (_, index) => (
+                index === selectedIndex ? 6 : 0
+            ));
+            dataset.pointHoverRadius = Array.from({ length: count }, (_, index) => (
+                index === selectedIndex ? 8 : 6
+            ));
+        });
+    }
+
+    chart.update('none');
+}
+
+function pinSelectedBars(chart, selectedIndex) {
     chart.data.datasets.forEach((dataset) => {
         const count = dataset.data?.length ?? 0;
 
-        dataset.pointRadius = Array.from({ length: count }, (_, index) => (
-            index === selectedIndex ? 6 : 0
-        ));
-        dataset.pointHoverRadius = Array.from({ length: count }, (_, index) => (
-            index === selectedIndex ? 8 : 6
+        if (dataset._drilldownBaseBackground === undefined) {
+            dataset._drilldownBaseBackground = dataset.backgroundColor;
+        }
+
+        const base = dataset._drilldownBaseBackground;
+        const solid = Array.isArray(base) ? base[0] : base;
+
+        dataset.backgroundColor = selectedIndex === null
+            ? base
+            : Array.from({ length: count }, (_, index) => (
+                index === selectedIndex ? solid : fadeChartColor(solid)
+            ));
+    });
+}
+
+function pinSelectedArcs(chart, selectedIndex) {
+    chart.data.datasets.forEach((dataset) => {
+        const count = dataset.data?.length ?? 0;
+
+        dataset.offset = Array.from({ length: count }, (_, index) => (
+            index === selectedIndex ? 14 : 0
         ));
     });
+}
 
-    chart.update('none');
+function fadeChartColor(color) {
+    if (typeof color !== 'string') {
+        return color;
+    }
+
+    const match = color.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+
+    if (! match) {
+        return color;
+    }
+
+    return `rgba(${match[1]}, ${match[2]}, ${match[3]}, 0.25)`;
 }
 
 export function unpinChartPoint(canvasId) {
@@ -578,6 +630,64 @@ export function unpinChartPoint(canvasId) {
     }
 }
 
+function drilldownValueAllowed(canvas, value) {
+    const allow = canvas.dataset.drilldownAllow;
+
+    if (! allow) {
+        return true;
+    }
+
+    return allow.split(',').some((item) => item.trim() === String(value));
+}
+
+function activateDrilldown(canvas, chart, index) {
+    const dimension = canvas.dataset.drilldown;
+    const values = JSON.parse(canvas.dataset.drilldownValues || '[]');
+    const value = values[index];
+
+    if (dimension === undefined || value === undefined || ! drilldownValueAllowed(canvas, value)) {
+        return;
+    }
+
+    const instantCard = canvas.closest('[data-quality-trend-card]');
+    const next = canvas.dataset.selectedPoint === String(value) ? '' : String(value);
+
+    if (canvas.closest('[data-drilldown-selected]') || instantCard) {
+        canvas.dataset.selectedPoint = next;
+        pinSelectedPoint(chart, next === '' ? null : index);
+    }
+
+    if (instantCard) {
+        instantCard.dispatchEvent(new CustomEvent('quality-trend-select', {
+            detail: { period: next },
+            bubbles: true,
+        }));
+
+        return;
+    }
+
+    if (! window.Livewire) {
+        return;
+    }
+
+    const component = canvas.closest('[wire\\:id]');
+
+    if (! component) {
+        return;
+    }
+
+    const livewire = window.Livewire.find(component.getAttribute('wire:id'));
+    const method = canvas.dataset.drilldownMethod;
+
+    if (method) {
+        livewire?.call(method, String(value));
+
+        return;
+    }
+
+    livewire?.call('drilldown', dimension, String(value));
+}
+
 function attachDrilldown(canvas, options) {
     if (! canvas.dataset.drilldown) {
         return;
@@ -586,9 +696,20 @@ function attachDrilldown(canvas, options) {
     options.onHover = (event, elements) => {
         const target = event?.native?.target;
 
-        if (target) {
-            target.style.cursor = elements.length ? 'pointer' : 'default';
+        if (! target) {
+            return;
         }
+
+        if (! elements.length) {
+            target.style.cursor = 'default';
+
+            return;
+        }
+
+        const values = JSON.parse(canvas.dataset.drilldownValues || '[]');
+        const value = values[elements[0].index];
+
+        target.style.cursor = drilldownValueAllowed(canvas, value) ? 'pointer' : 'default';
     };
 
     options.onClick = (event, elements, chart) => {
@@ -598,42 +719,18 @@ function attachDrilldown(canvas, options) {
             return;
         }
 
-        const index = elements[0].index;
-        const dimension = canvas.dataset.drilldown;
-        const values = JSON.parse(canvas.dataset.drilldownValues || '[]');
-        const value = values[index];
-
-        if (dimension === undefined || value === undefined) {
-            return;
-        }
-
-        const instantCard = canvas.closest('[data-quality-trend-card]');
-        const next = canvas.dataset.selectedPoint === String(value) ? '' : String(value);
-
-        if (canvas.closest('[data-drilldown-selected]') || instantCard) {
-            canvas.dataset.selectedPoint = next;
-            pinSelectedPoint(chart, next === '' ? null : index);
-        }
-
-        if (instantCard) {
-            instantCard.dispatchEvent(new CustomEvent('quality-trend-select', {
-                detail: { period: next },
-                bubbles: true,
-            }));
-
-            return;
-        }
-
-        if (! window.Livewire) {
-            return;
-        }
-
-        const component = canvas.closest('[wire\\:id]');
-
-        if (component) {
-            window.Livewire.find(component.getAttribute('wire:id'))?.call('drilldown', dimension, String(value));
-        }
+        activateDrilldown(canvas, chart, elements[0].index);
     };
+
+    if (canvas.dataset.drilldownAllow) {
+        options.plugins = options.plugins || {};
+        options.plugins.legend = {
+            ...(options.plugins.legend || {}),
+            onClick(_event, item, legend) {
+                activateDrilldown(canvas, legend.chart, item.index);
+            },
+        };
+    }
 }
 
 export function initReportCharts() {
@@ -642,7 +739,7 @@ export function initReportCharts() {
     document.querySelectorAll('[data-report-chart]').forEach((canvas) => {
         const existing = charts.get(canvas.id);
 
-        if (existing && existing.canvas === canvas) {
+        if (existing && existing.canvas === canvas && existing.$saasConfig === (canvas.dataset.config || '')) {
             return;
         }
 
@@ -655,6 +752,23 @@ function refreshChartsForTheme() {
 }
 
 document.addEventListener('livewire:init', () => {
+    // Chart.js writes width, height, and styles onto the canvas. A Livewire
+    // morph that leaves the same node in place wipes that bitmap and every
+    // chart on the page goes blank. Skip the patch when the chart data is
+    // unchanged; a new wire:key still replaces the canvas and re-inits it.
+    Livewire.hook('morph.updating', ({ el, toEl, skip }) => {
+        if (! (el instanceof HTMLCanvasElement) || ! el.hasAttribute('data-report-chart')) {
+            return;
+        }
+
+        const nextConfig = toEl?.getAttribute?.('data-config') ?? '';
+        const currentConfig = el.getAttribute('data-config') ?? '';
+
+        if (nextConfig === currentConfig) {
+            skip();
+        }
+    });
+
     Livewire.hook('morph.updated', () => {
         requestAnimationFrame(initReportCharts);
     });

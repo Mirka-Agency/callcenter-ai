@@ -5,25 +5,68 @@ namespace App\Services;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\CrmPipelineSync;
+use App\Models\Customer;
 use App\Models\Organization;
 use App\Support\CustomerNextActionAggregator;
+use App\Support\PersonName;
 use Illuminate\Support\Str;
 
 class CustomerIntelligenceContextBuilder
 {
+    public function __construct(
+        private CustomerPhoneResolver $phones,
+    ) {}
+
     public function build(int $organizationId, string $phone, ?string $customerName = null): array
     {
-        $normalizedPhone = $this->normalizePhone($phone);
+        $normalizedPhone = $this->phones->normalize($phone) ?? '';
+        $phoneKeys = $this->phones->equivalentKeys($phone);
+        $customerIds = $phoneKeys === []
+            ? []
+            : Customer::query()
+                ->where('organization_id', $organizationId)
+                ->whereIn('normalized_phone', $phoneKeys)
+                ->pluck('id')
+                ->all();
+        $nameKey = PersonName::matchKey($customerName);
+        if ($nameKey !== null && $customerIds === []) {
+            $named = Customer::query()
+                ->where('organization_id', $organizationId)
+                ->whereNotNull('name')
+                ->where('name', '!=', '')
+                ->get(['id', 'name'])
+                ->filter(fn (Customer $customer) => PersonName::matchKey($customer->name) === $nameKey);
+
+            if ($named->count() === 1) {
+                $customerIds = [$named->first()->id];
+            }
+        }
 
         $calls = Call::query()
             ->where('organization_id', $organizationId)
-            ->where(function ($query) use ($phone, $normalizedPhone) {
+            ->where(function ($query) use ($phone, $normalizedPhone, $phoneKeys, $customerIds, $customerName) {
                 $query->where('caller_number', $phone)
                     ->orWhere('receiver_number', $phone)
                     ->orWhere('customer_phone', $phone)
-                    ->when($normalizedPhone !== $phone, fn ($q) => $q
+                    ->when($normalizedPhone !== '' && $normalizedPhone !== $phone, fn ($q) => $q
                         ->orWhere('caller_number', 'like', "%{$normalizedPhone}%")
                         ->orWhere('customer_phone', 'like', "%{$normalizedPhone}%"));
+
+                if ($phoneKeys !== []) {
+                    $query->orWhereIn('normalized_caller_number', $phoneKeys)
+                        ->orWhereIn('normalized_receiver_number', $phoneKeys)
+                        ->orWhereIn('normalized_customer_phone', $phoneKeys);
+                }
+
+                if ($customerIds !== []) {
+                    $query->orWhereIn('customer_id', $customerIds);
+                }
+
+                $names = $customerIds === [] ? PersonName::lookupNames($customerName) : [];
+
+                if ($names !== []) {
+                    $query->orWhereIn('customer_name', $names);
+                }
             })
             ->orderByDesc('started_at')
             ->orderByDesc('created_at')
@@ -213,10 +256,5 @@ class CustomerIntelligenceContextBuilder
         }
 
         return implode(' ', $parts);
-    }
-
-    private function normalizePhone(string $phone): string
-    {
-        return preg_replace('/\D+/', '', $phone) ?? $phone;
     }
 }

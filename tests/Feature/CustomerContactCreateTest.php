@@ -66,6 +66,25 @@ class CustomerContactCreateTest extends TestCase
         $this->assertSame(1, Customer::query()->where('organization_id', $organization->id)->count());
     }
 
+    public function test_equivalent_iranian_phone_formats_are_rejected_as_duplicates(): void
+    {
+        $organization = $this->actingAsEmployer();
+        Customer::query()->create([
+            'organization_id' => $organization->id,
+            'name' => 'شخص قبلی',
+            'phone_number' => '09120001111',
+            'normalized_phone' => '09120001111',
+        ]);
+
+        Livewire::test(ContactCreate::class)
+            ->set('name', 'شخص تکراری')
+            ->set('phone_number', '+98 912 000 1111')
+            ->call('save')
+            ->assertHasErrors(['phone_number']);
+
+        $this->assertSame(1, Customer::query()->where('organization_id', $organization->id)->count());
+    }
+
     private function actingAsEmployer(): Organization
     {
         $employer = User::factory()->create(['role' => UserRole::Employer]);

@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Builder;
  * A finished analysis with no queue row still counts as completed.
  * Only defined-extension calls that have a recording are included.
  *
- * The intelligence page "تماس‌های تحلیل‌شده" card uses the same completed bucket,
- * scoped by that page's filters.
+ * The intelligence page "تماس‌های تحلیل‌شده" card counts calls that still
+ * have an analysis row, so deleting analyses clears that card on its own.
  */
 class ProcessingQueueCallStats
 {
