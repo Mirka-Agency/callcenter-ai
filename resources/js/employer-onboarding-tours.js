@@ -28,7 +28,7 @@ export const employerPageTours = {
             {
                 selector: '[data-tour="dashboard-opportunities"]',
                 title: 'فرصت‌های معاملاتی جدید',
-                content: 'لیدهای باکیفیت اخیر را اینجا ببینید و برای بستن فروش پیگیری کنید.',
+                content: 'لیدهای باکیفیت ۳۰ روز اخیر را اینجا ببینید و برای بستن فروش پیگیری کنید.',
             },
             {
                 selector: '[data-tour="dashboard-sentiment-customers"]',

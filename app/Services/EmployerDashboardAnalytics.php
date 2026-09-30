@@ -143,7 +143,7 @@ class EmployerDashboardAnalytics
     }
 
     /**
-     * High-quality recent leads the sales team should follow up.
+     * High-quality leads from calls that happened in the recent window.
      *
      * @return list<array{
      *     analysis_id: int,
@@ -201,12 +201,19 @@ class EmployerDashboardAnalytics
      */
     private function buildTradingOpportunities(int $days, bool $occurredToday = false): array
     {
+        $callSince = now(CompanyWorkCalendar::TIMEZONE)->subDays($days)->startOfDay()->utc();
+
         $query = ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId)
             ->evaluable()
             ->business()
-            ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay())
-            ->where('lead_quality_json->level', 'high');
+            ->where('lead_quality_json->level', 'high')
+            ->whereHas('call', function ($call) use ($callSince): void {
+                $call->whereRaw(
+                    'COALESCE(conversation_date, started_at, created_at) >= ?',
+                    [$callSince->toDateTimeString()],
+                );
+            });
 
         if ($occurredToday) {
             $this->constrainToCallsOccurredToday($query);
