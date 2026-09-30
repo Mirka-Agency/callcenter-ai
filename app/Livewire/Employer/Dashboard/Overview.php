@@ -7,6 +7,7 @@ use App\Enums\ReportDatePreset;
 use App\Livewire\Employer\Concerns\HasAgentPerformanceCardFeed;
 use App\Livewire\Employer\Concerns\HasQualityTrendDrilldown;
 use App\Livewire\Employer\Concerns\HasTeamWeaknessDrilldown;
+use App\Models\ConversationAnalysis;
 use App\Services\Demo\DemoAnalyticsClock;
 use App\Services\EmployerContext;
 use App\Services\EmployerDashboardAnalytics;
@@ -63,7 +64,9 @@ class Overview extends Component
                 ? $performance->teamWeaknessCalls($performanceFilter, $selectedWeakness)
                 : [],
             'tradingOpportunities' => array_slice($analytics->tradingOpportunities(), 0, 30),
+            'todayTradingOpportunities' => $analytics->tradingOpportunities(occurredToday: true),
             'sentimentCustomers' => $analytics->sentimentCustomers(),
+            'todayDissatisfiedCustomers' => $analytics->sentimentCustomers(occurredToday: true)['dissatisfied'],
             'forgottenFollowUps' => array_slice($analytics->forgottenFollowUps(), 0, 40),
             'qualityTrend' => $performanceDashboard['quality_trend'],
             'qualityTrendInsights' => $performanceDashboard['quality_trend_insights'] ?? [],
@@ -71,7 +74,10 @@ class Overview extends Component
                 ? ($performanceDashboard['quality_trend_insights'][$selectedQualityPeriod] ?? null)
                 : null,
             'agentProfileBase' => preg_replace('#/\d+$#', '', route('employer.intelligence.performance.show', 1)),
-            'progressAgentCalls' => $this->progressAgents($performanceDashboard['attention_employees']),
+            'progressAgentCalls' => $this->progressAgents(
+                $performanceDashboard['attention_employees'],
+                $organizationId,
+            ),
         ]);
     }
 
@@ -81,9 +87,25 @@ class Overview extends Component
      * @param  list<array<string, mixed>>  $agents
      * @return list<array{name: string, url: string}>
      */
-    private function progressAgents(array $agents): array
+    private function progressAgents(array $agents, int $organizationId): array
     {
+        if ($agents === []) {
+            return [];
+        }
+
+        [$from, $to] = ReportDatePreset::Today->resolve();
+        $ids = collect($agents)->pluck('id')->map(fn ($id): int => (int) $id)->all();
+
+        $activeToday = ConversationAnalysis::query()
+            ->where('organization_id', $organizationId)
+            ->whereIn('organization_user_id', $ids)
+            ->evaluable()
+            ->whereHas('call', fn ($query) => $query->occurredBetween($from, $to))
+            ->distinct()
+            ->pluck('organization_user_id');
+
         return collect($agents)
+            ->filter(fn (array $agent): bool => $activeToday->contains((int) ($agent['id'] ?? 0)))
             ->map(fn (array $agent): array => [
                 'name' => $agent['name'] ?? '—',
                 'url' => route('employer.intelligence.performance.show', $agent['id']),

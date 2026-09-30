@@ -104,16 +104,34 @@ class DashboardWeekComparisonTest extends TestCase
             'is_active' => true,
         ]);
 
+        $onlyYesterday = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => User::factory()->create(['role' => UserRole::Employee])->id,
+            'first_name' => 'سارا',
+            'last_name' => 'دیروز',
+            'is_active' => true,
+        ]);
+
         foreach (range(1, 3) as $ignored) {
             $this->seedAnalysis(
                 $organization,
                 $needsProgress,
-                now()->subDay(),
+                now(),
                 54,
                 AnalysisSentiment::Neutral,
                 40,
                 ['پیگیری ضعیف', 'جمع‌بندی ضعیف'],
                 'مشتری آزمایشی',
+            );
+            $this->seedAnalysis(
+                $organization,
+                $onlyYesterday,
+                now()->subDay(),
+                50,
+                AnalysisSentiment::Neutral,
+                35,
+                ['پیگیری ضعیف', 'جمع‌بندی ضعیف'],
+                'مشتری دیروز',
             );
         }
 
@@ -147,6 +165,48 @@ class DashboardWeekComparisonTest extends TestCase
         $this->assertStringContainsString(route('employer.intelligence.performance.show', $needsProgress->id), $section);
         $this->assertStringNotContainsString('مشتری آزمایشی', $section);
         $this->assertStringNotContainsString('کامران یوسفی', $section);
+        $this->assertStringNotContainsString('سارا دیروز', $section);
+    }
+
+    public function test_today_summary_lists_only_todays_dissatisfied_customers(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $employee = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => User::factory()->create(['role' => UserRole::Employee])->id,
+            'first_name' => 'علی',
+            'last_name' => 'احمدی',
+            'is_active' => true,
+        ]);
+
+        $this->seedAnalysis(
+            $organization,
+            $employee,
+            now(),
+            40,
+            AnalysisSentiment::Negative,
+            30,
+            ['عدم همدلی'],
+            'ناراضی امروز',
+        );
+        $this->seedAnalysis(
+            $organization,
+            $employee,
+            now()->subDay(),
+            35,
+            AnalysisSentiment::Negative,
+            20,
+            ['تأخیر در پاسخ'],
+            'ناراضی دیروز',
+        );
+
+        $html = Livewire::test(Overview::class)->html();
+        $start = mb_strpos($html, 'مشتری ناراضی');
+        $end = mb_strpos($html, 'کارشناسان نیازمند پیشرفت');
+        $section = mb_substr($html, (int) $start, (int) $end - (int) $start);
+
+        $this->assertStringContainsString('ناراضی امروز', $section);
+        $this->assertStringNotContainsString('ناراضی دیروز', $section);
     }
 
     private function actingAsEmployer(): Organization
