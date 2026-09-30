@@ -2,6 +2,7 @@
 
 namespace App\Enums;
 
+use App\Support\CompanyWorkCalendar;
 use Carbon\Carbon;
 
 enum ReportDatePreset: string
@@ -35,26 +36,41 @@ enum ReportDatePreset: string
     public function resolve(?Carbon $customFrom = null, ?Carbon $customTo = null): array
     {
         return match ($this) {
-            self::Today => [now()->startOfDay(), now()->endOfDay()],
-            self::Yesterday => [now()->subDay()->startOfDay(), now()->subDay()->endOfDay()],
-            self::Last7 => [now()->subDays(6)->startOfDay(), now()->endOfDay()],
-            self::Last30 => [now()->subDays(29)->startOfDay(), now()->endOfDay()],
-            self::ThisMonth => [now()->startOfMonth(), now()->endOfDay()],
+            self::Today => self::tehranDayRange(0),
+            self::Yesterday => self::tehranDayRange(1),
+            self::Last7 => [
+                self::tehranMoment()->subDays(6)->startOfDay()->utc(),
+                self::tehranMoment()->endOfDay()->utc(),
+            ],
+            self::Last30 => [
+                self::tehranMoment()->subDays(29)->startOfDay()->utc(),
+                self::tehranMoment()->endOfDay()->utc(),
+            ],
+            self::ThisMonth => [
+                self::tehranMoment()->startOfMonth()->startOfDay()->utc(),
+                self::tehranMoment()->endOfDay()->utc(),
+            ],
             self::PreviousMonth => [
-                now()->subMonth()->startOfMonth(),
-                now()->subMonth()->endOfMonth(),
+                self::tehranMoment()->subMonthNoOverflow()->startOfMonth()->startOfDay()->utc(),
+                self::tehranMoment()->subMonthNoOverflow()->endOfMonth()->endOfDay()->utc(),
             ],
             self::CurrentQuarter => [
-                now()->startOfQuarter(),
-                now()->endOfDay(),
+                self::tehranMoment()->startOfQuarter()->startOfDay()->utc(),
+                self::tehranMoment()->endOfDay()->utc(),
             ],
             self::CurrentYear => [
-                now()->startOfYear(),
-                now()->endOfDay(),
+                self::tehranMoment()->startOfYear()->startOfDay()->utc(),
+                self::tehranMoment()->endOfDay()->utc(),
             ],
             self::Custom => [
-                ($customFrom ?? now()->subDays(29))->copy()->startOfDay(),
-                ($customTo ?? now())->copy()->endOfDay(),
+                ($customFrom ?? self::tehranMoment()->subDays(29))->copy()
+                    ->timezone(CompanyWorkCalendar::TIMEZONE)
+                    ->startOfDay()
+                    ->utc(),
+                ($customTo ?? self::tehranMoment())->copy()
+                    ->timezone(CompanyWorkCalendar::TIMEZONE)
+                    ->endOfDay()
+                    ->utc(),
             ],
         };
     }
@@ -81,5 +97,21 @@ enum ReportDatePreset: string
             self::selectable(),
             fn (self $preset) => $preset !== self::Custom,
         ));
+    }
+
+    private static function tehranMoment(): Carbon
+    {
+        return now(CompanyWorkCalendar::TIMEZONE);
+    }
+
+    /** @return array{0: Carbon, 1: Carbon} */
+    private static function tehranDayRange(int $daysAgo): array
+    {
+        $day = self::tehranMoment()->subDays($daysAgo);
+
+        return [
+            $day->copy()->startOfDay()->utc(),
+            $day->copy()->endOfDay()->utc(),
+        ];
     }
 }

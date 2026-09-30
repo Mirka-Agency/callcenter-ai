@@ -14,6 +14,7 @@ use App\Models\OrganizationUser;
 use App\Models\User;
 use App\Services\Demo\DemoAnalyticsClock;
 use App\Services\Reports\OrganizationCallMetrics;
+use App\Support\CompanyWorkCalendar;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -37,13 +38,18 @@ class DemoAnalyticsClockTest extends TestCase
 
         $this->assertSame(3, $shifted);
         $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
+        $today = now(CompanyWorkCalendar::TIMEZONE)->toDateString();
         $this->assertSame(
-            now()->toDateString(),
-            Call::query()->where('external_call_id', "demo-{$organization->id}-call-1")->value('started_at')?->toDateString(),
+            $today,
+            Call::query()->where('external_call_id', "demo-{$organization->id}-call-1")->value('started_at')
+                ?->timezone(CompanyWorkCalendar::TIMEZONE)
+                ->toDateString(),
         );
         $this->assertSame(
-            now()->toDateString(),
-            ConversationAnalysis::query()->where('organization_id', $organization->id)->orderByDesc('analyzed_at')->value('analyzed_at')?->toDateString(),
+            $today,
+            ConversationAnalysis::query()->where('organization_id', $organization->id)->orderByDesc('analyzed_at')->value('analyzed_at')
+                ?->timezone(CompanyWorkCalendar::TIMEZONE)
+                ->toDateString(),
         );
     }
 

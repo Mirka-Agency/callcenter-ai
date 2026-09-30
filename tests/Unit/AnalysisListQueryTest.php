@@ -306,7 +306,7 @@ class AnalysisListQueryTest extends TestCase
         ));
 
         $this->assertSame(1, $overview['total']);
-        $this->assertSame(5, $overview['total_calls']);
+        $this->assertSame(4, $overview['total_calls'], 'unassigned calls are excluded like dashboard countBetween');
         $this->assertSame(4, $overview['missed_count']);
     }
 

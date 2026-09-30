@@ -13,6 +13,7 @@ use App\Models\OrganizationUser;
 use App\Services\Reports\CallMetricsAnalytics;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\DefinedExtensionCallConstraint;
+use App\Services\Reports\OrganizationCallMetrics;
 use App\Services\Reports\ProcessingQueueCallStats;
 use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Support\AnalysisInsightPresenter;
@@ -43,6 +44,7 @@ class AnalysisListQuery
         private CallMetricsAnalytics $callMetrics,
         private DefinedExtensionCallConstraint $definedExtensions,
         private ProcessingQueueCallStats $queueCallStats,
+        private OrganizationCallMetrics $organizationCallMetrics,
     ) {}
 
     /** @return Builder<ConversationAnalysis> */
@@ -190,7 +192,7 @@ class AnalysisListQuery
     {
         $extensionKey = md5(json_encode($this->definedExtensions->matchSetFingerprint($filter->organizationId)) ?: '');
         $cacheKey = implode(':', [
-            'analysis-call-stats-recorded-v5',
+            'analysis-call-stats-recorded-v6',
             $filter->organizationId,
             $filter->from->getTimestamp(),
             $filter->to->getTimestamp(),
@@ -241,8 +243,18 @@ class AnalysisListQuery
                 $filter->organizationId,
             )->count();
 
+            // Match dashboard "تماس‌های امروز" / countBetween when the page is only date-scoped:
+            // include orphan VoIP logs on defined extensions (no Call row yet).
+            $totalCalls = $filter->hasCallAttributeFilters()
+                ? (int) ($row->total_calls ?? 0)
+                : $this->organizationCallMetrics->countBetween(
+                    $filter->organizationId,
+                    $filter->from,
+                    $filter->to,
+                );
+
             return [
-                'total_calls' => (int) ($row->total_calls ?? 0),
+                'total_calls' => $totalCalls,
                 'outside_analysis_count' => $outsideAnalysisCount,
                 'missed_count' => (int) ($row->missed_count ?? 0),
                 'in_flight_count' => (int) ($row->in_flight_count ?? 0),
