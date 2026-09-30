@@ -8,6 +8,7 @@ use App\DTOs\ReportFilter;
 use App\Enums\ReportDatePreset;
 use App\Enums\UserRole;
 use App\Livewire\Employer\Dashboard\Overview;
+use App\Livewire\Employer\Intelligence\Performance;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\Organization;
@@ -102,6 +103,58 @@ class QualityTrendPointInsightTest extends TestCase
         $agentsSection = mb_substr($html, (int) mb_strpos($html, 'کارشناسانی که باعث کاهش روند شدند'));
         $this->assertStringContainsString('مینا کاظمی', $agentsSection);
         $this->assertStringNotContainsString('حامد رضایی', $agentsSection);
+    }
+
+    public function test_performance_page_click_explains_the_same_quality_move_as_the_team_chart(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $dropping = $this->seedEmployee($organization, 'مینا', 'کاظمی');
+        $steady = $this->seedEmployee($organization, 'حامد', 'رضایی');
+
+        $previousDay = now()->subDays(2)->startOfDay()->addHours(11);
+        $selectedDay = now()->subDay()->startOfDay()->addHours(11);
+
+        $this->seedAnalysis($organization, $dropping, 88, $previousDay, strengths: ['جمع‌بندی قوی'], weaknesses: []);
+        $this->seedAnalysis($organization, $steady, 84, $previousDay, strengths: ['لحن حرفه‌ای'], weaknesses: []);
+        $this->seedAnalysis($organization, $dropping, 41, $selectedDay, strengths: [], weaknesses: ['جمع‌بندی ضعیف انتهای تماس']);
+        $this->seedAnalysis($organization, $steady, 83, $selectedDay, strengths: ['لحن حرفه‌ای'], weaknesses: []);
+
+        $period = $selectedDay->format('Y-m-d');
+        $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
+        $dashboard = app(EmployeePerformanceAnalytics::class)->teamDashboard($filter);
+        $insight = $dashboard['quality_trend_insights'][$period];
+
+        $this->assertSame('down', $insight['direction']);
+        $this->assertStringContainsString('کاهش داشت، به این دلیل که جمع‌بندی ضعیف انتهای تماس', $insight['reason']);
+        $this->assertSame(['مینا کاظمی'], collect($insight['agents'])->pluck('name')->all());
+
+        $component = Livewire::test(Performance::class)
+            ->assertSee('روند کیفیت مکالمه')
+            ->assertSee('برای دیدن دلیل تغییر، روی یک نقطه کلیک کنید')
+            ->assertDontSee('کارشناسانی که باعث کاهش روند شدند')
+            ->call('drilldown', 'period', $period)
+            ->assertSet('selectedQualityTrendPeriod', $period)
+            ->assertSee('کاهش کیفیت')
+            ->assertSee($insight['reason'])
+            ->assertSee('جمع‌بندی ضعیف انتهای تماس')
+            ->assertSee('کارشناسانی که باعث کاهش روند شدند');
+
+        $html = $component->html();
+        $this->assertStringContainsString('id="perf-quality-trend"', $html);
+        $this->assertStringContainsString('data-quality-trend-card', $html);
+        $this->assertStringContainsString('data-drilldown="period"', $html);
+        $this->assertStringContainsString($period, $html);
+
+        $agentsStart = (int) mb_strpos($html, 'کارشناسانی که باعث کاهش روند شدند');
+        $agentsEnd = (int) mb_strpos($html, 'ضعف‌های پرتکرار تیم');
+        $agentsSection = mb_substr($html, $agentsStart, $agentsEnd - $agentsStart);
+        $this->assertStringContainsString('مینا کاظمی', $agentsSection);
+        $this->assertStringNotContainsString('حامد رضایی', $agentsSection);
+
+        $component
+            ->call('clearQualityTrendPeriod')
+            ->assertSet('selectedQualityTrendPeriod', null)
+            ->assertDontSee('کارشناسانی که باعث کاهش روند شدند');
     }
 
     public function test_insight_rejects_unknown_period_and_toggles_the_same_point_off(): void

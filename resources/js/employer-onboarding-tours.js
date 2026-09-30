@@ -68,7 +68,7 @@ export const employerPageTours = {
             {
                 selector: '[data-tour="performance-charts"]',
                 title: 'نمودارهای تیم',
-                content: 'روند کیفیت و مقایسه امتیاز کارشناسان در یک نما.',
+                content: 'روند کیفیت مکالمه را ببینید. روی هر نقطه کلیک کنید تا دلیل افزایش یا کاهش و کارشناسان مؤثر را ببینید.',
             },
             {
                 selector: '[data-tour="performance-rankings"]',

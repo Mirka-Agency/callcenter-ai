@@ -12,6 +12,9 @@
             'data' => collect($qualityTrend)->pluck('avg_score')->all(),
             'borderColor' => 'rgb(16, 185, 129)',
             'backgroundColor' => 'rgba(16, 185, 129, 0.12)',
+            'pointRadius' => 0,
+            'pointHoverRadius' => 6,
+            'pointHitRadius' => 20,
             'fill' => true,
             'tension' => 0.35,
             'spanGaps' => true,
@@ -72,11 +75,38 @@
         'grid items-stretch gap-6',
         'lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]' => ! empty($dashboard['team_weaknesses']),
     ]) data-tour="performance-charts">
-        <div class="saas-card h-full min-w-0">
+        <div
+            class="saas-card h-full min-w-0"
+            data-quality-trend-card
+            wire:key="perf-quality-trend-{{ $datePreset }}-{{ $customFrom }}-{{ $customTo }}-{{ implode('-', $selectedEmployeeIds) }}"
+            x-data="qualityTrendCard({{ \Illuminate\Support\Js::from($qualityTrendInsights ?? []) }}, {{ \Illuminate\Support\Js::from($agentProfileBase ?? '') }}, {{ \Illuminate\Support\Js::from($agentProfileQuery ?? '') }})"
+            @quality-trend-select="select($event.detail.period)"
+        >
             <h2 class="text-lg font-semibold">روند کیفیت مکالمه</h2>
-            <div class="mt-4 h-64" wire:ignore>
-                <canvas id="perf-quality-trend" data-report-chart data-type="line" data-config='@json($qualityChart)'></canvas>
+            <p class="mt-1 text-sm text-zinc-500">میانگین امتیاز مکالمه در بازه انتخاب‌شده. برای دیدن دلیل تغییر، روی یک نقطه کلیک کنید.</p>
+            <div data-drilldown-selected="{{ $selectedQualityTrendPeriod ?? '' }}" :data-drilldown-selected="selected">
+                <div class="relative mt-4 h-64" wire:ignore>
+                    <canvas
+                        id="perf-quality-trend"
+                        class="cursor-pointer"
+                        draggable="false"
+                        data-report-chart
+                        data-type="line"
+                        data-config='@json($qualityChart)'
+                        data-drilldown="period"
+                        data-drilldown-values='@json(collect($qualityTrend)->pluck('period')->all())'
+                    ></canvas>
+                </div>
             </div>
+            @include('livewire.employer.partials.quality-trend-insight-client')
+            @if (! empty($qualityTrendInsight))
+                <div x-show="!insight">
+                    @include('livewire.employer.partials.quality-trend-insight', [
+                        'qualityTrendInsight' => $qualityTrendInsight,
+                        'agentProfileQuery' => $agentProfileQuery ?? '',
+                    ])
+                </div>
+            @endif
         </div>
 
         @include('livewire.employer.partials.team-weaknesses-card', [

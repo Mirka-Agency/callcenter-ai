@@ -3,6 +3,7 @@
 namespace App\Livewire\Employer\Intelligence;
 
 use App\Livewire\Employer\Concerns\HasAgentPerformanceCardFeed;
+use App\Livewire\Employer\Concerns\HasQualityTrendDrilldown;
 use App\Livewire\Employer\Concerns\HasTeamWeaknessDrilldown;
 use App\Livewire\Employer\Intelligence\Concerns\HasPerformanceFilters;
 use App\Services\Performance\EmployeePerformanceAnalytics;
@@ -16,6 +17,7 @@ class Performance extends Component
 {
     use HasAgentPerformanceCardFeed;
     use HasPerformanceFilters;
+    use HasQualityTrendDrilldown;
     use HasTeamWeaknessDrilldown;
 
     public function mount(): void
@@ -29,6 +31,7 @@ class Performance extends Component
         $performance = app(EmployeePerformanceAnalytics::class);
         $dashboard = $performance->teamDashboard($filter);
         $selectedWeakness = $this->resolvedTeamWeakness($dashboard['team_weaknesses']);
+        $selectedQualityPeriod = $this->resolvedQualityTrendPeriod($dashboard['quality_trend']);
 
         return view('livewire.employer.intelligence.performance', [
             'dashboard' => $dashboard,
@@ -38,6 +41,16 @@ class Performance extends Component
                 : [],
             'agentCardFeed' => $this->agentCardFeed($dashboard['employees']),
             'filter' => $filter,
+            'qualityTrendInsights' => $dashboard['quality_trend_insights'] ?? [],
+            'qualityTrendInsight' => $selectedQualityPeriod
+                ? ($dashboard['quality_trend_insights'][$selectedQualityPeriod] ?? null)
+                : null,
+            'agentProfileBase' => preg_replace('#/\d+$#', '', route('employer.intelligence.performance.show', 1)),
+            'agentProfileQuery' => http_build_query(array_filter([
+                'preset' => $this->datePreset,
+                'from' => $this->customFrom,
+                'to' => $this->customTo,
+            ], fn ($value) => $value !== null && $value !== '')),
         ]);
     }
 }
