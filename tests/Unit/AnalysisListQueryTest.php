@@ -7,6 +7,7 @@ use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Domain\Voip\Enums\CallStatus;
 use App\Domain\Voip\Enums\VoipProviderCode;
 use App\DTOs\AnalysisListFilter;
+use App\DTOs\ReportFilter;
 use App\Enums\ReportDatePreset;
 use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
@@ -22,7 +23,7 @@ use App\Models\User;
 use App\Models\VoipCallLog;
 use App\Models\VoipProvider;
 use App\Services\AnalysisListQuery;
-use App\Services\Reports\DefinedExtensionCallConstraint;
+use App\Services\Performance\EmployeePerformanceAnalytics;
 use App\Services\Reports\ProcessingQueueCallStats;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -145,6 +146,52 @@ class AnalysisListQueryTest extends TestCase
         $this->assertSame(60.0, $overview['average_lead_score']);
     }
 
+    public function test_average_sentiment_ignores_non_evaluable_analyses_like_dashboard(): void
+    {
+        $organization = Organization::factory()->create();
+        $user = User::factory()->create();
+        $agent = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $user->id,
+            'first_name' => 'Ali',
+            'last_name' => 'One',
+            'is_active' => true,
+        ]);
+
+        // Business call: positive (100). Personal/non-evaluable: neutral (50) must not dilute the KPI.
+        $this->seedAnalysis(
+            $organization,
+            $agent,
+            'completed',
+            300,
+            90,
+            sentiment: AnalysisSentiment::Positive,
+        );
+        $this->seedAnalysis(
+            $organization,
+            $agent,
+            'completed',
+            40,
+            0,
+            leadQuality: ['score' => 0, 'level' => 'low', 'reason' => ''],
+            sentiment: AnalysisSentiment::Neutral,
+            isEvaluable: false,
+        );
+
+        $filter = AnalysisListFilter::make(
+            organizationId: $organization->id,
+            preset: ReportDatePreset::Last30,
+        );
+        $overview = app(AnalysisListQuery::class)->overview($filter);
+        $dashboard = app(EmployeePerformanceAnalytics::class)
+            ->teamDashboard(ReportFilter::make($organization->id, ReportDatePreset::Last30));
+
+        $this->assertSame(100.0, $overview['average_sentiment']);
+        $this->assertSame(100.0, $dashboard['kpis']['average_sentiment']);
+        $this->assertSame($dashboard['kpis']['average_quality_score'], $overview['average_score']);
+        $this->assertSame($dashboard['kpis']['average_lead_score'], $overview['average_lead_score']);
+    }
+
     public function test_overview_counts_unanalyzed_calls_in_total_calls(): void
     {
         $organization = Organization::factory()->create();
@@ -263,7 +310,7 @@ class AnalysisListQueryTest extends TestCase
         $this->assertSame(4, $overview['missed_count']);
     }
 
-    public function test_overview_call_stats_use_call_date_not_analysis_date(): void
+    public function test_overview_analyzed_follows_analysis_completion_not_call_date(): void
     {
         $organization = Organization::factory()->create();
         $user = User::factory()->create();
@@ -275,7 +322,7 @@ class AnalysisListQueryTest extends TestCase
             'is_active' => true,
         ]);
 
-        // Analyzed today, but the call happened 40 days ago → outside Last30 by call date.
+        // Analyzed today, but the call happened 40 days ago → still counts (completion window).
         $oldCall = $this->makeRecordedCall([
             'organization_id' => $organization->id,
             'organization_user_id' => $agent->id,
@@ -345,8 +392,11 @@ class AnalysisListQueryTest extends TestCase
             organizationId: $organization->id,
             preset: ReportDatePreset::Last30,
         ));
+        $dashboard = app(EmployeePerformanceAnalytics::class)
+            ->teamDashboard(ReportFilter::make($organization->id, ReportDatePreset::Last30));
 
-        $this->assertSame(0, $overview['total'], 'analyzed calls follow the same call set as the total');
+        $this->assertSame(1, $overview['total'], 'analyzed card follows analysis completion date');
+        $this->assertSame(1, $dashboard['kpis']['total_analyzed']);
         $this->assertSame(2, $overview['total_calls'], 'calls use call occurrence date');
         $this->assertSame(1, $overview['inbound_count']);
         $this->assertSame(1, $overview['outbound_count']);
@@ -354,7 +404,7 @@ class AnalysisListQueryTest extends TestCase
         $this->assertSame(100, $overview['average_duration_seconds']);
     }
 
-    public function test_overview_analyzed_uses_queue_completed_definition(): void
+    public function test_overview_analyzed_matches_dashboard_and_ignores_stale_queue_flags(): void
     {
         $organization = Organization::factory()->create();
         $user = User::factory()->create();
@@ -473,20 +523,14 @@ class AnalysisListQueryTest extends TestCase
         ]);
 
         $overview = app(AnalysisListQuery::class)->overview($filter);
+        $dashboard = app(EmployeePerformanceAnalytics::class)
+            ->teamDashboard(ReportFilter::make($organization->id, ReportDatePreset::Last30));
 
         $this->assertSame(5, $overview['total_calls']);
-        $this->assertSame(1, $overview['total'], 'a call only counts after its analysis row still exists');
+        $this->assertSame(2, $overview['total'], 'both recent and backfilled analyses in the completion window');
+        $this->assertSame(2, $dashboard['kpis']['total_analyzed']);
         $this->assertSame(1, $overview['missed_count']);
         $this->assertSame(1, $overview['in_flight_count']);
-
-        $queueCompletedInRange = app(ProcessingQueueCallStats::class)->completedForQuery(
-            app(DefinedExtensionCallConstraint::class)->applyToQueueCalls(
-                $filter->applyToCallQuery(Call::query()),
-                $organization->id,
-            ),
-        );
-        $this->assertSame(2, $queueCompletedInRange);
-        $this->assertNotSame($queueCompletedInRange, $overview['total']);
 
         $queueAllTime = app(ProcessingQueueCallStats::class)->forOrganization($organization->id);
         $this->assertSame(3, $queueAllTime['completed'], 'queue card stays all-time and still counts a call whose analysis row is gone');
@@ -762,6 +806,8 @@ class AnalysisListQueryTest extends TestCase
         int $score,
         bool $needsAttention = false,
         ?array $leadQuality = null,
+        AnalysisSentiment $sentiment = AnalysisSentiment::Positive,
+        ?bool $isEvaluable = null,
     ): ConversationAnalysis {
         $call = $this->makeRecordedCall([
             'organization_id' => $organization->id,
@@ -786,8 +832,9 @@ class AnalysisListQueryTest extends TestCase
             'llm_provider' => 'openai',
             'model_name' => 'gpt-4o-mini',
             'score' => $score,
+            'is_evaluable' => $isEvaluable ?? $score > 0,
             'summary' => 'خلاصه تست',
-            'sentiment' => AnalysisSentiment::Positive,
+            'sentiment' => $sentiment,
             'strengths_json' => [],
             'weaknesses_json' => [],
             'next_actions_json' => [],

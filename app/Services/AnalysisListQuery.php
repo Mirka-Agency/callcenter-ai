@@ -14,6 +14,7 @@ use App\Services\Reports\CallMetricsAnalytics;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Services\Reports\ProcessingQueueCallStats;
+use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Support\AnalysisInsightPresenter;
 use App\Support\ChartDayFilter;
 use App\Support\CompanyWorkCalendar;
@@ -115,9 +116,8 @@ class AnalysisListQuery
         $outsideAnalysisCount = $callStats['outside_analysis_count'];
         $missedCount = $callStats['missed_count'];
         $inFlightCount = $callStats['in_flight_count'];
-        // Calls that still have a stored analysis. A processing flag left behind
-        // after the analysis rows are removed does not keep this card filled.
-        $analyzedCalls = $callStats['completed_count'];
+        // Completion window — same definition as the employer dashboard "تماس‌های تحلیل‌شده" card.
+        $analyzedCalls = $this->analyzedCount($filter);
         $avgDuration = $callStats['average_duration_seconds'];
         $inboundCount = $callStats['inbound_count'];
         $outboundCount = $callStats['outbound_count'];
@@ -126,12 +126,7 @@ class AnalysisListQuery
         $sentiment = $this->sentimentBreakdown($filter);
         $topConcern = $this->concernsByType($filter)[0] ?? null;
 
-        $sentimentWeights = [
-            AnalysisSentiment::Positive->value => 100,
-            AnalysisSentiment::Mixed->value => 60,
-            AnalysisSentiment::Neutral->value => 50,
-            AnalysisSentiment::Negative->value => 20,
-        ];
+        $sentimentWeights = SentimentScoreCalculator::weights();
 
         $averageSentiment = null;
         if ($sentiment !== []) {
@@ -186,7 +181,6 @@ class AnalysisListQuery
      *     outside_analysis_count: int,
      *     missed_count: int,
      *     in_flight_count: int,
-     *     completed_count: int,
      *     inbound_count: int,
      *     outbound_count: int,
      *     average_duration_seconds: int
@@ -196,7 +190,7 @@ class AnalysisListQuery
     {
         $extensionKey = md5(json_encode($this->definedExtensions->matchSetFingerprint($filter->organizationId)) ?: '');
         $cacheKey = implode(':', [
-            'analysis-call-stats-recorded-v4',
+            'analysis-call-stats-recorded-v5',
             $filter->organizationId,
             $filter->from->getTimestamp(),
             $filter->to->getTimestamp(),
@@ -242,11 +236,6 @@ class AnalysisListQuery
                 )
                 ->first();
 
-            $completedQuery = $this->definedExtensions->applyToQueueCalls(
-                $filter->applyToCallQuery(Call::query()),
-                $filter->organizationId,
-            );
-
             $outsideAnalysisCount = $this->definedExtensions->applyOutsideAnalysis(
                 $filter->applyToCallQuery(Call::query()),
                 $filter->organizationId,
@@ -257,12 +246,35 @@ class AnalysisListQuery
                 'outside_analysis_count' => $outsideAnalysisCount,
                 'missed_count' => (int) ($row->missed_count ?? 0),
                 'in_flight_count' => (int) ($row->in_flight_count ?? 0),
-                'completed_count' => (clone $completedQuery)->whereHas('analyses')->count(),
                 'inbound_count' => (int) ($row->inbound_count ?? 0),
                 'outbound_count' => (int) ($row->outbound_count ?? 0),
                 'average_duration_seconds' => (int) round((float) ($row->avg_duration ?? 0)),
             ];
         });
+    }
+
+    /**
+     * Analyses completed in the filter window — mirrors EmployeePerformanceAnalytics::total_analyzed.
+     * Call occurrence date, extension queue rules, and holidays must not shrink this card.
+     */
+    private function analyzedCount(AnalysisListFilter $filter): int
+    {
+        $query = $this->filteredQuery($filter);
+
+        if ($filter->employeeId === null) {
+            $activeIds = OrganizationUser::query()
+                ->where('organization_id', $filter->organizationId)
+                ->where('is_active', true)
+                ->pluck('id');
+
+            if ($activeIds->isEmpty()) {
+                return 0;
+            }
+
+            $query->whereIn('conversation_analyses.organization_user_id', $activeIds->all());
+        }
+
+        return (int) $query->toBase()->selectRaw('count(distinct conversation_analyses.id) as aggregate')->value('aggregate');
     }
 
     /** @return array<string, mixed> */
@@ -532,11 +544,6 @@ class AnalysisListQuery
         $concernCounts = [];
 
         foreach ($this->analysisFacts($filter) as $analysis) {
-            if ($analysis->sentiment) {
-                $sentimentKey = $analysis->sentiment->value;
-                $sentimentCounts[$sentimentKey] = ($sentimentCounts[$sentimentKey] ?? 0) + 1;
-            }
-
             foreach ($analysis->concerns_json ?? [] as $concern) {
                 $type = $this->concernTypeOf($concern);
 
@@ -547,8 +554,16 @@ class AnalysisListQuery
                 $concernCounts[$type] = ($concernCounts[$type] ?? 0) + 1;
             }
 
+            // Match dashboard KPIs: score, lead, and sentiment all roll up from evaluable calls only.
+            // Personal / non-evaluable analyses often carry a neutral sentiment that would otherwise
+            // pull "رضایت مشتری" away from the employer dashboard card for the same 30-day window.
             if (! $analysis->isEvaluable()) {
                 continue;
+            }
+
+            if ($analysis->sentiment) {
+                $sentimentKey = $analysis->sentiment->value;
+                $sentimentCounts[$sentimentKey] = ($sentimentCounts[$sentimentKey] ?? 0) + 1;
             }
 
             $lead = $analysis->lead_quality_json;

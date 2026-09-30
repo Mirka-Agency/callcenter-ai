@@ -44,14 +44,14 @@ class SentimentScoreCalculator
     /** @param  Collection<int, ConversationAnalysis>  $analyses */
     public function average(Collection $analyses): float
     {
-        if ($analyses->isEmpty()) {
+        $weights = $analyses
+            ->filter(fn (ConversationAnalysis $analysis) => $analysis->sentiment !== null)
+            ->map(fn (ConversationAnalysis $analysis) => self::WEIGHTS[$analysis->sentiment->value] ?? 50);
+
+        if ($weights->isEmpty()) {
             return 0.0;
         }
 
-        $total = $analyses->sum(
-            fn (ConversationAnalysis $analysis) => self::WEIGHTS[$analysis->sentiment->value] ?? 50,
-        );
-
-        return round($total / $analyses->count(), 1);
+        return round((float) $weights->avg(), 1);
     }
 }
