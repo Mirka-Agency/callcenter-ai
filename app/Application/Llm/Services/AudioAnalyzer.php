@@ -141,7 +141,8 @@ class AudioAnalyzer
                 'current_user_name' => $employee?->full_name,
                 'current_company_name' => $call->organization?->title,
             ], fn (mixed $value) => is_string($value) && trim($value) !== ''),
-            analyzedAt: $call->occurredAt(),
+            // When the model finished — call day stays on calls.* / occurredAt().
+            analyzedAt: now(),
         );
 
         $stored = $this->billing->storeAndCharge($analysisData, $this->analyses);

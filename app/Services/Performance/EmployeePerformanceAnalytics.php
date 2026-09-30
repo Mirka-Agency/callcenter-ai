@@ -3,6 +3,7 @@
 namespace App\Services\Performance;
 
 use App\DTOs\ReportFilter;
+use App\Enums\ReportDatePreset;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
 use App\Services\Performance\Calculators\EmployeeMetricsCalculator;
@@ -40,6 +41,16 @@ class EmployeePerformanceAnalytics
     public static function teamDashboardCacheKey(ReportFilter $filter): string
     {
         return 'performance:team:highlights:'.$filter->cacheKey().':'.OrganizationHolidays::cacheToken($filter->organizationId);
+    }
+
+    public static function forgetOrganizationCaches(int $organizationId): void
+    {
+        $filter = ReportFilter::make($organizationId, ReportDatePreset::Last30);
+        $previous = $filter->previousPeriod();
+        $holidayToken = OrganizationHolidays::cacheToken($organizationId);
+
+        Cache::forget(self::teamDashboardCacheKey($filter));
+        Cache::forget('performance:kpi-point-deltas:'.$filter->cacheKey().':'.$previous->cacheKey().':'.$holidayToken);
     }
 
     /** @return array<string, mixed> */
@@ -513,7 +524,8 @@ class EmployeePerformanceAnalytics
                 ->count(),
             'active_employees' => $data->employees->count(),
             'total_calls' => $data->calls->count(),
-            'total_analyzed' => $data->analyses->count(),
+            // Completion window only — holiday call-days must not shrink this volume KPI.
+            'total_analyzed' => $this->countCompletedAnalyses($filter, $data->employees->pluck('id')->all()),
             'average_quality_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : 0.0,
             'average_lead_score' => $leadDist['average_score'],
             'average_sentiment' => $this->sentimentCalculator->average($scored),
@@ -521,6 +533,33 @@ class EmployeePerformanceAnalytics
             'lead_sample_count' => $leadSample->count(),
             'sentiment_sample_count' => $scored->filter(fn ($analysis) => $analysis->sentiment !== null)->count(),
         ];
+    }
+
+    /** @param  list<int>  $employeeIds */
+    private function countCompletedAnalyses(ReportFilter $filter, array $employeeIds): int
+    {
+        return (int) $this->completedAnalysisCounts($filter, $employeeIds)->sum();
+    }
+
+    /**
+     * @param  list<int>  $employeeIds
+     * @return Collection<int, int>
+     */
+    private function completedAnalysisCounts(ReportFilter $filter, array $employeeIds): Collection
+    {
+        if ($employeeIds === []) {
+            return collect();
+        }
+
+        return ConversationAnalysis::query()
+            ->business()
+            ->where('organization_id', $filter->organizationId)
+            ->whereBetween('analyzed_at', [$filter->from, $filter->to])
+            ->whereIn('organization_user_id', $employeeIds)
+            ->groupBy('organization_user_id')
+            ->selectRaw('organization_user_id, COUNT(*) as aggregate')
+            ->pluck('aggregate', 'organization_user_id')
+            ->map(fn ($count): int => (int) $count);
     }
 
     /** @return array<string, float|null> */
@@ -547,11 +586,22 @@ class EmployeePerformanceAnalytics
     private function buildEmployeeSummaries(LoadedPerformanceData $data): array
     {
         $previous = $data->previousPeriod;
+        $completedCounts = $this->completedAnalysisCounts(
+            $data->filter,
+            $data->employees->pluck('id')->all(),
+        );
+        $previousCompletedCounts = $previous
+            ? $this->completedAnalysisCounts(
+                $previous->filter,
+                $previous->employees->pluck('id')->all(),
+            )
+            : collect();
 
-        return $data->employees->map(function (OrganizationUser $employee) use ($data, $previous) {
+        return $data->employees->map(function (OrganizationUser $employee) use ($data, $previous, $completedCounts, $previousCompletedCounts) {
             $calls = $data->callsForEmployee($employee->id);
             $analyses = $data->analysesForEmployee($employee->id);
             $metrics = $this->metricsCalculator->compute($calls, $analyses);
+            $metrics['total_analyzed'] = (int) ($completedCounts[$employee->id] ?? 0);
 
             $prevMetrics = $previous
                 ? $this->metricsCalculator->compute(
@@ -559,6 +609,9 @@ class EmployeePerformanceAnalytics
                     $previous->analysesForEmployee($employee->id),
                 )
                 : $this->emptyMetrics();
+            if ($previous) {
+                $prevMetrics['total_analyzed'] = (int) ($previousCompletedCounts[$employee->id] ?? 0);
+            }
 
             $deltas = $this->metricsCalculator->deltas($metrics, $prevMetrics);
 

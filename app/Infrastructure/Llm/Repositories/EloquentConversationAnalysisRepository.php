@@ -50,7 +50,7 @@ class EloquentConversationAnalysisRepository implements ConversationAnalysisRepo
             'cached_input_price_snapshot' => $data->cachedInputPriceSnapshot,
             'reasoning_price_snapshot' => $data->reasoningPriceSnapshot,
             'processing_duration_ms' => $data->processingDurationMs,
-            // The analysis date is when the call happened, not when the model finished.
+            // When analysis finished (call day lives on the call / occurredAt()).
             'analyzed_at' => $data->analyzedAt ?? now(),
         ];
 

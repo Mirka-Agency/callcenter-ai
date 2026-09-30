@@ -2,8 +2,6 @@
 
 namespace App\Services\Demo;
 
-use App\DTOs\ReportFilter;
-use App\Enums\ReportDatePreset;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\Customer;
@@ -145,8 +143,7 @@ class DemoAnalyticsClock
 
     private function forgetCachedDashboard(Organization $organization): void
     {
-        $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
-        Cache::forget(EmployeePerformanceAnalytics::teamDashboardCacheKey($filter));
+        EmployeePerformanceAnalytics::forgetOrganizationCaches($organization->id);
         Cache::forget('calls-today:'.$organization->id.':'.now()->toDateString().':recorded');
 
         $sinceKey = blank(config('dashboard.insight_lists_since'))

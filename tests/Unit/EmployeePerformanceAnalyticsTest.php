@@ -96,6 +96,35 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $this->assertSame(1, $dashboard['kpis']['sentiment_sample_count']);
     }
 
+    public function test_total_analyzed_follows_analysis_completion_not_call_day(): void
+    {
+        $organization = Organization::factory()->create();
+        $employee = $this->seedNamedEmployee($organization, 'سارا', 'نوری');
+
+        // Call from a holiday ~6 weeks ago, analyzed today → still counts.
+        $this->seedAnalysisForEmployee(
+            $organization,
+            $employee,
+            score: 88,
+            analyzedAt: now(),
+            callStartedAt: Carbon::parse('2026-08-07 11:00:00', 'UTC'), // Friday
+        );
+
+        // Analyzed 31 days ago → outside the rolling window.
+        $this->seedAnalysisForEmployee(
+            $organization,
+            $employee,
+            score: 70,
+            analyzedAt: now()->subDays(31),
+            callStartedAt: now()->subDays(31),
+        );
+
+        $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
+        $dashboard = app(EmployeePerformanceAnalytics::class)->teamDashboard($filter);
+
+        $this->assertSame(1, $dashboard['kpis']['total_analyzed']);
+    }
+
     public function test_report_date_preset_includes_quarter_and_year(): void
     {
         $this->assertContains(ReportDatePreset::CurrentQuarter, ReportDatePreset::selectable());
@@ -335,8 +364,10 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         string $summary = 'تماس بدون مکالمه',
         ?Carbon $analyzedAt = null,
         array $strengths = [],
+        ?Carbon $callStartedAt = null,
     ): void {
         $analyzedAt ??= now();
+        $callStartedAt ??= $analyzedAt;
 
         $call = Call::query()->create([
             'organization_id' => $organization->id,
@@ -350,7 +381,7 @@ class EmployeePerformanceAnalyticsTest extends TestCase
             'status' => 'completed',
             'processing_status' => 'analyzed',
             'duration_seconds' => 12,
-            'started_at' => $analyzedAt,
+            'started_at' => $callStartedAt,
         ]);
 
         ConversationAnalysis::query()->create([

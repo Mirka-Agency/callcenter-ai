@@ -28,8 +28,16 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "         commit (or stash) first if those files are needed on the server." >&2
 fi
 
-# Flat archive (unzip into /opt/callcenter)
+# Flat archive (unzip into /opt/callcenter).
+# Uses git archive so gitignored files (public/hot, .env, vendor, …) are excluded.
+# Never ship public/hot: Laravel would load Vite from :5173 and break charts/JS.
 git archive --format=zip -o "${OUT_ZIP}" HEAD
+
+if unzip -l "${OUT_ZIP}" | grep -E '(^|/)public/hot$' >/dev/null 2>&1; then
+  echo "error: archive contains public/hot — refuse to ship Vite HMR marker." >&2
+  rm -f "${OUT_ZIP}"
+  exit 1
+fi
 
 echo "Created: ${OUT_ZIP}"
 echo "Size:    $(du -h "${OUT_ZIP}" | awk '{print $1}')"
