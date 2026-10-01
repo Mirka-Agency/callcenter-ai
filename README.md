@@ -149,7 +149,7 @@ Or run services individually:
 
 ```bash
 php artisan serve
-php artisan queue:listen --tries=3 --timeout=300
+php artisan queue:listen --queue=voip,analysis,followup --tries=3 --timeout=600
 php artisan reverb:start
 npm run dev
 ```
@@ -173,16 +173,16 @@ Migrations run automatically on each web container start (`php artisan migrate -
 
 ### Container roles
 
-The default `web` container runs **Nginx**, **PHP-FPM**, **queue worker**, and **scheduler** via Supervisor. Queue commands live in `docker/bin/queue-worker` and `docker/bin/scheduler` (single source of truth — used by both Supervisor and optional dedicated containers).
+The default `web` container runs **Nginx**, **PHP-FPM**, **queue workers**, and **scheduler** via Supervisor. Call ingestion (`voip`), audio analysis (`analysis`), and CRM/metrics (`followup`) use separate queues so a long model call does not block the others. `ANALYSIS_QUEUE_WORKERS` (default 3) is how many analysis processes run in that container. SQLite caps that at 1. Queue commands live in `docker/bin/queue-worker` and `docker/bin/scheduler`.
 
 | Role | Processes |
 |------|-----------|
-| `web` (default) | Nginx + PHP-FPM + queue + scheduler (supervisord) |
-| `queue` | Extra `queue-worker` only (scale horizontally) |
+| `web` (default) | Nginx + PHP-FPM + voip, analysis, and followup workers + scheduler |
+| `queue` | Extra `queue-worker`. Set `QUEUE_WORKER_QUEUES=analysis` and scale this role for more parallel analyses |
 | `scheduler` | `scheduler` only |
 | `reverb` | `php artisan reverb:start` |
 
-Optional queue tuning env vars: `QUEUE_WORKER_SLEEP`, `QUEUE_WORKER_TRIES` (default 5), `QUEUE_WORKER_TIMEOUT` (default 600), `DB_QUEUE_RETRY_AFTER` (default 630 — must exceed job timeout).
+Optional queue tuning env vars: `ANALYSIS_QUEUE_WORKERS`, `QUEUE_WORKER_QUEUES`, `QUEUE_WORKER_SLEEP`, `QUEUE_WORKER_TRIES` (default 5), `QUEUE_WORKER_TIMEOUT` (default 600), `DB_QUEUE_RETRY_AFTER` (default 630 — must exceed job timeout).
 
 Health check: `GET /up`
 

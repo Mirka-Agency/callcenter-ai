@@ -25,8 +25,8 @@ return [
 
     'max_polling_interval_seconds' => (int) env('VOIP_MAX_POLLING_INTERVAL', 60),
 
-    // Queue *name* (e.g. default), not the QUEUE_CONNECTION driver (database/redis).
-    'queue' => env('VOIP_QUEUE', 'default'),
+    // Queue name, not the QUEUE_CONNECTION driver (database/redis).
+    'queue' => env('VOIP_QUEUE', 'voip'),
 
     // After IncomingCall, wait before Quick Search for answered/missed (~1–2 min).
     'simotel_outcome_resolve_delay_seconds' => (int) env('VOIP_SIMOTEL_OUTCOME_DELAY', 90),

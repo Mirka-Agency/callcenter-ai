@@ -25,7 +25,10 @@ class SyncCrmJob implements ShouldQueue
         return [15, 60];
     }
 
-    public function __construct(public int $callId) {}
+    public function __construct(public int $callId)
+    {
+        $this->onQueue((string) config('queue.names.followup'));
+    }
 
     public function handle(CrmIntelligenceSyncService $crmSync): void
     {

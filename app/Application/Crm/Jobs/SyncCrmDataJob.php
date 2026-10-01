@@ -36,7 +36,9 @@ class SyncCrmDataJob implements ShouldBeUnique, ShouldQueue
         public int $organizationId,
         public ?int $connectionId = null,
         public array $syncData = [],
-    ) {}
+    ) {
+        $this->onQueue((string) config('queue.names.followup'));
+    }
 
     public function handle(CrmManager $crmManager): void
     {

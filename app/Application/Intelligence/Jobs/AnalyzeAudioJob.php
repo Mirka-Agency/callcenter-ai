@@ -46,7 +46,9 @@ class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
     public function __construct(
         public int $callId,
         public ?string $recordingUrl = null,
-    ) {}
+    ) {
+        $this->onQueue((string) config('queue.names.analysis'));
+    }
 
     public function uniqueId(): string
     {

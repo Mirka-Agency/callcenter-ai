@@ -4,6 +4,7 @@ namespace App\Application\Call\Jobs;
 
 use App\Application\Call\Services\UnmatchedVoipExtensionService;
 use App\Models\Organization;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -12,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
 
 class BackfillVoipExtensionJob implements ShouldBeUnique, ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
 
@@ -26,7 +27,9 @@ class BackfillVoipExtensionJob implements ShouldBeUnique, ShouldQueue
         public int $connectionId,
         public ?int $days = null,
         public ?int $organizationUserId = null,
-    ) {}
+    ) {
+        $this->onQueue((string) config('queue.names.followup'));
+    }
 
     public function uniqueId(): string
     {

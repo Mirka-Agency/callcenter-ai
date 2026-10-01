@@ -16,6 +16,18 @@ return [
     'default' => env('QUEUE_CONNECTION', 'database'),
 
     /*
+    | Isolated queue names. Workers must listen to these explicitly.
+    | voip stays short so call ingestion is not stuck behind model calls.
+    | analysis is the long audio/LLM work and is scaled with several workers.
+    | followup is metrics, CRM, and other work that must not occupy analysis.
+    */
+    'names' => [
+        'voip' => 'voip',
+        'analysis' => 'analysis',
+        'followup' => 'followup',
+    ],
+
+    /*
     |--------------------------------------------------------------------------
     | Queue Connections
     |--------------------------------------------------------------------------

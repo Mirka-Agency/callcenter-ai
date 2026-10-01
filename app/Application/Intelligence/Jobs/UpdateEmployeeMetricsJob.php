@@ -18,7 +18,10 @@ class UpdateEmployeeMetricsJob implements ShouldQueue
 
     public int $timeout = 120;
 
-    public function __construct(public int $callId) {}
+    public function __construct(public int $callId)
+    {
+        $this->onQueue((string) config('queue.names.followup'));
+    }
 
     public function handle(EmployeePerformanceRepositoryInterface $performance): void
     {

@@ -32,6 +32,23 @@ if [ "$APP_ENV" = "production" ]; then
     php artisan event:cache
 fi
 
+# Several analysis workers run in parallel. SQLite locks the whole file, so
+# more than one analysis worker there fails jobs with "database is locked".
+if [ -z "${ANALYSIS_QUEUE_WORKERS:-}" ]; then
+    ANALYSIS_QUEUE_WORKERS=3
+fi
+case "$ANALYSIS_QUEUE_WORKERS" in
+    ''|*[!0-9]*) ANALYSIS_QUEUE_WORKERS=3 ;;
+esac
+if [ "$ANALYSIS_QUEUE_WORKERS" -lt 1 ]; then
+    ANALYSIS_QUEUE_WORKERS=1
+fi
+if [ "$DB_CONNECTION" = "sqlite" ] && [ "$ANALYSIS_QUEUE_WORKERS" -gt 1 ]; then
+    echo "SQLite queue: capping ANALYSIS_QUEUE_WORKERS at 1" >&2
+    ANALYSIS_QUEUE_WORKERS=1
+fi
+export ANALYSIS_QUEUE_WORKERS
+
 ROLE="${CONTAINER_ROLE:-web}"
 
 if [ "$ROLE" = "web" ] && [ "${RUN_MIGRATIONS:-true}" != "false" ]; then

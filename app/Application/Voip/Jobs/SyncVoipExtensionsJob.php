@@ -34,7 +34,9 @@ class SyncVoipExtensionsJob implements ShouldBeUnique, ShouldQueue
     public function __construct(
         public int $organizationId,
         public ?int $connectionId = null,
-    ) {}
+    ) {
+        $this->onQueue((string) config('queue.names.followup'));
+    }
 
     public function handle(): void
     {
