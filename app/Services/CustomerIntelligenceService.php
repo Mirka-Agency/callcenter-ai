@@ -14,7 +14,6 @@ use App\Support\CustomerNextActionAggregator;
 use App\Support\CustomerPresenter;
 use App\Support\CustomerTenantGuard;
 use App\Support\JalaliDate;
-use App\Support\PersonName;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -37,25 +36,14 @@ class CustomerIntelligenceService
         $analysis->loadMissing(['call']);
 
         return DB::transaction(function () use ($analysis) {
-            $phones = $this->customerPhoneCandidates($analysis);
-            $keys = $this->phoneResolver->equivalentKeysForMany($phones);
+            $phone = $this->primaryCustomerPhone($analysis);
+            $keys = $this->phoneResolver->equivalentKeys($phone);
             $matches = $this->customersMatchingPhones((int) $analysis->organization_id, $keys);
-            $linked = $this->linkedCustomer($analysis);
-
-            if ($linked) {
-                $matches->push($linked);
-            }
-
-            $matches = $matches->unique('id')->values();
 
             if ($matches->isNotEmpty()) {
                 $customer = $this->mergeCustomers($matches);
             } else {
-                $customer = $this->customerMatchingIdentity($analysis);
-            }
-
-            if (! $customer) {
-                $normalized = $this->phoneResolver->normalize($phones[0] ?? null);
+                $normalized = $this->phoneResolver->normalize($phone);
 
                 if (! $normalized) {
                     return null;
@@ -64,7 +52,7 @@ class CustomerIntelligenceService
                 $customer = Customer::query()->firstOrCreate(
                     CustomerTenantGuard::tenantPhoneKey($analysis->organization_id, $normalized),
                     [
-                        'phone_number' => $phones[0],
+                        'phone_number' => $phone,
                     ],
                 );
             }
@@ -74,10 +62,10 @@ class CustomerIntelligenceService
                 $this->linkCallToCustomer($analysis->call, $customer);
             }
 
-            $this->linkCallsByPhone($customer, $keys);
+            $this->linkCallsByPhone($customer);
 
             $customer->loadMissing('organization');
-            $this->mergeIdentity($customer, $analysis, $phones[0] ?? $customer->phone_number);
+            $this->mergeIdentity($customer, $analysis, $phone ?? $customer->phone_number);
             $this->refreshAggregates($customer->fresh() ?? $customer);
 
             return $customer->fresh();
@@ -86,9 +74,11 @@ class CustomerIntelligenceService
 
     private function linkCallToCustomer(Call $call, Customer $customer): void
     {
-        CustomerTenantGuard::assertCanLinkCallToCustomer($call, $customer);
+        if ($call->organization_id !== $customer->organization_id) {
+            throw new \RuntimeException('Cannot link a call to a customer outside its organization.');
+        }
 
-        if ($call->customer_id === $customer->id) {
+        if ((int) $call->customer_id === (int) $customer->id) {
             return;
         }
 
@@ -117,9 +107,19 @@ class CustomerIntelligenceService
             ->where('organization_id', $customer->organization_id)
             ->whereNull('customer_id')
             ->where(function ($query) use ($keys) {
-                $query->whereIn('normalized_caller_number', $keys)
-                    ->orWhereIn('normalized_receiver_number', $keys)
-                    ->orWhereIn('normalized_customer_phone', $keys);
+                $query->where(function ($inbound) use ($keys) {
+                    $inbound->where('direction', 'inbound')
+                        ->where(function ($numbers) use ($keys) {
+                            $numbers->whereIn('normalized_caller_number', $keys)
+                                ->orWhereIn('normalized_customer_phone', $keys);
+                        });
+                })->orWhere(function ($outbound) use ($keys) {
+                    $outbound->where('direction', 'outbound')
+                        ->where(function ($numbers) use ($keys) {
+                            $numbers->whereIn('normalized_receiver_number', $keys)
+                                ->orWhereIn('normalized_customer_phone', $keys);
+                        });
+                });
             })
             ->update(['customer_id' => $customer->id]);
     }
@@ -142,13 +142,20 @@ class CustomerIntelligenceService
             }
         }
 
-        $identityPhone = trim((string) ($analysis->customer_identity_json['phone_number'] ?? ''));
+        return $this->withoutCounterparty($call, $candidates);
+    }
 
-        if ($identityPhone !== '') {
-            $candidates[] = $identityPhone;
+    private function primaryCustomerPhone(ConversationAnalysis $analysis): ?string
+    {
+        $phones = $this->customerPhoneCandidates($analysis);
+
+        if ($phones !== []) {
+            return $phones[0];
         }
 
-        return $this->withoutCounterparty($call, $candidates);
+        $spoken = trim((string) ($analysis->customer_identity_json['phone_number'] ?? ''));
+
+        return $this->phoneResolver->normalize($spoken) ? $spoken : null;
     }
 
     /** @param  list<string>  $candidates
@@ -177,7 +184,7 @@ class CustomerIntelligenceService
             return array_intersect($this->phoneResolver->equivalentKeys($phone), $blocked) === [];
         }));
 
-        return $filtered !== [] ? $filtered : $candidates;
+        return $filtered;
     }
 
     /**
@@ -190,77 +197,11 @@ class CustomerIntelligenceService
             return collect();
         }
 
-        $direct = Customer::query()
+        return Customer::query()
             ->where('organization_id', $organizationId)
             ->whereIn('normalized_phone', $keys)
+            ->orderBy('id')
             ->get();
-
-        $fromCalls = Customer::query()
-            ->where('organization_id', $organizationId)
-            ->whereIn('id', Call::query()
-                ->where('organization_id', $organizationId)
-                ->whereNotNull('customer_id')
-                ->where(function ($query) use ($keys) {
-                    $query->whereIn('normalized_caller_number', $keys)
-                        ->orWhereIn('normalized_receiver_number', $keys)
-                        ->orWhereIn('normalized_customer_phone', $keys);
-                })
-                ->select('customer_id'))
-            ->get();
-
-        return $direct->merge($fromCalls)->unique('id')->values();
-    }
-
-    private function linkedCustomer(ConversationAnalysis $analysis): ?Customer
-    {
-        $customerId = $analysis->call?->customer_id;
-
-        if (! $customerId) {
-            return null;
-        }
-
-        return Customer::query()
-            ->where('organization_id', $analysis->organization_id)
-            ->find($customerId);
-    }
-
-    private function customerMatchingIdentity(ConversationAnalysis $analysis): ?Customer
-    {
-        $identity = $analysis->customer_identity_json ?? [];
-        $email = mb_strtolower(trim((string) ($identity['email'] ?? '')));
-
-        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $byEmail = Customer::query()
-                ->where('organization_id', $analysis->organization_id)
-                ->whereRaw('LOWER(email) = ?', [$email])
-                ->orderByDesc('last_contact_at')
-                ->orderBy('id')
-                ->get();
-
-            if ($byEmail->isNotEmpty()) {
-                return $byEmail->first();
-            }
-        }
-
-        if ((float) ($identity['confidence'] ?? 0) < self::MIN_IDENTITY_CONFIDENCE) {
-            return null;
-        }
-
-        $nameKey = PersonName::matchKey((string) ($identity['person_name'] ?? ''));
-
-        if ($nameKey === null) {
-            return null;
-        }
-
-        $byName = Customer::query()
-            ->where('organization_id', $analysis->organization_id)
-            ->whereNotNull('name')
-            ->where('name', '!=', '')
-            ->get()
-            ->filter(fn (Customer $customer) => PersonName::matchKey($customer->name) === $nameKey)
-            ->values();
-
-        return $byName->count() === 1 ? $byName->first() : null;
     }
 
     /** @param  Collection<int, Customer>  $customers */
