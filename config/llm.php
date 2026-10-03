@@ -30,6 +30,12 @@ return [
         ? env('APP_ENV') === 'local'
         : filter_var(env('LLM_BLOCK_AVALAI'), FILTER_VALIDATE_BOOLEAN),
 
+    /*
+    | Speech-to-text model used before analysis. The audio file is streamed
+    | to this model; the analysis request then receives only the transcript.
+    */
+    'transcription_model' => env('LLM_TRANSCRIPTION_MODEL', 'gpt-4o-mini-transcribe'),
+
     'blocked_hosts' => array_values(array_unique(array_merge(
         ['api.avalai.ir', 'avalai.ir'],
         $extraBlockedHosts,
