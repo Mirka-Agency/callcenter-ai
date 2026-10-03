@@ -3,10 +3,10 @@
 namespace App\Application\Llm\Services;
 
 use App\Domain\Llm\DTOs\LlmConnectionConfig;
-use App\Domain\Llm\Exceptions\LlmTransientException;
 use App\Services\RecordingStorage;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class RecordingTranscriber
 {
@@ -17,7 +17,7 @@ class RecordingTranscriber
 
     /**
      * Stream the recording to speech-to-text and return the transcript.
-     * Returns null when there is no API key or no audio, so demo analysis can continue.
+     * Returns null when transcription is unavailable so analysis can continue from the audio file.
      */
     public function transcribe(
         int $callId,
@@ -36,30 +36,39 @@ class RecordingTranscriber
             return null;
         }
 
-        if ($fileSizeBytes !== null && $fileSizeBytes > self::MAX_BYTES) {
-            throw new \RuntimeException('حجم فایل صوتی برای تبدیل به متن بیش از حد مجاز است.');
+        try {
+            if ($fileSizeBytes !== null && $fileSizeBytes > self::MAX_BYTES) {
+                throw new \RuntimeException('حجم فایل صوتی برای تبدیل به متن بیش از حد مجاز است.');
+            }
+
+            $cacheKey = 'recording-transcript:'.$callId.':'.($fileSizeBytes ?? 0).':'.md5((string) ($storagePath ?: $sourceUrl));
+            $cached = Cache::get($cacheKey);
+
+            if (is_string($cached) && trim($cached) !== '') {
+                return $cached;
+            }
+
+            $transcript = filled($storagePath)
+                ? $this->transcribeStoredFile($storagePath, $storageDisk, $mimeType, $config)
+                : $this->transcribeRemoteFile((string) $sourceUrl, $mimeType, $config);
+
+            $transcript = trim($transcript);
+
+            if ($transcript === '') {
+                throw new \RuntimeException('تبدیل گفتار به متن نتیجه‌ای نداد.');
+            }
+
+            Cache::put($cacheKey, $transcript, now()->addHours(6));
+
+            return $transcript;
+        } catch (\Throwable $e) {
+            Log::warning('Speech-to-text skipped; analysis continues with the recording', [
+                'call_id' => $callId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
         }
-
-        $cacheKey = 'recording-transcript:'.$callId.':'.($fileSizeBytes ?? 0).':'.md5((string) ($storagePath ?: $sourceUrl));
-        $cached = Cache::get($cacheKey);
-
-        if (is_string($cached) && trim($cached) !== '') {
-            return $cached;
-        }
-
-        $transcript = filled($storagePath)
-            ? $this->transcribeStoredFile($storagePath, $storageDisk, $mimeType, $config)
-            : $this->transcribeRemoteFile((string) $sourceUrl, $mimeType, $config);
-
-        $transcript = trim($transcript);
-
-        if ($transcript === '') {
-            throw new \RuntimeException('تبدیل گفتار به متن نتیجه‌ای نداد. تحلیل بدون متن مکالمه انجام نشد.');
-        }
-
-        Cache::put($cacheKey, $transcript, now()->addHours(6));
-
-        return $transcript;
     }
 
     private function transcribeStoredFile(
@@ -176,13 +185,7 @@ class RecordingTranscriber
         }
 
         if (! $response->successful()) {
-            $error = 'تبدیل گفتار به متن ناموفق بود (HTTP '.$response->status().'): '.$response->body();
-
-            if (LlmTransientException::isTransientMessage($error) || in_array($response->status(), [429, 500, 502, 503, 504], true)) {
-                throw LlmTransientException::fromProviderError($error);
-            }
-
-            throw new \RuntimeException($error);
+            throw new \RuntimeException('تبدیل گفتار به متن ناموفق بود (HTTP '.$response->status().'): '.$response->body());
         }
 
         $body = $response->json();

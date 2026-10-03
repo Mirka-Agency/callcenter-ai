@@ -56,18 +56,16 @@ class RecordingTranscriberTest extends TestCase
         Http::assertSentCount(1);
     }
 
-    public function test_rejects_an_empty_transcript(): void
+    public function test_unsupported_transcription_does_not_fail_analysis(): void
     {
         Storage::fake('local');
         Storage::disk('local')->put('recordings/empty.mp3', 'audio-bytes');
 
         Http::fake([
-            'https://llm.test/v1/audio/transcriptions' => Http::response(['text' => '   ']),
+            'https://llm.test/v1/audio/transcriptions' => Http::response(['error' => 'model not found'], 404),
         ]);
 
-        $this->expectExceptionMessage('تبدیل گفتار به متن نتیجه‌ای نداد');
-
-        app(RecordingTranscriber::class)->transcribe(
+        $transcript = app(RecordingTranscriber::class)->transcribe(
             callId: 16,
             storagePath: 'recordings/empty.mp3',
             storageDisk: 'local',
@@ -76,6 +74,8 @@ class RecordingTranscriberTest extends TestCase
             fileSizeBytes: 11,
             config: $this->config(),
         );
+
+        $this->assertNull($transcript);
     }
 
     private function config(): LlmConnectionConfig
