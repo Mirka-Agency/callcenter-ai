@@ -26,6 +26,21 @@ class EmployerReportExportTest extends TestCase
         $this->assertStringContainsString('attachment', (string) $response->headers->get('content-disposition'));
     }
 
+    public function test_employer_can_download_team_performance_pdf(): void
+    {
+        $employer = User::factory()->create(['role' => UserRole::Employer]);
+        Organization::factory()->create(['user_id' => $employer->id]);
+
+        $response = $this->actingAs($employer)->get(
+            route('employer.intelligence.performance.export', ['format' => 'pdf', 'preset' => 'last_30'])
+        );
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
+        $this->assertStringContainsString('.pdf', (string) $response->headers->get('content-disposition'));
+        $this->assertStringStartsWith('%PDF', $response->streamedContent());
+    }
+
     public function test_guest_cannot_download_exports(): void
     {
         $this->get(route('employer.intelligence.performance.export', ['format' => 'csv']))
