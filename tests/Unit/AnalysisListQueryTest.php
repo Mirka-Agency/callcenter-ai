@@ -120,6 +120,10 @@ class AnalysisListQueryTest extends TestCase
         $this->assertSame(2, $overview['top_agent_count']);
         $this->assertSame(3, $overview['total']);
         $this->assertSame(3, $overview['total_calls']);
+        $this->assertSame(
+            $overview['total'] + $overview['outside_analysis_count'] + $overview['missed_count'],
+            $overview['total_calls'],
+        );
         $this->assertSame(3, $overview['total_leads']);
     }
 
@@ -225,8 +229,10 @@ class AnalysisListQueryTest extends TestCase
             preset: ReportDatePreset::Last30,
         ));
 
-        $this->assertSame(1, $overview['total']);
+        $this->assertSame(2, $overview['total']);
         $this->assertSame(2, $overview['total_calls']);
+        $this->assertSame(0, $overview['missed_count']);
+        $this->assertSame(0, $overview['outside_analysis_count']);
     }
 
     public function test_overview_counts_unanalyzed_missed_calls(): void
@@ -306,11 +312,16 @@ class AnalysisListQueryTest extends TestCase
         ));
 
         $this->assertSame(1, $overview['total']);
-        $this->assertSame(4, $overview['total_calls'], 'unassigned calls are excluded like dashboard countBetween');
-        $this->assertSame(3, $overview['missed_count']);
+        $this->assertSame(5, $overview['total_calls']);
+        $this->assertSame(4, $overview['missed_count']);
+        $this->assertSame(0, $overview['outside_analysis_count']);
+        $this->assertSame(
+            $overview['total'] + $overview['outside_analysis_count'] + $overview['missed_count'],
+            $overview['total_calls'],
+        );
     }
 
-    public function test_overview_analyzed_follows_analysis_completion_not_call_date(): void
+    public function test_overview_cards_follow_call_date_not_analysis_completion(): void
     {
         $organization = Organization::factory()->create();
         $user = User::factory()->create();
@@ -392,16 +403,18 @@ class AnalysisListQueryTest extends TestCase
             organizationId: $organization->id,
             preset: ReportDatePreset::Last30,
         ));
-        $dashboard = app(EmployeePerformanceAnalytics::class)
-            ->teamDashboard(ReportFilter::make($organization->id, ReportDatePreset::Last30));
 
-        $this->assertSame(1, $overview['total'], 'analyzed card follows analysis completion date');
-        $this->assertSame(1, $dashboard['kpis']['total_analyzed']);
-        $this->assertSame(2, $overview['total_calls'], 'calls use call occurrence date');
+        $this->assertSame(1, $overview['total'], 'pending call in the window is in the analysis card');
+        $this->assertSame(2, $overview['total_calls'], 'old call is outside the call-date window');
         $this->assertSame(1, $overview['inbound_count']);
         $this->assertSame(1, $overview['outbound_count']);
         $this->assertSame(1, $overview['missed_count']);
+        $this->assertSame(0, $overview['outside_analysis_count']);
         $this->assertSame(100, $overview['average_duration_seconds']);
+        $this->assertSame(
+            $overview['total'] + $overview['outside_analysis_count'] + $overview['missed_count'],
+            $overview['total_calls'],
+        );
     }
 
     public function test_overview_analyzed_matches_dashboard_and_ignores_stale_queue_flags(): void
@@ -523,14 +536,16 @@ class AnalysisListQueryTest extends TestCase
         ]);
 
         $overview = app(AnalysisListQuery::class)->overview($filter);
-        $dashboard = app(EmployeePerformanceAnalytics::class)
-            ->teamDashboard(ReportFilter::make($organization->id, ReportDatePreset::Last30));
 
         $this->assertSame(5, $overview['total_calls']);
-        $this->assertSame(2, $overview['total'], 'both recent and backfilled analyses in the completion window');
-        $this->assertSame(2, $dashboard['kpis']['total_analyzed']);
+        $this->assertSame(4, $overview['total'], 'analyzed card follows call date, including calls still in flight');
         $this->assertSame(1, $overview['missed_count']);
         $this->assertSame(1, $overview['in_flight_count']);
+        $this->assertSame(0, $overview['outside_analysis_count']);
+        $this->assertSame(
+            $overview['total'] + $overview['outside_analysis_count'] + $overview['missed_count'],
+            $overview['total_calls'],
+        );
 
         $queueAllTime = app(ProcessingQueueCallStats::class)->forOrganization($organization->id);
         $this->assertSame(3, $queueAllTime['completed'], 'queue card stays all-time and still counts a call whose analysis row is gone');
@@ -664,12 +679,122 @@ class AnalysisListQueryTest extends TestCase
             preset: ReportDatePreset::Last30,
         ));
 
-        $this->assertSame(6, $overview['total_calls']);
+        $this->assertSame(7, $overview['total'], 'known-extension calls stay in the analysis card, including calls without a recording');
         $this->assertSame(4, $overview['outside_analysis_count']);
-        $this->assertSame(1, $overview['missed_count']);
-        $this->assertSame(4, $overview['inbound_count']);
-        $this->assertSame(2, $overview['outbound_count']);
-        $this->assertSame(66, $overview['average_duration_seconds']);
+        $this->assertSame(1, $overview['missed_count'], 'a missed call on an unknown extension is outside analysis');
+        $this->assertSame(12, $overview['total_calls']);
+        $this->assertSame(
+            $overview['total'] + $overview['outside_analysis_count'] + $overview['missed_count'],
+            $overview['total_calls'],
+        );
+    }
+
+    public function test_overview_partitions_missed_and_agent_to_agent_calls_by_call_date(): void
+    {
+        $organization = Organization::factory()->create();
+        $userA = User::factory()->create();
+        $userB = User::factory()->create();
+        $agentA = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $userA->id,
+            'first_name' => 'Ali',
+            'last_name' => 'One',
+            'is_active' => true,
+        ]);
+        $agentB = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $userB->id,
+            'first_name' => 'Sara',
+            'last_name' => 'Two',
+            'is_active' => true,
+        ]);
+        $connection = $this->voipConnection($organization);
+
+        foreach ([[$agentA, '111'], [$agentB, '112']] as [$agent, $extension]) {
+            EmployeeIntegrationMeta::query()->create([
+                'organization_user_id' => $agent->id,
+                'integratable_type' => OrganizationVoipConnection::class,
+                'integratable_id' => $connection->id,
+                'key' => 'extension',
+                'value' => $extension,
+            ]);
+        }
+
+        $this->createExtensionCall($organization, $agentA, $connection, [
+            'external_call_id' => 'customer-completed',
+            'source_number' => '09120000001',
+            'destination_number' => '111',
+            'status' => CallStatus::Completed->value,
+            'duration_seconds' => 90,
+        ]);
+        $this->createExtensionCall($organization, $agentA, $connection, [
+            'external_call_id' => 'customer-busy',
+            'source_number' => '09120000002',
+            'destination_number' => '111',
+            'status' => CallStatus::Busy->value,
+            'duration_seconds' => 0,
+        ]);
+        $this->createExtensionCall($organization, $agentA, $connection, [
+            'external_call_id' => 'customer-no-agent',
+            'source_number' => '09120000003',
+            'destination_number' => '111',
+            'status' => CallStatus::Missed->value,
+            'duration_seconds' => 0,
+        ]);
+        $this->createExtensionCall($organization, $agentA, $connection, [
+            'external_call_id' => 'customer-queue',
+            'source_number' => '09120000004',
+            'destination_number' => '111',
+            'status' => CallStatus::Ringing->value,
+            'duration_seconds' => 0,
+            'raw_payload' => ['disposition' => 'ABANDON', 'queue' => 'sales'],
+        ]);
+        $this->createExtensionCall($organization, $agentA, $connection, [
+            'external_call_id' => 'agent-to-agent',
+            'source_number' => '111',
+            'destination_number' => '112',
+            'status' => CallStatus::Completed->value,
+            'duration_seconds' => 40,
+        ]);
+        $this->createExtensionCall($organization, $agentA, $connection, [
+            'external_call_id' => 'agent-busy',
+            'source_number' => '111',
+            'destination_number' => '112',
+            'status' => CallStatus::Busy->value,
+            'duration_seconds' => 0,
+        ]);
+        $this->createExtensionCall($organization, $agentA, $connection, [
+            'external_call_id' => 'unknown-extension',
+            'source_number' => '09120000005',
+            'destination_number' => '199',
+            'status' => CallStatus::Completed->value,
+            'duration_seconds' => 30,
+        ]);
+        $old = $this->createExtensionCall($organization, $agentA, $connection, [
+            'external_call_id' => 'old-customer',
+            'source_number' => '09120000006',
+            'destination_number' => '111',
+            'status' => CallStatus::Completed->value,
+            'duration_seconds' => 20,
+        ]);
+        $old->update([
+            'started_at' => now()->subDays(40),
+            'conversation_date' => now()->subDays(40),
+        ]);
+
+        $overview = app(AnalysisListQuery::class)->overview(AnalysisListFilter::make(
+            organizationId: $organization->id,
+            preset: ReportDatePreset::Last30,
+        ));
+
+        $this->assertSame(1, $overview['total']);
+        $this->assertSame(2, $overview['outside_analysis_count']);
+        $this->assertSame(4, $overview['missed_count']);
+        $this->assertSame(7, $overview['total_calls']);
+        $this->assertSame(
+            $overview['total'] + $overview['outside_analysis_count'] + $overview['missed_count'],
+            $overview['total_calls'],
+        );
     }
 
     public function test_overview_outside_analysis_is_zero_when_no_extensions_are_defined(): void

@@ -110,7 +110,7 @@
             label="تماس‌های تحلیل‌شده"
             :value="number_format($overview['total'])"
             :hint="($overview['in_flight_count'] ?? 0) > 0
-                ? number_format($overview['in_flight_count']).' در صف یا در حال پردازش'
+                ? number_format($overview['in_flight_count']).' از این تعداد هنوز در صف یا در حال پردازش است'
                 : null"
         />
         <x-saas.stat-card label="میانگین امتیاز مکالمه" :value="$overview['average_score'] ?: '—'" :tone="\App\Support\MetricTone::fromScore($overview['average_score'])" />
