@@ -363,6 +363,11 @@ export const employerPageTours = {
                 content: 'جزئیات ثبت‌شده سازمان و اتصال ویپ فقط برای مشاهده است.',
             },
             {
+                selector: '[data-tour="organization-call-filters"]',
+                title: 'فیلتر تماس‌های ورودی',
+                content: 'مشخص کنید تماس بین کارشناسان داخلی، یا تماسی که کارشناس ندارد، تحلیل شود یا نه.',
+            },
+            {
                 selector: '[data-tour="organization-holidays"]',
                 title: 'تعطیلات شرکت',
                 content: 'روزهای تعطیل هفته را مشخص کنید تا تماس‌های آن روزها در آمار عملکرد نیاید.',
@@ -436,7 +441,7 @@ const navSteps = [
     ['employer.processing-queue.index', 'صف تحلیل', 'پیگیری وضعیت پردازش فایل‌های در صف.'],
     ['employer.crm.index', 'CRM', 'اتصال سیستم ارتباط با مشتری.'],
     ['employer.voip.index', 'خطوط تلفنی', 'اتصال VoIP و وب‌هوک تماس.'],
-    ['employer.organization.profile', 'پروفایل سازمان', 'اطلاعات سازمان، اتصال ویپ و تعطیلات شرکت.'],
+    ['employer.organization.profile', 'پروفایل سازمان', 'اطلاعات سازمان، اتصال ویپ، فیلتر تماس‌های ورودی و تعطیلات شرکت.'],
     ['employer.wallet.index', 'اعتبار هوش مصنوعی', 'موجودی و مصرف اعتبار تحلیل AI.'],
 ];
 

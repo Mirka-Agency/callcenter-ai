@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Application\Call\Services\CallEmployeeResolver;
 use App\Filament\Support\FluentWidgetConfiguration;
 use App\Listeners\RecordUserLastLogin;
+use App\Services\CallIntake\CallIntakeSettings;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\OrganizationCallMetrics;
 use App\Support\JalaliDate;
@@ -25,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
         // Chart pages ask for the same extension calendar many times per request.
         // Keep one instance so that work is not repeated for every sidebar page.
         $this->app->scoped(CallEmployeeResolver::class);
+        $this->app->scoped(CallIntakeSettings::class);
         $this->app->scoped(OrganizationCallMetrics::class);
         $this->app->scoped(ChartHolidayCalendar::class);
     }

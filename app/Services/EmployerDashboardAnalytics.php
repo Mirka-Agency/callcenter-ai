@@ -7,6 +7,7 @@ use App\Enums\ReportDatePreset;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationActivity;
+use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\OrganizationCallMetrics;
@@ -45,11 +46,13 @@ class EmployerDashboardAnalytics
         $overview = $ai->overview();
         $insights = $ai->organizationInsights();
 
-        $followUps = ConversationAnalysis::query()
-            ->where('organization_id', $this->organizationId)
-            ->whereNotNull('next_actions_json')
-            ->whereMonth('analyzed_at', now()->month)
-            ->count();
+        $followUps = app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->where('organization_id', $this->organizationId)
+                ->whereNotNull('next_actions_json')
+                ->whereMonth('analyzed_at', now()->month),
+            $this->organizationId,
+        )->count();
 
         return [
             'team_average_score' => $insights['team_average'],

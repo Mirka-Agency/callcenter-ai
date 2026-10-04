@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\CallIntake\CallIntakeSettings;
 use App\Services\WalletService;
 use App\Support\CompanyWorkCalendar;
 use Database\Factories\OrganizationFactory;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['title', 'business_context', 'holiday_weekdays', 'disabled', 'employer_can_manage_integrations', 'user_id', 'is_demo'])]
+#[Fillable(['title', 'business_context', 'holiday_weekdays', 'call_intake_filters', 'disabled', 'employer_can_manage_integrations', 'user_id', 'is_demo'])]
 class Organization extends Model
 {
     /** @use HasFactory<OrganizationFactory> */
@@ -32,6 +33,7 @@ class Organization extends Model
             'employer_can_manage_integrations' => 'boolean',
             'is_demo' => 'boolean',
             'holiday_weekdays' => 'array',
+            'call_intake_filters' => 'array',
         ];
     }
 
@@ -140,6 +142,13 @@ class Organization extends Model
         static::saved(function (Organization $organization): void {
             if ($organization->wasChanged('holiday_weekdays')) {
                 app()->forgetInstance('organization.holiday_weekdays.'.$organization->id);
+            }
+
+            if ($organization->wasChanged('call_intake_filters')) {
+                app(CallIntakeSettings::class)->saved(
+                    $organization,
+                    $organization->getOriginal('call_intake_filters'),
+                );
             }
         });
     }

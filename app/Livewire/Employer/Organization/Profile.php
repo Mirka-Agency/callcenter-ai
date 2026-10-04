@@ -6,6 +6,8 @@ use App\Domain\Crm\Enums\CrmProviderCode;
 use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Models\OrganizationCrmConnection;
 use App\Models\OrganizationVoipConnection;
+use App\Services\CallIntake\CallIntakeFilterRegistry;
+use App\Services\CallIntake\CallIntakeSettings;
 use App\Services\EmployerContext;
 use App\Support\CompanyWorkCalendar;
 use Illuminate\Support\Collection;
@@ -20,12 +22,18 @@ class Profile extends Component
     /** @var list<int|string> */
     public array $holidayWeekdays = [];
 
-    public function mount(): void
+    /** @var array<string, bool> */
+    public array $intakeFilters = [];
+
+    public function mount(CallIntakeSettings $settings): void
     {
+        $organization = EmployerContext::organization();
+
         $this->holidayWeekdays = array_map(
             'strval',
-            EmployerContext::organization()->holidayWeekdays(),
+            $organization->holidayWeekdays(),
         );
+        $this->intakeFilters = $settings->resolved((int) $organization->id);
     }
 
     public function save(): void
@@ -45,6 +53,26 @@ class Profile extends Component
         $this->holidayWeekdays = array_map('strval', $weekdays);
 
         $this->js("window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: '".__('ui.success.holidays_saved')."' } }))");
+    }
+
+    public function saveIntakeFilters(CallIntakeSettings $settings): void
+    {
+        $data = $this->validate([
+            'intakeFilters' => ['array'],
+            'intakeFilters.*' => ['boolean'],
+        ]);
+
+        $organization = EmployerContext::organization();
+        $stored = $settings->normalize($data['intakeFilters']);
+
+        $organization->update([
+            'call_intake_filters' => $stored,
+        ]);
+
+        $this->intakeFilters = $stored;
+        $settings->forget((int) $organization->id);
+
+        $this->js("window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: '".__('ui.success.call_filters_saved')."' } }))");
     }
 
     public function render()
@@ -83,6 +111,13 @@ class Profile extends Component
             'selectedWeekdays' => $selected,
             'holidayLabels' => $holidayLabels,
             'workdayLabels' => $workdayLabels,
+            'intakeFilterOptions' => collect(app(CallIntakeFilterRegistry::class)->all())
+                ->map(fn ($filter) => [
+                    'key' => $filter->key(),
+                    'label' => $filter->label(),
+                    'description' => $filter->description(),
+                ])
+                ->all(),
         ]);
     }
 

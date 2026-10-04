@@ -2,7 +2,7 @@
     <x-saas.page-header
         data-tour="page-header"
         title="پروفایل سازمان"
-        description="اطلاعات سازمان، اتصال ویپ و CRM فقط برای مشاهده است. روزهای تعطیل شرکت را از همین صفحه تنظیم کنید."
+        description="اطلاعات سازمان، اتصال ویپ و CRM فقط برای مشاهده است. فیلتر تماس‌های ورودی و روزهای تعطیل را از همین صفحه تنظیم کنید."
     />
 
     <section class="saas-card max-w-3xl" data-tour="organization-details">
@@ -64,6 +64,53 @@
             @endforeach
         </section>
     @endif
+
+    <form wire:submit="saveIntakeFilters" class="saas-card max-w-3xl space-y-5" data-tour="organization-call-filters">
+        <div>
+            <h2 class="text-base font-semibold text-zinc-900 dark:text-white">فیلتر تماس‌های ورودی</h2>
+            <p class="mt-1 text-sm text-zinc-500">هر مورد را که فعال کنید، آن دسته از تماس‌ها تحلیل می‌شود. مورد غیرفعال برای مدل ارسال نمی‌شود و از شمارش تماس‌ها کنار می‌رود. تماس‌های خارج از تحلیل، لیدها و اعداد کیف پول از این فیلتر جدا هستند.</p>
+        </div>
+
+        <div class="space-y-3">
+            @foreach ($intakeFilterOptions as $filter)
+                @php $enabled = (bool) ($intakeFilters[$filter['key']] ?? false); @endphp
+                <label @class([
+                    'flex cursor-pointer items-start justify-between gap-4 rounded-md border px-4 py-3 transition',
+                    'border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900' => $enabled,
+                    'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200' => ! $enabled,
+                ])>
+                    <span>
+                        <span class="block text-sm font-medium">{{ $filter['label'] }}</span>
+                        <span @class([
+                            'mt-1 block text-xs font-normal leading-5',
+                            'text-zinc-300 dark:text-zinc-600' => $enabled,
+                            'text-zinc-500' => ! $enabled,
+                        ])>{{ $filter['description'] }}</span>
+                    </span>
+                    <span @class([
+                        'flex shrink-0 items-center gap-2 pt-0.5 text-xs font-normal',
+                        'text-zinc-300 dark:text-zinc-600' => $enabled,
+                        'text-zinc-400' => ! $enabled,
+                    ])>
+                        {{ $enabled ? 'فعال' : 'غیرفعال' }}
+                        <input
+                            type="checkbox"
+                            wire:model.live="intakeFilters.{{ $filter['key'] }}"
+                            @checked($enabled)
+                            class="rounded border-zinc-300"
+                        >
+                    </span>
+                </label>
+            @endforeach
+        </div>
+
+        @error('intakeFilters') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+        @error('intakeFilters.*') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+
+        <div class="flex justify-end border-t border-zinc-200/80 pt-5 dark:border-zinc-800">
+            <button type="submit" class="saas-btn-primary">ذخیره فیلترها</button>
+        </div>
+    </form>
 
     <form wire:submit="save" class="saas-card max-w-3xl space-y-5" data-tour="organization-holidays">
         <div>

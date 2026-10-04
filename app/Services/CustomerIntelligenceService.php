@@ -8,6 +8,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
 use App\Models\OrganizationUser;
+use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Support\CompanyName;
 use App\Support\CustomerNextActionAggregator;
@@ -349,11 +350,14 @@ class CustomerIntelligenceService
     /** @return array<string, mixed> */
     public function profileAnalytics(Customer $customer): array
     {
-        $analyses = ConversationAnalysis::query()
-            ->where('conversation_analyses.organization_id', $customer->organization_id)
-            ->whereHas('call', fn ($q) => $q
-                ->where('customer_id', $customer->id)
-                ->where('organization_id', $customer->organization_id));
+        $analyses = app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->where('conversation_analyses.organization_id', $customer->organization_id)
+                ->whereHas('call', fn ($q) => $q
+                    ->where('customer_id', $customer->id)
+                    ->where('organization_id', $customer->organization_id)),
+            (int) $customer->organization_id,
+        );
 
         $stats = (clone $analyses)->toBase();
         $stats->columns = [];

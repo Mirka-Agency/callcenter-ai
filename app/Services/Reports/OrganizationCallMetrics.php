@@ -7,6 +7,9 @@ use App\Domain\Voip\Enums\CallStatus;
 use App\Enums\ReportDatePreset;
 use App\Models\Call;
 use App\Models\VoipCallLog;
+use App\Services\CallIntake\CallIntakePolicy;
+use App\Services\CallIntake\CallIntakeSettings;
+use App\Services\CallIntake\Filters\UnassignedAgentCallsFilter;
 use App\Support\CompanyWorkCalendar;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -30,7 +33,7 @@ class OrganizationCallMetrics
         $dayKey = now(CompanyWorkCalendar::TIMEZONE)->toDateString();
 
         return Cache::remember(
-            'calls-today:'.$organizationId.':'.$dayKey.':recorded-tehran-v1',
+            $this->todayCacheKey($organizationId, $dayKey),
             60,
             fn (): int => $this->countBetween(
                 $organizationId,
@@ -38,6 +41,13 @@ class OrganizationCallMetrics
                 $to,
             ),
         );
+    }
+
+    public function forgetToday(int $organizationId, ?string $token = null): void
+    {
+        $dayKey = now(CompanyWorkCalendar::TIMEZONE)->toDateString();
+        Cache::forget($this->todayCacheKey($organizationId, $dayKey, $token));
+        Cache::forget('calls-today:'.$organizationId.':'.$dayKey.':recorded-tehran-v1');
     }
 
     public function countThisMonth(int $organizationId): int
@@ -59,12 +69,16 @@ class OrganizationCallMetrics
         $extensionMap = $this->resolver->extensionEmployeeMapForOrganization($organizationId);
 
         if ($extensionMap === []) {
-            return Call::query()
+            $query = Call::query()
                 ->where('organization_id', $organizationId)
                 ->occurredBetween($from, $to)
-                ->whereNotNull('organization_user_id')
-                ->withRecording()
-                ->count();
+                ->withRecording();
+
+            if (! $this->includesUnassigned($organizationId)) {
+                $query->whereNotNull('organization_user_id');
+            }
+
+            return app(CallIntakePolicy::class)->applyToCalls($query, $organizationId)->count();
         }
 
         $callCount = $this->definedExtensions->apply(
@@ -74,8 +88,11 @@ class OrganizationCallMetrics
             $organizationId,
         )->count();
 
-        $orphanCount = $this->definedExtensions->applyToVoipLogs(
-            $this->orphanLogQuery($organizationId, $from, $to),
+        $orphanCount = app(CallIntakePolicy::class)->applyToVoipLogs(
+            $this->definedExtensions->applyToVoipLogs(
+                $this->orphanLogQuery($organizationId, $from, $to),
+                $organizationId,
+            ),
             $organizationId,
         )->count();
 
@@ -87,12 +104,16 @@ class OrganizationCallMetrics
         $extensionMap = $this->resolver->extensionEmployeeMapForOrganization($organizationId);
 
         if ($extensionMap === []) {
-            return Call::query()
+            $query = Call::query()
                 ->where('organization_id', $organizationId)
-                ->whereNotNull('organization_user_id')
                 ->whereIn('status', CallStatus::lostValues())
-                ->withRecording()
-                ->count();
+                ->withRecording();
+
+            if (! $this->includesUnassigned($organizationId)) {
+                $query->whereNotNull('organization_user_id');
+            }
+
+            return app(CallIntakePolicy::class)->applyToCalls($query, $organizationId)->count();
         }
 
         $callCount = $this->definedExtensions->apply(
@@ -102,9 +123,12 @@ class OrganizationCallMetrics
             $organizationId,
         )->count();
 
-        $orphanCount = $this->definedExtensions->applyToVoipLogs(
-            $this->orphanLogQuery($organizationId, now()->subYears(20), now()->endOfDay())
-                ->whereIn('voip_call_logs.status', CallStatus::lostValues()),
+        $orphanCount = app(CallIntakePolicy::class)->applyToVoipLogs(
+            $this->definedExtensions->applyToVoipLogs(
+                $this->orphanLogQuery($organizationId, now()->subYears(20), now()->endOfDay())
+                    ->whereIn('voip_call_logs.status', CallStatus::lostValues()),
+                $organizationId,
+            ),
             $organizationId,
         )->count();
 
@@ -122,7 +146,8 @@ class OrganizationCallMetrics
         $from = $from->copy()->timezone(CompanyWorkCalendar::TIMEZONE)->startOfDay()->utc();
         $to = $to->copy()->timezone(CompanyWorkCalendar::TIMEZONE)->endOfDay()->utc();
         $fingerprint = md5(json_encode($this->definedExtensions->matchSetFingerprint($organizationId)) ?: '');
-        $cacheKey = $organizationId.'|'.$from->getTimestamp().'|'.$to->getTimestamp().'|'.$fingerprint.'|recorded';
+        $intake = app(CallIntakeSettings::class)->cacheToken($organizationId);
+        $cacheKey = $organizationId.'|'.$from->getTimestamp().'|'.$to->getTimestamp().'|'.$fingerprint.'|'.$intake.'|recorded';
 
         if (array_key_exists($cacheKey, $this->activityDays)) {
             return $this->activityDays[$cacheKey];
@@ -168,8 +193,11 @@ class OrganizationCallMetrics
             ->groupByRaw($callDay)
             ->pluck('day_key');
 
-        $logDays = $this->definedExtensions->applyToVoipLogs(
-            $this->orphanLogQuery($organizationId, $from, $to),
+        $logDays = app(CallIntakePolicy::class)->applyToVoipLogs(
+            $this->definedExtensions->applyToVoipLogs(
+                $this->orphanLogQuery($organizationId, $from, $to),
+                $organizationId,
+            ),
             $organizationId,
         )
             ->selectRaw($logDay.' as day_key')
@@ -187,6 +215,18 @@ class OrganizationCallMetrics
         }
 
         return $days;
+    }
+
+    private function includesUnassigned(int $organizationId): bool
+    {
+        return app(CallIntakeSettings::class)->enabled($organizationId, UnassignedAgentCallsFilter::KEY);
+    }
+
+    private function todayCacheKey(int $organizationId, string $dayKey, ?string $token = null): string
+    {
+        $token ??= app(CallIntakeSettings::class)->cacheToken($organizationId);
+
+        return 'calls-today:'.$organizationId.':'.$dayKey.':'.$token;
     }
 
     /** @return Builder<VoipCallLog> */

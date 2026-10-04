@@ -11,6 +11,10 @@ use App\Models\CallProcessingJob;
 use App\Models\Organization;
 use App\Models\OrganizationVoipConnection;
 use App\Models\VoipCallLog;
+use App\Services\CallIntake\CallIntakePolicy;
+use App\Services\CallIntake\CallIntakeSettings;
+use App\Services\CallIntake\Filters\UnassignedAgentCallsFilter;
+use App\Services\CallIntake\InternalAgentCallDetector;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -31,13 +35,12 @@ class DefinedExtensionCallConstraint
     public function apply(Builder $query, int $organizationId): Builder
     {
         $query = $query->withRecording();
-        $sets = $this->matchSets($organizationId);
 
-        if ($sets === []) {
-            return $query;
+        if ($this->matchSets($organizationId) !== [] && ! $this->includesUnassigned($organizationId)) {
+            $query->where($query->getModel()->getTable().'.counts_for_extension_reports', true);
         }
 
-        return $query->where($query->getModel()->getTable().'.counts_for_extension_reports', true);
+        return app(CallIntakePolicy::class)->applyToCalls($query, $organizationId);
     }
 
     /**
@@ -51,14 +54,14 @@ class DefinedExtensionCallConstraint
     {
         $query = $query->withRecording();
 
-        if ($this->matchSets($organizationId) === []) {
-            return $query;
+        if ($this->matchSets($organizationId) !== [] && ! $this->includesUnassigned($organizationId)) {
+            $query->where(function (Builder $eligible): void {
+                $eligible->where('source', ConversationSource::ManualUpload->value)
+                    ->orWhere('counts_for_extension_reports', true);
+            });
         }
 
-        return $query->where(function (Builder $eligible): void {
-            $eligible->where('source', ConversationSource::ManualUpload->value)
-                ->orWhere('counts_for_extension_reports', true);
-        });
+        return app(CallIntakePolicy::class)->applyToCalls($query, $organizationId);
     }
 
     /**
@@ -78,7 +81,13 @@ class DefinedExtensionCallConstraint
             return $query->whereRaw('0 = 1');
         }
 
-        return $query->where($query->getModel()->getTable().'.counts_for_extension_reports', false);
+        $query->where($query->getModel()->getTable().'.counts_for_extension_reports', false);
+
+        if ($this->includesUnassigned($organizationId)) {
+            $query->whereNotNull($query->getModel()->getTable().'.organization_user_id');
+        }
+
+        return $query;
     }
 
     /**
@@ -116,13 +125,22 @@ class DefinedExtensionCallConstraint
                 foreach ($calls as $call) {
                     $counts = $this->countsForReports($call);
 
-                    if ((bool) $call->counts_for_extension_reports === $counts) {
+                    $internal = app(InternalAgentCallDetector::class)->matches($call);
+                    $changes = [];
+
+                    if ((bool) $call->counts_for_extension_reports !== $counts) {
+                        $changes['counts_for_extension_reports'] = $counts;
+                    }
+
+                    if ((bool) $call->is_internal_agent_call !== $internal) {
+                        $changes['is_internal_agent_call'] = $internal;
+                    }
+
+                    if ($changes === []) {
                         continue;
                     }
 
-                    Call::query()->whereKey($call->id)->update([
-                        'counts_for_extension_reports' => $counts,
-                    ]);
+                    Call::query()->whereKey($call->id)->update($changes);
                 }
             });
     }
@@ -271,6 +289,25 @@ class DefinedExtensionCallConstraint
     public function matchSetFingerprint(int $organizationId): array
     {
         return $this->matchSets($organizationId);
+    }
+
+    /**
+     * @return array<int, list<string>>
+     */
+    public function extensionNumbersByConnection(int $organizationId): array
+    {
+        $numbers = [];
+
+        foreach ($this->matchSets($organizationId) as $connectionId => $set) {
+            $numbers[$connectionId] = $set['numbers'];
+        }
+
+        return $numbers;
+    }
+
+    private function includesUnassigned(int $organizationId): bool
+    {
+        return app(CallIntakeSettings::class)->enabled($organizationId, UnassignedAgentCallsFilter::KEY);
     }
 
     /**

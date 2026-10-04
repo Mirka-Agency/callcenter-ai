@@ -6,6 +6,7 @@ use App\DTOs\ReportFilter;
 use App\Enums\ReportDatePreset;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
+use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\Performance\Calculators\EmployeeMetricsCalculator;
 use App\Services\Performance\Calculators\JsonFieldAggregator;
 use App\Services\Performance\Calculators\PerformanceTrendCalculator;
@@ -551,11 +552,14 @@ class EmployeePerformanceAnalytics
             return collect();
         }
 
-        return ConversationAnalysis::query()
-            ->business()
-            ->where('organization_id', $filter->organizationId)
-            ->whereBetween('analyzed_at', [$filter->from, $filter->to])
-            ->whereIn('organization_user_id', $employeeIds)
+        return app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->business()
+                ->where('organization_id', $filter->organizationId)
+                ->whereBetween('analyzed_at', [$filter->from, $filter->to])
+                ->whereIn('organization_user_id', $employeeIds),
+            $filter->organizationId,
+        )
             ->groupBy('organization_user_id')
             ->selectRaw('organization_user_id, COUNT(*) as aggregate')
             ->pluck('aggregate', 'organization_user_id')
