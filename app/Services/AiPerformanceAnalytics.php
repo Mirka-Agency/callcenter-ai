@@ -5,10 +5,11 @@ namespace App\Services;
 use App\DTOs\ReportFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
-use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Models\OrganizationUser;
+use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Services\Reports\ChartHolidayCalendar;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Support\CompanyWorkCalendar;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -34,7 +35,9 @@ class AiPerformanceAnalytics
     {
         $query = $this->baseQuery();
 
-        $totalAnalyzed = (clone $query)->count();
+        $totalAnalyzed = app(CallIntakePolicy::class)
+            ->applyToAnalyses(clone $query, $this->organizationId)
+            ->count();
         $totalCalls = app(DefinedExtensionCallConstraint::class)->apply(
             Call::query()->where('organization_id', $this->organizationId),
             $this->organizationId,

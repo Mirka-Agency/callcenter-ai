@@ -794,9 +794,10 @@ new MutationObserver(() => {
 });
 
 document.addEventListener('alpine:init', () => {
-    window.Alpine.data('qualityTrendCard', (insights, profileBase) => ({
+    window.Alpine.data('qualityTrendCard', (insights, profileBase, profileQuery = '') => ({
         insights: insights || {},
         profileBase: profileBase || '',
+        profileQuery: profileQuery || '',
         selected: '',
         get insight() {
             return this.selected ? (this.insights[this.selected] ?? null) : null;
@@ -845,7 +846,9 @@ document.addEventListener('alpine:init', () => {
             return delta > 0 ? `+${delta}` : String(delta);
         },
         agentUrl(id) {
-            return `${this.profileBase}/${id}`;
+            const query = this.profileQuery ? `?${String(this.profileQuery).replace(/^\?/, '')}` : '';
+
+            return `${this.profileBase}/${id}${query}`;
         },
         agentsTitle() {
             const direction = this.insight?.direction;

@@ -5,12 +5,13 @@ namespace App\Services;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
-use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Models\EmployeePerformanceSnapshot;
 use App\Models\OrganizationUser;
+use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\Performance\Calculators\JsonFieldAggregator;
 use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Services\Reports\ChartHolidayCalendar;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Support\ChartDayFilter;
 use App\Support\CompanyWorkCalendar;
 use App\Support\JalaliDate;
@@ -189,9 +190,12 @@ class EmployeeDashboardAnalytics
 
     private function analysisQuery()
     {
-        return ConversationAnalysis::query()
-            ->business()
-            ->where('conversation_analyses.organization_user_id', $this->employee->id);
+        return app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->business()
+                ->where('conversation_analyses.organization_user_id', $this->employee->id),
+            (int) $this->employee->organization_id,
+        );
     }
 
     /** @return Builder<ConversationAnalysis> */

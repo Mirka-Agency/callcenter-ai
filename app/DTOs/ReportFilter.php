@@ -3,6 +3,7 @@
 namespace App\DTOs;
 
 use App\Enums\ReportDatePreset;
+use App\Services\CallIntake\CallIntakeSettings;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -84,6 +85,7 @@ readonly class ReportFilter
             $this->to->toDateString(),
             implode('-', $this->employeeIds) ?: 'all',
             $this->compareMode ? '1' : '0',
+            app(CallIntakeSettings::class)->cacheToken($this->organizationId),
         ]);
     }
 

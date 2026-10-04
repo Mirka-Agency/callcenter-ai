@@ -10,12 +10,14 @@ use App\DTOs\AnalysisListFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
+use App\Services\CallIntake\CallIntakePolicy;
+use App\Services\CallIntake\CallIntakeSettings;
+use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Services\Reports\CallMetricsAnalytics;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Services\Reports\OrganizationCallMetrics;
 use App\Services\Reports\ProcessingQueueCallStats;
-use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Support\AnalysisInsightPresenter;
 use App\Support\ChartDayFilter;
 use App\Support\CompanyWorkCalendar;
@@ -192,7 +194,8 @@ class AnalysisListQuery
     {
         $extensionKey = md5(json_encode($this->definedExtensions->matchSetFingerprint($filter->organizationId)) ?: '');
         $cacheKey = implode(':', [
-            'analysis-call-stats-recorded-v6',
+            'analysis-call-stats-recorded-v7',
+            app(CallIntakeSettings::class)->cacheToken($filter->organizationId),
             $filter->organizationId,
             $filter->from->getTimestamp(),
             $filter->to->getTimestamp(),
@@ -286,7 +289,11 @@ class AnalysisListQuery
             $query->whereIn('conversation_analyses.organization_user_id', $activeIds->all());
         }
 
-        return (int) $query->toBase()->selectRaw('count(distinct conversation_analyses.id) as aggregate')->value('aggregate');
+        return (int) app(CallIntakePolicy::class)
+            ->applyToAnalyses($query, $filter->organizationId)
+            ->toBase()
+            ->selectRaw('count(distinct conversation_analyses.id) as aggregate')
+            ->value('aggregate');
     }
 
     /** @return array<string, mixed> */

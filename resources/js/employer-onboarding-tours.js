@@ -8,12 +8,12 @@ export const employerPageTours = {
             {
                 selector: '[data-tour="dashboard-hero"]',
                 title: 'نمای کلی شرکت',
-                content: 'نام سازمان و بازه نمای کلی داشبورد را اینجا می‌بینید.',
+                content: 'نام سازمان، تعداد تماس‌های امروز و بازه نمای کلی داشبورد را اینجا می‌بینید.',
             },
             {
                 selector: '[data-tour="dashboard-stats"]',
                 title: 'شاخص‌های سریع',
-                content: 'کارشناسان فعال، تماس‌های تحلیل‌شده، تماس‌های امروز، میانگین امتیاز تیم، کیفیت لید و رضایت مشتری.',
+                content: 'کارشناسان فعال، تماس‌های تحلیل‌شده، میانگین امتیاز تیم، کیفیت لید و رضایت مشتری.',
             },
             {
                 selector: '[data-tour="dashboard-quality"]',
@@ -28,7 +28,7 @@ export const employerPageTours = {
             {
                 selector: '[data-tour="dashboard-opportunities"]',
                 title: 'فرصت‌های معاملاتی جدید',
-                content: 'لیدهای باکیفیت اخیر را اینجا ببینید و برای بستن فروش پیگیری کنید.',
+                content: 'لیدهای باکیفیت ۳۰ روز اخیر را اینجا ببینید و برای بستن فروش پیگیری کنید.',
             },
             {
                 selector: '[data-tour="dashboard-sentiment-customers"]',
@@ -68,7 +68,7 @@ export const employerPageTours = {
             {
                 selector: '[data-tour="performance-charts"]',
                 title: 'نمودارهای تیم',
-                content: 'روند کیفیت و مقایسه امتیاز کارشناسان در یک نما.',
+                content: 'روند کیفیت مکالمه را ببینید. روی هر نقطه کلیک کنید تا دلیل افزایش یا کاهش و کارشناسان مؤثر را ببینید.',
             },
             {
                 selector: '[data-tour="performance-rankings"]',
@@ -363,6 +363,11 @@ export const employerPageTours = {
                 content: 'جزئیات ثبت‌شده سازمان و اتصال ویپ فقط برای مشاهده است.',
             },
             {
+                selector: '[data-tour="organization-call-filters"]',
+                title: 'فیلتر تماس‌های ورودی',
+                content: 'مشخص کنید تماس بین کارشناسان داخلی، یا تماسی که کارشناس ندارد، تحلیل شود یا نه.',
+            },
+            {
                 selector: '[data-tour="organization-holidays"]',
                 title: 'تعطیلات شرکت',
                 content: 'روزهای تعطیل هفته را مشخص کنید تا تماس‌های آن روزها در آمار عملکرد نیاید.',
@@ -436,7 +441,7 @@ const navSteps = [
     ['employer.processing-queue.index', 'صف تحلیل', 'پیگیری وضعیت پردازش فایل‌های در صف.'],
     ['employer.crm.index', 'CRM', 'اتصال سیستم ارتباط با مشتری.'],
     ['employer.voip.index', 'خطوط تلفنی', 'اتصال VoIP و وب‌هوک تماس.'],
-    ['employer.organization.profile', 'پروفایل سازمان', 'اطلاعات سازمان، اتصال ویپ و تعطیلات شرکت.'],
+    ['employer.organization.profile', 'پروفایل سازمان', 'اطلاعات سازمان، اتصال ویپ، فیلتر تماس‌های ورودی و تعطیلات شرکت.'],
     ['employer.wallet.index', 'اعتبار هوش مصنوعی', 'موجودی و مصرف اعتبار تحلیل AI.'],
 ];
 

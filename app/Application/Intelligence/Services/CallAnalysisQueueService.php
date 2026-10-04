@@ -10,6 +10,7 @@ use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Exceptions\InsufficientWalletBalanceException;
 use App\Models\Call;
 use App\Services\AiBillingService;
+use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\CallProcessingTracker;
 use App\Support\UnconnectedCallSignals;
 
@@ -19,6 +20,7 @@ class CallAnalysisQueueService
         private CallProcessingTracker $tracker,
         private AiBillingService $billing,
         private CallEmployeeResolver $employeeResolver,
+        private CallIntakePolicy $intake,
     ) {}
 
     public function dispatchForCall(Call $call, bool $forceReanalyze = false): bool
@@ -37,11 +39,19 @@ class CallAnalysisQueueService
             return false;
         }
 
-        if (! $call->organization_user_id) {
+        if ($reason = $this->intake->rejectionReason($call)) {
+            $this->markSkipped($call, $reason);
+
             return false;
         }
 
-        if (! $this->matchesDefinedExtension($call)) {
+        $allowUnassigned = $this->intake->allowsUnassigned($call);
+
+        if (! $call->organization_user_id && ! $allowUnassigned) {
+            return false;
+        }
+
+        if (! $this->matchesDefinedExtension($call) && ! $allowUnassigned) {
             return false;
         }
 
@@ -94,6 +104,27 @@ class CallAnalysisQueueService
         AnalyzeAudioJob::dispatchChain($call->id, $recordingUrl);
 
         return true;
+    }
+
+    /**
+     * Turning a filter on should pick up calls that were skipped only by that rule.
+     */
+    public function requeueAfterFilterChange(int $organizationId): void
+    {
+        Call::query()
+            ->where('organization_id', $organizationId)
+            ->where('source', ConversationSource::Voip)
+            ->where('processing_status', CallProcessingStatus::Skipped)
+            ->orderBy('id')
+            ->chunkById(100, function ($calls): void {
+                foreach ($calls as $call) {
+                    if ($this->shouldSkipAnalysis($call)) {
+                        continue;
+                    }
+
+                    $this->dispatchForCall($call, forceReanalyze: true);
+                }
+            });
     }
 
     /**
@@ -172,6 +203,10 @@ class CallAnalysisQueueService
 
     public function shouldSkipAnalysis(Call $call): bool
     {
+        if ($this->intake->rejectionReason($call) !== null) {
+            return true;
+        }
+
         if ($call->source !== ConversationSource::Voip) {
             return false;
         }
@@ -195,18 +230,19 @@ class CallAnalysisQueueService
         return $duration < $minDuration;
     }
 
-    public function markSkipped(Call $call): void
+    public function markSkipped(Call $call, ?string $reason = null): void
     {
-        if ($call->processing_status === CallProcessingStatus::Skipped) {
+        if ($reason === null && $call->processing_status === CallProcessingStatus::Skipped) {
             return;
         }
 
         $duration = $this->analyzableSeconds($call);
         $minDuration = (int) config('intelligence.min_analyzable_duration_seconds', 10);
 
-        $reason = $this->lacksConnectedConversation($call)
-            ? 'تماس برقرار نشده یا بدون مکالمه بود؛ ضبط و تحلیل انجام نشد.'
-            : "مدت تماس ({$duration} ثانیه) کمتر از حداقل قابل تحلیل ({$minDuration} ثانیه) است؛ ضبط و تحلیل انجام نشد.";
+        $reason ??= $this->intake->rejectionReason($call)
+            ?? ($this->lacksConnectedConversation($call)
+                ? 'تماس برقرار نشده یا بدون مکالمه بود؛ ضبط و تحلیل انجام نشد.'
+                : "مدت تماس ({$duration} ثانیه) کمتر از حداقل قابل تحلیل ({$minDuration} ثانیه) است؛ ضبط و تحلیل انجام نشد.");
 
         $call->update([
             'processing_status' => CallProcessingStatus::Skipped,

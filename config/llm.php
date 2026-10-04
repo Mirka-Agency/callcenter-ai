@@ -30,6 +30,12 @@ return [
         ? env('APP_ENV') === 'local'
         : filter_var(env('LLM_BLOCK_AVALAI'), FILTER_VALIDATE_BOOLEAN),
 
+    /*
+    | Speech-to-text model used before analysis. Whisper is billed per minute
+    | of audio, so the analysis model receives only the transcript.
+    */
+    'transcription_model' => env('LLM_TRANSCRIPTION_MODEL', 'whisper-1'),
+
     'blocked_hosts' => array_values(array_unique(array_merge(
         ['api.avalai.ir', 'avalai.ir'],
         $extraBlockedHosts,

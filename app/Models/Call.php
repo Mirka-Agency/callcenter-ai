@@ -6,6 +6,7 @@ use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Call\Enums\UploaderType;
 use App\Models\Concerns\OccurredBetween;
+use App\Services\CallIntake\InternalAgentCallDetector;
 use App\Services\CustomerPhoneResolver;
 use App\Services\Reports\DefinedExtensionCallConstraint;
 use Carbon\CarbonInterface;
@@ -25,7 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'started_at', 'ended_at',
     'duration_seconds', 'metadata', 'title', 'customer_name', 'customer_phone', 'customer_id',
     'notes', 'category', 'tags', 'conversation_date',
-    'counts_for_extension_reports',
+    'counts_for_extension_reports', 'is_internal_agent_call',
 ])]
 class Call extends Model
 {
@@ -43,6 +44,7 @@ class Call extends Model
             'metadata' => 'array',
             'tags' => 'array',
             'counts_for_extension_reports' => 'boolean',
+            'is_internal_agent_call' => 'boolean',
         ];
     }
 
@@ -75,6 +77,7 @@ class Call extends Model
         static::saving(function (Call $call): void {
             $call->counts_for_extension_reports = app(DefinedExtensionCallConstraint::class)
                 ->countsForReports($call);
+            $call->is_internal_agent_call = app(InternalAgentCallDetector::class)->matches($call);
         });
 
         static::saving(function (Call $call): void {

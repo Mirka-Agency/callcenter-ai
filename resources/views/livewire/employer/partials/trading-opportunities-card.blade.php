@@ -2,7 +2,7 @@
     <div class="flex flex-wrap items-start justify-between gap-3 px-4 py-4 sm:px-6 sm:pt-6">
         <div>
             <h2 class="text-lg font-semibold">فرصت‌های معاملاتی جدید</h2>
-            <p class="mt-1 text-sm text-zinc-500">لیدهای باکیفیت اخیر که باید برای بستن فروش پیگیری شوند</p>
+            <p class="mt-1 text-sm text-zinc-500">لیدهای باکیفیت ۳۰ روز اخیر که باید برای بستن فروش پیگیری شوند</p>
         </div>
         @if (! empty($tradingOpportunities))
             <span class="rounded-lg bg-emerald-50 px-2.5 py-1 text-sm font-medium tabular-nums text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">

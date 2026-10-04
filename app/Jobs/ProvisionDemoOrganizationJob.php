@@ -15,7 +15,10 @@ class ProvisionDemoOrganizationJob implements ShouldQueue
 
     public int $tries = 1;
 
-    public function __construct(private readonly int $organizationId) {}
+    public function __construct(private readonly int $organizationId)
+    {
+        $this->onQueue((string) config('queue.names.followup'));
+    }
 
     public function handle(DemoAnalyticsBuilder $builder): void
     {

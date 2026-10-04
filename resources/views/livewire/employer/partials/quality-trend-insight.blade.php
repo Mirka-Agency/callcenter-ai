@@ -66,7 +66,7 @@
         <div class="mt-3 space-y-2">
             @forelse ($qualityTrendInsight['agents'] as $agent)
                 <a
-                    href="{{ route('employer.intelligence.performance.show', $agent['id']) }}"
+                    href="{{ route('employer.intelligence.performance.show', $agent['id']) }}{{ filled($agentProfileQuery ?? null) ? '?'.$agentProfileQuery : '' }}"
                     wire:navigate
                     class="flex items-center justify-between gap-3 rounded-lg border border-zinc-200/80 bg-white px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900"
                 >

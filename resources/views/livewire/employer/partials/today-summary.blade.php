@@ -11,22 +11,27 @@
     $todayEndTimestamp = $todayInTehran->copy()->endOfDay()->getTimestamp();
 
     $record = fn (string $name, string $url): array => ['name' => $name, 'url' => $url];
+    $happenedToday = function (array $row) use ($todayStartTimestamp, $todayEndTimestamp): bool {
+        $callTimestamp = $row['sort_date'] ?? null;
+
+        return is_numeric($callTimestamp)
+            && (int) $callTimestamp >= $todayStartTimestamp
+            && (int) $callTimestamp <= $todayEndTimestamp;
+    };
 
     $summaryLists = [
-        'مشتری ناراضی' => collect($sentimentCustomers['dissatisfied'] ?? [])
+        'مشتری ناراضی' => collect($todayDissatisfiedCustomers ?? ($sentimentCustomers['dissatisfied'] ?? []))
+            ->filter($happenedToday)
             ->map(fn (array $customer): array => $record(
                 $customer['customer'] ?? '—',
                 route('employer.intelligence.show', $customer['analysis_id']),
             ))
+            ->values()
             ->all(),
         'کارشناسان نیازمند پیشرفت' => $progressAgentCalls ?? [],
-        'فرصت فروش با احتمال بالا' => collect($tradingOpportunities ?? [])
-            ->filter(function (array $opportunity) use ($todayStartTimestamp, $todayEndTimestamp): bool {
-                $callTimestamp = $opportunity['sort_date'] ?? null;
-
-                return is_numeric($callTimestamp)
-                    && (int) $callTimestamp >= $todayStartTimestamp
-                    && (int) $callTimestamp <= $todayEndTimestamp
+        'فرصت فروش با احتمال بالا' => collect($todayTradingOpportunities ?? $tradingOpportunities ?? [])
+            ->filter(function (array $opportunity) use ($happenedToday): bool {
+                return $happenedToday($opportunity)
                     && is_numeric($opportunity['purchase_probability'] ?? null)
                     && (int) $opportunity['purchase_probability'] >= 70;
             })

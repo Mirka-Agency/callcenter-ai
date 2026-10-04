@@ -10,6 +10,7 @@ use App\Models\Organization;
 use App\Models\OrganizationActivity;
 use App\Services\CustomerCompanyService;
 use App\Services\Performance\EmployeePerformanceAnalytics;
+use App\Services\Reports\OrganizationCallMetrics;
 use App\Support\CompanyWorkCalendar;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -146,7 +147,7 @@ class DemoAnalyticsClock
     {
         EmployeePerformanceAnalytics::forgetOrganizationCaches($organization->id);
         $tehranDay = now(CompanyWorkCalendar::TIMEZONE)->toDateString();
-        Cache::forget('calls-today:'.$organization->id.':'.$tehranDay.':recorded-tehran-v1');
+        app(OrganizationCallMetrics::class)->forgetToday($organization->id);
         Cache::forget('calls-today:'.$organization->id.':'.now()->toDateString().':recorded');
         Cache::forget('calls-today:'.$organization->id.':'.$tehranDay.':recorded');
 

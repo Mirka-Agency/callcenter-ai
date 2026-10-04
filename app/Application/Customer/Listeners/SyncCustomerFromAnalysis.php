@@ -17,6 +17,11 @@ class SyncCustomerFromAnalysis implements ShouldQueue
         private CustomerIntelligenceService $customers,
     ) {}
 
+    public function viaQueue(): string
+    {
+        return (string) config('queue.names.followup');
+    }
+
     public function handle(ConversationAnalyzed $event): void
     {
         $analysis = ConversationAnalysis::query()->find($event->analysisId);

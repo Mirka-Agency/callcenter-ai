@@ -53,6 +53,7 @@ class LlmModelResolverTest extends TestCase
 
         $this->assertSame('backup-key', $config->credentials->apiKey);
         $this->assertSame('gpt-4o', $config->settings->defaultModel);
+        $this->assertSame('whisper-1', $config->settings->transcriptionModel);
         $this->assertNotSame($primaryOpenAi->api_key, $config->credentials->apiKey);
     }
 
@@ -78,6 +79,9 @@ class LlmModelResolverTest extends TestCase
             'code' => LlmProviderCode::OpenAi->value,
             'api_key' => $apiKey,
             'is_active' => $isActive,
+            'config' => [
+                'transcription_model' => 'whisper-1',
+            ],
         ]);
     }
 

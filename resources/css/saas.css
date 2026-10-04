@@ -333,7 +333,7 @@
     }
 
     .saas-stat-row {
-        @apply grid w-full min-w-0 grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6;
+        @apply grid w-full min-w-0 grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-5;
     }
 
     .saas-stat-row > .saas-stat.saas-stat--compact {

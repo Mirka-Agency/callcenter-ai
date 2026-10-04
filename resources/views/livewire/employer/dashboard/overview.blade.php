@@ -20,11 +20,21 @@
 
 <div class="saas-page">
     <section class="saas-hero" data-tour="dashboard-hero">
-        <p class="text-sm font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">داشبورد مدیر</p>
-        <h1 class="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">{{ $organization->title }}</h1>
-        <p class="mt-2 max-w-2xl text-zinc-500">
-            نمای کلی عملکرد کارشناسان در ۳۰ روز اخیر
-        </p>
+        <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div class="min-w-0">
+                <p class="text-sm font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">داشبورد مدیر</p>
+                <h1 class="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">{{ $organization->title }}</h1>
+                <p class="mt-2 max-w-2xl text-zinc-500">
+                    نمای کلی عملکرد کارشناسان در ۳۰ روز اخیر
+                </p>
+            </div>
+            <div class="flex w-full shrink-0 items-center justify-between gap-4 rounded-md bg-gradient-to-l from-indigo-600 to-violet-600 px-5 py-3 text-white shadow-sm sm:w-auto">
+                <div>
+                    <p class="text-xs font-medium opacity-80">تماس‌های امروز</p>
+                    <p class="text-2xl font-bold tabular-nums sm:text-3xl">{{ $cockpit['calls_today'] }}</p>
+                </div>
+            </div>
+        </div>
     </section>
 
     @php
@@ -35,7 +45,6 @@
         <div class="saas-stat-row">
             <x-saas.stat-card class="saas-stat--compact" label="کارشناسان فعال" :value="$teamKpis['active_employees']" />
             <x-saas.stat-card class="saas-stat--compact" label="تماس‌های تحلیل‌شده" :value="$teamKpis['total_analyzed']" />
-            <x-saas.stat-card class="saas-stat--compact" label="تماس‌های امروز" :value="$cockpit['calls_today']" />
             <x-saas.stat-card class="saas-stat--compact" label="میانگین امتیاز تیم" :value="$teamKpis['average_quality_score'] ?: '—'" :comparison="$teamKpis['average_quality_score'] ? $monthComparisons['average_quality_score'] : null" :tone="\App\Support\MetricTone::fromScore($teamKpis['average_quality_score'])" :tooltip="$analysisBasis($teamKpis['quality_sample_count'])" />
             <x-saas.stat-card class="saas-stat--compact" label="میانگین کیفیت لید" :value="$teamKpis['average_lead_score'] ?: '—'" :comparison="$teamKpis['average_lead_score'] ? $monthComparisons['average_lead_score'] : null" :tone="\App\Support\MetricTone::fromScore($teamKpis['average_lead_score'])" :tooltip="$analysisBasis($teamKpis['lead_sample_count'])" />
             <x-saas.stat-card class="saas-stat--compact" label="رضایت مشتری" :value="$teamKpis['average_sentiment'] ? $teamKpis['average_sentiment'].'%' : '—'" :comparison="$teamKpis['average_sentiment'] ? $monthComparisons['average_sentiment'] : null" comparison-unit="٪" :tone="\App\Support\MetricTone::fromScore($teamKpis['average_sentiment'])" :tooltip="$analysisBasis($teamKpis['sentiment_sample_count'])" />

@@ -3,8 +3,11 @@
 namespace App\Support;
 
 use App\DTOs\ReportFilter;
+use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Services\Performance\EmployeePerformanceAnalytics;
+use App\Support\Pdf\PerformanceReportCharts;
+use App\Support\Pdf\PersianPdf;
 use Illuminate\Support\Facades\View;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\CSV\Writer as CsvWriter;
@@ -25,18 +28,18 @@ class PerformanceReportExporter
 
     public static function downloadTeamPdf(ReportFilter $filter): StreamedResponse
     {
-        $analytics = app(EmployeePerformanceAnalytics::class);
-        $dashboard = $analytics->teamDashboard($filter);
-
+        $dashboard = app(EmployeePerformanceAnalytics::class)->teamDashboard($filter);
+        $charts = PerformanceReportCharts::forTeam($dashboard);
         $html = View::make('exports.performance-team-pdf', [
             'filter' => $filter,
             'dashboard' => $dashboard,
+            'charts' => $charts,
+            'organizationTitle' => Organization::query()->find($filter->organizationId)?->title,
         ])->render();
 
-        return response()->streamDownload(
-            fn () => print($html),
-            self::filename($filter, 'team', 'html'),
-            ['Content-Type' => 'text/html; charset=UTF-8'],
+        return self::pdfResponse(
+            PersianPdf::render($html, $charts, 'A4-L', 'گزارش عملکرد کارشناسان'),
+            self::filename($filter, 'team', 'pdf'),
         );
     }
 
@@ -55,16 +58,26 @@ class PerformanceReportExporter
         $analytics = app(EmployeePerformanceAnalytics::class);
         $profile = $analytics->employeeProfile($filter, $employee);
 
+        $charts = PerformanceReportCharts::forEmployee($profile);
         $html = View::make('exports.performance-employee-pdf', [
             'filter' => $filter,
             'profile' => $profile,
             'employee' => $employee,
+            'charts' => $charts,
         ])->render();
 
+        return self::pdfResponse(
+            PersianPdf::render($html, $charts, 'A4', 'گزارش عملکرد '.$employee->full_name),
+            self::filename($filter, 'employee-'.$employee->id, 'pdf'),
+        );
+    }
+
+    private static function pdfResponse(string $binary, string $filename): StreamedResponse
+    {
         return response()->streamDownload(
-            fn () => print($html),
-            self::filename($filter, 'employee-'.$employee->id, 'html'),
-            ['Content-Type' => 'text/html; charset=UTF-8'],
+            fn () => print ($binary),
+            $filename,
+            ['Content-Type' => 'application/pdf'],
         );
     }
 

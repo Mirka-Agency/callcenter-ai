@@ -62,6 +62,18 @@ class AudioAnalyzer
             $callDuration = $call->duration_seconds ?? $call->recording?->duration_seconds ?? $callDuration;
         }
 
+        $recording = $call->recording;
+        $sourceUrl = $recording?->source_url ?? $callLog?->recording_url;
+        $transcript = app(RecordingTranscriber::class)->transcribe(
+            callId: $callId,
+            storagePath: $recording?->storage_path,
+            storageDisk: $recording?->storage_disk,
+            sourceUrl: $sourceUrl,
+            mimeType: $recording?->mime_type,
+            fileSizeBytes: $recording?->file_size_bytes,
+            config: $config,
+        );
+
         $context = new PromptContextData(
             employeeName: $employee?->full_name,
             department: $employee?->department,
@@ -76,16 +88,16 @@ class AudioAnalyzer
             organizationName: $call->organization?->title,
             organizationBusinessContext: $call->organization?->business_context,
             agentRole: $employee?->position,
+            transcript: $transcript,
         );
 
-        $recording = $call->recording;
-        $sendAudioFile = $llmModel->sends_audio_file;
+        $sendAudioFile = $transcript === null && $llmModel->sends_audio_file;
         $playbackUrl = null;
 
-        if ($recording && ! $sendAudioFile) {
+        if ($transcript === null && $recording && ! $sendAudioFile) {
             $playbackUrl = app(RecordingUrlService::class)->resolve(
                 $recording,
-                $recording->source_url ?? $callLog?->recording_url,
+                $sourceUrl,
             );
         }
 
@@ -93,7 +105,7 @@ class AudioAnalyzer
             callId: $callId,
             storagePath: $sendAudioFile ? $recording?->storage_path : null,
             storageDisk: $sendAudioFile ? $recording?->storage_disk : null,
-            recordingUrl: $recording?->source_url ?? $callLog?->recording_url,
+            recordingUrl: $transcript === null ? $sourceUrl : null,
             mimeType: $recording?->mime_type,
             model: $modelKey,
             promptVersion: $config->settings->promptVersion,
@@ -136,7 +148,7 @@ class AudioAnalyzer
             promptVersion: $config->settings->promptVersion,
             callId: $callId,
             source: $call->source ?? ConversationSource::Voip,
-            transcript: $result->data['transcript'] ?? null,
+            transcript: $transcript ?? ($result->data['transcript'] ?? null),
             crmContext: array_filter([
                 'current_user_name' => $employee?->full_name,
                 'current_company_name' => $call->organization?->title,

@@ -19,7 +19,9 @@ class ProvisionDemoPersonJob implements ShouldQueue
         private readonly string $name,
         private readonly string $email,
         private readonly string $password,
-    ) {}
+    ) {
+        $this->onQueue((string) config('queue.names.followup'));
+    }
 
     public function handle(DemoPersonProvisioner $provisioner): void
     {

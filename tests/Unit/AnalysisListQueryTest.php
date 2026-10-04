@@ -4,13 +4,13 @@ namespace Tests\Unit;
 
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
+use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Domain\Voip\Enums\CallStatus;
 use App\Domain\Voip\Enums\VoipProviderCode;
 use App\DTOs\AnalysisListFilter;
 use App\DTOs\ReportFilter;
 use App\Enums\ReportDatePreset;
 use App\Infrastructure\Voip\Adapters\NullVoipAdapter;
-use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Models\Call;
 use App\Models\CallProcessingJob;
 use App\Models\CallRecording;
@@ -307,7 +307,7 @@ class AnalysisListQueryTest extends TestCase
 
         $this->assertSame(1, $overview['total']);
         $this->assertSame(4, $overview['total_calls'], 'unassigned calls are excluded like dashboard countBetween');
-        $this->assertSame(4, $overview['missed_count']);
+        $this->assertSame(3, $overview['missed_count']);
     }
 
     public function test_overview_analyzed_follows_analysis_completion_not_call_date(): void

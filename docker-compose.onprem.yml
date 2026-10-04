@@ -41,6 +41,7 @@ services:
       RECORDINGS_DISK: local
       FILESYSTEM_DISK: local
       QUEUE_CONNECTION: database
+      ANALYSIS_QUEUE_WORKERS: ${ANALYSIS_QUEUE_WORKERS:-3}
       CACHE_STORE: database
       LOG_CHANNEL: stderr
       VOIP_AMI_ENABLED: "true"

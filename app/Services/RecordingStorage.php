@@ -117,6 +117,27 @@ class RecordingStorage
         ];
     }
 
+    /**
+     * Stream the recording from disk. Callers must close the resource.
+     *
+     * @return array{disk: string, stream: resource, format: string}
+     */
+    public function readStream(string $path, ?string $preferredDisk = null): array
+    {
+        $disk = $this->assertExists($path, $preferredDisk);
+        $stream = Storage::disk($disk)->readStream($path);
+
+        if (! is_resource($stream)) {
+            throw RecordingNotFoundException::forPath($path, [$disk]);
+        }
+
+        return [
+            'disk' => $disk,
+            'stream' => $stream,
+            'format' => strtolower(pathinfo($path, PATHINFO_EXTENSION)) ?: 'mp3',
+        ];
+    }
+
     public function get(string $path, ?string $preferredDisk = null): string
     {
         $disk = $this->assertExists($path, $preferredDisk);

@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Domain\Llm\Enums\AnalysisSentiment;
+use App\Enums\ReportDatePreset;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationActivity;
+use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\OrganizationCallMetrics;
@@ -44,11 +46,13 @@ class EmployerDashboardAnalytics
         $overview = $ai->overview();
         $insights = $ai->organizationInsights();
 
-        $followUps = ConversationAnalysis::query()
-            ->where('organization_id', $this->organizationId)
-            ->whereNotNull('next_actions_json')
-            ->whereMonth('analyzed_at', now()->month)
-            ->count();
+        $followUps = app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->where('organization_id', $this->organizationId)
+                ->whereNotNull('next_actions_json')
+                ->whereMonth('analyzed_at', now()->month),
+            $this->organizationId,
+        )->count();
 
         return [
             'team_average_score' => $insights['team_average'],
@@ -142,7 +146,7 @@ class EmployerDashboardAnalytics
     }
 
     /**
-     * High-quality recent leads the sales team should follow up.
+     * High-quality leads from calls that happened in the recent window.
      *
      * @return list<array{
      *     analysis_id: int,
@@ -163,15 +167,18 @@ class EmployerDashboardAnalytics
      *     summary: ?string
      * }>
      */
-    public function tradingOpportunities(int $days = 30): array
+    public function tradingOpportunities(int $days = 30, bool $occurredToday = false): array
     {
         $days = max(1, min(90, $days));
         $sinceKey = $this->insightListsSince()?->getTimestamp() ?? 'none';
+        $dayKey = $occurredToday
+            ? now(CompanyWorkCalendar::TIMEZONE)->toDateString()
+            : 'any';
 
         return Cache::remember(
-            "dashboard:opportunities:{$this->organizationId}:{$days}:{$sinceKey}",
+            "dashboard:opportunities:{$this->organizationId}:{$days}:{$sinceKey}:{$dayKey}",
             120,
-            fn () => $this->buildTradingOpportunities($days),
+            fn () => $this->buildTradingOpportunities($days, $occurredToday),
         );
     }
 
@@ -195,14 +202,25 @@ class EmployerDashboardAnalytics
      *     summary: ?string
      * }>
      */
-    private function buildTradingOpportunities(int $days): array
+    private function buildTradingOpportunities(int $days, bool $occurredToday = false): array
     {
+        $callSince = now(CompanyWorkCalendar::TIMEZONE)->subDays($days)->startOfDay()->utc();
+
         $query = ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId)
             ->evaluable()
             ->business()
-            ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay())
-            ->where('lead_quality_json->level', 'high');
+            ->where('lead_quality_json->level', 'high')
+            ->whereHas('call', function ($call) use ($callSince): void {
+                $call->whereRaw(
+                    'COALESCE(conversation_date, started_at, created_at) >= ?',
+                    [$callSince->toDateTimeString()],
+                );
+            });
+
+        if ($occurredToday) {
+            $this->constrainToCallsOccurredToday($query);
+        }
 
         $this->constrainInsightListQuery($query);
 
@@ -257,18 +275,21 @@ class EmployerDashboardAnalytics
      *     }>
      * }
      */
-    public function sentimentCustomers(int $days = 30, int $limit = 10): array
+    public function sentimentCustomers(int $days = 30, int $limit = 10, bool $occurredToday = false): array
     {
         $days = max(1, min(90, $days));
         $limit = max(1, min(50, $limit));
         $sinceKey = $this->insightListsSince()?->getTimestamp() ?? 'none';
+        $dayKey = $occurredToday
+            ? now(CompanyWorkCalendar::TIMEZONE)->toDateString()
+            : 'any';
 
         return Cache::remember(
-            "dashboard:sentiment:{$this->organizationId}:{$days}:{$limit}:{$sinceKey}",
+            "dashboard:sentiment:{$this->organizationId}:{$days}:{$limit}:{$sinceKey}:{$dayKey}",
             120,
             fn () => [
-                'satisfied' => $this->sentimentCustomerList(AnalysisSentiment::Positive, $days, $limit),
-                'dissatisfied' => $this->sentimentCustomerList(AnalysisSentiment::Negative, $days, $limit),
+                'satisfied' => $this->sentimentCustomerList(AnalysisSentiment::Positive, $days, $limit, $occurredToday),
+                'dissatisfied' => $this->sentimentCustomerList(AnalysisSentiment::Negative, $days, $limit, $occurredToday),
             ],
         );
     }
@@ -684,7 +705,7 @@ class EmployerDashboardAnalytics
      *     highlight: ?string
      * }>
      */
-    private function sentimentCustomerList(AnalysisSentiment $sentiment, int $days, int $limit): array
+    private function sentimentCustomerList(AnalysisSentiment $sentiment, int $days, int $limit, bool $occurredToday = false): array
     {
         $seen = [];
 
@@ -693,6 +714,10 @@ class EmployerDashboardAnalytics
             ->evaluable()
             ->where('sentiment', $sentiment)
             ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay());
+
+        if ($occurredToday) {
+            $this->constrainToCallsOccurredToday($query);
+        }
 
         $this->constrainInsightListQuery($query);
 
@@ -743,6 +768,18 @@ class EmployerDashboardAnalytics
     }
 
     /**
+     * @param  Builder<ConversationAnalysis>  $query
+     */
+    private function constrainToCallsOccurredToday($query): void
+    {
+        [$from, $to] = ReportDatePreset::Today->resolve();
+
+        $query->whereHas('call', function ($call) use ($from, $to): void {
+            $call->occurredBetween($from, $to);
+        });
+    }
+
+    /**
      * Insight lists ignore historical rows before the reset cutoff.
      * Match on analyzed_at or updated_at so a re-analysis always qualifies.
      *
@@ -789,13 +826,15 @@ class EmployerDashboardAnalytics
     private function mapSentimentCustomer(ConversationAnalysis $analysis): array
     {
         $contact = $this->contactSnapshot($analysis);
+        $callAt = $this->callOccurredAt($analysis);
 
         return [
             'analysis_id' => $analysis->id,
             'customer' => $contact['customer'],
             'phone' => $contact['phone'],
             'company' => $contact['company'],
-            'call_date' => JalaliDate::date($this->callOccurredAt($analysis)),
+            'call_date' => JalaliDate::date($callAt),
+            'sort_date' => $callAt?->getTimestamp() ?? 0,
             'employee' => $analysis->employee?->full_name ?? '—',
             'summary' => $this->nullableText($analysis->summary),
             'highlight' => $analysis->sentiment === AnalysisSentiment::Negative

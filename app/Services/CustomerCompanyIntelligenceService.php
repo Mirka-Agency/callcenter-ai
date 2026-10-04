@@ -8,6 +8,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
 use App\Models\OrganizationUser;
+use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Support\CustomerNextActionAggregator;
 use App\Support\CustomerPresenter;
@@ -127,9 +128,12 @@ class CustomerCompanyIntelligenceService
             ];
         }
 
-        $analyses = ConversationAnalysis::query()
-            ->where('organization_id', $company->organization_id)
-            ->whereHas('call', fn ($q) => $q->whereIn('customer_id', $contactIds))
+        $analyses = app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->where('organization_id', $company->organization_id)
+                ->whereHas('call', fn ($q) => $q->whereIn('customer_id', $contactIds)),
+            (int) $company->organization_id,
+        )
             ->orderBy('analyzed_at')
             ->get();
 

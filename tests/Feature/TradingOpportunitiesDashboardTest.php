@@ -64,7 +64,6 @@ class TradingOpportunitiesDashboardTest extends TestCase
             ->assertSee('09121234567')
             ->assertSee('علی احمدی')
             ->assertSee('اشتراک سازمانی')
-            ->assertDontSee('بالا')
             ->assertSee('saas-lead-quality')
             ->assertSee('88٪')
             ->assertSee('ارسال پیش‌فاکتور امروز')
@@ -77,9 +76,18 @@ class TradingOpportunitiesDashboardTest extends TestCase
             ->html();
 
         $opportunitiesPosition = mb_strpos($html, 'فرصت‌های معاملاتی جدید');
+        $sentimentPosition = mb_strpos($html, 'مشتریان راضی');
+        $opportunitiesSection = mb_substr(
+            $html,
+            (int) $opportunitiesPosition,
+            (int) $sentimentPosition - (int) $opportunitiesPosition,
+        );
         $weaknessesPosition = mb_strpos($html, 'ضعف‌های پرتکرار تیم');
 
+        $this->assertStringNotContainsString('بالا', $opportunitiesSection);
+
         $this->assertNotFalse($opportunitiesPosition);
+        $this->assertNotFalse($sentimentPosition);
         $this->assertNotFalse($weaknessesPosition);
         $this->assertLessThan($opportunitiesPosition, $weaknessesPosition);
     }
@@ -102,6 +110,14 @@ class TradingOpportunitiesDashboardTest extends TestCase
             'lead_level' => 'high',
             'lead_score' => 90,
             'analyzed_at' => now()->subDays(40),
+        ]);
+        $this->seedOpportunity($organization, [
+            'external_id' => 'skip-reanalyzed-old-call',
+            'customer_name' => 'تماس قدیمی بازتحلیل‌شده',
+            'lead_level' => 'high',
+            'lead_score' => 93,
+            'started_at' => now()->subDays(45),
+            'analyzed_at' => now()->subHour(),
         ]);
         $this->seedOpportunity($organization, [
             'external_id' => 'skip-low',
@@ -344,7 +360,7 @@ class TradingOpportunitiesDashboardTest extends TestCase
             'status' => 'completed',
             'processing_status' => 'analyzed',
             'duration_seconds' => 180,
-            'started_at' => $data['analyzed_at'],
+            'started_at' => $data['started_at'] ?? $data['analyzed_at'],
         ]);
 
         $analysis = ConversationAnalysis::query()->create([
