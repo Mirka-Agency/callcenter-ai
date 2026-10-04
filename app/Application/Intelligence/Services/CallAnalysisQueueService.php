@@ -2,7 +2,6 @@
 
 namespace App\Application\Intelligence\Services;
 
-use App\Application\Call\Services\CallEmployeeResolver;
 use App\Application\Intelligence\Jobs\AnalyzeAudioJob;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
@@ -19,7 +18,6 @@ class CallAnalysisQueueService
     public function __construct(
         private CallProcessingTracker $tracker,
         private AiBillingService $billing,
-        private CallEmployeeResolver $employeeResolver,
         private CallIntakePolicy $intake,
     ) {}
 
@@ -36,22 +34,6 @@ class CallAnalysisQueueService
             && ! $call->recording->is_expired;
 
         if (! $recordingUrl && ! $hasLocalRecording) {
-            return false;
-        }
-
-        if ($reason = $this->intake->rejectionReason($call)) {
-            $this->markSkipped($call, $reason);
-
-            return false;
-        }
-
-        $allowUnassigned = $this->intake->allowsUnassigned($call);
-
-        if (! $call->organization_user_id && ! $allowUnassigned) {
-            return false;
-        }
-
-        if (! $this->matchesDefinedExtension($call) && ! $allowUnassigned) {
             return false;
         }
 
@@ -125,25 +107,6 @@ class CallAnalysisQueueService
                     $this->dispatchForCall($call, forceReanalyze: true);
                 }
             });
-    }
-
-    /**
-     * VoIP calls are analyzed only when the log resolves to an extension
-     * defined on an employee. Support-line and caller numbers do not qualify.
-     */
-    private function matchesDefinedExtension(Call $call): bool
-    {
-        if ($call->source !== ConversationSource::Voip) {
-            return true;
-        }
-
-        $log = $call->voipCallLog;
-
-        if ($log === null) {
-            return true;
-        }
-
-        return $this->employeeResolver->resolveFromCallLog($log) !== null;
     }
 
     /**

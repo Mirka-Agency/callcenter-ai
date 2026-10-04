@@ -7,7 +7,6 @@ use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\VoipCallLog;
 use App\Services\CallIntake\Contracts\CallIntakeFilter;
-use App\Services\CallIntake\Filters\UnassignedAgentCallsFilter;
 use Illuminate\Database\Eloquent\Builder;
 
 class CallIntakePolicy
@@ -33,13 +32,6 @@ class CallIntakePolicy
         }
 
         return null;
-    }
-
-    public function allowsUnassigned(Call $call): bool
-    {
-        return $call->source === ConversationSource::Voip
-            && ! $call->organization_user_id
-            && $this->settings->enabled((int) $call->organization_id, UnassignedAgentCallsFilter::KEY);
     }
 
     /**

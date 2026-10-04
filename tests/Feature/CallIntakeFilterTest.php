@@ -87,7 +87,7 @@ class CallIntakeFilterTest extends TestCase
         $this->assertSame(CallProcessingStatus::Skipped, $internal->fresh()->processing_status);
     }
 
-    public function test_enabled_unassigned_filter_sends_calls_without_an_agent_to_analysis_and_counts(): void
+    public function test_calls_without_an_agent_are_analyzed_unless_that_filter_is_off(): void
     {
         Bus::fake();
         PlatformAiSettings::current()->update(['allow_negative_balance' => true]);
@@ -107,23 +107,24 @@ class CallIntakeFilterTest extends TestCase
             'receiver_number' => '900',
         ]);
 
-        $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
-        $this->assertFalse(app(CallAnalysisQueueService::class)->dispatchForCall($unassigned));
-        Bus::assertNotDispatched(AnalyzeAudioJob::class);
-
-        $organization->update([
-            'call_intake_filters' => [
-                InternalAgentCallsFilter::KEY => true,
-                UnassignedAgentCallsFilter::KEY => true,
-            ],
-        ]);
-
         $this->assertSame(2, app(OrganizationCallMetrics::class)->countToday($organization->id));
+        $this->assertTrue(app(CallAnalysisQueueService::class)->dispatchForCall($unassigned));
         Bus::assertChained([
             AnalyzeAudioJob::class,
             UpdateEmployeeMetricsJob::class,
             SyncCrmJob::class,
         ]);
+
+        $organization->update([
+            'call_intake_filters' => [
+                InternalAgentCallsFilter::KEY => true,
+                UnassignedAgentCallsFilter::KEY => false,
+            ],
+        ]);
+
+        $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
+        $this->assertFalse(app(CallAnalysisQueueService::class)->dispatchForCall($unassigned->fresh(), forceReanalyze: true));
+        $this->assertSame(CallProcessingStatus::Skipped, $unassigned->fresh()->processing_status);
         $this->assertTrue(app(CallAnalysisQueueService::class)->dispatchForCall($assigned->fresh()));
     }
 

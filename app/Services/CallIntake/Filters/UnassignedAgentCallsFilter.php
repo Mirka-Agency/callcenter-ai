@@ -31,7 +31,7 @@ class UnassignedAgentCallsFilter implements CallIntakeFilter
 
     public function defaultEnabled(): bool
     {
-        return false;
+        return true;
     }
 
     public function matches(Call $call): bool
