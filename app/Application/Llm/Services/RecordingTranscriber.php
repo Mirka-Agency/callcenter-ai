@@ -164,7 +164,7 @@ class RecordingTranscriber
     private function postFile(string $path, string $filename, string $mimeType, LlmConnectionConfig $config): string
     {
         $model = $config->settings->transcriptionModel
-            ?: (string) config('llm.transcription_model', 'gpt-4o-mini-transcribe');
+            ?: (string) config('llm.transcription_model', 'whisper-1');
         $stream = fopen($path, 'rb');
 
         if ($stream === false) {

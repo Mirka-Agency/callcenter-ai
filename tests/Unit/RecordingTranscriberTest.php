@@ -39,7 +39,8 @@ class RecordingTranscriberTest extends TestCase
         Http::assertSentCount(1);
         Http::assertSent(function ($request) {
             return $request->url() === 'https://llm.test/v1/audio/transcriptions'
-                && $request->isMultipart();
+                && $request->isMultipart()
+                && $request->hasFile('model', 'gpt-4o-mini-transcribe');
         });
 
         $cached = app(RecordingTranscriber::class)->transcribe(
@@ -76,6 +77,42 @@ class RecordingTranscriberTest extends TestCase
         );
 
         $this->assertNull($transcript);
+    }
+
+    public function test_uses_whisper_when_the_connection_has_no_transcription_model(): void
+    {
+        Storage::fake('local');
+        Storage::disk('local')->put('recordings/call.mp3', 'audio-bytes');
+
+        Http::fake([
+            'https://llm.test/v1/audio/transcriptions' => Http::response([
+                'text' => 'متن تماس',
+            ]),
+        ]);
+
+        $config = $this->config();
+        $config = new LlmConnectionConfig(
+            connectionId: $config->connectionId,
+            organizationId: $config->organizationId,
+            providerCode: $config->providerCode,
+            name: $config->name,
+            credentials: $config->credentials,
+            settings: new LlmSettings,
+            isDefault: $config->isDefault,
+            isActive: $config->isActive,
+        );
+
+        app(RecordingTranscriber::class)->transcribe(
+            callId: 17,
+            storagePath: 'recordings/call.mp3',
+            storageDisk: 'local',
+            sourceUrl: null,
+            mimeType: 'audio/mpeg',
+            fileSizeBytes: 11,
+            config: $config,
+        );
+
+        Http::assertSent(fn ($request) => $request->hasFile('model', 'whisper-1'));
     }
 
     private function config(): LlmConnectionConfig
