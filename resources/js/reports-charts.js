@@ -106,6 +106,14 @@ function makeHorizontalGradient(ctx, chartArea, color) {
     return gradient;
 }
 
+function hasPaintableChartArea(chartArea) {
+    return Boolean(
+        chartArea
+        && chartArea.right > chartArea.left
+        && chartArea.bottom > chartArea.top,
+    );
+}
+
 function deepMerge(target, source) {
     const output = { ...target };
 
@@ -124,84 +132,113 @@ function deepMerge(target, source) {
     return output;
 }
 
+/**
+ * Style defaults that must not wait on chartArea. Livewire filter re-inits often
+ * finish their first update before layout; a later resize() is a no-op when the
+ * container size is already correct, so theme never ran and Chart.js kept
+ * visible points / square bars.
+ */
+function applyStaticDatasetTheme(type, dataset, index, indexAxis) {
+    const color = resolveColor(dataset, index);
+    const dark = isDarkMode();
+
+    if (type === 'line') {
+        dataset.tension = dataset.tension ?? 0.42;
+        dataset.borderWidth = dataset.borderWidth ?? 2.5;
+        dataset.borderCapStyle = dataset.borderCapStyle ?? 'round';
+        dataset.borderJoinStyle = dataset.borderJoinStyle ?? 'round';
+        dataset.pointRadius = dataset.pointRadius ?? 0;
+        dataset.pointHoverRadius = dataset.pointHoverRadius ?? 7;
+        dataset.pointBackgroundColor = dataset.pointBackgroundColor ?? (dark ? 'rgb(24, 24, 27)' : '#ffffff');
+        dataset.pointBorderColor = dataset.pointBorderColor ?? color;
+        dataset.pointBorderWidth = dataset.pointBorderWidth ?? 2.5;
+        dataset.pointHoverBorderWidth = dataset.pointHoverBorderWidth ?? 3;
+        dataset.spanGaps = dataset.spanGaps ?? true;
+    }
+
+    if (type === 'bar') {
+        const horizontal = indexAxis === 'y';
+
+        if (! dataset.borderRadius) {
+            dataset.borderRadius = horizontal
+                ? { topLeft: 0, bottomLeft: 0, topRight: 10, bottomRight: 10 }
+                : { topLeft: 10, topRight: 10, bottomLeft: 0, bottomRight: 0 };
+        }
+
+        dataset.borderSkipped = dataset.borderSkipped ?? false;
+        dataset.maxBarThickness = dataset.maxBarThickness ?? 44;
+        dataset.borderWidth = dataset.borderWidth ?? 0;
+
+        if (typeof color === 'string') {
+            dataset.borderColor = dataset.borderColor || color;
+            dataset.hoverBackgroundColor = dataset.hoverBackgroundColor || withAlpha(color, 1);
+        }
+    }
+
+    if (type === 'doughnut' || type === 'pie') {
+        if (! Array.isArray(dataset.backgroundColor) || dataset.backgroundColor.length === 1) {
+            const count = dataset.data?.length ?? 0;
+            dataset.backgroundColor = Array.from({ length: count }, (_, i) => doughnutColors[i % doughnutColors.length]);
+        }
+
+        dataset.borderWidth = dataset.borderWidth ?? 3;
+        dataset.borderColor = dataset.borderColor ?? (dark ? 'rgb(24, 24, 27)' : '#ffffff');
+        dataset.hoverBorderWidth = dataset.hoverBorderWidth ?? 3;
+        dataset.hoverOffset = dataset.hoverOffset ?? 10;
+        dataset.borderRadius = dataset.borderRadius ?? 8;
+        dataset.spacing = dataset.spacing ?? 3;
+    }
+}
+
+function applyDatasetThemeDefaults(type, datasets, indexAxis) {
+    datasets?.forEach((dataset, index) => {
+        applyStaticDatasetTheme(type, dataset, index, indexAxis);
+    });
+}
+
+function applyDatasetGradients(type, dataset, index, indexAxis, ctx, chartArea, datasetCount) {
+    const color = resolveColor(dataset, index);
+    const horizontal = indexAxis === 'y';
+
+    if (type === 'line') {
+        const wantsFill = dataset.fill === true
+            || (dataset.fill !== false && datasetCount === 1);
+
+        if (wantsFill) {
+            dataset.backgroundColor = makeVerticalGradient(ctx, chartArea, color);
+            dataset.fill = true;
+        } else {
+            dataset.fill = false;
+        }
+    }
+
+    if (type === 'bar') {
+        if (typeof dataset.backgroundColor === 'string' && dataset.backgroundColor.includes('rgba')) {
+            dataset.backgroundColor = horizontal
+                ? makeHorizontalGradient(ctx, chartArea, color)
+                : makeVerticalGradient(ctx, chartArea, color, 0.92, 0.55);
+        }
+    }
+}
+
 const saasChartThemePlugin = {
     id: 'saasChartTheme',
     beforeUpdate(chart) {
         const { ctx, chartArea, config } = chart;
+        const type = config.type;
+        const indexAxis = config.options?.indexAxis;
+        const datasets = config.data.datasets || [];
 
-        if (! chartArea || ! ctx) {
+        datasets.forEach((dataset, index) => {
+            applyStaticDatasetTheme(type, dataset, index, indexAxis);
+        });
+
+        if (! ctx || ! hasPaintableChartArea(chartArea)) {
             return;
         }
 
-        const type = config.type;
-        const dark = isDarkMode();
-        const indexAxis = config.options?.indexAxis;
-
-        config.data.datasets?.forEach((dataset, index) => {
-            const color = resolveColor(dataset, index);
-
-            if (type === 'line') {
-                const wantsFill = dataset.fill === true
-                    || (dataset.fill !== false && config.data.datasets.length === 1);
-
-                if (wantsFill) {
-                    dataset.backgroundColor = makeVerticalGradient(ctx, chartArea, color);
-                    dataset.fill = true;
-                } else {
-                    dataset.fill = false;
-                }
-
-                dataset.tension = dataset.tension ?? 0.42;
-                dataset.borderWidth = dataset.borderWidth ?? 2.5;
-                dataset.borderCapStyle = dataset.borderCapStyle ?? 'round';
-                dataset.borderJoinStyle = dataset.borderJoinStyle ?? 'round';
-                dataset.pointRadius = dataset.pointRadius ?? 0;
-                dataset.pointHoverRadius = dataset.pointHoverRadius ?? 7;
-                dataset.pointBackgroundColor = dataset.pointBackgroundColor ?? (dark ? 'rgb(24, 24, 27)' : '#ffffff');
-                dataset.pointBorderColor = dataset.pointBorderColor ?? color;
-                dataset.pointBorderWidth = dataset.pointBorderWidth ?? 2.5;
-                dataset.pointHoverBorderWidth = dataset.pointHoverBorderWidth ?? 3;
-                dataset.spanGaps = dataset.spanGaps ?? true;
-            }
-
-            if (type === 'bar') {
-                const horizontal = indexAxis === 'y';
-
-                if (! dataset.borderRadius) {
-                    dataset.borderRadius = horizontal
-                        ? { topLeft: 0, bottomLeft: 0, topRight: 10, bottomRight: 10 }
-                        : { topLeft: 10, topRight: 10, bottomLeft: 0, bottomRight: 0 };
-                }
-
-                dataset.borderSkipped = dataset.borderSkipped ?? false;
-                dataset.maxBarThickness = dataset.maxBarThickness ?? 44;
-                dataset.borderWidth = dataset.borderWidth ?? 0;
-
-                if (typeof color === 'string') {
-                    dataset.borderColor = dataset.borderColor || color;
-                    dataset.hoverBackgroundColor = dataset.hoverBackgroundColor || withAlpha(color, 1);
-                }
-
-                if (typeof dataset.backgroundColor === 'string' && dataset.backgroundColor.includes('rgba')) {
-                    dataset.backgroundColor = horizontal
-                        ? makeHorizontalGradient(ctx, chartArea, color)
-                        : makeVerticalGradient(ctx, chartArea, color, 0.92, 0.55);
-                }
-            }
-
-            if (type === 'doughnut' || type === 'pie') {
-                if (! Array.isArray(dataset.backgroundColor) || dataset.backgroundColor.length === 1) {
-                    const count = dataset.data?.length ?? 0;
-                    dataset.backgroundColor = Array.from({ length: count }, (_, i) => doughnutColors[i % doughnutColors.length]);
-                }
-
-                dataset.borderWidth = dataset.borderWidth ?? 3;
-                dataset.borderColor = dataset.borderColor ?? (dark ? 'rgb(24, 24, 27)' : '#ffffff');
-                dataset.hoverBorderWidth = dataset.hoverBorderWidth ?? 3;
-                dataset.hoverOffset = dataset.hoverOffset ?? 10;
-                dataset.borderRadius = dataset.borderRadius ?? 8;
-                dataset.spacing = dataset.spacing ?? 3;
-            }
+        datasets.forEach((dataset, index) => {
+            applyDatasetGradients(type, dataset, index, indexAxis, ctx, chartArea, datasets.length);
         });
     },
 };
@@ -507,6 +544,7 @@ function initChart(canvas) {
         applyTooltipBodies(options, tooltipBodies);
         applyHorizontalBarHover(type, options);
         attachDrilldown(canvas, options);
+        applyDatasetThemeDefaults(type, config.datasets || [], options.indexAxis);
 
         const chart = new Chart(canvas, {
             type,
@@ -525,7 +563,17 @@ function initChart(canvas) {
         }
 
         requestAnimationFrame(() => {
-            charts.get(id)?.resize();
+            const active = charts.get(id);
+
+            if (! active) {
+                return;
+            }
+
+            // resize() no-ops when the box size is unchanged, which is common after
+            // Livewire filter morphs. Force a follow-up update so gradients that need
+            // chartArea still paint on the second pass.
+            active.resize();
+            active.update('none');
         });
     } catch (error) {
         console.error(`Failed to initialize chart "${id}"`, error);

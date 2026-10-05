@@ -1,10 +1,12 @@
 *.log
 .DS_Store
 .env
+.env.bak
 .env.backup
 .env.caprover
 pass
 .env.production
+/tmp/
 .phpactor.json
 .phpunit.result.cache
 /.codex
