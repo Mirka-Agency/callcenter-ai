@@ -15,6 +15,11 @@ class VoipEventDeduplicator
             return false;
         }
 
+        // The PBX CDR feed only fills in calls that no other source has sent.
+        if (($event->rawPayload['source'] ?? null) === 'cdr') {
+            return true;
+        }
+
         return match ($event->type) {
             VoipWebhookEventType::CallStarted => $existing->started_at !== null
                 || in_array($existing->status, [

@@ -13,6 +13,7 @@ use App\Domain\Voip\Events\CallMissed;
 use App\Domain\Voip\Events\CallStarted;
 use App\Domain\Voip\Events\ExtensionCreated;
 use App\Domain\Voip\Events\RecordingCreated;
+use Illuminate\Support\Carbon;
 
 class VoipWebhookDispatcher
 {
@@ -83,7 +84,7 @@ class VoipWebhookDispatcher
     private function startedAtFor(NormalizedWebhookEvent $event): string
     {
         if (filled($event->startedAt)) {
-            return $event->startedAt;
+            return $this->toAppTime($event->startedAt);
         }
 
         if ($event->type === VoipWebhookEventType::CallStarted) {
@@ -100,7 +101,7 @@ class VoipWebhookDispatcher
     private function endedAtFor(NormalizedWebhookEvent $event): ?string
     {
         if (filled($event->endedAt)) {
-            return $event->endedAt;
+            return $this->toAppTime($event->endedAt);
         }
 
         return match ($event->type) {
@@ -109,5 +110,22 @@ class VoipWebhookDispatcher
             VoipWebhookEventType::RecordingCreated => now()->toDateTimeString(),
             default => null,
         };
+    }
+
+    /**
+     * Timestamp columns have no zone, so an explicit offset (+03:30, Z) must be
+     * converted here or the wall-clock time is stored as if it were app time.
+     */
+    private function toAppTime(string $value): string
+    {
+        if (! preg_match('/(Z|[+-]\d{2}:?\d{2})$/i', trim($value))) {
+            return $value;
+        }
+
+        try {
+            return Carbon::parse($value)->setTimezone(config('app.timezone'))->toDateTimeString();
+        } catch (\Throwable) {
+            return $value;
+        }
     }
 }

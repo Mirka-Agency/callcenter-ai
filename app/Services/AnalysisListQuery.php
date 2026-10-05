@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Application\Voip\Services\PbxMissedCallsCounter;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
@@ -45,6 +46,7 @@ class AnalysisListQuery
     public function __construct(
         private CallMetricsAnalytics $callMetrics,
         private DefinedExtensionCallConstraint $definedExtensions,
+        private PbxMissedCallsCounter $pbxMissedCalls,
     ) {}
 
     /** @return Builder<ConversationAnalysis> */
@@ -112,13 +114,15 @@ class AnalysisListQuery
             ? round((float) $evaluableFacts->avg('score'), 1)
             : 0.0;
 
-        // Total, analyzed, missed, and the score cards follow the two organization
-        // profile filters. A disabled category is removed from those cards and
-        // counted only as outside analysis. Analyzed is still only finished analyses.
+        // Total is every PBX call in the date window that passes the organization profile filters.
+        // Analyzed is the calls in that window with a finished analysis, so it is a subset of the total.
+        // Missed is the PBX's own missed-call report for the window when its CDR database is reachable,
+        // otherwise every unanswered call. Unanswered calls are never counted as outside analysis.
+        // A disabled profile category is counted only as outside analysis.
         $callStats = $this->callStats($filter);
         $totalCalls = $callStats['total_calls'];
         $outsideAnalysisCount = $callStats['outside_analysis_count'];
-        $missedCount = $callStats['missed_count'];
+        $missedCount = $this->pbxMissedCalls->count($filter->from, $filter->to) ?? $callStats['missed_count'];
         $inFlightCount = $callStats['in_flight_count'];
         $analyzedCalls = $callStats['analyzed_count'];
         $avgDuration = $callStats['average_duration_seconds'];
@@ -194,7 +198,7 @@ class AnalysisListQuery
     {
         $extensionKey = md5(json_encode($this->definedExtensions->matchSetFingerprint($filter->organizationId)) ?: '');
         $cacheKey = implode(':', [
-            'analysis-call-stats-v10-intake-filters',
+            'analysis-call-stats-v14-total-follows-intake',
             app(CallIntakeSettings::class)->cacheToken($filter->organizationId),
             $filter->organizationId,
             $filter->from->getTimestamp(),
@@ -210,8 +214,10 @@ class AnalysisListQuery
         return Cache::remember($cacheKey, 90, function () use ($filter): array {
             $calls = $filter->applyToCallQuery(Call::query());
             $included = app(CallIntakePolicy::class)->applyToCalls(clone $calls, $filter->organizationId);
-            $outsideCount = (clone $calls)->count() - (clone $included)->count();
             $missed = $this->missedCallSql();
+            $outsideCount = (clone $calls)->whereRaw("NOT ($missed)")->count()
+                - (clone $included)->whereRaw("NOT ($missed)")->count();
+            $missedCount = (clone $calls)->whereRaw($missed)->count();
             $marked = [
                 CallProcessingStatus::Pending->value,
                 CallProcessingStatus::Downloading->value,
@@ -224,14 +230,16 @@ class AnalysisListQuery
             ];
             $markedSql = implode(', ', array_fill(0, count($marked), '?'));
             $jobsSql = implode(', ', array_fill(0, count($activeJobs), '?'));
+            // Calls with no audio never get queued, so a pending status alone is not "in flight".
+            $hasAudio = "(EXISTS (SELECT 1 FROM voip_call_logs WHERE voip_call_logs.id = calls.voip_call_log_id AND voip_call_logs.recording_url IS NOT NULL AND voip_call_logs.recording_url <> '') OR EXISTS (SELECT 1 FROM call_recordings WHERE call_recordings.call_id = calls.id))";
             $row = $included
                 ->selectRaw('COUNT(*) as total_calls')
-                ->selectRaw("SUM(CASE WHEN $missed THEN 1 ELSE 0 END) as missed_count")
+                ->selectRaw('SUM(CASE WHEN EXISTS (SELECT 1 FROM conversation_analyses WHERE conversation_analyses.call_id = calls.id) THEN 1 ELSE 0 END) as analyzed_count')
                 ->selectRaw("SUM(CASE WHEN direction = 'inbound' THEN 1 ELSE 0 END) as inbound_count")
                 ->selectRaw("SUM(CASE WHEN direction = 'outbound' THEN 1 ELSE 0 END) as outbound_count")
                 ->selectRaw('AVG(CASE WHEN duration_seconds > 0 THEN duration_seconds END) as avg_duration')
                 ->selectRaw(
-                    "SUM(CASE WHEN NOT ($missed) AND (processing_status IN ($markedSql) OR (processing_status IS NULL AND EXISTS (SELECT 1 FROM call_processing_jobs WHERE call_processing_jobs.call_id = calls.id AND call_processing_jobs.status IN ($jobsSql)))) THEN 1 ELSE 0 END) as in_flight_count",
+                    "SUM(CASE WHEN NOT ($missed) AND ((processing_status IN ($markedSql) AND $hasAudio) OR (processing_status IS NULL AND EXISTS (SELECT 1 FROM call_processing_jobs WHERE call_processing_jobs.call_id = calls.id AND call_processing_jobs.status IN ($jobsSql)))) THEN 1 ELSE 0 END) as in_flight_count",
                     [...$marked, ...$activeJobs],
                 )
                 ->first();
@@ -239,10 +247,10 @@ class AnalysisListQuery
             $orphans = $this->orphanBucketCounts($filter);
 
             return [
-                'total_calls' => (int) ($row->total_calls ?? 0) + $orphans['total'],
-                'analyzed_count' => $this->analyzedCount($filter),
+                'total_calls' => $this->pbxCallCount($filter),
+                'analyzed_count' => (int) ($row->analyzed_count ?? 0),
                 'outside_analysis_count' => $outsideCount + $orphans['outside'],
-                'missed_count' => (int) ($row->missed_count ?? 0) + $orphans['missed'],
+                'missed_count' => $missedCount + $orphans['missed'],
                 'in_flight_count' => (int) ($row->in_flight_count ?? 0),
                 'inbound_count' => (int) ($row->inbound_count ?? 0),
                 'outbound_count' => (int) ($row->outbound_count ?? 0),
@@ -252,40 +260,17 @@ class AnalysisListQuery
     }
 
     /**
-     * Calls that finished analysis inside the filter window, regardless of when the conversation happened.
+     * Every VoIP call the PBX reported in the date window that the organization profile
+     * filters still allow. Each call id has one log row. Page filters do not apply.
      */
-    private function analyzedCount(AnalysisListFilter $filter): int
+    private function pbxCallCount(AnalysisListFilter $filter): int
     {
-        $query = ConversationAnalysis::query()
-            ->where('conversation_analyses.organization_id', $filter->organizationId)
-            ->whereBetween('conversation_analyses.analyzed_at', [$filter->from, $filter->to]);
+        $logs = VoipCallLog::query()
+            ->where('voip_call_logs.organization_id', $filter->organizationId)
+            ->occurredBetween($filter->from, $filter->to);
 
-        if ($filter->employeeId !== null) {
-            $query->where('conversation_analyses.organization_user_id', $filter->employeeId);
-        }
-
-        if ($filter->statuses !== [] || $filter->direction !== null || $filter->minDurationSeconds !== null || $filter->maxDurationSeconds !== null) {
-            $query->whereHas('call', function (Builder $call) use ($filter): void {
-                if ($filter->statuses !== []) {
-                    $call->whereIn('status', $filter->statuses);
-                }
-
-                if ($filter->direction !== null) {
-                    $call->where('direction', $filter->direction);
-                }
-
-                if ($filter->minDurationSeconds !== null) {
-                    $call->where('duration_seconds', '>=', $filter->minDurationSeconds);
-                }
-
-                if ($filter->maxDurationSeconds !== null) {
-                    $call->where('duration_seconds', '<=', $filter->maxDurationSeconds);
-                }
-            });
-        }
-
-        return (int) app(CallIntakePolicy::class)
-            ->applyToAnalyses($query, $filter->organizationId)
+        return app(CallIntakePolicy::class)
+            ->applyToVoipLogs($logs, $filter->organizationId)
             ->count();
     }
 
@@ -311,11 +296,14 @@ class AnalysisListQuery
 
         $included = app(CallIntakePolicy::class)->applyToVoipLogs(clone $base, $filter->organizationId);
         $lost = CallStatus::lostValues();
+        $answered = fn (Builder $query): Builder => $query->where(function (Builder $status) use ($lost): void {
+            $status->whereNull('voip_call_logs.status')->orWhereNotIn('voip_call_logs.status', $lost);
+        });
 
         return [
             'total' => (clone $included)->count(),
-            'outside' => (clone $base)->count() - (clone $included)->count(),
-            'missed' => (clone $included)->whereIn('voip_call_logs.status', $lost)->count(),
+            'outside' => $answered(clone $base)->count() - $answered(clone $included)->count(),
+            'missed' => (clone $base)->whereIn('voip_call_logs.status', $lost)->count(),
         ];
     }
 

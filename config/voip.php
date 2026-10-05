@@ -42,4 +42,10 @@ return [
     // HTTP root that maps to /var/spool/asterisk/monitor on the PBX.
     'recordings_public_base' => rtrim((string) env('VOIP_RECORDINGS_PUBLIC_BASE', ''), '/'),
 
+    // Read-only access to the PBX CDR database (connection "pbx_cdr") for the missed-calls card.
+    'pbx_cdr' => [
+        'timezone' => env('VOIP_PBX_CDR_TIMEZONE', 'Asia/Tehran'),
+        'cache_seconds' => (int) env('VOIP_PBX_CDR_CACHE_SECONDS', 60),
+    ],
+
 ];

@@ -64,6 +64,23 @@ return [
             ]) : [],
         ],
 
+        'pbx_cdr' => [
+            'driver' => 'mysql',
+            'host' => env('VOIP_PBX_CDR_HOST'),
+            'port' => env('VOIP_PBX_CDR_PORT', '3306'),
+            'database' => env('VOIP_PBX_CDR_DATABASE', 'asteriskcdrdb'),
+            'username' => env('VOIP_PBX_CDR_USERNAME'),
+            'password' => env('VOIP_PBX_CDR_PASSWORD', ''),
+            'charset' => 'utf8',
+            'collation' => 'utf8_general_ci',
+            'prefix' => '',
+            'strict' => false,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? [
+                PDO::ATTR_TIMEOUT => 3,
+            ] : [],
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
