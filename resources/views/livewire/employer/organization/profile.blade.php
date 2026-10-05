@@ -68,7 +68,7 @@
     <form wire:submit="saveIntakeFilters" class="saas-card max-w-3xl space-y-5" data-tour="organization-call-filters">
         <div>
             <h2 class="text-base font-semibold text-zinc-900 dark:text-white">فیلتر تماس‌های ورودی</h2>
-            <p class="mt-1 text-sm text-zinc-500">هر مورد را که فعال کنید، آن دسته از تماس‌ها تحلیل می‌شود. مورد غیرفعال برای مدل ارسال نمی‌شود و از شمارش تماس‌ها کنار می‌رود. تماس‌های خارج از تحلیل، لیدها و اعداد کیف پول از این فیلتر جدا هستند.</p>
+            <p class="mt-1 text-sm text-zinc-500">هر مورد را که فعال کنید، آن دسته از تماس‌ها تحلیل می‌شود. مورد غیرفعال برای مدل ارسال نمی‌شود و از شمارش تماس‌ها کنار می‌رود. لیدها و اعداد کیف پول از این فیلتر جدا هستند.</p>
         </div>
 
         <div class="space-y-3">

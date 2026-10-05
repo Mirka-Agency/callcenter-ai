@@ -87,6 +87,43 @@ class CallIntakeFilterTest extends TestCase
         $this->assertSame(CallProcessingStatus::Skipped, $internal->fresh()->processing_status);
     }
 
+    public function test_unregistered_extensions_follow_the_intake_filter(): void
+    {
+        Bus::fake();
+        PlatformAiSettings::current()->update(['allow_negative_balance' => true]);
+
+        [$organization, $connection, $agent] = $this->organizationWithExtensions();
+        $organization->update([
+            'call_intake_filters' => [
+                InternalAgentCallsFilter::KEY => false,
+                UnassignedAgentCallsFilter::KEY => true,
+            ],
+        ]);
+
+        $outside = $this->callBetween($organization, $connection, $agent, '09120000009', '41909000', 'outside-on');
+        $outside->update(['organization_user_id' => $agent->id]);
+
+        $this->assertFalse($outside->fresh()->counts_for_extension_reports);
+        $this->assertTrue(app(CallAnalysisQueueService::class)->dispatchForCall($outside->fresh(), forceReanalyze: true));
+
+        $organization->update([
+            'call_intake_filters' => [
+                InternalAgentCallsFilter::KEY => false,
+                UnassignedAgentCallsFilter::KEY => false,
+            ],
+        ]);
+
+        $blocked = $this->callBetween($organization, $connection, $agent, '09120000007', '41909000', 'outside-off');
+        $blocked->update(['organization_user_id' => $agent->id]);
+        $registered = $this->callBetween($organization, $connection, $agent, '09120000008', '101', 'registered-off');
+
+        $this->assertFalse(app(CallAnalysisQueueService::class)->dispatchForCall($blocked->fresh(), forceReanalyze: true));
+        $this->assertSame(CallProcessingStatus::Skipped, $blocked->fresh()->processing_status);
+        $this->assertStringContainsString('فیلتر سازمان', (string) $blocked->fresh()->processing_error);
+        $this->assertFalse($registered->fresh()->is_internal_agent_call);
+        $this->assertTrue(app(CallAnalysisQueueService::class)->dispatchForCall($registered->fresh()));
+    }
+
     public function test_calls_without_an_agent_are_analyzed_unless_that_filter_is_off(): void
     {
         Bus::fake();

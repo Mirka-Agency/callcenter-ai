@@ -6,13 +6,17 @@ use App\Application\Call\Services\CallEmployeeResolver;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Models\Call;
 use App\Services\CallIntake\Contracts\CallIntakeFilter;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use Illuminate\Database\Eloquent\Builder;
 
 class UnassignedAgentCallsFilter implements CallIntakeFilter
 {
     public const KEY = 'unassigned_agent_calls';
 
-    public function __construct(private CallEmployeeResolver $resolver) {}
+    public function __construct(
+        private CallEmployeeResolver $resolver,
+        private DefinedExtensionCallConstraint $extensions,
+    ) {}
 
     public function key(): string
     {
@@ -26,7 +30,7 @@ class UnassignedAgentCallsFilter implements CallIntakeFilter
 
     public function description(): string
     {
-        return 'اگر فعال باشد، تماسی که به هیچ کارشناسی وصل نیست هم تحلیل می‌شود و در شمارش تماس‌ها می‌آید.';
+        return 'اگر فعال باشد، تماسی که شماره داخلی‌اش در فهرست داخلی‌ها نیست هم تحلیل می‌شود و در شمارش تماس‌ها می‌آید.';
     }
 
     public function defaultEnabled(): bool
@@ -36,7 +40,15 @@ class UnassignedAgentCallsFilter implements CallIntakeFilter
 
     public function matches(Call $call): bool
     {
-        if ($call->source !== ConversationSource::Voip || $call->organization_user_id) {
+        if ($call->source !== ConversationSource::Voip) {
+            return false;
+        }
+
+        if ($this->extensions->matchSetFingerprint((int) $call->organization_id) !== []) {
+            return ! $this->extensions->countsForReports($call);
+        }
+
+        if ($call->organization_user_id) {
             return false;
         }
 
@@ -52,7 +64,7 @@ class UnassignedAgentCallsFilter implements CallIntakeFilter
 
     public function skipReason(): string
     {
-        return 'برای این تماس کارشناسی تعریف نشده و طبق فیلتر سازمان تحلیل نمی‌شود.';
+        return 'شماره داخلی این تماس در فهرست داخلی‌ها نیست و طبق فیلتر سازمان تحلیل نمی‌شود.';
     }
 
     public function excludeFromCalls(Builder $query): void
@@ -61,8 +73,17 @@ class UnassignedAgentCallsFilter implements CallIntakeFilter
 
         $query->where(function (Builder $eligible) use ($table): void {
             $eligible->where($table.'.source', '!=', ConversationSource::Voip->value)
-                ->orWhereNotNull($table.'.organization_user_id')
-                ->orWhere($table.'.counts_for_extension_reports', true);
+                ->orWhere($table.'.counts_for_extension_reports', true)
+                ->orWhere(function (Builder $noDirectory) use ($table): void {
+                    $noDirectory->whereNotNull($table.'.organization_user_id')
+                        ->whereNotExists(function ($extensions) use ($table): void {
+                            $extensions->selectRaw('1')
+                                ->from('employee_integration_meta')
+                                ->join('organization_user', 'organization_user.id', '=', 'employee_integration_meta.organization_user_id')
+                                ->whereColumn('organization_user.organization_id', $table.'.organization_id')
+                                ->where('employee_integration_meta.key', 'extension');
+                        });
+                });
         });
     }
 
@@ -76,7 +97,17 @@ class UnassignedAgentCallsFilter implements CallIntakeFilter
                         ->whereColumn('calls.id', 'conversation_analyses.call_id')
                         ->where(function ($inner): void {
                             $inner->where('calls.source', '!=', ConversationSource::Voip->value)
-                                ->orWhere('calls.counts_for_extension_reports', true);
+                                ->orWhere('calls.counts_for_extension_reports', true)
+                                ->orWhere(function ($noDirectory): void {
+                                    $noDirectory->whereNotNull('calls.organization_user_id')
+                                        ->whereNotExists(function ($extensions): void {
+                                            $extensions->selectRaw('1')
+                                                ->from('employee_integration_meta')
+                                                ->join('organization_user', 'organization_user.id', '=', 'employee_integration_meta.organization_user_id')
+                                                ->whereColumn('organization_user.organization_id', 'calls.organization_id')
+                                                ->where('employee_integration_meta.key', 'extension');
+                                        });
+                                });
                         });
                 });
         });
@@ -84,6 +115,17 @@ class UnassignedAgentCallsFilter implements CallIntakeFilter
 
     public function excludeFromVoipLogs(Builder $query, int $organizationId): void
     {
-        unset($query, $organizationId);
+        $numbers = array_values(array_unique(array_merge(
+            ...array_values($this->extensions->extensionNumbersByConnection($organizationId) ?: [[]]),
+        )));
+
+        if ($numbers === []) {
+            return;
+        }
+
+        $query->where(function (Builder $eligible) use ($numbers): void {
+            $eligible->whereIn('voip_call_logs.source_number', $numbers)
+                ->orWhereIn('voip_call_logs.destination_number', $numbers);
+        });
     }
 }
