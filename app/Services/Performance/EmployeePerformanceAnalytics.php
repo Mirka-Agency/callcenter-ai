@@ -312,17 +312,20 @@ class EmployeePerformanceAnalytics
         $moment = 'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, conversation_analyses.analyzed_at)';
         $weight = SentimentScoreCalculator::weightExpression('conversation_analyses.sentiment');
         $query = CompanyWorkCalendar::whereWorkday(
-            ConversationAnalysis::query()
-                ->business()
-                ->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id')
-                ->where('conversation_analyses.organization_id', $filter->organizationId)
-                ->whereBetween('conversation_analyses.analyzed_at', [$filter->from, $filter->to])
-                ->whereIn('conversation_analyses.organization_user_id', $employeeIds)
-                ->where(function ($evaluable): void {
-                    $evaluable->where('conversation_analyses.is_evaluable', true)
-                        ->orWhereNull('conversation_analyses.is_evaluable');
-                })
-                ->where('conversation_analyses.score', '>', 0),
+            app(CallIntakePolicy::class)->applyToAnalyses(
+                ConversationAnalysis::query()
+                    ->business()
+                    ->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id')
+                    ->where('conversation_analyses.organization_id', $filter->organizationId)
+                    ->whereBetween('conversation_analyses.analyzed_at', [$filter->from, $filter->to])
+                    ->whereIn('conversation_analyses.organization_user_id', $employeeIds)
+                    ->where(function ($evaluable): void {
+                        $evaluable->where('conversation_analyses.is_evaluable', true)
+                            ->orWhereNull('conversation_analyses.is_evaluable');
+                    })
+                    ->where('conversation_analyses.score', '>', 0),
+                $filter->organizationId,
+            ),
             $moment,
             OrganizationHolidays::weekdays($filter->organizationId),
         );
@@ -474,11 +477,14 @@ class EmployeePerformanceAnalytics
     /** @return list<array<string, mixed>> */
     private function recentCallsWithRelations(ReportFilter $filter, OrganizationUser $employee, int $limit = 15): array
     {
-        return ConversationAnalysis::query()
-            ->business()
-            ->where('organization_id', $filter->organizationId)
-            ->where('organization_user_id', $employee->id)
-            ->whereBetween('analyzed_at', [$filter->from, $filter->to])
+        return app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->business()
+                ->where('organization_id', $filter->organizationId)
+                ->where('organization_user_id', $employee->id)
+                ->whereBetween('analyzed_at', [$filter->from, $filter->to]),
+            $filter->organizationId,
+        )
             ->with(['call:id,customer_id,customer_name,caller_number,duration_seconds', 'call.customer:id,name,company_name,phone_number,normalized_phone'])
             ->latest('analyzed_at')
             ->limit($limit)

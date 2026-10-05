@@ -140,6 +140,12 @@ class OrganizationCallMetricsTest extends TestCase
         $this->seed(PlatformFoundationSeeder::class);
 
         $organization = $this->organization();
+        $organization->update([
+            'call_intake_filters' => [
+                'unassigned_agent_calls' => false,
+                'internal_agent_calls' => true,
+            ],
+        ]);
         $employee = $this->employee($organization);
 
         $this->createCall($organization, [
@@ -160,6 +166,12 @@ class OrganizationCallMetricsTest extends TestCase
         $this->seed(PlatformFoundationSeeder::class);
 
         $organization = $this->organization();
+        $organization->update([
+            'call_intake_filters' => [
+                'unassigned_agent_calls' => false,
+                'internal_agent_calls' => true,
+            ],
+        ]);
         $definedEmployee = $this->employee($organization, 'Ali', 'Agent');
         $undefinedEmployee = $this->employee($organization, 'Sara', 'Queue');
         $connection = $this->voipConnection($organization);
@@ -216,6 +228,12 @@ class OrganizationCallMetricsTest extends TestCase
         $this->seed(PlatformFoundationSeeder::class);
 
         $organization = $this->organization();
+        $organization->update([
+            'call_intake_filters' => [
+                'unassigned_agent_calls' => false,
+                'internal_agent_calls' => true,
+            ],
+        ]);
         $definedEmployee = $this->employee($organization, 'Ali', 'Agent');
         $connection = $this->voipConnection($organization);
 

@@ -27,6 +27,15 @@ class AiPerformanceAnalytics
 
     public function baseQuery(): Builder
     {
+        return app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()->where('organization_id', $this->organizationId),
+            $this->organizationId,
+        );
+    }
+
+    /** Billing totals stay on every finished analysis, including calls the intake filters hide. */
+    private function billingQuery(): Builder
+    {
         return ConversationAnalysis::query()
             ->where('organization_id', $this->organizationId);
     }
@@ -43,13 +52,14 @@ class AiPerformanceAnalytics
             $this->organizationId,
         )->count();
         $avgScore = round((float) (clone $query)->evaluable()->avg('score'), 1);
-        $totalCost = round((float) (clone $query)->sum('cost'), 4);
-        $totalTokens = (int) (clone $query)->sum('total_tokens');
+        $billing = $this->billingQuery();
+        $totalCost = round((float) (clone $billing)->sum('cost'), 4);
+        $totalTokens = (int) (clone $billing)->sum('total_tokens');
 
         $employeeAvg = round((float) OrganizationUser::query()
             ->where('organization_id', $this->organizationId)
-            ->whereHas('conversationAnalyses')
-            ->withAvg(['conversationAnalyses' => fn (Builder $q) => $q->evaluable()], 'score')
+            ->whereHas('conversationAnalyses', fn (Builder $q) => app(CallIntakePolicy::class)->applyToAnalyses($q, $this->organizationId))
+            ->withAvg(['conversationAnalyses' => fn (Builder $q) => app(CallIntakePolicy::class)->applyToAnalyses($q, $this->organizationId)->evaluable()], 'score')
             ->get()
             ->avg('conversation_analyses_avg_score'), 1);
 
@@ -87,10 +97,10 @@ class AiPerformanceAnalytics
     {
         $query = OrganizationUser::query()
             ->where('organization_id', $this->organizationId)
-            ->withCount('conversationAnalyses')
-            ->withAvg(['conversationAnalyses' => fn (Builder $q) => $q->evaluable()], 'score')
-            ->withMax(['conversationAnalyses' => fn (Builder $q) => $q->evaluable()], 'score')
-            ->withMin(['conversationAnalyses' => fn (Builder $q) => $q->evaluable()], 'score');
+            ->withCount(['conversationAnalyses' => fn (Builder $q) => app(CallIntakePolicy::class)->applyToAnalyses($q, $this->organizationId)])
+            ->withAvg(['conversationAnalyses' => fn (Builder $q) => app(CallIntakePolicy::class)->applyToAnalyses($q, $this->organizationId)->evaluable()], 'score')
+            ->withMax(['conversationAnalyses' => fn (Builder $q) => app(CallIntakePolicy::class)->applyToAnalyses($q, $this->organizationId)->evaluable()], 'score')
+            ->withMin(['conversationAnalyses' => fn (Builder $q) => app(CallIntakePolicy::class)->applyToAnalyses($q, $this->organizationId)->evaluable()], 'score');
 
         if ($filters['department'] ?? null) {
             $query->where('department', $filters['department']);
@@ -131,13 +141,14 @@ class AiPerformanceAnalytics
 
         return $query
             ->with('user:id,avatar_path,name')
-            ->withCount(['conversationAnalyses as total_analyzed' => fn (Builder $q) => $q
-                ->whereBetween('analyzed_at', [$from, $to]),
-            ])
-            ->withAvg(['conversationAnalyses as average_score' => fn (Builder $q) => $q
-                ->evaluable()
-                ->whereBetween('analyzed_at', [$from, $to]),
-            ], 'score')
+            ->withCount(['conversationAnalyses as total_analyzed' => fn (Builder $q) => app(CallIntakePolicy::class)->applyToAnalyses(
+                $q->whereBetween('analyzed_at', [$from, $to]),
+                $this->organizationId,
+            )])
+            ->withAvg(['conversationAnalyses as average_score' => fn (Builder $q) => app(CallIntakePolicy::class)->applyToAnalyses(
+                $q->evaluable()->whereBetween('analyzed_at', [$from, $to]),
+                $this->organizationId,
+            )], 'score')
             ->get()
             ->filter(fn (OrganizationUser $employee) => $employee->total_analyzed > 0)
             ->map(fn (OrganizationUser $employee) => [
@@ -179,10 +190,13 @@ class AiPerformanceAnalytics
     private function bucketedScoreTrend(string $period, Carbon $from, Carbon $to, ?int $employeeId): array
     {
         $driver = DB::connection()->getDriverName();
-        $query = ConversationAnalysis::query()
-            ->business()
-            ->where('conversation_analyses.organization_id', $this->organizationId)
-            ->whereBetween('conversation_analyses.analyzed_at', [$from, $to]);
+        $query = app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->business()
+                ->where('conversation_analyses.organization_id', $this->organizationId)
+                ->whereBetween('conversation_analyses.analyzed_at', [$from, $to]),
+            $this->organizationId,
+        );
 
         if ($employeeId) {
             $query->where('conversation_analyses.organization_user_id', $employeeId);
@@ -291,11 +305,19 @@ class AiPerformanceAnalytics
 
         return DB::query()
             ->fromSub(function ($query) use ($employeeIds): void {
+                $allowed = app(CallIntakePolicy::class)->applyToAnalyses(
+                    ConversationAnalysis::query()
+                        ->where('organization_id', $this->organizationId)
+                        ->select('conversation_analyses.id'),
+                    $this->organizationId,
+                );
+
                 $query->from('conversation_analyses')
                     ->select(['organization_user_id', 'strengths_json', 'weaknesses_json'])
                     ->selectRaw('ROW_NUMBER() OVER (PARTITION BY organization_user_id ORDER BY analyzed_at DESC, id DESC) as item_rank')
                     ->where('organization_id', $this->organizationId)
-                    ->whereIn('organization_user_id', $employeeIds->all());
+                    ->whereIn('organization_user_id', $employeeIds->all())
+                    ->whereIn('id', $allowed);
             }, 'ranked_analyses')
             ->where('item_rank', '<=', 20)
             ->get()

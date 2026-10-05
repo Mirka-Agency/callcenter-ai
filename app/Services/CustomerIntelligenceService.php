@@ -294,18 +294,23 @@ class CustomerIntelligenceService
 
     public function timelineCount(Customer $customer): int
     {
-        return Call::query()
-            ->where('organization_id', $customer->organization_id)
-            ->where('customer_id', $customer->id)
-            ->count();
+        return app(DefinedExtensionCallConstraint::class)->apply(
+            Call::query()
+                ->where('organization_id', $customer->organization_id)
+                ->where('customer_id', $customer->id),
+            (int) $customer->organization_id,
+        )->count();
     }
 
     /** @return list<array<string, mixed>> */
     public function timeline(Customer $customer, int $limit = 80): array
     {
-        $calls = Call::query()
-            ->where('organization_id', $customer->organization_id)
-            ->where('customer_id', $customer->id)
+        $calls = app(DefinedExtensionCallConstraint::class)->apply(
+            Call::query()
+                ->where('organization_id', $customer->organization_id)
+                ->where('customer_id', $customer->id),
+            (int) $customer->organization_id,
+        )
             ->with(['employee', 'latestAnalysis'])
             ->orderByDesc('started_at')
             ->orderByDesc('created_at')
@@ -337,9 +342,12 @@ class CustomerIntelligenceService
     /** @return list<string> */
     public function aggregatedNextActions(Customer $customer): array
     {
-        $analyses = ConversationAnalysis::query()
-            ->where('organization_id', $customer->organization_id)
-            ->whereHas('call', fn ($q) => $q->where('customer_id', $customer->id))
+        $analyses = app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->where('organization_id', $customer->organization_id)
+                ->whereHas('call', fn ($q) => $q->where('customer_id', $customer->id)),
+            (int) $customer->organization_id,
+        )
             ->latest('analyzed_at')
             ->limit(20)
             ->get();

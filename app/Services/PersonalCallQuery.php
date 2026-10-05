@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ConversationAnalysis;
+use App\Services\CallIntake\CallIntakePolicy;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
@@ -20,11 +21,14 @@ class PersonalCallQuery
         CarbonInterface $to,
         int $limit = 30,
     ): array {
-        $query = ConversationAnalysis::query()
-            ->personal()
-            ->where('conversation_analyses.organization_id', $organizationId)
-            ->where('conversation_analyses.organization_user_id', $employeeId)
-            ->whereBetween('conversation_analyses.analyzed_at', [$from, $to]);
+        $query = app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->personal()
+                ->where('conversation_analyses.organization_id', $organizationId)
+                ->where('conversation_analyses.organization_user_id', $employeeId)
+                ->whereBetween('conversation_analyses.analyzed_at', [$from, $to]),
+            $organizationId,
+        );
 
         $total = (clone $query)->count();
 

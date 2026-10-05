@@ -23,6 +23,9 @@ use App\Models\User;
 use App\Models\VoipCallLog;
 use App\Models\VoipProvider;
 use App\Services\AnalysisListQuery;
+use App\Services\CallIntake\CallIntakeSettings;
+use App\Services\CallIntake\Filters\InternalAgentCallsFilter;
+use App\Services\CallIntake\Filters\UnassignedAgentCallsFilter;
 use App\Services\Performance\EmployeePerformanceAnalytics;
 use App\Services\Reports\ProcessingQueueCallStats;
 use Carbon\Carbon;
@@ -229,7 +232,7 @@ class AnalysisListQueryTest extends TestCase
             preset: ReportDatePreset::Last30,
         ));
 
-        $this->assertSame(2, $overview['total']);
+        $this->assertSame(1, $overview['total'], 'only the call that was actually analyzed');
         $this->assertSame(2, $overview['total_calls']);
         $this->assertSame(0, $overview['missed_count']);
         $this->assertSame(0, $overview['outside_analysis_count']);
@@ -311,14 +314,10 @@ class AnalysisListQueryTest extends TestCase
             assignedEmployeesOnly: true,
         ));
 
-        $this->assertSame(1, $overview['total']);
+        $this->assertSame(1, $overview['total'], 'only the call that was actually analyzed');
         $this->assertSame(5, $overview['total_calls']);
         $this->assertSame(4, $overview['missed_count']);
         $this->assertSame(0, $overview['outside_analysis_count']);
-        $this->assertSame(
-            $overview['total'] + $overview['outside_analysis_count'] + $overview['missed_count'],
-            $overview['total_calls'],
-        );
     }
 
     public function test_overview_cards_follow_call_date_not_analysis_completion(): void
@@ -404,17 +403,13 @@ class AnalysisListQueryTest extends TestCase
             preset: ReportDatePreset::Last30,
         ));
 
-        $this->assertSame(1, $overview['total'], 'pending call in the window is in the analysis card');
+        $this->assertSame(1, $overview['total'], 'a call analyzed inside the window counts even when the conversation is older');
         $this->assertSame(2, $overview['total_calls'], 'old call is outside the call-date window');
         $this->assertSame(1, $overview['inbound_count']);
         $this->assertSame(1, $overview['outbound_count']);
         $this->assertSame(1, $overview['missed_count']);
         $this->assertSame(0, $overview['outside_analysis_count']);
         $this->assertSame(100, $overview['average_duration_seconds']);
-        $this->assertSame(
-            $overview['total'] + $overview['outside_analysis_count'] + $overview['missed_count'],
-            $overview['total_calls'],
-        );
     }
 
     public function test_overview_analyzed_matches_dashboard_and_ignores_stale_queue_flags(): void
@@ -538,14 +533,10 @@ class AnalysisListQueryTest extends TestCase
         $overview = app(AnalysisListQuery::class)->overview($filter);
 
         $this->assertSame(5, $overview['total_calls']);
-        $this->assertSame(4, $overview['total'], 'analyzed card follows call date, including calls still in flight');
+        $this->assertSame(2, $overview['total'], 'analyzed card counts analyses finished in the window, including an older call');
         $this->assertSame(1, $overview['missed_count']);
         $this->assertSame(1, $overview['in_flight_count']);
         $this->assertSame(0, $overview['outside_analysis_count']);
-        $this->assertSame(
-            $overview['total'] + $overview['outside_analysis_count'] + $overview['missed_count'],
-            $overview['total_calls'],
-        );
 
         $queueAllTime = app(ProcessingQueueCallStats::class)->forOrganization($organization->id);
         $this->assertSame(3, $queueAllTime['completed'], 'queue card stays all-time and still counts a call whose analysis row is gone');
@@ -679,14 +670,10 @@ class AnalysisListQueryTest extends TestCase
             preset: ReportDatePreset::Last30,
         ));
 
-        $this->assertSame(7, $overview['total'], 'known-extension calls stay in the analysis card, including calls without a recording');
-        $this->assertSame(4, $overview['outside_analysis_count']);
-        $this->assertSame(1, $overview['missed_count'], 'a missed call on an unknown extension is outside analysis');
+        $this->assertSame(0, $overview['total'], 'none of these calls have been analyzed');
+        $this->assertSame(0, $overview['outside_analysis_count'], 'both profile filters are on, so unregistered extensions stay in the total');
+        $this->assertSame(2, $overview['missed_count']);
         $this->assertSame(12, $overview['total_calls']);
-        $this->assertSame(
-            $overview['total'] + $overview['outside_analysis_count'] + $overview['missed_count'],
-            $overview['total_calls'],
-        );
     }
 
     public function test_overview_partitions_missed_and_agent_to_agent_calls_by_call_date(): void
@@ -787,14 +774,10 @@ class AnalysisListQueryTest extends TestCase
             preset: ReportDatePreset::Last30,
         ));
 
-        $this->assertSame(1, $overview['total']);
-        $this->assertSame(2, $overview['outside_analysis_count']);
+        $this->assertSame(0, $overview['total']);
+        $this->assertSame(0, $overview['outside_analysis_count'], 'both profile filters are on');
         $this->assertSame(4, $overview['missed_count']);
         $this->assertSame(7, $overview['total_calls']);
-        $this->assertSame(
-            $overview['total'] + $overview['outside_analysis_count'] + $overview['missed_count'],
-            $overview['total_calls'],
-        );
     }
 
     public function test_overview_outside_analysis_is_zero_when_no_extensions_are_defined(): void
@@ -831,6 +814,92 @@ class AnalysisListQueryTest extends TestCase
 
         $this->assertSame(1, $overview['total_calls']);
         $this->assertSame(0, $overview['outside_analysis_count']);
+    }
+
+    public function test_overview_cards_follow_disabled_organization_intake_filters(): void
+    {
+        $organization = Organization::factory()->create();
+        $userA = User::factory()->create();
+        $userB = User::factory()->create();
+        $agentA = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $userA->id,
+            'first_name' => 'Ali',
+            'last_name' => 'One',
+            'is_active' => true,
+        ]);
+        $agentB = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => $userB->id,
+            'first_name' => 'Sara',
+            'last_name' => 'Two',
+            'is_active' => true,
+        ]);
+        $connection = $this->voipConnection($organization);
+
+        foreach ([[$agentA, '111'], [$agentB, '112']] as [$agent, $extension]) {
+            EmployeeIntegrationMeta::query()->create([
+                'organization_user_id' => $agent->id,
+                'integratable_type' => OrganizationVoipConnection::class,
+                'integratable_id' => $connection->id,
+                'key' => 'extension',
+                'value' => $extension,
+            ]);
+        }
+
+        $this->createExtensionCall($organization, $agentA, $connection, [
+            'external_call_id' => 'customer',
+            'source_number' => '09120000001',
+            'destination_number' => '111',
+            'status' => CallStatus::Completed->value,
+            'duration_seconds' => 90,
+        ]);
+        $this->createExtensionCall($organization, $agentA, $connection, [
+            'external_call_id' => 'unknown-extension',
+            'source_number' => '09120000005',
+            'destination_number' => '199',
+            'status' => CallStatus::Completed->value,
+            'duration_seconds' => 30,
+        ]);
+        $this->createExtensionCall($organization, $agentA, $connection, [
+            'external_call_id' => 'agent-to-agent',
+            'source_number' => '111',
+            'destination_number' => '112',
+            'status' => CallStatus::Completed->value,
+            'duration_seconds' => 40,
+        ]);
+
+        $organization->update([
+            'call_intake_filters' => [
+                UnassignedAgentCallsFilter::KEY => false,
+                InternalAgentCallsFilter::KEY => false,
+            ],
+        ]);
+        app(CallIntakeSettings::class)->forget($organization->id);
+
+        $blocked = app(AnalysisListQuery::class)->overview(AnalysisListFilter::make(
+            organizationId: $organization->id,
+            preset: ReportDatePreset::Last30,
+        ));
+
+        $this->assertSame(1, $blocked['total_calls'], 'only the customer call on a registered extension stays in the total');
+        $this->assertSame(2, $blocked['outside_analysis_count']);
+
+        $organization->update([
+            'call_intake_filters' => [
+                UnassignedAgentCallsFilter::KEY => true,
+                InternalAgentCallsFilter::KEY => true,
+            ],
+        ]);
+        app(CallIntakeSettings::class)->forget($organization->id);
+
+        $open = app(AnalysisListQuery::class)->overview(AnalysisListFilter::make(
+            organizationId: $organization->id,
+            preset: ReportDatePreset::Last30,
+        ));
+
+        $this->assertSame(3, $open['total_calls']);
+        $this->assertSame(0, $open['outside_analysis_count']);
     }
 
     public function test_assigned_employees_only_excludes_unassigned_analyses(): void
