@@ -174,14 +174,11 @@
         <x-saas.stat-card
             label="تماس‌های تحلیل‌شده"
             :value="number_format($overview['total'])"
-            :hint="($overview['in_flight_count'] ?? 0) > 0
-                ? number_format($overview['in_flight_count']).' در صف یا در حال پردازش'
-                : null"
         />
         <x-saas.stat-card
             label="تماس‌های خارج از تحلیل"
             :value="number_format($overview['outside_analysis_count'] ?? 0)"
-            hint="داخلی‌های تعریف‌نشده"
+            hint="طبق فیلترهای خاموش پروفایل سازمان"
         />
         <x-saas.stat-card
             label="تماس از دست رفته"

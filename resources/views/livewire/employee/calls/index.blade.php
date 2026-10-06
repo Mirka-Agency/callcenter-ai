@@ -109,9 +109,6 @@
         <x-saas.stat-card
             label="تماس‌های تحلیل‌شده"
             :value="number_format($overview['total'])"
-            :hint="($overview['in_flight_count'] ?? 0) > 0
-                ? number_format($overview['in_flight_count']).' در صف یا در حال پردازش'
-                : null"
         />
         <x-saas.stat-card label="میانگین امتیاز مکالمه" :value="$overview['average_score'] ?: '—'" :tone="\App\Support\MetricTone::fromScore($overview['average_score'])" />
         <x-saas.stat-card label="میانگین کیفیت لیدها" :value="$overview['average_lead_score'] ?: '—'" :tone="\App\Support\MetricTone::fromScore($overview['average_lead_score'])" />

@@ -1,95 +1,121 @@
 #!/bin/bash
 # MixMonitor post-process for Issabel.
-# 1) Shrink WAV for AI without changing the filename/URL.
-# 2) POST call.ended to the app with the real dated recording URL.
-# Runs as asterisk. Never delete the original on failure.
+# Install in /etc/asterisk/extensions_custom.conf [globals]:
+#   MIXMON_POST=/usr/local/bin/cc-mixmon-post.sh ^{MIXMONITOR_FILENAME}
+# then: asterisk -rx 'dialplan reload'
+#
+# Posts answered outbound calls to the app. Inbound calls already arrive from the
+# CRM webhook with the answering extension; set CC_POST_INBOUND=1 only when no CRM sends them.
+# The call outcome (answered / busy / no answer) and talk time come from the CDR row.
+# Runs as asterisk. Recordings are never deleted.
 
 FILE="${1:-}"
 LOG=/tmp/cc-mixmon-post.log
 WEBHOOK_URL="${CC_WEBHOOK_URL:-http://192.168.2.165/webhooks/voip/REPLACE_TOKEN}"
 PUBLIC_BASE="${CC_RECORDINGS_PUBLIC_BASE:-http://192.168.2.16/mirka-call-recordings}"
 SPOOL_ROOT="/var/spool/asterisk/monitor"
+CDR_WAIT_SECONDS="${CC_CDR_WAIT_SECONDS:-60}"
+
+log() {
+    echo "$(date '+%F %T') $*" >> "$LOG"
+}
 
 if [ -z "$FILE" ]; then
-    echo "$(date '+%F %T') missing-filename" >> "$LOG"
+    log "missing-filename (MIXMON_POST must pass ^{MIXMONITOR_FILENAME})"
     exit 0
-fi
-
-if [ ! -f "$FILE" ]; then
-    echo "$(date '+%F %T') missing-file $FILE" >> "$LOG"
-    exit 0
-fi
-
-SIZE=$(stat -c%s "$FILE" 2>/dev/null || echo 0)
-if [ "$SIZE" -lt 1024 ]; then
-    echo "$(date '+%F %T') skip-small $SIZE $FILE" >> "$LOG"
-    exit 0
-fi
-
-TMP="${FILE}.ulaw.wav"
-if /usr/bin/sox "$FILE" -e u-law "$TMP" 2>>"$LOG"; then
-    NEWSIZE=$(stat -c%s "$TMP" 2>/dev/null || echo 0)
-    if [ "$NEWSIZE" -gt 500 ]; then
-        mv -f "$TMP" "$FILE"
-        echo "$(date '+%F %T') ok $SIZE->$NEWSIZE $FILE" >> "$LOG"
-        SIZE="$NEWSIZE"
-    else
-        rm -f "$TMP"
-        echo "$(date '+%F %T') sox-tiny keep-original $FILE" >> "$LOG"
-    fi
-else
-    rm -f "$TMP"
-    echo "$(date '+%F %T') sox-failed keep-original $FILE" >> "$LOG"
 fi
 
 NAME=$(basename "$FILE")
-REL="${FILE#$SPOOL_ROOT/}"
-RECORDING_URL="${PUBLIC_BASE}/${REL}"
-
 DIRECTION=""
 FROM=""
 TO=""
 EXTENSION=""
 UNIQUEID=""
 
-if [[ "$NAME" =~ ^out-(.+)-([0-9]{2,6})-([0-9]{8})-([0-9]{6})-([0-9]+\.[0-9]+)\.(wav|mp3)$ ]]; then
+if [[ "$NAME" =~ ^out-(.+)-([0-9]{2,6})-([0-9]{8})-([0-9]{6})-([0-9]+\.[0-9]+)\.(wav|WAV|mp3|gsm)$ ]]; then
     DIRECTION="outbound"
     TO="${BASH_REMATCH[1]}"
     EXTENSION="${BASH_REMATCH[2]}"
     FROM="$EXTENSION"
     UNIQUEID="${BASH_REMATCH[5]}"
-elif [[ "$NAME" =~ ^q-([0-9]+)-(.+)-([0-9]{8})-([0-9]{6})-([0-9]+\.[0-9]+)\.(wav|mp3)$ ]]; then
+    if [ ${#TO} -lt 5 ]; then
+        log "skip-internal $NAME"
+        exit 0
+    fi
+    # Outbound routes dial 9 + number; the customer number follows the prefix.
+    TO="${TO#${CC_OUTBOUND_PREFIX-9}}"
+elif [[ "$NAME" =~ ^q-([0-9]+)-(.+)-([0-9]{8})-([0-9]{6})-([0-9]+\.[0-9]+)\.(wav|WAV|mp3|gsm)$ ]]; then
     DIRECTION="inbound"
     TO="${BASH_REMATCH[1]}"
     FROM="${BASH_REMATCH[2]}"
     UNIQUEID="${BASH_REMATCH[5]}"
-elif [[ "$NAME" =~ ^exten-([0-9]{2,6})-(.+)-([0-9]{8})-([0-9]{6})-([0-9]+\.[0-9]+)\.(wav|mp3)$ ]]; then
+elif [[ "$NAME" =~ ^exten-([0-9]{2,6})-(.+)-([0-9]{8})-([0-9]{6})-([0-9]+\.[0-9]+)\.(wav|WAV|mp3|gsm)$ ]]; then
     EXTENSION="${BASH_REMATCH[1]}"
     OTHER="${BASH_REMATCH[2]}"
     UNIQUEID="${BASH_REMATCH[5]}"
     if [ ${#OTHER} -lt 5 ]; then
-        echo "$(date '+%F %T') skip-internal $NAME" >> "$LOG"
+        log "skip-internal $NAME"
         exit 0
     fi
     DIRECTION="inbound"
     FROM="$OTHER"
     TO="$EXTENSION"
 else
-    echo "$(date '+%F %T') skip-unparsed $NAME" >> "$LOG"
+    log "skip-unparsed $NAME"
     exit 0
 fi
 
-DURATION=0
-if [ -x /usr/bin/soxi ]; then
-    DURATION=$(/usr/bin/soxi -D "$FILE" 2>/dev/null | awk '{printf "%d", $1}')
+if [ "$DIRECTION" = "inbound" ] && [ "${CC_POST_INBOUND:-0}" != "1" ]; then
+    log "skip-inbound-crm $NAME"
+    exit 0
 fi
 
-PAYLOAD=$(/usr/bin/printf '{"event":"call.ended","call_id":"%s","direction":"%s","from":"%s","to":"%s","status":"ANSWER","duration":%s,"extension":"%s","recording_url":"%s"}' \
-    "$UNIQUEID" "$DIRECTION" "$FROM" "$TO" "${DURATION:-0}" "$EXTENSION" "$RECORDING_URL")
+post_call() {
+    local row disposition billsec started waited=0
 
-HTTP=$(/usr/bin/curl -sS -o /tmp/cc-mixmon-webhook.body -w '%{http_code}' --max-time 5 \
-    -X POST -H 'Content-Type: application/json' \
-    -d "$PAYLOAD" "$WEBHOOK_URL" 2>>"$LOG" || echo 000)
+    # The CDR row is written at hangup, sometimes after MixMonitor has finished.
+    while :; do
+        if [ -r /etc/amportal.conf ]; then
+            # shellcheck disable=SC1090
+            . <(grep -E '^AMPDB(USER|PASS)=' /etc/amportal.conf)
+            row=$(mysql -N -B -u"$AMPDBUSER" -p"$AMPDBPASS" asteriskcdrdb -e \
+                "SELECT disposition, billsec, UNIX_TIMESTAMP(calldate) FROM cdr WHERE uniqueid = '$UNIQUEID' ORDER BY (disposition = 'ANSWERED') DESC, billsec DESC LIMIT 1" 2>/dev/null)
+        fi
+        [ -n "$row" ] && break
+        if [ "$waited" -ge "$CDR_WAIT_SECONDS" ]; then
+            log "skip-no-cdr $UNIQUEID $NAME"
+            return
+        fi
+        sleep 5
+        waited=$((waited + 5))
+    done
 
-echo "$(date '+%F %T') webhook $HTTP $UNIQUEID $NAME" >> "$LOG"
+    disposition=$(printf '%s' "$row" | cut -f1)
+    billsec=$(printf '%s' "$row" | cut -f2)
+    started=$(date -u -d "@$(printf '%s' "$row" | cut -f3)" '+%Y-%m-%dT%H:%M:%SZ')
+
+    if [ "$disposition" != "ANSWERED" ] || [ "${billsec:-0}" -le 0 ]; then
+        log "skip-not-connected $disposition $UNIQUEID $NAME"
+        return
+    fi
+
+    local rel="${FILE#$SPOOL_ROOT/}"
+    local recording_url="${PUBLIC_BASE}/${rel}"
+    local payload http
+
+    payload=$(/usr/bin/printf '{"event":"call.ended","call_id":"%s","direction":"%s","from":"%s","to":"%s","status":"ANSWERED","duration":%s,"started_at":"%s","extension":"%s","recording_url":"%s"}' \
+        "$UNIQUEID" "$DIRECTION" "$FROM" "$TO" "$billsec" "$started" "$EXTENSION" "$recording_url")
+
+    http=$(/usr/bin/curl -sS -o /tmp/cc-mixmon-webhook.body -w '%{http_code}' --max-time 10 \
+        -X POST -H 'Content-Type: application/json' \
+        -d "$payload" "$WEBHOOK_URL" 2>>"$LOG" || echo 000)
+
+    log "webhook $http $UNIQUEID $NAME"
+}
+
+if [ "${CC_FOREGROUND:-0}" = "1" ]; then
+    post_call
+else
+    post_call </dev/null >/dev/null 2>&1 &
+fi
 exit 0

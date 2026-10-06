@@ -6,6 +6,7 @@ use App\Domain\Performance\Contracts\EmployeePerformanceRepositoryInterface;
 use App\Domain\Performance\Enums\PerformancePeriod;
 use App\Models\ConversationAnalysis;
 use App\Models\EmployeePerformanceSnapshot;
+use App\Services\CallIntake\CallIntakePolicy;
 use App\Models\OrganizationUser;
 use Carbon\Carbon;
 
@@ -16,10 +17,13 @@ class EloquentEmployeePerformanceRepository implements EmployeePerformanceReposi
         foreach ([PerformancePeriod::Daily, PerformancePeriod::Weekly, PerformancePeriod::Monthly, PerformancePeriod::Overall] as $period) {
             [$start, $end] = $this->periodRange($period);
 
-            $query = ConversationAnalysis::query()
-                ->where('organization_id', $organizationId)
-                ->where('organization_user_id', $organizationUserId)
-                ->when($period !== PerformancePeriod::Overall, fn ($q) => $q->whereBetween('analyzed_at', [$start, $end]));
+            $query = app(CallIntakePolicy::class)->applyToAnalyses(
+                ConversationAnalysis::query()
+                    ->where('organization_id', $organizationId)
+                    ->where('organization_user_id', $organizationUserId)
+                    ->when($period !== PerformancePeriod::Overall, fn ($q) => $q->whereBetween('analyzed_at', [$start, $end])),
+                $organizationId,
+            );
 
             $count = (clone $query)->count();
 

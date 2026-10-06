@@ -87,11 +87,14 @@ class EmployerDashboardAnalytics
         $moment = 'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, conversation_analyses.analyzed_at)';
         $day = CompanyWorkCalendar::sqlDayKey($moment, DB::connection()->getDriverName());
         $weight = SentimentScoreCalculator::weightExpression();
-        $query = ConversationAnalysis::query()
-            ->business()
-            ->where('conversation_analyses.organization_id', $this->organizationId)
-            ->where('conversation_analyses.analyzed_at', '>=', $from)
-            ->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id');
+        $query = app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->business()
+                ->where('conversation_analyses.organization_id', $this->organizationId)
+                ->where('conversation_analyses.analyzed_at', '>=', $from)
+                ->leftJoin('calls', 'calls.id', '=', 'conversation_analyses.call_id'),
+            $this->organizationId,
+        );
         $base = $query->toBase();
         $base->columns = [];
 
@@ -206,11 +209,14 @@ class EmployerDashboardAnalytics
     {
         $callSince = now(CompanyWorkCalendar::TIMEZONE)->subDays($days)->startOfDay()->utc();
 
-        $query = ConversationAnalysis::query()
-            ->where('organization_id', $this->organizationId)
-            ->evaluable()
-            ->business()
-            ->where('lead_quality_json->level', 'high')
+        $query = app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->where('organization_id', $this->organizationId)
+                ->evaluable()
+                ->business()
+                ->where('lead_quality_json->level', 'high'),
+            $this->organizationId,
+        )
             ->whereHas('call', function ($call) use ($callSince): void {
                 $call->whereRaw(
                     'COALESCE(conversation_date, started_at, created_at) >= ?',
@@ -343,11 +349,13 @@ class EmployerDashboardAnalytics
     {
         $today = now()->startOfDay();
 
-        $query = ConversationAnalysis::query()
-            ->where('organization_id', $this->organizationId)
-            ->evaluable()
-            ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay())
-            ->where(function ($query) {
+        $query = app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->where('organization_id', $this->organizationId)
+                ->evaluable()
+                ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay()),
+            $this->organizationId,
+        )->where(function ($query) {
                 $query->whereNotNull('next_actions_json')
                     ->orWhereNotNull('operational_insights_json');
             });
@@ -709,11 +717,14 @@ class EmployerDashboardAnalytics
     {
         $seen = [];
 
-        $query = ConversationAnalysis::query()
-            ->where('organization_id', $this->organizationId)
-            ->evaluable()
-            ->where('sentiment', $sentiment)
-            ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay());
+        $query = app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->where('organization_id', $this->organizationId)
+                ->evaluable()
+                ->where('sentiment', $sentiment)
+                ->where('analyzed_at', '>=', now()->subDays($days)->startOfDay()),
+            $this->organizationId,
+        );
 
         if ($occurredToday) {
             $this->constrainToCallsOccurredToday($query);

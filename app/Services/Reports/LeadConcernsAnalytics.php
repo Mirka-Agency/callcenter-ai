@@ -4,6 +4,7 @@ namespace App\Services\Reports;
 
 use App\DTOs\ReportFilter;
 use App\Models\ConversationAnalysis;
+use App\Services\CallIntake\CallIntakePolicy;
 use Illuminate\Support\Collection;
 
 class LeadConcernsAnalytics
@@ -206,6 +207,9 @@ class LeadConcernsAnalytics
 
     private function analyses(ReportFilter $filter)
     {
-        return $filter->applyToAnalysisQuery(ConversationAnalysis::query());
+        return app(CallIntakePolicy::class)->applyToAnalyses(
+            $filter->applyToAnalysisQuery(ConversationAnalysis::query()),
+            $filter->organizationId,
+        );
     }
 }

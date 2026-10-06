@@ -5,6 +5,7 @@ namespace App\Services\Performance\Data;
 use App\DTOs\ReportFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
+use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Models\OrganizationUser;
 use App\Support\CompanyWorkCalendar;
@@ -132,8 +133,11 @@ class PerformanceDataLoader
             ->with(['call:'.implode(',', self::ANALYSIS_CALL_COLUMNS)])
             ->orderBy('conversation_analyses.analyzed_at');
 
-        return CompanyWorkCalendar::whereWorkday($query, $moment, OrganizationHolidays::weekdays($filter->organizationId))
-            ->get();
+        return CompanyWorkCalendar::whereWorkday(
+            app(CallIntakePolicy::class)->applyToAnalyses($query, $filter->organizationId),
+            $moment,
+            OrganizationHolidays::weekdays($filter->organizationId),
+        )->get();
     }
 
     /** @param  list<int>  $employeeIds */

@@ -82,8 +82,8 @@ readonly class AnalysisListFilter
     }
 
     /**
-     * Filters that reshape the Call query (not the date window alone).
-     * When none are set, total_calls can reuse OrganizationCallMetrics::countBetween.
+     * Filters that reshape the Call query beyond the date window.
+     * Orphan VoIP logs are only folded into the cards when none of these are set.
      */
     public function hasCallAttributeFilters(): bool
     {
@@ -97,8 +97,13 @@ readonly class AnalysisListFilter
     /** @param  Builder<ConversationAnalysis>  $query */
     public function apply(Builder $query): Builder
     {
+        $callAt = 'COALESCE(calls.conversation_date, calls.started_at, calls.created_at, voip_call_logs.started_at, conversation_analyses.analyzed_at)';
+
         $query->where('conversation_analyses.organization_id', $this->organizationId)
-            ->whereBetween('conversation_analyses.analyzed_at', [$this->from, $this->to]);
+            ->whereRaw($callAt.' BETWEEN ? AND ?', [
+                $this->from->toDateTimeString(),
+                $this->to->toDateTimeString(),
+            ]);
 
         if ($this->assignedEmployeesOnly) {
             $query->whereNotNull('conversation_analyses.organization_user_id');

@@ -65,9 +65,12 @@ class CustomerCompanyIntelligenceService
             return [];
         }
 
-        $analyses = ConversationAnalysis::query()
-            ->where('organization_id', $company->organization_id)
-            ->whereHas('call', fn ($q) => $q->whereIn('customer_id', $contactIds))
+        $analyses = app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->where('organization_id', $company->organization_id)
+                ->whereHas('call', fn ($q) => $q->whereIn('customer_id', $contactIds)),
+            (int) $company->organization_id,
+        )
             ->latest('analyzed_at')
             ->limit(40)
             ->get();
@@ -84,9 +87,12 @@ class CustomerCompanyIntelligenceService
             return [];
         }
 
-        $calls = Call::query()
-            ->where('organization_id', $company->organization_id)
-            ->whereIn('customer_id', $contactIds)
+        $calls = app(DefinedExtensionCallConstraint::class)->apply(
+            Call::query()
+                ->where('organization_id', $company->organization_id)
+                ->whereIn('customer_id', $contactIds),
+            (int) $company->organization_id,
+        )
             ->with(['employee', 'latestAnalysis', 'customer'])
             ->orderByDesc('started_at')
             ->orderByDesc('created_at')

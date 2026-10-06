@@ -12,6 +12,8 @@ use App\Models\ConversationAnalysis;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\User;
+use App\Services\CallIntake\CallIntakeSettings;
+use App\Services\CallIntake\Filters\InternalAgentCallsFilter;
 use App\Services\Performance\EmployeePerformanceAnalytics;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -47,6 +49,60 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $this->assertArrayHasKey('executive_summary', $dashboard);
         $this->assertNotEmpty($dashboard['employees']);
         $this->assertSame($employee->full_name, $dashboard['employees'][0]['name']);
+    }
+
+    public function test_team_score_cards_follow_disabled_intake_filters(): void
+    {
+        [$organization, $employee] = $this->seedEmployeeWithAnalysis(score: 80);
+
+        $internal = Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $employee->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'novatel',
+            'external_call_id' => 'perf-internal',
+            'direction' => 'inbound',
+            'caller_number' => '111',
+            'receiver_number' => '112',
+            'status' => 'completed',
+            'processing_status' => 'analyzed',
+            'duration_seconds' => 40,
+            'started_at' => now()->subDay(),
+        ]);
+        Call::query()->whereKey($internal->id)->update(['is_internal_agent_call' => true]);
+
+        ConversationAnalysis::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $employee->id,
+            'call_id' => $internal->id,
+            'source' => ConversationSource::Voip,
+            'llm_provider' => 'openai',
+            'model_name' => 'gpt-4o-mini',
+            'score' => 20,
+            'is_evaluable' => true,
+            'summary' => 'تماس داخلی',
+            'sentiment' => AnalysisSentiment::Neutral,
+            'strengths_json' => [],
+            'weaknesses_json' => [],
+            'next_actions_json' => [],
+            'lead_quality_json' => ['score' => 10, 'level' => 'low', 'reason' => 'internal'],
+            'analyzed_at' => now(),
+        ]);
+
+        $organization->update([
+            'call_intake_filters' => [
+                'unassigned_agent_calls' => true,
+                InternalAgentCallsFilter::KEY => false,
+            ],
+        ]);
+        app(CallIntakeSettings::class)->forget($organization->id);
+
+        $dashboard = app(EmployeePerformanceAnalytics::class)->teamDashboard(
+            ReportFilter::make($organization->id, ReportDatePreset::Last30),
+        );
+
+        $this->assertSame(1, $dashboard['kpis']['total_analyzed']);
+        $this->assertSame(80.0, $dashboard['kpis']['average_quality_score']);
     }
 
     public function test_team_dashboard_keeps_gender_so_avatars_can_be_colored(): void

@@ -8,6 +8,7 @@ use App\Livewire\Employer\Concerns\HasAgentPerformanceCardFeed;
 use App\Livewire\Employer\Concerns\HasQualityTrendDrilldown;
 use App\Livewire\Employer\Concerns\HasTeamWeaknessDrilldown;
 use App\Models\ConversationAnalysis;
+use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\Demo\DemoAnalyticsClock;
 use App\Services\EmployerContext;
 use App\Services\EmployerDashboardAnalytics;
@@ -96,11 +97,14 @@ class Overview extends Component
         [$from, $to] = ReportDatePreset::Today->resolve();
         $ids = collect($agents)->pluck('id')->map(fn ($id): int => (int) $id)->all();
 
-        $activeToday = ConversationAnalysis::query()
-            ->where('organization_id', $organizationId)
-            ->whereIn('organization_user_id', $ids)
-            ->evaluable()
-            ->whereHas('call', fn ($query) => $query->occurredBetween($from, $to))
+        $activeToday = app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->where('organization_id', $organizationId)
+                ->whereIn('organization_user_id', $ids)
+                ->evaluable()
+                ->whereHas('call', fn ($query) => $query->occurredBetween($from, $to)),
+            $organizationId,
+        )
             ->distinct()
             ->pluck('organization_user_id');
 

@@ -7,6 +7,7 @@ use App\DTOs\ReportFilter;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
+use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\Reports\CallMetricsAnalytics;
 use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Services\Reports\ChartHolidayCalendar;
@@ -233,11 +234,14 @@ class EmployeeActivityAnalytics
     /** @return Builder<ConversationAnalysis> */
     private function analysisQuery(ReportFilter $filter, OrganizationUser $employee): Builder
     {
-        return ConversationAnalysis::query()
-            ->business()
-            ->where('conversation_analyses.organization_id', $filter->organizationId)
-            ->where('conversation_analyses.organization_user_id', $employee->id)
-            ->whereBetween('conversation_analyses.analyzed_at', [$filter->from, $filter->to]);
+        return app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->business()
+                ->where('conversation_analyses.organization_id', $filter->organizationId)
+                ->where('conversation_analyses.organization_user_id', $employee->id)
+                ->whereBetween('conversation_analyses.analyzed_at', [$filter->from, $filter->to]),
+            $filter->organizationId,
+        );
     }
 
     /** @return Builder<Call> */

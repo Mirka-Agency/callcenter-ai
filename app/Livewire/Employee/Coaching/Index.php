@@ -5,6 +5,7 @@ namespace App\Livewire\Employee\Coaching;
 use App\DTOs\ReportFilter;
 use App\Enums\ReportDatePreset;
 use App\Models\ConversationAnalysis;
+use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\EmployeeContext;
 use App\Services\EmployeeDashboardAnalytics;
 use App\Services\Performance\Calculators\JsonFieldAggregator;
@@ -38,10 +39,13 @@ class Index extends Component
 
         $profile = app(EmployeePerformanceAnalytics::class)->employeeProfile($filter, $membership);
 
-        $analyses = ConversationAnalysis::query()
-            ->business()
-            ->where('organization_user_id', $membership->id)
-            ->whereBetween('analyzed_at', [$filter->from, $filter->to])
+        $analyses = app(CallIntakePolicy::class)->applyToAnalyses(
+            ConversationAnalysis::query()
+                ->business()
+                ->where('organization_user_id', $membership->id)
+                ->whereBetween('analyzed_at', [$filter->from, $filter->to]),
+            (int) $membership->organization_id,
+        )
             ->latest('analyzed_at')
             ->get();
 
