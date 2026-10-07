@@ -135,7 +135,7 @@ class OrganizationCallMetricsTest extends TestCase
         );
     }
 
-    public function test_excludes_unassigned_calls_from_today_count(): void
+    public function test_excludes_unassigned_voip_logs_from_today_count_when_filter_disabled(): void
     {
         $this->seed(PlatformFoundationSeeder::class);
 
@@ -147,21 +147,47 @@ class OrganizationCallMetricsTest extends TestCase
             ],
         ]);
         $employee = $this->employee($organization);
+        $connection = $this->voipConnection($organization);
 
-        $this->createCall($organization, [
+        EmployeeIntegrationMeta::query()->create([
             'organization_user_id' => $employee->id,
-            'external_call_id' => 'assigned-today',
-        ]);
-        $this->createCall($organization, [
-            'organization_user_id' => null,
-            'external_call_id' => 'queue-unassigned',
-            'receiver_number' => '41909000',
+            'integratable_type' => OrganizationVoipConnection::class,
+            'integratable_id' => $connection->id,
+            'key' => 'extension',
+            'value' => '101',
         ]);
 
+        VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'assigned-today',
+            'direction' => 'inbound',
+            'source_number' => '09120000001',
+            'destination_number' => '101',
+            'status' => 'completed',
+            'started_at' => now()->startOfDay()->addHours(10),
+        ]);
+        VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
+            'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
+            'external_call_id' => 'queue-unassigned',
+            'direction' => 'inbound',
+            'source_number' => '09120000002',
+            'destination_number' => '41909000',
+            'status' => 'completed',
+            'started_at' => now()->startOfDay()->addHours(11),
+        ]);
+
+        $this->assertSame(
+            $this->analysisTodayTotal($organization->id),
+            app(OrganizationCallMetrics::class)->countToday($organization->id),
+        );
         $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
     }
 
-    public function test_when_extensions_are_defined_counts_only_those_employees(): void
+    public function test_dashboard_today_matches_analysis_total_with_defined_extensions(): void
     {
         $this->seed(PlatformFoundationSeeder::class);
 
@@ -173,7 +199,6 @@ class OrganizationCallMetricsTest extends TestCase
             ],
         ]);
         $definedEmployee = $this->employee($organization, 'Ali', 'Agent');
-        $undefinedEmployee = $this->employee($organization, 'Sara', 'Queue');
         $connection = $this->voipConnection($organization);
 
         EmployeeIntegrationMeta::query()->create([
@@ -184,25 +209,17 @@ class OrganizationCallMetricsTest extends TestCase
             'value' => '101',
         ]);
 
-        $this->createCall($organization, [
-            'organization_user_id' => $definedEmployee->id,
+        VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
             'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
             'external_call_id' => 'defined-ext-101',
-            'receiver_number' => '101',
+            'direction' => 'inbound',
+            'source_number' => '09120000001',
+            'destination_number' => '101',
+            'status' => 'completed',
+            'started_at' => now()->startOfDay()->addHours(9),
         ]);
-        $this->createCall($organization, [
-            'organization_user_id' => $undefinedEmployee->id,
-            'organization_voip_connection_id' => $connection->id,
-            'external_call_id' => 'employee-without-extension',
-            'receiver_number' => '5001',
-        ]);
-        $this->createCall($organization, [
-            'organization_user_id' => null,
-            'organization_voip_connection_id' => $connection->id,
-            'external_call_id' => 'unmatched-queue',
-            'receiver_number' => '41909000',
-        ]);
-
         VoipCallLog::query()->create([
             'organization_id' => $organization->id,
             'organization_voip_connection_id' => $connection->id,
@@ -216,14 +233,16 @@ class OrganizationCallMetricsTest extends TestCase
             'raw_payload' => ['resolved_extension' => '5001'],
         ]);
 
-        $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
+        $today = $this->analysisTodayTotal($organization->id);
+        $this->assertSame(1, $today);
+        $this->assertSame($today, app(OrganizationCallMetrics::class)->countToday($organization->id));
         $this->assertSame(
-            1,
+            $today,
             EmployerDashboardAnalytics::forOrganization($organization->id)->cockpit()['calls_today'],
         );
     }
 
-    public function test_counts_only_calls_placed_on_defined_extensions(): void
+    public function test_counts_voip_logs_on_defined_extensions_same_as_analysis_page(): void
     {
         $this->seed(PlatformFoundationSeeder::class);
 
@@ -245,27 +264,18 @@ class OrganizationCallMetricsTest extends TestCase
             'value' => '101',
         ]);
 
-        $matchedLog = VoipCallLog::query()->create([
+        VoipCallLog::query()->create([
             'organization_id' => $organization->id,
             'organization_voip_connection_id' => $connection->id,
             'provider_code' => VoipProviderCode::Custom->value,
             'external_call_id' => 'on-defined-extension',
             'direction' => 'inbound',
             'source_number' => '09120000011',
-            'destination_number' => '41909000',
+            'destination_number' => '101',
             'status' => 'completed',
             'started_at' => now()->startOfDay()->addHours(9),
-            'raw_payload' => ['resolved_extension' => '101'],
         ]);
-        $this->createCall($organization, [
-            'organization_user_id' => null,
-            'organization_voip_connection_id' => $connection->id,
-            'voip_call_log_id' => $matchedLog->id,
-            'external_call_id' => 'on-defined-extension',
-            'receiver_number' => '41909000',
-        ]);
-
-        $otherLog = VoipCallLog::query()->create([
+        VoipCallLog::query()->create([
             'organization_id' => $organization->id,
             'organization_voip_connection_id' => $connection->id,
             'provider_code' => VoipProviderCode::Custom->value,
@@ -275,20 +285,14 @@ class OrganizationCallMetricsTest extends TestCase
             'destination_number' => '5001',
             'status' => 'completed',
             'started_at' => now()->startOfDay()->addHours(12),
-            'raw_payload' => ['resolved_extension' => '5001'],
-        ]);
-        $this->createCall($organization, [
-            'organization_user_id' => $definedEmployee->id,
-            'organization_voip_connection_id' => $connection->id,
-            'voip_call_log_id' => $otherLog->id,
-            'external_call_id' => 'same-agent-other-line',
-            'receiver_number' => '5001',
         ]);
 
-        $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
+        $today = $this->analysisTodayTotal($organization->id);
+        $this->assertSame(1, $today);
+        $this->assertSame($today, app(OrganizationCallMetrics::class)->countToday($organization->id));
     }
 
-    public function test_defined_extension_call_without_a_recording_is_not_counted(): void
+    public function test_pbx_logs_without_recording_still_count_like_analysis_page(): void
     {
         $this->seed(PlatformFoundationSeeder::class);
 
@@ -304,21 +308,34 @@ class OrganizationCallMetricsTest extends TestCase
             'value' => '101',
         ]);
 
-        $this->createCall($organization, [
-            'organization_user_id' => $employee->id,
+        VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
             'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
             'external_call_id' => 'recorded-101',
-            'receiver_number' => '101',
+            'direction' => 'inbound',
+            'source_number' => '09120000011',
+            'destination_number' => '101',
+            'status' => 'completed',
+            'started_at' => now()->startOfDay()->addHours(9),
+            'recording_url' => 'https://pbx.example/monitor/exten-101.wav',
         ]);
-        $unrecorded = $this->createCall($organization, [
-            'organization_user_id' => $employee->id,
+        VoipCallLog::query()->create([
+            'organization_id' => $organization->id,
             'organization_voip_connection_id' => $connection->id,
+            'provider_code' => VoipProviderCode::Custom->value,
             'external_call_id' => 'silent-101',
-            'receiver_number' => '101',
-        ], withRecording: false);
+            'direction' => 'inbound',
+            'source_number' => '09120000012',
+            'destination_number' => '101',
+            'status' => 'completed',
+            'started_at' => now()->startOfDay()->addHours(10),
+            'recording_url' => null,
+        ]);
 
-        $this->assertNull($unrecorded->recording);
-        $this->assertSame(1, app(OrganizationCallMetrics::class)->countToday($organization->id));
+        $today = $this->analysisTodayTotal($organization->id);
+        $this->assertSame(2, $today);
+        $this->assertSame($today, app(OrganizationCallMetrics::class)->countToday($organization->id));
     }
 
     public function test_extension_activity_days_are_loaded_once_per_request(): void
@@ -375,6 +392,16 @@ class OrganizationCallMetricsTest extends TestCase
         $this->assertSame(0, count(DB::getQueryLog()));
         $this->assertLessThan(12, $firstQueries);
         $this->assertFalse($second->hides(now()->timezone('Asia/Tehran')->toDateString()));
+    }
+
+    private function analysisTodayTotal(int $organizationId): int
+    {
+        return app(AnalysisListQuery::class)->overview(
+            AnalysisListFilter::make(
+                organizationId: $organizationId,
+                preset: ReportDatePreset::Today,
+            ),
+        )['total_calls'];
     }
 
     private function organization(): Organization

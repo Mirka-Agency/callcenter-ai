@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Application\Voip\Services\PbxMissedCallsCounter;
 use App\Domain\Call\Enums\CallProcessingStatus;
-use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Domain\Voip\Enums\CallStatus;
@@ -111,6 +110,14 @@ class AnalysisListQuery
     public function analyzedCallCount(AnalysisListFilter $filter): int
     {
         return $this->callStats($filter)['analyzed_count'];
+    }
+
+    /**
+     * PBX volume for the window (intake-filtered voip logs). Same number as overview total_calls.
+     */
+    public function totalCallCount(AnalysisListFilter $filter): int
+    {
+        return $this->pbxCallCount($filter);
     }
 
     /** @return array<string, mixed> */
