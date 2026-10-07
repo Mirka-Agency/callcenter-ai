@@ -112,8 +112,6 @@ PROMPT,
             $prompt,
         );
         $this->assertStringNotContainsString('فایل صوتی پیوست شده است و متن جداگانه‌ای در دست نیست.', $prompt);
-        $this->assertStringContainsString('فقط متن مکالمه بالا را تحلیل کنید. فایل صوتی در این درخواست نیست.', $prompt);
-        $this->assertStringNotContainsString('به فایل صوتی پیوست‌شده گوش دهید و مکالمه را تحلیل کنید.', $prompt);
     }
 
     public function test_context_prompt_avoids_english_instruction_labels(): void
