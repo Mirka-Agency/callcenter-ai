@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
+use App\DTOs\AnalysisListFilter;
 use App\DTOs\ReportFilter;
 use App\Enums\Gender;
 use App\Enums\ReportDatePreset;
@@ -12,6 +13,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\User;
+use App\Services\AnalysisListQuery;
 use App\Services\CallIntake\CallIntakeSettings;
 use App\Services\CallIntake\Filters\InternalAgentCallsFilter;
 use App\Services\Performance\EmployeePerformanceAnalytics;
@@ -152,33 +154,37 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $this->assertSame(1, $dashboard['kpis']['sentiment_sample_count']);
     }
 
-    public function test_total_analyzed_follows_analysis_completion_not_call_day(): void
+    public function test_total_analyzed_follows_call_occurrence_like_analysis_list(): void
     {
         $organization = Organization::factory()->create();
         $employee = $this->seedNamedEmployee($organization, 'سارا', 'نوری');
 
-        // Call from a holiday ~6 weeks ago, analyzed today → still counts.
+        // Call outside the window, analyzed today → does not count.
         $this->seedAnalysisForEmployee(
             $organization,
             $employee,
             score: 88,
             analyzedAt: now(),
-            callStartedAt: Carbon::parse('2026-08-07 11:00:00', 'UTC'), // Friday
+            callStartedAt: now()->subDays(40),
         );
 
-        // Analyzed 31 days ago → outside the rolling window.
+        // Call inside the window (even if analyzed later the same day) → counts.
         $this->seedAnalysisForEmployee(
             $organization,
             $employee,
             score: 70,
-            analyzedAt: now()->subDays(31),
-            callStartedAt: now()->subDays(31),
+            analyzedAt: now(),
+            callStartedAt: now()->subDays(5),
         );
 
         $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
         $dashboard = app(EmployeePerformanceAnalytics::class)->teamDashboard($filter);
+        $analysisListTotal = app(AnalysisListQuery::class)->analyzedCallCount(
+            AnalysisListFilter::make($organization->id, ReportDatePreset::Last30),
+        );
 
         $this->assertSame(1, $dashboard['kpis']['total_analyzed']);
+        $this->assertSame($analysisListTotal, $dashboard['kpis']['total_analyzed']);
     }
 
     public function test_report_date_preset_includes_quarter_and_year(): void

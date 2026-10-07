@@ -104,6 +104,15 @@ class AnalysisListQuery
             ->paginate($perPage);
     }
 
+    /**
+     * Calls that occurred in the filter window and have a finished business analysis.
+     * Shared with the employer dashboard so both surfaces show the same volume KPI.
+     */
+    public function analyzedCallCount(AnalysisListFilter $filter): int
+    {
+        return $this->callStats($filter)['analyzed_count'];
+    }
+
     /** @return array<string, mixed> */
     public function overview(AnalysisListFilter $filter): array
     {
@@ -198,7 +207,7 @@ class AnalysisListQuery
     {
         $extensionKey = md5(json_encode($this->definedExtensions->matchSetFingerprint($filter->organizationId)) ?: '');
         $cacheKey = implode(':', [
-            'analysis-call-stats-v14-total-follows-intake',
+            'analysis-call-stats-v15-business-analyzed',
             app(CallIntakeSettings::class)->cacheToken($filter->organizationId),
             $filter->organizationId,
             $filter->from->getTimestamp(),
@@ -232,9 +241,11 @@ class AnalysisListQuery
             $jobsSql = implode(', ', array_fill(0, count($activeJobs), '?'));
             // Calls with no audio never get queued, so a pending status alone is not "in flight".
             $hasAudio = "(EXISTS (SELECT 1 FROM voip_call_logs WHERE voip_call_logs.id = calls.voip_call_log_id AND voip_call_logs.recording_url IS NOT NULL AND voip_call_logs.recording_url <> '') OR EXISTS (SELECT 1 FROM call_recordings WHERE call_recordings.call_id = calls.id))";
+            // Match the analysis list (business scope): personal-only analyses do not count as analyzed.
+            $hasBusinessAnalysis = 'EXISTS (SELECT 1 FROM conversation_analyses WHERE conversation_analyses.call_id = calls.id AND (conversation_analyses.is_personal = false OR conversation_analyses.is_personal IS NULL))';
             $row = $included
                 ->selectRaw('COUNT(*) as total_calls')
-                ->selectRaw('SUM(CASE WHEN EXISTS (SELECT 1 FROM conversation_analyses WHERE conversation_analyses.call_id = calls.id) THEN 1 ELSE 0 END) as analyzed_count')
+                ->selectRaw("SUM(CASE WHEN {$hasBusinessAnalysis} THEN 1 ELSE 0 END) as analyzed_count")
                 ->selectRaw("SUM(CASE WHEN direction = 'inbound' THEN 1 ELSE 0 END) as inbound_count")
                 ->selectRaw("SUM(CASE WHEN direction = 'outbound' THEN 1 ELSE 0 END) as outbound_count")
                 ->selectRaw('AVG(CASE WHEN duration_seconds > 0 THEN duration_seconds END) as avg_duration')

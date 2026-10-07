@@ -2,10 +2,12 @@
 
 namespace App\Services\Performance;
 
+use App\DTOs\AnalysisListFilter;
 use App\DTOs\ReportFilter;
 use App\Enums\ReportDatePreset;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
+use App\Services\AnalysisListQuery;
 use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\Performance\Calculators\EmployeeMetricsCalculator;
 use App\Services\Performance\Calculators\JsonFieldAggregator;
@@ -531,8 +533,8 @@ class EmployeePerformanceAnalytics
                 ->count(),
             'active_employees' => $data->employees->count(),
             'total_calls' => $data->calls->count(),
-            // Completion window only — holiday call-days must not shrink this volume KPI.
-            'total_analyzed' => $this->countCompletedAnalyses($filter, $data->employees->pluck('id')->all()),
+            // Same call-occurrence window as the analysis list page "تماس‌های تحلیل‌شده" card.
+            'total_analyzed' => $this->analyzedCallsInWindow($filter),
             'average_quality_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : 0.0,
             'average_lead_score' => $leadDist['average_score'],
             'average_sentiment' => $this->sentimentCalculator->average($scored),
@@ -542,10 +544,31 @@ class EmployeePerformanceAnalytics
         ];
     }
 
-    /** @param  list<int>  $employeeIds */
-    private function countCompletedAnalyses(ReportFilter $filter, array $employeeIds): int
+    /**
+     * Org-wide (or employee-scoped) analyzed call volume for the report window.
+     * Uses the same call-occurrence definition as AnalysisListQuery so dashboard and
+     * analysis list cards stay equal for the same period.
+     */
+    private function analyzedCallsInWindow(ReportFilter $filter): int
     {
-        return (int) $this->completedAnalysisCounts($filter, $employeeIds)->sum();
+        if (count($filter->employeeIds) > 1) {
+            return (int) $this->completedAnalysisCounts($filter, $filter->employeeIds)->sum();
+        }
+
+        return app(AnalysisListQuery::class)->analyzedCallCount(
+            $this->toAnalysisListFilter($filter),
+        );
+    }
+
+    private function toAnalysisListFilter(ReportFilter $filter): AnalysisListFilter
+    {
+        return new AnalysisListFilter(
+            organizationId: $filter->organizationId,
+            preset: ReportDatePreset::Custom,
+            from: $filter->from->copy(),
+            to: $filter->to->copy(),
+            employeeId: count($filter->employeeIds) === 1 ? $filter->employeeIds[0] : null,
+        );
     }
 
     /**
@@ -561,9 +584,9 @@ class EmployeePerformanceAnalytics
         return app(CallIntakePolicy::class)->applyToAnalyses(
             ConversationAnalysis::query()
                 ->business()
-                ->where('organization_id', $filter->organizationId)
-                ->whereBetween('analyzed_at', [$filter->from, $filter->to])
-                ->whereIn('organization_user_id', $employeeIds),
+                ->where('conversation_analyses.organization_id', $filter->organizationId)
+                ->whereIn('conversation_analyses.organization_user_id', $employeeIds)
+                ->whereHas('call', fn ($query) => $query->occurredBetween($filter->from, $filter->to)),
             $filter->organizationId,
         )
             ->groupBy('organization_user_id')
