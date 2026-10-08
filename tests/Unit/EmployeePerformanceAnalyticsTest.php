@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
+use App\DTOs\AnalysisListFilter;
 use App\DTOs\ReportFilter;
 use App\Enums\Gender;
 use App\Enums\ReportDatePreset;
@@ -12,6 +13,7 @@ use App\Models\ConversationAnalysis;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\User;
+use App\Services\AnalysisListQuery;
 use App\Services\CallIntake\CallIntakeSettings;
 use App\Services\CallIntake\Filters\InternalAgentCallsFilter;
 use App\Services\Performance\EmployeePerformanceAnalytics;
@@ -152,33 +154,37 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $this->assertSame(1, $dashboard['kpis']['sentiment_sample_count']);
     }
 
-    public function test_total_analyzed_follows_analysis_completion_not_call_day(): void
+    public function test_total_analyzed_follows_call_occurrence_like_analysis_list(): void
     {
         $organization = Organization::factory()->create();
         $employee = $this->seedNamedEmployee($organization, 'سارا', 'نوری');
 
-        // Call from a holiday ~6 weeks ago, analyzed today → still counts.
+        // Call outside the window, analyzed today → does not count.
         $this->seedAnalysisForEmployee(
             $organization,
             $employee,
             score: 88,
             analyzedAt: now(),
-            callStartedAt: Carbon::parse('2026-08-07 11:00:00', 'UTC'), // Friday
+            callStartedAt: now()->subDays(40),
         );
 
-        // Analyzed 31 days ago → outside the rolling window.
+        // Call inside the window (even if analyzed later the same day) → counts.
         $this->seedAnalysisForEmployee(
             $organization,
             $employee,
             score: 70,
-            analyzedAt: now()->subDays(31),
-            callStartedAt: now()->subDays(31),
+            analyzedAt: now(),
+            callStartedAt: now()->subDays(5),
         );
 
         $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
         $dashboard = app(EmployeePerformanceAnalytics::class)->teamDashboard($filter);
+        $analysisListTotal = app(AnalysisListQuery::class)->analyzedCallCount(
+            AnalysisListFilter::make($organization->id, ReportDatePreset::Last30),
+        );
 
         $this->assertSame(1, $dashboard['kpis']['total_analyzed']);
+        $this->assertSame($analysisListTotal, $dashboard['kpis']['total_analyzed']);
     }
 
     public function test_report_date_preset_includes_quarter_and_year(): void
@@ -341,6 +347,65 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $dashboard = app(EmployeePerformanceAnalytics::class)->teamDashboard($filter);
 
         $this->assertFalse(collect($dashboard['attention_employees'])->contains('id', $agent->id));
+    }
+
+    public function test_analyzed_card_counts_the_rolling_thirty_tehran_days_and_rolls_at_midnight(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-07 23:30:00', 'Asia/Tehran'));
+
+        $organization = Organization::factory()->create();
+        $employee = $this->seedNamedEmployee($organization, 'نگار', 'کاظمی');
+        $analytics = app(EmployeePerformanceAnalytics::class);
+        $count = fn (): int => $analytics->teamDashboard(
+            ReportFilter::make($organization->id, ReportDatePreset::Last30),
+        )['kpis']['total_analyzed'];
+
+        $this->seedAnalysisForEmployee($organization, $employee, 80, callStartedAt: Carbon::parse('2026-09-08 10:00:00', 'Asia/Tehran'));
+        $this->seedAnalysisForEmployee($organization, $employee, 70, callStartedAt: Carbon::parse('2026-09-07 10:00:00', 'Asia/Tehran'));
+        $this->seedAnalysisForEmployee($organization, $employee, 90, callStartedAt: Carbon::parse('2026-10-07 18:00:00', 'Asia/Tehran'));
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $employee->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'issabel',
+            'external_call_id' => 'pending-inside-window',
+            'direction' => 'inbound',
+            'caller_number' => '09120000000',
+            'receiver_number' => '02100000000',
+            'status' => 'completed',
+            'processing_status' => 'pending',
+            'duration_seconds' => 40,
+            'started_at' => Carbon::parse('2026-10-07 12:00:00', 'Asia/Tehran'),
+        ]);
+
+        $this->assertSame(2, $count());
+
+        Carbon::setTestNow(Carbon::parse('2026-10-08 00:05:00', 'Asia/Tehran'));
+
+        $this->assertSame(1, $count());
+
+        $this->seedAnalysisForEmployee($organization, $employee, 85, callStartedAt: Carbon::parse('2026-10-08 00:02:00', 'Asia/Tehran'));
+        EmployeePerformanceAnalytics::forgetOrganizationCaches($organization->id);
+
+        $this->assertSame(2, $count());
+    }
+
+    public function test_analyzed_card_includes_a_call_as_soon_as_it_is_analyzed_the_same_day(): void
+    {
+        $organization = Organization::factory()->create();
+        $employee = $this->seedNamedEmployee($organization, 'سارا', 'نوری');
+        $analytics = app(EmployeePerformanceAnalytics::class);
+        $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
+
+        $this->seedAnalysisForEmployee($organization, $employee, 80);
+        $this->assertSame(1, $analytics->teamDashboard($filter)['kpis']['total_analyzed']);
+
+        $this->seedAnalysisForEmployee($organization, $employee, 77, callStartedAt: now()->subDays(10));
+        $this->assertSame(1, $analytics->teamDashboard($filter)['kpis']['total_analyzed']);
+
+        EmployeePerformanceAnalytics::forgetOrganizationCaches($organization->id);
+
+        $this->assertSame(2, $analytics->teamDashboard($filter)['kpis']['total_analyzed']);
     }
 
     /** @return array{0: Organization, 1: OrganizationUser} */

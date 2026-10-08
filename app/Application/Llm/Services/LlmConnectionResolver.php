@@ -61,9 +61,6 @@ class LlmConnectionResolver
             ),
             settings: new LlmSettings(
                 defaultModel: $model->model_key,
-                transcriptionModel: is_string($llmProvider->config['transcription_model'] ?? null)
-                    ? $llmProvider->config['transcription_model']
-                    : null,
             ),
             isDefault: true,
             isActive: true,

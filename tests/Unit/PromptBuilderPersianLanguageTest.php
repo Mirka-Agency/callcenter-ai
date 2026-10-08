@@ -23,6 +23,7 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $sample = PromptBuilder::persianOutputSample();
 
         $this->assertStringContainsString('نمونه خروجی درست', $sample);
+        $this->assertStringContainsString('مقدار sentiment این نمونه را کپی نکنید', $sample);
         $this->assertStringContainsString('"summary": "مشتری برای استعلام هزینه تمدید اشتراک تماس گرفت.', $sample);
         $this->assertStringContainsString('"overall_evaluation": "کارشناس مؤدب و مسلط بود', $sample);
         $this->assertStringContainsString('"intent": "استعلام هزینه و شرایط تمدید اشتراک"', $sample);
@@ -101,18 +102,19 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $this->assertStringContainsString('"follow_up_suggestions": ["تماس پیگیری در روز بعد برای اعلام تصمیم مشتری"]', $prompt);
     }
 
-    public function test_sentiment_policy_requires_brand_product_or_service_dissatisfaction(): void
+    public function test_sentiment_policy_reads_customer_emotion_and_keeps_collection_calls_neutral(): void
     {
         $policy = PromptBuilder::sentimentPolicy();
 
-        $this->assertStringContainsString('احساس مشتری نسبت به برند، محصول و خدمات', $policy);
-        $this->assertStringContainsString('negative را فقط و فقط وقتی بگذارید', $policy);
+        $this->assertStringContainsString('حال‌وهوای عاطفی خود مشتری', $policy);
+        $this->assertStringContainsString('مقدار neutral نمونه خروجی را کپی نکنید', $policy);
         $this->assertStringContainsString('اگر مشتری اعتراضی نسبت به محصول یا برند ما دارد، حتماً negative بگذارید', $policy);
-        $this->assertStringContainsString('نارضایتی از لحن یا عملکرد کارشناس', $policy);
-        $this->assertStringContainsString('استعلام قیمت', $policy);
+        $this->assertStringContainsString('ناراحتی واقعی از عملکرد کارشناس negative است', $policy);
+        $this->assertStringContainsString('استعلام خشک قیمت', $policy);
         $this->assertStringContainsString('پیگیری پرداخت‌نشده', $policy);
         $this->assertStringContainsString('اگر نقش کارشناس و مشتری را عوض کنید', $policy);
-        $this->assertStringContainsString('مقدار را neutral بگذارید', $policy);
+        $this->assertStringContainsString('مکالمه را فقط به‌خاطر معمولی بودن فروش یا پشتیبانی خنثی نکنید', $policy);
+        $this->assertStringNotContainsString('در سایر مکالمات معمولی فروش یا پشتیبانی، مقدار را neutral بگذارید', $policy);
         $this->assertStringNotContainsString('overall emotional tone', $policy);
     }
 
@@ -121,8 +123,8 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $prompt = (new PromptBuilder)->systemPrompt();
 
         $this->assertStringContainsString(PromptBuilder::sentimentPolicy(), $prompt);
-        $this->assertStringContainsString('احساس مشتری نسبت به برند، محصول و خدمات سازمان', $prompt);
-        $this->assertStringContainsString('negative فقط در صورت نارضایتی یا اعتراض به برند/محصول/خدمات', $prompt);
+        $this->assertStringContainsString('حال‌وهوای عاطفی خود مشتری در همین تماس', $prompt);
+        $this->assertStringContainsString('مقدار نمونه را کپی نکنید', $prompt);
     }
 
     public function test_instructional_policies_do_not_contain_english_sentences(): void

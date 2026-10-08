@@ -48,6 +48,7 @@ class OrganizationCallMetrics
         $dayKey = now(CompanyWorkCalendar::TIMEZONE)->toDateString();
         Cache::forget($this->todayCacheKey($organizationId, $dayKey, $token));
         Cache::forget('calls-today:'.$organizationId.':'.$dayKey.':recorded-tehran-v1');
+        Cache::forget('calls-today:'.$organizationId.':'.$dayKey.':pbx-intake-v1');
     }
 
     public function countThisMonth(int $organizationId): int
@@ -61,42 +62,32 @@ class OrganizationCallMetrics
         );
     }
 
+    /**
+     * Same volume definition as the analysis list "تعداد کل تماس‌ها" card:
+     * intake-filtered PBX voip logs in the window, plus standalone calls that never got a voip log
+     * (manual upload / import).
+     */
     public function countBetween(int $organizationId, Carbon $from, Carbon $to): int
     {
         $from = $from->copy();
         $to = $to->copy();
 
-        $extensionMap = $this->resolver->extensionEmployeeMapForOrganization($organizationId);
-
-        if ($extensionMap === []) {
-            $query = Call::query()
-                ->where('organization_id', $organizationId)
-                ->occurredBetween($from, $to)
-                ->withRecording();
-
-            if (! $this->includesUnassigned($organizationId)) {
-                $query->whereNotNull('organization_user_id');
-            }
-
-            return app(CallIntakePolicy::class)->applyToCalls($query, $organizationId)->count();
-        }
-
-        $callCount = $this->definedExtensions->apply(
-            Call::query()
-                ->where('organization_id', $organizationId)
+        $pbx = app(CallIntakePolicy::class)->applyToVoipLogs(
+            VoipCallLog::query()
+                ->where('voip_call_logs.organization_id', $organizationId)
                 ->occurredBetween($from, $to),
             $organizationId,
         )->count();
 
-        $orphanCount = app(CallIntakePolicy::class)->applyToVoipLogs(
-            $this->definedExtensions->applyToVoipLogs(
-                $this->orphanLogQuery($organizationId, $from, $to),
-                $organizationId,
-            ),
+        $standalone = app(CallIntakePolicy::class)->applyToCalls(
+            Call::query()
+                ->where('organization_id', $organizationId)
+                ->whereNull('voip_call_log_id')
+                ->occurredBetween($from, $to),
             $organizationId,
         )->count();
 
-        return $callCount + $orphanCount;
+        return $pbx + $standalone;
     }
 
     public function countLost(int $organizationId): int
@@ -226,7 +217,7 @@ class OrganizationCallMetrics
     {
         $token ??= app(CallIntakeSettings::class)->cacheToken($organizationId);
 
-        return 'calls-today:'.$organizationId.':'.$dayKey.':'.$token;
+        return 'calls-today:'.$organizationId.':'.$dayKey.':'.$token.':pbx-intake-v1';
     }
 
     /** @return Builder<VoipCallLog> */

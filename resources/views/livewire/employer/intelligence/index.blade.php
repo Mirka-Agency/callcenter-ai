@@ -178,12 +178,10 @@
         <x-saas.stat-card
             label="تماس‌های خارج از تحلیل"
             :value="number_format($overview['outside_analysis_count'] ?? 0)"
-            hint="طبق فیلترهای خاموش پروفایل سازمان"
         />
         <x-saas.stat-card
             label="تماس از دست رفته"
             :value="number_format($overview['missed_count'])"
-            :hint="'ورودی '.number_format($overview['inbound_count']).' · خروجی '.number_format($overview['outbound_count'])"
         />
         <x-saas.stat-card label="کل لیدها" :value="number_format($overview['total_leads'])" />
         <x-saas.stat-card label="میانگین کیفیت لیدها" :value="$overview['average_lead_score'] ?: '—'" :tone="\App\Support\MetricTone::fromScore($overview['average_lead_score'])" />
