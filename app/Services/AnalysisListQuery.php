@@ -15,6 +15,7 @@ use App\Models\VoipCallLog;
 use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\CallIntake\CallIntakeSettings;
 use App\Services\Performance\Calculators\SentimentScoreCalculator;
+use App\Services\Reports\AnalyzedCallVolumeRevision;
 use App\Services\Reports\CallMetricsAnalytics;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\DefinedExtensionCallConstraint;
@@ -215,6 +216,7 @@ class AnalysisListQuery
         $extensionKey = md5(json_encode($this->definedExtensions->matchSetFingerprint($filter->organizationId)) ?: '');
         $cacheKey = implode(':', [
             'analysis-call-stats-v15-business-analyzed',
+            AnalyzedCallVolumeRevision::token($filter->organizationId),
             app(CallIntakeSettings::class)->cacheToken($filter->organizationId),
             $filter->organizationId,
             $filter->from->getTimestamp(),

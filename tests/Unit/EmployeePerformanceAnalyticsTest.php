@@ -349,6 +349,65 @@ class EmployeePerformanceAnalyticsTest extends TestCase
         $this->assertFalse(collect($dashboard['attention_employees'])->contains('id', $agent->id));
     }
 
+    public function test_analyzed_card_counts_the_rolling_thirty_tehran_days_and_rolls_at_midnight(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-07 23:30:00', 'Asia/Tehran'));
+
+        $organization = Organization::factory()->create();
+        $employee = $this->seedNamedEmployee($organization, 'نگار', 'کاظمی');
+        $analytics = app(EmployeePerformanceAnalytics::class);
+        $count = fn (): int => $analytics->teamDashboard(
+            ReportFilter::make($organization->id, ReportDatePreset::Last30),
+        )['kpis']['total_analyzed'];
+
+        $this->seedAnalysisForEmployee($organization, $employee, 80, callStartedAt: Carbon::parse('2026-09-08 10:00:00', 'Asia/Tehran'));
+        $this->seedAnalysisForEmployee($organization, $employee, 70, callStartedAt: Carbon::parse('2026-09-07 10:00:00', 'Asia/Tehran'));
+        $this->seedAnalysisForEmployee($organization, $employee, 90, callStartedAt: Carbon::parse('2026-10-07 18:00:00', 'Asia/Tehran'));
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $employee->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'issabel',
+            'external_call_id' => 'pending-inside-window',
+            'direction' => 'inbound',
+            'caller_number' => '09120000000',
+            'receiver_number' => '02100000000',
+            'status' => 'completed',
+            'processing_status' => 'pending',
+            'duration_seconds' => 40,
+            'started_at' => Carbon::parse('2026-10-07 12:00:00', 'Asia/Tehran'),
+        ]);
+
+        $this->assertSame(2, $count());
+
+        Carbon::setTestNow(Carbon::parse('2026-10-08 00:05:00', 'Asia/Tehran'));
+
+        $this->assertSame(1, $count());
+
+        $this->seedAnalysisForEmployee($organization, $employee, 85, callStartedAt: Carbon::parse('2026-10-08 00:02:00', 'Asia/Tehran'));
+        EmployeePerformanceAnalytics::forgetOrganizationCaches($organization->id);
+
+        $this->assertSame(2, $count());
+    }
+
+    public function test_analyzed_card_includes_a_call_as_soon_as_it_is_analyzed_the_same_day(): void
+    {
+        $organization = Organization::factory()->create();
+        $employee = $this->seedNamedEmployee($organization, 'سارا', 'نوری');
+        $analytics = app(EmployeePerformanceAnalytics::class);
+        $filter = ReportFilter::make($organization->id, ReportDatePreset::Last30);
+
+        $this->seedAnalysisForEmployee($organization, $employee, 80);
+        $this->assertSame(1, $analytics->teamDashboard($filter)['kpis']['total_analyzed']);
+
+        $this->seedAnalysisForEmployee($organization, $employee, 77, callStartedAt: now()->subDays(10));
+        $this->assertSame(1, $analytics->teamDashboard($filter)['kpis']['total_analyzed']);
+
+        EmployeePerformanceAnalytics::forgetOrganizationCaches($organization->id);
+
+        $this->assertSame(2, $analytics->teamDashboard($filter)['kpis']['total_analyzed']);
+    }
+
     /** @return array{0: Organization, 1: OrganizationUser} */
     private function seedEmployeeWithAnalysis(int $score): array
     {

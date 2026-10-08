@@ -2,18 +2,19 @@
 
 namespace App\Livewire\Employer\Dashboard;
 
+use App\DTOs\AnalysisListFilter;
 use App\DTOs\ReportFilter;
 use App\Enums\ReportDatePreset;
 use App\Livewire\Employer\Concerns\HasAgentPerformanceCardFeed;
 use App\Livewire\Employer\Concerns\HasQualityTrendDrilldown;
 use App\Livewire\Employer\Concerns\HasTeamWeaknessDrilldown;
 use App\Models\ConversationAnalysis;
+use App\Services\AnalysisListQuery;
 use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\Demo\DemoAnalyticsClock;
 use App\Services\EmployerContext;
 use App\Services\EmployerDashboardAnalytics;
 use App\Services\Performance\EmployeePerformanceAnalytics;
-use App\Services\Reports\OrganizationCallMetrics;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -54,7 +55,12 @@ class Overview extends Component
         return view('livewire.employer.dashboard.overview', [
             'organization' => $organization,
             'cockpit' => [
-                'calls_today' => app(OrganizationCallMetrics::class)->countToday($organizationId),
+                'calls_today' => app(AnalysisListQuery::class)->analyzedCallCount(
+                    AnalysisListFilter::make(
+                        organizationId: $organizationId,
+                        preset: ReportDatePreset::Today,
+                    ),
+                ),
             ],
             'agentCardFeed' => $this->agentCardFeed($agents),
             'teamKpis' => $performanceDashboard['kpis'],

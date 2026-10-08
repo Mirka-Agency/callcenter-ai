@@ -17,6 +17,7 @@ use App\Services\Performance\Coaching\CoachingRecommendationBuilder;
 use App\Services\Performance\Data\LoadedPerformanceData;
 use App\Services\Performance\Data\PerformanceDataLoader;
 use App\Services\Performance\Support\ProgressInsightFormatter;
+use App\Services\Reports\AnalyzedCallVolumeRevision;
 use App\Services\Reports\CallMetricsAnalytics;
 use App\Services\Reports\LeadConcernsAnalytics;
 use App\Support\AgentPerformancePresenter;
@@ -43,7 +44,13 @@ class EmployeePerformanceAnalytics
 
     public static function teamDashboardCacheKey(ReportFilter $filter): string
     {
-        return 'performance:team:highlights:'.$filter->cacheKey().':'.OrganizationHolidays::cacheToken($filter->organizationId);
+        return implode(':', [
+            'performance:team:highlights',
+            $filter->cacheKey(),
+            OrganizationHolidays::cacheToken($filter->organizationId),
+            CompanyWorkCalendar::dayKey(now()),
+            AnalyzedCallVolumeRevision::token($filter->organizationId),
+        ]);
     }
 
     public static function forgetOrganizationCaches(int $organizationId): void
@@ -54,6 +61,7 @@ class EmployeePerformanceAnalytics
 
         Cache::forget(self::teamDashboardCacheKey($filter));
         Cache::forget('performance:kpi-point-deltas:'.$filter->cacheKey().':'.$previous->cacheKey().':'.$holidayToken);
+        AnalyzedCallVolumeRevision::bump($organizationId);
     }
 
     /** @return array<string, mixed> */
@@ -533,7 +541,9 @@ class EmployeePerformanceAnalytics
                 ->count(),
             'active_employees' => $data->employees->count(),
             'total_calls' => $data->calls->count(),
-            // Same call-occurrence window as the analysis list page "تماس‌های تحلیل‌شده" card.
+            // Analyzed calls whose conversation falls on today or the previous 29 Tehran days.
+            // The window rolls at 00:00 Asia/Tehran. A call analyzed later the same day is included
+            // once its analysis is stored (the volume revision drops the previous cache).
             'total_analyzed' => $this->analyzedCallsInWindow($filter),
             'average_quality_score' => $scored->isNotEmpty() ? round((float) $scored->avg('score'), 1) : 0.0,
             'average_lead_score' => $leadDist['average_score'],

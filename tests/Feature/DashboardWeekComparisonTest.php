@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
+use App\DTOs\AnalysisListFilter;
+use App\Enums\ReportDatePreset;
 use App\Enums\UserRole;
 use App\Livewire\Employer\Dashboard\Overview;
 use App\Models\Call;
@@ -11,6 +14,8 @@ use App\Models\ConversationAnalysis;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\User;
+use App\Services\AnalysisListQuery;
+use App\Services\Reports\OrganizationCallMetrics;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -84,6 +89,54 @@ class DashboardWeekComparisonTest extends TestCase
 
         $this->assertSame(2, mb_substr_count($html, '25 نسبت به ماه قبل'));
         $this->assertSame(1, mb_substr_count($html, '40٪ نسبت به ماه قبل'));
+    }
+
+    public function test_today_card_counts_only_calls_analyzed_today(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $employee = OrganizationUser::query()->create([
+            'organization_id' => $organization->id,
+            'user_id' => User::factory()->create(['role' => UserRole::Employee])->id,
+            'first_name' => 'نگار',
+            'last_name' => 'کاظمی',
+            'is_active' => true,
+        ]);
+
+        $this->seedAnalysis($organization, $employee, now(), 80, AnalysisSentiment::Positive, 70);
+        $this->seedAnalysis($organization, $employee, now()->subDay(), 60, AnalysisSentiment::Neutral, 40);
+
+        Call::query()->create([
+            'organization_id' => $organization->id,
+            'organization_user_id' => $employee->id,
+            'source' => ConversationSource::Voip,
+            'provider_code' => 'issabel',
+            'external_call_id' => 'pending-today',
+            'direction' => 'inbound',
+            'caller_number' => '09121111111',
+            'receiver_number' => '02100000000',
+            'status' => 'completed',
+            'processing_status' => CallProcessingStatus::Pending,
+            'duration_seconds' => 90,
+            'started_at' => now(),
+        ]);
+
+        $analyzedToday = app(AnalysisListQuery::class)->analyzedCallCount(
+            AnalysisListFilter::make(
+                organizationId: $organization->id,
+                preset: ReportDatePreset::Today,
+            ),
+        );
+
+        $this->assertSame(1, $analyzedToday);
+        $this->assertGreaterThan(
+            $analyzedToday,
+            app(OrganizationCallMetrics::class)->countToday($organization->id),
+        );
+
+        $html = Livewire::test(Overview::class)->html();
+
+        $this->assertMatchesRegularExpression('/تماس‌های امروز[\s\S]{0,280}>1</u', $html);
+        $this->assertDoesNotMatchRegularExpression('/تماس‌های امروز[\s\S]{0,280}>'.app(OrganizationCallMetrics::class)->countToday($organization->id).'</u', $html);
     }
 
     public function test_today_summary_lists_agents_who_need_progress_not_their_customers(): void
