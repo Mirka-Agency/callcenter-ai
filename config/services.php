@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    /*
+    | Google reCAPTCHA v2 on the public and admin login pages.
+    | RECAPTCHA_ENABLED defaults to on. On-prem is always off (see Recaptcha::enabled).
+    | The widget also stays off until both keys are set.
+    */
+    'recaptcha' => [
+        'site_key' => env('RECAPTCHA_SITE_KEY'),
+        'secret_key' => env('RECAPTCHA_SECRET_KEY'),
+        'enabled' => env('RECAPTCHA_ENABLED', true),
+    ],
+
 ];

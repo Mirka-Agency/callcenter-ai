@@ -3,6 +3,7 @@
 namespace App\Livewire\Auth;
 
 use App\Models\User;
+use App\Support\Recaptcha;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -19,6 +20,8 @@ class Login extends Component
 
     public bool $remember = false;
 
+    public string $captcha = '';
+
     public function mount(): void
     {
         $this->identifier = request()->query('p', '');
@@ -27,14 +30,32 @@ class Login extends Component
 
     public function authenticate(): void
     {
-        $this->validate([
+        $rules = [
             'identifier' => ['required'],
             'password' => ['required'],
+        ];
+
+        if (Recaptcha::enabled()) {
+            $rules['captcha'] = ['required', 'string'];
+        }
+
+        $this->validate($rules, [
+            'captcha.required' => __('auth.recaptcha'),
         ]);
+
+        if (Recaptcha::enabled() && ! Recaptcha::verify($this->captcha)) {
+            $this->resetRecaptcha();
+
+            throw ValidationException::withMessages([
+                'captcha' => __('auth.recaptcha'),
+            ]);
+        }
 
         $credentials = $this->resolveCredentials();
 
         if ($credentials === null || ! Auth::attempt($credentials, $this->remember)) {
+            $this->resetRecaptcha();
+
             throw ValidationException::withMessages([
                 'identifier' => __('auth.failed'),
             ]);
@@ -66,6 +87,16 @@ class Login extends Component
         }
 
         return ['email' => $user->email, 'password' => $this->password];
+    }
+
+    private function resetRecaptcha(): void
+    {
+        if (! Recaptcha::enabled()) {
+            return;
+        }
+
+        $this->reset('captcha');
+        $this->js('window.grecaptcha && window.grecaptcha.reset()');
     }
 
     public function render()

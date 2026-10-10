@@ -36,5 +36,6 @@
         <env name="LLM_REMOTE_ENABLED" value="true" force="true"/>
         <env name="LLM_BLOCK_AVALAI" value="false" force="true"/>
         <env name="DASHBOARD_INSIGHT_LISTS_SINCE" value="" force="true"/>
+        <env name="RECAPTCHA_ENABLED" value="false" force="true"/>
     </php>
 </phpunit>
