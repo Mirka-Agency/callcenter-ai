@@ -35,6 +35,7 @@
         <x-saas.manual-upload-panel
             :employees="$employees"
             :show-employee-assign="true"
+            :create-employee-url="route('employer.employees.create')"
             :upload-zone-state="$uploadZoneState"
             :selected-file-name="$selectedFileName"
             :selected-file-size="$selectedFileSize"

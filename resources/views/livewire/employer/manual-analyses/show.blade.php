@@ -22,6 +22,43 @@
         <div><span class="text-sm text-zinc-500">دسته‌بندی</span><p class="font-medium">{{ $upload->category ?? '—' }}</p></div>
     </div>
 
+    @if (session('status'))
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100">
+            {{ session('status') }}
+        </div>
+    @endif
+
+    @unless ($upload->employee)
+        <div class="saas-card space-y-3">
+            <h2 class="text-sm font-semibold text-zinc-900 dark:text-white">این تماس کارشناس ندارد</h2>
+            <p class="text-sm text-zinc-500">کارشناس را انتخاب کنید تا امتیاز، کوچینگ و متریک عملکرد برای همان شخص محاسبه شود.</p>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <select wire:model="assignEmployeeId" class="saas-input min-w-0 flex-1">
+                    <option value="0">انتخاب کارشناس…</option>
+                    @foreach ($employees as $employee)
+                        <option value="{{ $employee->id }}">{{ $employee->full_name ?: ('کارشناس #'.$employee->id) }}</option>
+                    @endforeach
+                </select>
+                <button
+                    type="button"
+                    wire:click="assignCallEmployee"
+                    wire:loading.attr="disabled"
+                    wire:target="assignCallEmployee"
+                    class="saas-btn-primary shrink-0 whitespace-nowrap text-sm"
+                >
+                    <span wire:loading.remove wire:target="assignCallEmployee">تخصیص کارشناس</span>
+                    <span wire:loading wire:target="assignCallEmployee">در حال تخصیص…</span>
+                </button>
+            </div>
+            @error('assignEmployeeId')
+                <p class="text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+            @enderror
+            <a href="{{ $createEmployeeUrl }}" class="inline-flex text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
+                یا کارشناس جدید بسازید
+            </a>
+        </div>
+    @endunless
+
     @include('livewire.shared.recording-player', ['recordingUrl' => $recordingUrl ?? null, 'recordingExpired' => $recordingExpired ?? false])
 
     <div @if($call->processingJob?->isActive()) wire:poll.5s @endif>
