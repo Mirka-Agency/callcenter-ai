@@ -11,7 +11,7 @@ Route::get('/', function () {
         return redirect(auth()->user()->portalRoute());
     }
 
-    return redirect()->route('login');
+    return view('landing');
 })->name('home');
 
 Route::middleware('guest')->group(function () {
@@ -29,7 +29,7 @@ Route::post('/logout', function () {
     request()->session()->invalidate();
     request()->session()->regenerateToken();
 
-    return redirect()->route('login');
+    return redirect()->route('home');
 })->name('logout');
 
 Route::post('/impersonation/stop', [\App\Http\Controllers\ImpersonationController::class, 'stop'])

@@ -22,4 +22,8 @@
             <span wire:loading wire:target="authenticate">در حال ورود...</span>
         </button>
     </form>
+
+    <p class="mt-6 text-center text-sm text-zinc-500">
+        <a href="{{ route('home') }}" class="transition hover:text-zinc-800 dark:hover:text-zinc-200">بازگشت به صفحه آوایار</a>
+    </p>
 </div>
