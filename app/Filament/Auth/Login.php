@@ -85,6 +85,5 @@ class Login extends BaseLogin
         }
 
         $this->data['captcha'] = '';
-        $this->js('window.grecaptcha && window.grecaptcha.reset()');
     }
 }

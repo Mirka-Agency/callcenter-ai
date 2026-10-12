@@ -48,7 +48,11 @@ class RecaptchaTest extends TestCase
     {
         $this->enableRecaptcha();
         Http::fake([
-            'www.google.com/recaptcha/api/siteverify' => Http::response(['success' => true]),
+            'www.google.com/recaptcha/api/siteverify' => Http::response([
+                'success' => true,
+                'score' => 0.9,
+                'action' => Recaptcha::ACTION,
+            ]),
         ]);
 
         $this->assertTrue(Recaptcha::verify('token-from-widget'));
@@ -57,11 +61,24 @@ class RecaptchaTest extends TestCase
             && $request['secret'] === 'test-secret');
     }
 
+    public function test_verify_rejects_a_low_score_or_unexpected_action(): void
+    {
+        $this->enableRecaptcha();
+        Http::fake([
+            'www.google.com/recaptcha/api/siteverify' => Http::sequence()
+                ->push(['success' => true, 'score' => 0.1, 'action' => Recaptcha::ACTION])
+                ->push(['success' => true, 'score' => 0.9, 'action' => 'other']),
+        ]);
+
+        $this->assertFalse(Recaptcha::verify('low-score'));
+        $this->assertFalse(Recaptcha::verify('wrong-action'));
+    }
+
     public function test_verify_rejects_a_missing_or_failed_token(): void
     {
         $this->enableRecaptcha();
         Http::fake([
-            'www.google.com/recaptcha/api/siteverify' => Http::response(['success' => false]),
+            'www.google.com/recaptcha/api/siteverify' => Http::response(['success' => false, 'error-codes' => ['invalid-input-response']]),
         ]);
 
         $this->assertFalse(Recaptcha::verify(null));

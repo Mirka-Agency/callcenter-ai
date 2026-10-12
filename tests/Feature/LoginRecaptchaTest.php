@@ -42,13 +42,15 @@ class LoginRecaptchaTest extends TestCase
 
         $this->get(route('login'))
             ->assertOk()
-            ->assertSee('google.com/recaptcha', false)
-            ->assertSee('test-site-key', false);
+            ->assertSee('google.com/recaptcha/api.js', false)
+            ->assertSee('render=test-site-key', false)
+            ->assertDontSee('render=explicit', false);
 
         $this->get('/admin/login')
             ->assertOk()
-            ->assertSee('google.com/recaptcha', false)
-            ->assertSee('test-site-key', false);
+            ->assertSee('google.com/recaptcha/api.js', false)
+            ->assertSee('render=test-site-key', false)
+            ->assertDontSee('render=explicit', false);
     }
 
     public function test_on_prem_login_pages_omit_the_widget_even_when_the_flag_is_on(): void
@@ -86,7 +88,10 @@ class LoginRecaptchaTest extends TestCase
     {
         $this->enableRecaptcha();
         Http::fake([
-            'www.google.com/recaptcha/api/siteverify' => Http::response(['success' => false]),
+            'www.google.com/recaptcha/api/siteverify' => Http::response([
+                'success' => false,
+                'error-codes' => ['invalid-input-response'],
+            ]),
         ]);
 
         $user = User::factory()->create(['role' => UserRole::Admin]);
@@ -105,7 +110,11 @@ class LoginRecaptchaTest extends TestCase
     {
         $this->enableRecaptcha();
         Http::fake([
-            'www.google.com/recaptcha/api/siteverify' => Http::response(['success' => true]),
+            'www.google.com/recaptcha/api/siteverify' => Http::response([
+                'success' => true,
+                'score' => 0.9,
+                'action' => 'login',
+            ]),
         ]);
 
         $user = User::factory()->create(['role' => UserRole::Admin]);
@@ -125,7 +134,10 @@ class LoginRecaptchaTest extends TestCase
         $this->enableRecaptcha();
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         Http::fake([
-            'www.google.com/recaptcha/api/siteverify' => Http::response(['success' => false]),
+            'www.google.com/recaptcha/api/siteverify' => Http::response([
+                'success' => false,
+                'error-codes' => ['invalid-input-response'],
+            ]),
         ]);
 
         $user = User::factory()->create(['role' => UserRole::Admin]);
@@ -145,7 +157,11 @@ class LoginRecaptchaTest extends TestCase
         $this->enableRecaptcha();
         Filament::setCurrentPanel(Filament::getPanel('admin'));
         Http::fake([
-            'www.google.com/recaptcha/api/siteverify' => Http::response(['success' => true]),
+            'www.google.com/recaptcha/api/siteverify' => Http::response([
+                'success' => true,
+                'score' => 0.9,
+                'action' => 'login',
+            ]),
         ]);
 
         $user = User::factory()->create(['role' => UserRole::Admin]);

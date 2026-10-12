@@ -36,14 +36,16 @@ return [
     ],
 
     /*
-    | Google reCAPTCHA v2 on the public and admin login pages.
+    | Google reCAPTCHA v3 on the public and admin login pages.
     | RECAPTCHA_ENABLED defaults to on. On-prem is always off (see Recaptcha::enabled).
-    | The widget also stays off until both keys are set.
+    | Verification stays off until both keys are set.
+    | min_score is the lowest v3 score (0–1) accepted for the login action.
     */
     'recaptcha' => [
         'site_key' => env('RECAPTCHA_SITE_KEY'),
         'secret_key' => env('RECAPTCHA_SECRET_KEY'),
         'enabled' => env('RECAPTCHA_ENABLED', true),
+        'min_score' => env('RECAPTCHA_MIN_SCORE', 0.5),
     ],
 
     /*

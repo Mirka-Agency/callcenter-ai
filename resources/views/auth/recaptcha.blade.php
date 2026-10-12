@@ -1,35 +1,82 @@
 @if (\App\Support\Recaptcha::enabled())
     <div
         wire:ignore
-        dir="ltr"
-        class="flex justify-center"
         x-data="{
-            widgetId: null,
-            render() {
-                if (this.widgetId !== null || ! window.grecaptcha || ! window.grecaptcha.render) {
-                    return;
-                }
+            submitting: false,
+            executeToken() {
+                const siteKey = @js(\App\Support\Recaptcha::siteKey());
+                const action = @js(\App\Support\Recaptcha::ACTION);
 
-                this.widgetId = window.grecaptcha.render(this.$refs.widget, {
-                    sitekey: @js(\App\Support\Recaptcha::siteKey()),
-                    callback: (token) => this.$wire.set(@js($statePath), token),
-                    'expired-callback': () => this.$wire.set(@js($statePath), ''),
-                    'error-callback': () => this.$wire.set(@js($statePath), ''),
+                return new Promise((resolve, reject) => {
+                    const timer = setTimeout(() => reject(new Error('timeout')), 8000);
+
+                    const run = () => {
+                        window.grecaptcha.ready(() => {
+                            window.grecaptcha.execute(siteKey, { action })
+                                .then((token) => {
+                                    clearTimeout(timer);
+                                    resolve(token);
+                                })
+                                .catch((error) => {
+                                    clearTimeout(timer);
+                                    reject(error);
+                                });
+                        });
+                    };
+
+                    if (window.grecaptcha && window.grecaptcha.execute) {
+                        run();
+                        return;
+                    }
+
+                    window.addEventListener('recaptcha-api-loaded', () => {
+                        if (window.grecaptcha && window.grecaptcha.execute) {
+                            run();
+                            return;
+                        }
+
+                        clearTimeout(timer);
+                        reject(new Error('unavailable'));
+                    }, { once: true });
                 });
             },
-            boot() {
-                if (window.grecaptcha && window.grecaptcha.render) {
-                    this.render();
+            async onSubmit(event) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                if (this.submitting) {
                     return;
                 }
 
-                window.addEventListener('recaptcha-api-loaded', () => this.render(), { once: true });
+                this.submitting = true;
+                let token = '';
+
+                try {
+                    token = await this.executeToken();
+                } catch (error) {
+                    token = '';
+                }
+
+                try {
+                    await this.$wire.set(@js($statePath), token);
+                    await this.$wire.authenticate();
+                } finally {
+                    this.submitting = false;
+                }
+            },
+            boot() {
+                const form = this.$el.closest('form');
+
+                if (! form || form.dataset.recaptchaBound === '1') {
+                    return;
+                }
+
+                form.dataset.recaptchaBound = '1';
+                form.addEventListener('submit', (event) => this.onSubmit(event), true);
             },
         }"
         x-init="boot()"
-    >
-        <div x-ref="widget"></div>
-    </div>
+    ></div>
     @error($statePath)
         <p class="fi-fo-field-wrp-error-message mt-2 text-sm text-red-600">{{ $message }}</p>
     @enderror
@@ -37,6 +84,6 @@
         <script>
             window.onRecaptchaApiLoad = () => window.dispatchEvent(new Event('recaptcha-api-loaded'));
         </script>
-        <script src="https://www.google.com/recaptcha/api.js?hl=fa&onload=onRecaptchaApiLoad&render=explicit" async defer></script>
+        <script src="https://www.google.com/recaptcha/api.js?hl=fa&onload=onRecaptchaApiLoad&render={{ urlencode((string) \App\Support\Recaptcha::siteKey()) }}" async defer></script>
     @endonce
 @endif

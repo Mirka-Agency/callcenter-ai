@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Log;
 
 class Recaptcha
 {
+    public const ACTION = 'login';
+
     public static function enabled(): bool
     {
         if (OnPrem::enabled()) {
@@ -29,7 +31,7 @@ class Recaptcha
         return is_string($siteKey) && $siteKey !== '' ? $siteKey : null;
     }
 
-    public static function verify(?string $token): bool
+    public static function verify(?string $token, string $action = self::ACTION): bool
     {
         if (! self::enabled()) {
             return true;
@@ -54,15 +56,33 @@ class Recaptcha
             return false;
         }
 
-        if (! $response->ok() || $response->json('success') !== true) {
+        $score = $response->json('score');
+        $minScore = self::minScore();
+        $responseAction = $response->json('action');
+
+        if (! $response->ok() || $response->json('success') !== true || ! is_numeric($score) || (float) $score < $minScore || $responseAction !== $action) {
             Log::warning('reCAPTCHA verification was rejected.', [
                 'status' => $response->status(),
                 'errors' => $response->json('error-codes'),
+                'score' => is_numeric($score) ? (float) $score : null,
+                'min_score' => $minScore,
+                'action' => is_string($responseAction) ? $responseAction : null,
             ]);
 
             return false;
         }
 
         return true;
+    }
+
+    private static function minScore(): float
+    {
+        $score = config('services.recaptcha.min_score', 0.5);
+
+        if (! is_numeric($score)) {
+            return 0.5;
+        }
+
+        return max(0.0, min(1.0, (float) $score));
     }
 }

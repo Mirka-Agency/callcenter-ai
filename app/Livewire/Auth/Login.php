@@ -96,7 +96,6 @@ class Login extends Component
         }
 
         $this->reset('captcha');
-        $this->js('window.grecaptcha && window.grecaptcha.reset()');
     }
 
     public function render()
