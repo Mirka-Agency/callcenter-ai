@@ -224,6 +224,48 @@
                 submit.textContent = 'ثبت درخواست';
             });
 
+            function captchaToken() {
+                const siteKey = form.dataset.recaptchaSiteKey;
+                const action = form.dataset.recaptchaAction || 'consultation';
+
+                if (!siteKey) {
+                    return Promise.resolve('');
+                }
+
+                return new Promise((resolve, reject) => {
+                    const timer = setTimeout(() => reject(new Error('timeout')), 8000);
+
+                    const run = () => {
+                        window.grecaptcha.ready(() => {
+                            window.grecaptcha.execute(siteKey, { action })
+                                .then((token) => {
+                                    clearTimeout(timer);
+                                    resolve(token);
+                                })
+                                .catch((error) => {
+                                    clearTimeout(timer);
+                                    reject(error);
+                                });
+                        });
+                    };
+
+                    if (window.grecaptcha && window.grecaptcha.execute) {
+                        run();
+                        return;
+                    }
+
+                    window.addEventListener('recaptcha-api-loaded', () => {
+                        if (window.grecaptcha && window.grecaptcha.execute) {
+                            run();
+                            return;
+                        }
+
+                        clearTimeout(timer);
+                        reject(new Error('unavailable'));
+                    }, { once: true });
+                });
+            }
+
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 clearErrors();
@@ -231,13 +273,25 @@
                 submit.textContent = 'در حال ثبت...';
 
                 try {
+                    const body = new FormData(form);
+
+                    if (form.dataset.recaptchaSiteKey) {
+                        try {
+                            body.set('captcha', await captchaToken());
+                        } catch (error) {
+                            formError.textContent = 'تأیید امنیتی انجام نشد. لطفاً دوباره تلاش کنید.';
+                            formError.hidden = false;
+                            return;
+                        }
+                    }
+
                     const response = await fetch(form.action, {
                         method: 'POST',
                         headers: {
                             'Accept': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         },
-                        body: new FormData(form),
+                        body,
                     });
                     const data = await response.json().catch(() => ({}));
 

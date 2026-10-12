@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Application\Consultation\ConsultationSmsNotifier;
 use App\Models\ConsultationRequest;
+use App\Support\Recaptcha;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -16,6 +17,15 @@ class ConsultationRequestController extends Controller
             return response()->json([
                 'message' => 'درخواست مشاوره ثبت شد. به‌زودی با شما تماس می‌گیریم.',
             ]);
+        }
+
+        if (Recaptcha::enabled() && ! Recaptcha::verify($this->captchaToken($request), Recaptcha::CONSULTATION_ACTION)) {
+            return response()->json([
+                'message' => 'تأیید امنیتی انجام نشد. لطفاً دوباره تلاش کنید.',
+                'errors' => [
+                    'captcha' => ['تأیید امنیتی انجام نشد. لطفاً دوباره تلاش کنید.'],
+                ],
+            ], 422);
         }
 
         $validator = Validator::make($request->all(), [
@@ -70,6 +80,13 @@ class ConsultationRequestController extends Controller
         return response()->json([
             'message' => 'درخواست مشاوره ثبت شد. به‌زودی با شما تماس می‌گیریم.',
         ]);
+    }
+
+    private function captchaToken(Request $request): ?string
+    {
+        $token = $request->input('captcha');
+
+        return is_string($token) && $token !== '' ? $token : null;
     }
 
     private function normalizePhone(string $phone): ?string

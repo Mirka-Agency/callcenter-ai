@@ -3416,6 +3416,28 @@
     clip: rect(0 0 0 0);
 }
 
+.consult-recaptcha {
+    margin: 0.15rem 0 0;
+    padding: 0.9rem 1.1rem;
+    border-radius: 1rem;
+    background: var(--landing-zinc-100);
+    color: var(--color-muted);
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.95;
+    text-align: center;
+}
+
+.consult-recaptcha a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.grecaptcha-badge {
+    visibility: hidden;
+}
+
 .dark .consult-dialog {
     border-color: var(--landing-zinc-800);
     background: var(--color-ink);
@@ -3437,4 +3459,9 @@
 
 .dark .consult-success {
     background: rgba(124, 37, 253, 0.16);
+}
+
+.dark .consult-recaptcha {
+    background: var(--color-foreground);
+    color: var(--landing-zinc-400);
 }

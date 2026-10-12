@@ -12,7 +12,17 @@
                 </button>
             </div>
 
-            <form id="consult-form" class="consult-form" action="{{ route('consultation-requests.store') }}" method="post" novalidate>
+            <form
+                id="consult-form"
+                class="consult-form"
+                action="{{ route('consultation-requests.store') }}"
+                method="post"
+                novalidate
+                @if (\App\Support\Recaptcha::enabled())
+                    data-recaptcha-site-key="{{ \App\Support\Recaptcha::siteKey() }}"
+                    data-recaptcha-action="{{ \App\Support\Recaptcha::CONSULTATION_ACTION }}"
+                @endif
+            >
                 <div class="consult-honeypot" aria-hidden="true">
                     <label>وب‌سایت<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
                 </div>
@@ -49,6 +59,17 @@
 
                 <p class="consult-form-error" data-form-error hidden></p>
                 <button type="submit" id="consult-submit" class="consult-submit">ثبت درخواست</button>
+
+                @if (\App\Support\Recaptcha::enabled())
+                    <p class="consult-recaptcha">
+                        این سایت با <bdi>reCAPTCHA</bdi> محافظت می‌شود.
+                        <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">حریم&nbsp;خصوصی</a>
+                        و
+                        <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer">شرایط</a>
+                        گوگل اعمال می‌شود.
+                    </p>
+                    <p class="consult-error" data-error-for="captcha" hidden></p>
+                @endif
             </form>
 
             <div id="consult-success" class="consult-success" hidden>
@@ -58,3 +79,11 @@
             </div>
         </div>
     </dialog>
+    @if (\App\Support\Recaptcha::enabled())
+        @once
+            <script>
+                window.onRecaptchaApiLoad = () => window.dispatchEvent(new Event('recaptcha-api-loaded'));
+            </script>
+            <script src="https://www.google.com/recaptcha/api.js?hl=fa&onload=onRecaptchaApiLoad&render={{ urlencode((string) \App\Support\Recaptcha::siteKey()) }}" async defer></script>
+        @endonce
+    @endif
