@@ -75,7 +75,9 @@ class ConsultationRequestTest extends TestCase
 
         Http::assertSentCount(2);
         Http::assertSent(fn ($request) => $request['mobiles'] === ['09121234567']
-            && str_contains($request['messageText'], 'درخواست مشاوره شما ثبت شد')
+            && str_contains($request['messageText'], 'درخواست مشاوره شما با موفقیت ثبت شد')
+            && str_contains($request['messageText'], 'آوایار | هوشمندتر بشنوید، بهتر تصمیم بگیرید')
+            && str_contains($request['messageText'], 'لغو ۱۱')
             && $request->hasHeader('X-API-KEY', 'test-key')
             && $request['lineNumber'] === 3000123456);
         Http::assertSent(fn ($request) => $request['mobiles'] === ['09351234567']

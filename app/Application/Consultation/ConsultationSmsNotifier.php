@@ -23,10 +23,15 @@ class ConsultationSmsNotifier
         $applicant = $this->sms->mobile($request->phone);
 
         if ($applicant !== null) {
-            $this->sms->send(
-                $applicant,
-                "آوایار\nدرخواست مشاوره شما ثبت شد. به‌زودی با شما تماس می‌گیریم.",
-            );
+            $this->sms->send($applicant, implode("\n", [
+                'درخواست مشاوره شما با موفقیت ثبت شد. ✅',
+                'از اعتماد شما به آوایار سپاسگزاریم.',
+                'کارشناسان ما به‌زودی برای ارائه مشاوره و پاسخ به سوالاتتان با شما تماس خواهند گرفت.',
+                '',
+                'آوایار | هوشمندتر بشنوید، بهتر تصمیم بگیرید',
+                '',
+                'لغو ۱۱',
+            ]));
         }
 
         $owner = $this->sms->mobile((string) config('services.smsir.notify_mobile'));
