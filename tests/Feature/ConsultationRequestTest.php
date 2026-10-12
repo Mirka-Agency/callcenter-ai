@@ -13,7 +13,7 @@ class ConsultationRequestTest extends TestCase
 
     public function test_landing_page_opens_consultation_form_instead_of_demo_login(): void
     {
-        $this->get('/')
+        $this->get('http://avayar.org/')
             ->assertOk()
             ->assertSee('درخواست مشاوره')
             ->assertDontSee('درخواست دمو')
@@ -29,7 +29,7 @@ class ConsultationRequestTest extends TestCase
     {
         Http::fake();
 
-        $this->postJson(route('consultation-requests.store'), [
+        $this->postJson('http://avayar.org/consultation-requests', [
             'full_name' => 'سارا محمدی',
             'phone' => '0912 123 4567',
             'company_name' => 'شرکت نمونه',
@@ -65,7 +65,7 @@ class ConsultationRequestTest extends TestCase
             ]),
         ]);
 
-        $this->postJson(route('consultation-requests.store'), [
+        $this->postJson('http://avayar.org/consultation-requests', [
             'full_name' => 'سارا محمدی',
             'phone' => '09121234567',
             'company_name' => 'شرکت نمونه',
@@ -94,7 +94,7 @@ class ConsultationRequestTest extends TestCase
             'https://api.sms.ir/*' => Http::response(['status' => 0, 'message' => 'خطا'], 400),
         ]);
 
-        $this->postJson(route('consultation-requests.store'), [
+        $this->postJson('http://avayar.org/consultation-requests', [
             'full_name' => 'سارا محمدی',
             'phone' => '09121234567',
             'company_name' => 'شرکت نمونه',
@@ -108,7 +108,7 @@ class ConsultationRequestTest extends TestCase
 
     public function test_consultation_request_requires_contact_fields(): void
     {
-        $this->postJson(route('consultation-requests.store'), [])
+        $this->postJson('http://avayar.org/consultation-requests', [])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['full_name', 'phone', 'company_name', 'department']);
 
@@ -117,13 +117,25 @@ class ConsultationRequestTest extends TestCase
 
     public function test_honeypot_submissions_are_ignored(): void
     {
-        $this->postJson(route('consultation-requests.store'), [
+        $this->postJson('http://avayar.org/consultation-requests', [
             'full_name' => 'ربات',
             'phone' => '09120000000',
             'company_name' => 'اسپم',
             'department' => 'فروش',
             'website' => 'https://spam.example',
         ])->assertOk();
+
+        $this->assertSame(0, ConsultationRequest::query()->count());
+    }
+
+    public function test_consultation_form_is_rejected_off_the_public_domain(): void
+    {
+        $this->postJson('http://app.example/consultation-requests', [
+            'full_name' => 'سارا محمدی',
+            'phone' => '09121234567',
+            'company_name' => 'شرکت نمونه',
+            'department' => 'فروش',
+        ])->assertNotFound();
 
         $this->assertSame(0, ConsultationRequest::query()->count());
     }

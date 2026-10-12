@@ -3,6 +3,7 @@
 use App\Http\Controllers\ConsultationRequestController;
 use App\Livewire\Auth\Login;
 use App\Models\User;
+use App\Support\LandingHost;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -11,11 +12,15 @@ Route::get('/', function () {
         return redirect(auth()->user()->portalRoute());
     }
 
+    if (! LandingHost::matches(request())) {
+        return redirect()->route('login');
+    }
+
     return view('landing');
 })->name('home');
 
 Route::post('/consultation-requests', [ConsultationRequestController::class, 'store'])
-    ->middleware('throttle:8,1')
+    ->middleware(['throttle:8,1', 'landing-host'])
     ->name('consultation-requests.store');
 
 Route::middleware('guest')->group(function () {

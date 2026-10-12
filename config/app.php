@@ -84,6 +84,16 @@ return [
         : str_starts_with((string) env('APP_URL', 'http://localhost'), 'https://'),
 
     /*
+    | Public marketing landing is served only on these hosts.
+    | Other hosts send guests from / to the login page.
+    | APP_ENV=local still shows the landing so it can be previewed on this machine.
+    */
+    'landing_hosts' => array_values(array_filter(array_map(
+        static fn (string $host): string => strtolower(trim($host)),
+        explode(',', (string) env('LANDING_HOSTS', 'avayar.org,www.avayar.org')),
+    ))),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
