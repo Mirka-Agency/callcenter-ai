@@ -3144,9 +3144,22 @@
         }
 
         .site-footer__copy {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.35rem 0.75rem;
             margin: 0;
             color: #a1a1aa;
             font-size: 0.8rem;
+        }
+
+        .site-footer__credit {
+            color: #71717a;
+            font-weight: 600;
+        }
+
+        .site-footer__credit:hover {
+            color: var(--color-brand);
         }
 
         @media (min-width: 900px) {
@@ -3187,6 +3200,7 @@
         .dark .site-footer__lead,
         .dark .site-footer__links a,
         .dark .site-footer__copy,
+        .dark .site-footer__credit,
         .dark .site-footer__notes a,
         .dark .site-footer__contacts small {
             color: #a1a1aa;
@@ -3433,7 +3447,6 @@
             <nav class="hidden items-center justify-center gap-6 text-sm font-medium text-ink lg:flex dark:text-zinc-100" aria-label="بخش‌های صفحه">
                 <a href="#sample-call" class="transition hover:text-brand">امکانات</a>
                 <a href="#journey" class="transition hover:text-brand">نحوه کار</a>
-                <a href="#sample-call" class="transition hover:text-brand">داشبورد</a>
                 <a href="#faq" class="transition hover:text-brand">سوالات متداول</a>
             </nav>
 
@@ -3450,7 +3463,6 @@
                     <div class="absolute end-0 z-50 mt-2 w-56 rounded-xl border border-line bg-white p-2 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                         <a href="#sample-call" class="block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas dark:text-zinc-100 dark:hover:bg-zinc-800" onclick="this.closest('details').open=false">امکانات</a>
                         <a href="#journey" class="block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas dark:text-zinc-100 dark:hover:bg-zinc-800" onclick="this.closest('details').open=false">نحوه کار</a>
-                        <a href="#sample-call" class="block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas dark:text-zinc-100 dark:hover:bg-zinc-800" onclick="this.closest('details').open=false">داشبورد</a>
                         <a href="#faq" class="block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas dark:text-zinc-100 dark:hover:bg-zinc-800" onclick="this.closest('details').open=false">سوالات متداول</a>
                         <button type="button" class="block w-full rounded-lg border-0 bg-transparent px-3 py-2 text-start text-sm font-medium text-ink hover:bg-canvas dark:text-zinc-100 dark:hover:bg-zinc-800" data-consult-open>درخواست مشاوره</button>
                         <a href="{{ route('login') }}" class="mt-1 block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas sm:hidden dark:text-zinc-100 dark:hover:bg-zinc-800">ورود</a>
@@ -4494,7 +4506,10 @@
             </div>
 
             <div class="site-footer__bar">
-                <p class="site-footer__copy">© تمامی حقوق برای آوایار محفوظ است.</p>
+                <p class="site-footer__copy">
+                    <span>© تمامی حقوق برای آوایار محفوظ است.</span>
+                    <a class="site-footer__credit" href="https://mirka.agency/" target="_blank" rel="noopener noreferrer">درخشان با میرکا 💎</a>
+                </p>
                 <svg class="site-footer__wave" viewBox="0 0 260 36" fill="none" aria-hidden="true">
                     <path d="M4 24c28-16 48-16 76-4 22 10 40 12 68 2 24-8 48-8 76 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
                     <circle cx="18" cy="22" r="1.4" fill="currentColor" />
