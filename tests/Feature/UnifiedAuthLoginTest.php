@@ -21,7 +21,7 @@ class UnifiedAuthLoginTest extends TestCase
             ->assertOk()
             ->assertSee('آوایار')
             ->assertSee('تحلیلگر هوشمند تماس')
-            ->assertSee('درخواست دمو')
+            ->assertSee('درخواست مشاوره')
             ->assertSee('کوچینگ هوشمند')
             ->assertSee(route('login'), false);
     }

@@ -46,4 +46,15 @@ return [
         'enabled' => env('RECAPTCHA_ENABLED', true),
     ],
 
+    /*
+    | sms.ir REST API. Keys live in the developers panel.
+    | SMSIR_NOTIFY_MOBILE receives a copy of every consultation request.
+    */
+    'smsir' => [
+        'api_key' => env('SMSIR_API_KEY'),
+        'line_number' => env('SMSIR_LINE_NUMBER'),
+        'base_url' => env('SMSIR_BASE_URL', 'https://api.sms.ir/v1'),
+        'notify_mobile' => env('SMSIR_NOTIFY_MOBILE'),
+    ],
+
 ];

@@ -37,5 +37,8 @@
         <env name="LLM_BLOCK_AVALAI" value="false" force="true"/>
         <env name="DASHBOARD_INSIGHT_LISTS_SINCE" value="" force="true"/>
         <env name="RECAPTCHA_ENABLED" value="false" force="true"/>
+        <env name="SMSIR_API_KEY" value="" force="true"/>
+        <env name="SMSIR_LINE_NUMBER" value="" force="true"/>
+        <env name="SMSIR_NOTIFY_MOBILE" value="" force="true"/>
     </php>
 </phpunit>

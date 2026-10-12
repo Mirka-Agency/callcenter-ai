@@ -1,6 +1,6 @@
 <?php
 
-use App\Enums\UserRole;
+use App\Http\Controllers\ConsultationRequestController;
 use App\Livewire\Auth\Login;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -13,6 +13,10 @@ Route::get('/', function () {
 
     return view('landing');
 })->name('home');
+
+Route::post('/consultation-requests', [ConsultationRequestController::class, 'store'])
+    ->middleware('throttle:8,1')
+    ->name('consultation-requests.store');
 
 Route::middleware('guest')->group(function () {
     Route::get('login', Login::class)->name('login');

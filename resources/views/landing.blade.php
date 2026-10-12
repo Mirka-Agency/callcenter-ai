@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="آوایار مکالمه‌های مرکز تماس را تحلیل می‌کند؛ خلاصه، احساس مشتری، کیفیت لید، عملکرد کارشناسان و کوچینگ را در یک پلتفرم کنار هم می‌گذارد.">
     <title>{{ config('app.name') }} — هوش تماس برای مرکز تماس</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     @vite(['resources/css/saas.css'])
     <script>
         (function () {
@@ -125,9 +126,11 @@
             background: #fff;
             color: var(--color-ink);
             font-size: 0.95rem;
+            font-family: inherit;
             font-weight: 600;
             line-height: 1;
             text-decoration: none;
+            cursor: pointer;
             box-shadow: 0 8px 22px rgba(24, 24, 27, 0.04);
             transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
         }
@@ -1167,7 +1170,7 @@
             object-fit: contain;
         }
 
-        @media (max-width: 1099px) {
+        @media (max-width: 1279px) {
             .journey {
                 height: auto;
                 padding: 3.25rem 1rem 3.5rem;
@@ -1227,13 +1230,30 @@
                 flex-direction: column;
                 align-items: center;
                 justify-self: center;
-                gap: 0.9rem;
-                width: min(100%, 24rem);
+                gap: 1.35rem;
+                width: min(100%, 20rem);
                 height: auto;
                 aspect-ratio: auto;
                 margin-inline: auto;
                 padding-block: 0.25rem;
                 container-type: normal;
+            }
+
+            .journey__call::after,
+            .journey__brand::after,
+            .journey__bubble::after,
+            .journey__spark::after {
+                content: "";
+                position: absolute;
+                z-index: 0;
+                top: 100%;
+                left: 50%;
+                width: 2px;
+                height: 1.35rem;
+                border-radius: 999px;
+                background: #c4b5fd;
+                transform: translateX(-50%);
+                pointer-events: none;
             }
 
             .journey__label { font-size: 1rem; }
@@ -1282,8 +1302,16 @@
             }
 
             .journey__brand.is-on,
+            .journey__bubble.is-on,
             .journey__spark.is-on {
                 animation-name: journey-pop;
+            }
+
+            .journey__call,
+            .journey__dash {
+                flex-direction: column;
+                gap: 0.45rem;
+                text-align: center;
             }
 
             .journey__call,
@@ -1292,6 +1320,7 @@
             .journey__spark,
             .journey__dash {
                 position: relative;
+                z-index: 1;
                 left: auto;
                 top: auto;
                 transform: none;
@@ -1357,6 +1386,13 @@
 
         .dark .journey__track {
             stroke: #3f3f46;
+        }
+
+        .dark .journey__call::after,
+        .dark .journey__brand::after,
+        .dark .journey__bubble::after,
+        .dark .journey__spark::after {
+            background: #7c3aed;
         }
 
         .dark .journey__kicker {
@@ -2748,8 +2784,11 @@
             border-radius: 999px;
             background: #7c25fd;
             color: #fff;
+            border: 0;
+            font-family: inherit;
             font-size: 0.92rem;
             font-weight: 700;
+            cursor: pointer;
             transition: background 0.15s ease;
         }
 
@@ -2909,6 +2948,12 @@
             letter-spacing: -0.02em;
         }
 
+        .site-footer__logo img {
+            display: block;
+            height: 2rem;
+            width: auto;
+        }
+
         .site-footer__logo svg {
             width: 1.75rem;
             height: 1.5rem;
@@ -2988,15 +3033,23 @@
             color: #a1a1aa;
         }
 
-        .site-footer__contacts a {
+        .site-footer__contacts a,
+        .site-footer__contacts button {
             display: inline-flex;
             align-items: center;
             gap: 0.7rem;
+            padding: 0;
+            border: 0;
+            background: transparent;
             color: #3f3f46;
+            font: inherit;
             font-size: 0.9rem;
+            text-align: start;
+            cursor: pointer;
         }
 
-        .site-footer__contacts a:hover span:last-child {
+        .site-footer__contacts a:hover span:last-child,
+        .site-footer__contacts button:hover span:last-child {
             color: var(--color-brand);
         }
 
@@ -3119,10 +3172,15 @@
                 #09090b;
         }
 
+        .dark .site-footer__logo img {
+            filter: brightness(0) invert(1);
+        }
+
         .dark .site-footer__logo,
         .dark .site-footer__col h2,
         .dark .site-footer__integrations a,
-        .dark .site-footer__contacts a {
+        .dark .site-footer__contacts a,
+        .dark .site-footer__contacts button {
             color: #fafafa;
         }
 
@@ -3150,6 +3208,211 @@
             border-top-color: #27272a;
         }
 
+        .consult-dialog {
+            width: min(32rem, calc(100% - 1.5rem));
+            max-height: calc(100dvh - 1.5rem);
+            margin: auto;
+            padding: 0;
+            overflow: auto;
+            border: 1px solid #e7e7ee;
+            border-radius: 1.25rem;
+            background: #fff;
+            color: #18181b;
+            box-shadow: 0 24px 60px rgba(24, 24, 27, 0.16);
+        }
+
+        .consult-dialog::backdrop {
+            background: rgba(24, 24, 27, 0.48);
+        }
+
+        .consult-dialog__panel {
+            padding: 1.35rem 1.25rem 1.25rem;
+        }
+
+        .consult-dialog__head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .consult-dialog__head h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 800;
+            line-height: 1.6;
+        }
+
+        .consult-dialog__head p {
+            margin: 0.35rem 0 0;
+            color: #71717a;
+            font-size: 0.88rem;
+            line-height: 1.8;
+        }
+
+        .consult-dialog__close {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.25rem;
+            height: 2.25rem;
+            flex: none;
+            border: 1px solid #e7e7ee;
+            border-radius: 0.7rem;
+            background: #fff;
+            color: #3f3f46;
+            cursor: pointer;
+        }
+
+        .consult-dialog__close svg {
+            width: 1.05rem;
+            height: 1.05rem;
+        }
+
+        .consult-form {
+            display: grid;
+            gap: 0.85rem;
+            margin-top: 1.15rem;
+        }
+
+        .consult-field {
+            display: grid;
+            gap: 0.35rem;
+        }
+
+        .consult-field span {
+            font-size: 0.84rem;
+            font-weight: 600;
+        }
+
+        .consult-field input,
+        .consult-field textarea {
+            width: 100%;
+            border: 1px solid #e7e7ee;
+            border-radius: 0.8rem;
+            background: #fff;
+            color: inherit;
+            font: inherit;
+            font-size: 0.92rem;
+            line-height: 1.7;
+            padding: 0.65rem 0.8rem;
+        }
+
+        .consult-field textarea {
+            min-height: 6.5rem;
+            resize: vertical;
+        }
+
+        .consult-field input:focus,
+        .consult-field textarea:focus {
+            outline: 2px solid rgba(124, 37, 253, 0.35);
+            outline-offset: 1px;
+            border-color: #c4b5fd;
+        }
+
+        .consult-field.is-invalid input,
+        .consult-field.is-invalid textarea {
+            border-color: #e11d48;
+        }
+
+        .consult-error,
+        .consult-form-error {
+            margin: 0;
+            color: #e11d48;
+            font-size: 0.78rem;
+            line-height: 1.6;
+        }
+
+        .consult-submit {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 2.75rem;
+            margin-top: 0.2rem;
+            border: 0;
+            border-radius: 0.8rem;
+            background: #7c25fd;
+            color: #fff;
+            font: inherit;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .consult-submit:hover {
+            background: #6820db;
+        }
+
+        .consult-submit:disabled {
+            opacity: 0.7;
+            cursor: wait;
+        }
+
+        .consult-success {
+            margin-top: 1.25rem;
+            padding: 1rem;
+            border-radius: 0.9rem;
+            background: #f5f3ff;
+            text-align: center;
+        }
+
+        .consult-success h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 800;
+        }
+
+        .consult-success p {
+            margin: 0.4rem 0 0;
+            color: #71717a;
+            font-size: 0.88rem;
+            line-height: 1.8;
+        }
+
+        .consult-success button {
+            margin-top: 0.9rem;
+            height: 2.5rem;
+            padding-inline: 1.1rem;
+            border: 0;
+            border-radius: 0.75rem;
+            background: #7c25fd;
+            color: #fff;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .consult-honeypot {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+        }
+
+        .dark .consult-dialog {
+            border-color: #27272a;
+            background: #18181b;
+            color: #fafafa;
+        }
+
+        .dark .consult-dialog__head p,
+        .dark .consult-success p {
+            color: #a1a1aa;
+        }
+
+        .dark .consult-dialog__close,
+        .dark .consult-field input,
+        .dark .consult-field textarea {
+            border-color: #3f3f46;
+            background: #09090b;
+            color: #fafafa;
+        }
+
+        .dark .consult-success {
+            background: rgba(124, 37, 253, 0.16);
+        }
+
     </style>
 </head>
 <body class="bg-zinc-50 font-sans text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
@@ -3157,7 +3420,7 @@
     <header class="sticky top-0 z-40 border-b border-line bg-white dark:border-zinc-800 dark:bg-zinc-950">
         <div class="mx-auto grid h-[4.5rem] max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-3 px-4 sm:px-6 lg:grid-cols-[1fr_auto_1fr] lg:gap-6">
             <a href="{{ route('home') }}" class="flex items-center gap-2 justify-self-start">
-                <span class="text-lg font-bold tracking-tight text-ink dark:text-white">{{ config('app.name') }}</span>
+                <img src="{{ asset('images/journey/avayar-logo.webp') }}" width="480" height="151" alt="آوایار" class="h-8 w-auto dark:brightness-0 dark:invert" decoding="async">
                 <svg viewBox="0 0 28 24" class="h-6 w-7 shrink-0" aria-hidden="true">
                     <rect x="1" y="10" width="3.2" height="4" rx="1.6" fill="var(--color-ai)" opacity="0.55" />
                     <rect x="6.4" y="6" width="3.2" height="12" rx="1.6" fill="var(--color-brand)" />
@@ -3176,7 +3439,7 @@
 
             <div class="flex items-center justify-self-end gap-2">
                 <a href="{{ route('login') }}" class="hidden h-10 items-center justify-center rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink transition hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800">ورود</a>
-                <a href="{{ route('login') }}" class="inline-flex h-10 items-center justify-center rounded-lg bg-brand px-3.5 text-sm font-medium text-white transition hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 sm:px-4">درخواست دمو</a>
+                <button type="button" class="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border-0 bg-brand px-3.5 text-sm font-medium text-white transition hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 sm:px-4" data-consult-open>درخواست مشاوره</button>
 
                 <details class="relative lg:hidden">
                     <summary class="inline-flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-lg border border-line bg-white text-ink marker:content-none [&::-webkit-details-marker]:hidden dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100" aria-label="باز کردن منو">
@@ -3189,7 +3452,7 @@
                         <a href="#journey" class="block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas dark:text-zinc-100 dark:hover:bg-zinc-800" onclick="this.closest('details').open=false">نحوه کار</a>
                         <a href="#sample-call" class="block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas dark:text-zinc-100 dark:hover:bg-zinc-800" onclick="this.closest('details').open=false">داشبورد</a>
                         <a href="#faq" class="block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas dark:text-zinc-100 dark:hover:bg-zinc-800" onclick="this.closest('details').open=false">سوالات متداول</a>
-                        <a href="{{ route('login') }}" class="block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas dark:text-zinc-100 dark:hover:bg-zinc-800" onclick="this.closest('details').open=false">درخواست دمو</a>
+                        <button type="button" class="block w-full rounded-lg border-0 bg-transparent px-3 py-2 text-start text-sm font-medium text-ink hover:bg-canvas dark:text-zinc-100 dark:hover:bg-zinc-800" data-consult-open>درخواست مشاوره</button>
                         <a href="{{ route('login') }}" class="mt-1 block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas sm:hidden dark:text-zinc-100 dark:hover:bg-zinc-800">ورود</a>
                     </div>
                 </details>
@@ -3225,12 +3488,12 @@
                     </h1>
                     <p>هر تماس، فرصتی برای شناخت بهتر مشتری و رشد کسب‌وکار شماست. آوایار با تحلیل هوشمند مکالمات، عملکرد تیم و فرصت‌های فروش را آشکار می‌کند تا تصمیم‌های دقیق‌تری بگیرید.</p>
                     <div class="landing-hero__actions">
-                        <a class="landing-hero__btn landing-hero__btn--primary" href="{{ route('login') }}">
-                            <span>درخواست دمو</span>
+                        <button type="button" class="landing-hero__btn landing-hero__btn--primary" data-consult-open>
+                            <span>درخواست مشاوره</span>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 12H5M5 12l6-6M5 12l6 6" />
                             </svg>
-                        </a>
+                        </button>
                         <a class="landing-hero__btn landing-hero__btn--ghost" href="#sample-call">
                             <span>مشاهده داشبورد</span>
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -3453,7 +3716,7 @@
                             <span class="journey__label">برقراری تماس</span>
                         </div>
                         <span class="journey__dot journey__dot--before-brand" data-step="0.35" aria-hidden="true"></span>
-                        <p class="journey__brand" data-step="0.40"><img src="{{ asset('images/journey/avayar-logo.png') }}" alt="آوایار"></p>
+                        <p class="journey__brand" data-step="0.40"><img src="{{ asset('images/journey/avayar-logo.webp') }}" width="480" height="151" alt="آوایار" decoding="async"></p>
                         <p class="journey__bubble" data-step="0">
                             <svg class="journey__wave" viewBox="0 0 22 16" aria-hidden="true">
                                 <rect x="1" y="5" width="2.4" height="6" rx="1.2" />
@@ -3489,7 +3752,7 @@
                         </div>
                     </div>
                     <figure class="journey__poster">
-                        <img src="{{ asset('images/journey/call-path.png') }}?v=3" srcset="{{ asset('images/journey/call-path.png') }}?v=3 1x, {{ asset('images/journey/call-path@2x.png') }}?v=3 2x" width="1024" height="682" alt="تماس ورودی به آوایار می‌رسد؛ تحلیل کارشناس، احساس، موضوع و اقدام پیشنهادی انجام می‌شود و نتیجه در داشبورد دیده می‌شود.">
+                        <img src="{{ asset('images/journey/call-path.webp') }}?v=4" srcset="{{ asset('images/journey/call-path.webp') }}?v=4 1x, {{ asset('images/journey/call-path@2x.webp') }}?v=4 2x" width="1024" height="682" alt="تماس ورودی به آوایار می‌رسد؛ تحلیل کارشناس، احساس، موضوع و اقدام پیشنهادی انجام می‌شود و نتیجه در داشبورد دیده می‌شود." decoding="async">
                     </figure>
                 </div>
             </div>
@@ -3628,7 +3891,7 @@
                         <p class="challenges__lead">بخش مهمی از واقعیت تماس‌ها بدون تحلیل، پنهان می‌ماند.</p>
                     </div>
                     <figure class="challenges__visual">
-                        <img src="{{ asset('images/journey/challenges.png') }}" width="1024" height="614" alt="تحلیل یک تماس: نشانه خرید شناسایی شد، مقایسه با رقبا مشخص است و واقعیت‌های پنهان مکالمه دیده می‌شوند.">
+                        <img src="{{ asset('images/journey/challenges.webp') }}" width="1024" height="614" alt="تحلیل یک تماس: نشانه خرید شناسایی شد، مقایسه با رقبا مشخص است و واقعیت‌های پنهان مکالمه دیده می‌شوند." loading="lazy" decoding="async">
                     </figure>
                 </div>
 
@@ -3925,7 +4188,7 @@
         <section id="coaching" class="coaching" aria-labelledby="coaching-title">
             <div class="coaching__inner">
                 <figure class="coaching__visual">
-                    <img src="{{ asset('images/journey/coaching.png') }}" width="1024" height="682" alt="نمونه پروفایل کوچینگ تماس: امتیاز کوچینگ، مهارت‌های قابل بهبود، شاهد مکالمه، پیشنهاد بهبود و نتیجه کوچینگ. عددها نمایشی هستند.">
+                    <img src="{{ asset('images/journey/coaching.webp') }}" width="1024" height="682" alt="نمونه پروفایل کوچینگ تماس: امتیاز کوچینگ، مهارت‌های قابل بهبود، شاهد مکالمه، پیشنهاد بهبود و نتیجه کوچینگ. عددها نمایشی هستند." loading="lazy" decoding="async">
                 </figure>
                 <div class="coaching__copy">
                     <p class="coaching__kicker">
@@ -4099,15 +4362,15 @@
                     </div>
 
                     <aside class="faq__card">
-                        <img class="faq__art" src="{{ asset('images/journey/faq-bubbles.png') }}" width="1024" height="512" alt="">
+                        <img class="faq__art" src="{{ asset('images/journey/faq-bubbles.webp') }}" width="640" height="320" alt="" loading="lazy" decoding="async">
                         <h3>پاسخ سوال خود را پیدا نکردید؟</h3>
-                        <p>برای دریافت اطلاعات بیشتر، دمو درخواست دهید یا با تیم ما در تماس باشید.</p>
-                        <a class="faq__cta" href="{{ route('login') }}">
-                            <span>درخواست دمو</span>
+                        <p>برای دریافت اطلاعات بیشتر، درخواست مشاوره ثبت کنید.</p>
+                        <button type="button" class="faq__cta" data-consult-open>
+                            <span>درخواست مشاوره</span>
                             <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
                                 <path d="M12.5 5 7.5 10l5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
-                        </a>
+                        </button>
                         <ul class="faq__perks">
                             <li>
                                 <span class="faq__perk-icon" aria-hidden="true">
@@ -4150,7 +4413,7 @@
             <div class="site-footer__grid">
                 <div class="site-footer__brand">
                     <a href="{{ route('home') }}" class="site-footer__logo">
-                        <span>{{ config('app.name') }}</span>
+                        <img src="{{ asset('images/journey/avayar-logo.webp') }}" width="480" height="151" alt="آوایار" decoding="async">
                         <svg viewBox="0 0 28 24" aria-hidden="true">
                             <rect x="1" y="10" width="3.2" height="4" rx="1.6" fill="var(--color-ai)" opacity="0.55" />
                             <rect x="6.4" y="6" width="3.2" height="12" rx="1.6" fill="var(--color-brand)" />
@@ -4192,12 +4455,12 @@
                     <h2>راه‌های ارتباطی</h2>
                     <ul class="site-footer__contacts">
                         <li>
-                            <a href="{{ route('login') }}">
+                            <button type="button" data-consult-open>
                                 <span class="site-footer__icon" aria-hidden="true">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 10.5h8M8 14h5" /><path d="M7 6.5h10a2 2 0 0 1 2 2v7.2a2 2 0 0 1-2 2H10l-3.2 2.2v-2.2H7a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2Z" /></svg>
                                 </span>
-                                <span>درخواست دمو<small>جلسه معرفی برای تیم فروش و کیفیت</small></span>
-                            </a>
+                                <span>درخواست مشاوره<small>گفتگو درباره نیاز تیم فروش، پشتیبانی یا کیفیت</small></span>
+                            </button>
                         </li>
                         <li>
                             <a href="{{ route('login') }}">
@@ -4250,5 +4513,183 @@
         </div>
     </footer>
     </div>
+
+    <dialog id="consult-dialog" class="consult-dialog" aria-labelledby="consult-title">
+        <div class="consult-dialog__panel">
+            <div class="consult-dialog__head">
+                <div>
+                    <h2 id="consult-title">درخواست مشاوره</h2>
+                    <p>اطلاعات تماس را بگذارید تا درباره نیاز سازمانتان صحبت کنیم.</p>
+                </div>
+                <button type="button" class="consult-dialog__close" data-consult-close aria-label="بستن">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
+                    </svg>
+                </button>
+            </div>
+
+            <form id="consult-form" class="consult-form" action="{{ route('consultation-requests.store') }}" method="post" novalidate>
+                <div class="consult-honeypot" aria-hidden="true">
+                    <label>وب‌سایت<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+                </div>
+
+                <label class="consult-field">
+                    <span>نام و نام خانوادگی</span>
+                    <input type="text" name="full_name" autocomplete="name" maxlength="120" required>
+                    <p class="consult-error" data-error-for="full_name" hidden></p>
+                </label>
+
+                <label class="consult-field">
+                    <span>شماره تماس</span>
+                    <input type="tel" name="phone" inputmode="tel" autocomplete="tel" maxlength="20" required placeholder="۰۹۱۲۱۲۳۴۵۶۷">
+                    <p class="consult-error" data-error-for="phone" hidden></p>
+                </label>
+
+                <label class="consult-field">
+                    <span>نام شرکت</span>
+                    <input type="text" name="company_name" autocomplete="organization" maxlength="160" required>
+                    <p class="consult-error" data-error-for="company_name" hidden></p>
+                </label>
+
+                <label class="consult-field">
+                    <span>واحدی که نیاز به آوایار دارد</span>
+                    <input type="text" name="department" maxlength="160" required placeholder="مثلاً فروش، پشتیبانی یا کنترل کیفیت">
+                    <p class="consult-error" data-error-for="department" hidden></p>
+                </label>
+
+                <label class="consult-field">
+                    <span>توضیحات</span>
+                    <textarea name="notes" maxlength="2000" placeholder="اگر نکته‌ای درباره نیاز تیم دارید بنویسید"></textarea>
+                    <p class="consult-error" data-error-for="notes" hidden></p>
+                </label>
+
+                <p class="consult-form-error" data-form-error hidden></p>
+                <button type="submit" id="consult-submit" class="consult-submit">ثبت درخواست</button>
+            </form>
+
+            <div id="consult-success" class="consult-success" hidden>
+                <h3>درخواست شما ثبت شد</h3>
+                <p>به‌زودی با شما تماس می‌گیریم.</p>
+                <button type="button" data-consult-close>بستن</button>
+            </div>
+        </div>
+    </dialog>
+
+    <script>
+        (function () {
+            const dialog = document.getElementById('consult-dialog');
+            const form = document.getElementById('consult-form');
+            const success = document.getElementById('consult-success');
+            const submit = document.getElementById('consult-submit');
+            const formError = dialog.querySelector('[data-form-error]');
+
+            if (!dialog || !form || !success || !submit) {
+                return;
+            }
+
+            function clearErrors() {
+                form.querySelectorAll('[data-error-for]').forEach((node) => {
+                    node.hidden = true;
+                    node.textContent = '';
+                    node.closest('.consult-field')?.classList.remove('is-invalid');
+                });
+                formError.hidden = true;
+                formError.textContent = '';
+            }
+
+            function showErrors(errors) {
+                Object.entries(errors).forEach(([field, messages]) => {
+                    const node = form.querySelector('[data-error-for="' + field + '"]');
+                    if (!node) {
+                        return;
+                    }
+                    node.textContent = Array.isArray(messages) ? messages[0] : messages;
+                    node.hidden = false;
+                    node.closest('.consult-field')?.classList.add('is-invalid');
+                });
+            }
+
+            function openDialog() {
+                form.hidden = false;
+                success.hidden = true;
+                if (!dialog.open) {
+                    dialog.showModal();
+                }
+                form.querySelector('input[name="full_name"]')?.focus();
+            }
+
+            document.querySelectorAll('[data-consult-open]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const menu = button.closest('details');
+                    if (menu) {
+                        menu.open = false;
+                    }
+                    openDialog();
+                });
+            });
+
+            dialog.querySelectorAll('[data-consult-close]').forEach((button) => {
+                button.addEventListener('click', () => dialog.close());
+            });
+
+            dialog.addEventListener('click', (event) => {
+                if (event.target === dialog) {
+                    dialog.close();
+                }
+            });
+
+            dialog.addEventListener('close', () => {
+                form.hidden = false;
+                success.hidden = true;
+                form.reset();
+                clearErrors();
+                submit.disabled = false;
+                submit.textContent = 'ثبت درخواست';
+            });
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                clearErrors();
+                submit.disabled = true;
+                submit.textContent = 'در حال ثبت...';
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        body: new FormData(form),
+                    });
+                    const data = await response.json().catch(() => ({}));
+
+                    if (response.status === 422) {
+                        showErrors(data.errors || {});
+                        if (!data.errors) {
+                            formError.textContent = data.message || 'اطلاعات واردشده معتبر نیست.';
+                            formError.hidden = false;
+                        }
+                        return;
+                    }
+
+                    if (!response.ok) {
+                        formError.textContent = 'ثبت درخواست انجام نشد. دوباره تلاش کنید.';
+                        formError.hidden = false;
+                        return;
+                    }
+
+                    form.hidden = true;
+                    success.hidden = false;
+                } catch (error) {
+                    formError.textContent = 'ارتباط با سرور برقرار نشد. دوباره تلاش کنید.';
+                    formError.hidden = false;
+                } finally {
+                    submit.disabled = false;
+                    submit.textContent = 'ثبت درخواست';
+                }
+            });
+        })();
+    </script>
 </body>
 </html>
