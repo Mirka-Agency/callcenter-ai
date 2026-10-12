@@ -15,10 +15,37 @@ class UnifiedAuthLoginTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guest_home_redirects_to_login(): void
+    public function test_guest_home_shows_landing_page(): void
     {
-        $this->get('/')
+        $this->get('http://avayar.org/')
+            ->assertOk()
+            ->assertSee('آوایار')
+            ->assertSee('تحلیلگر هوشمند تماس')
+            ->assertSee('درخواست مشاوره')
+            ->assertSee('کوچینگ هوشمند')
+            ->assertSee(route('login'), false);
+    }
+
+    public function test_guest_home_on_another_domain_goes_to_login(): void
+    {
+        $this->get('http://app.example/')
             ->assertRedirect(route('login'));
+    }
+
+    public function test_www_host_shows_the_landing_page(): void
+    {
+        $this->get('http://www.avayar.org/')
+            ->assertOk()
+            ->assertSee('درخواست مشاوره');
+    }
+
+    public function test_authenticated_user_is_redirected_from_home_to_portal(): void
+    {
+        $employer = User::factory()->create(['role' => UserRole::Employer]);
+
+        $this->actingAs($employer)
+            ->get('/')
+            ->assertRedirect(route('employer.dashboard'));
     }
 
     public function test_login_page_is_accessible(): void

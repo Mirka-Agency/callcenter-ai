@@ -45,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'employer' => \App\Http\Middleware\EnsureEmployer::class,
             'employee' => \App\Http\Middleware\EnsureEmployee::class,
+            'landing-host' => \App\Http\Middleware\EnsureLandingHost::class,
         ]);
 
         $middleware->web(append: [

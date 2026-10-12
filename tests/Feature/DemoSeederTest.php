@@ -2,16 +2,25 @@
 
 namespace Tests\Feature;
 
+use App\Application\Crm\Services\CrmDealSettingsService;
+use App\Domain\Billing\Enums\WalletTransactionType;
+use App\Domain\Call\Enums\ConversationSource;
+use App\Enums\IntegrationSetupStatus;
 use App\Enums\UserRole;
 use App\Models\Call;
+use App\Models\CallProcessingJob;
 use App\Models\ConversationAnalysis;
 use App\Models\Customer;
+use App\Models\EmployeeIntegrationMeta;
 use App\Models\Organization;
 use App\Models\OrganizationCrmConnection;
 use App\Models\OrganizationVoipConnection;
 use App\Models\OrganizationWallet;
 use App\Models\OrganizationActivity;
 use App\Models\User;
+use App\Models\VoipCallLog;
+use App\Models\WalletTransaction;
+use App\Services\OrganizationIntegrationStatusService;
 use App\Services\Demo\DemoEmployeeProvisioner;
 use App\Services\EmployerDashboardAnalytics;
 use App\Services\Reports\OrganizationCallMetrics;
@@ -83,8 +92,37 @@ class DemoSeederTest extends TestCase
             );
 
             $this->assertTrue($organization->is_demo);
-            $this->assertSame(0, OrganizationVoipConnection::query()->where('organization_id', $organization->id)->count());
-            $this->assertSame(0, OrganizationCrmConnection::query()->where('organization_id', $organization->id)->count());
+            $this->assertSame(1, OrganizationVoipConnection::query()->where('organization_id', $organization->id)->count());
+            $this->assertSame(1, OrganizationCrmConnection::query()->where('organization_id', $organization->id)->count());
+            $readiness = app(OrganizationIntegrationStatusService::class);
+            $this->assertSame(IntegrationSetupStatus::Complete, $readiness->voipStatus($organization));
+            $this->assertSame(IntegrationSetupStatus::Complete, $readiness->crmStatus($organization));
+            $crm = OrganizationCrmConnection::query()->where('organization_id', $organization->id)->first();
+            $this->assertNotNull($crm);
+            $pipelines = app(CrmDealSettingsService::class)->loadPipelines($crm);
+            $this->assertNull($pipelines['error']);
+            $this->assertNotEmpty($pipelines['pipelines']);
+            $this->assertGreaterThan(0, VoipCallLog::query()->where('organization_id', $organization->id)->count());
+            $this->assertGreaterThan(
+                0,
+                Call::query()->where('organization_id', $organization->id)->where('counts_for_extension_reports', true)->count(),
+            );
+            $this->assertGreaterThan(0, Call::query()->where('organization_id', $organization->id)->where('source', ConversationSource::ManualUpload)->count());
+            $this->assertGreaterThan(0, CallProcessingJob::query()->where('organization_id', $organization->id)->count());
+            $this->assertGreaterThan(
+                0,
+                EmployeeIntegrationMeta::query()
+                    ->where('key', 'extension')
+                    ->whereIn('organization_user_id', $organization->memberships()->pluck('id'))
+                    ->count(),
+            );
+            $this->assertGreaterThan(
+                0,
+                WalletTransaction::query()
+                    ->where('organization_id', $organization->id)
+                    ->where('type', WalletTransactionType::AiUsage)
+                    ->count(),
+            );
             $wallet = OrganizationWallet::query()->where('organization_id', $organization->id)->first();
             $this->assertNotNull($wallet);
             $this->assertSame((float) DemoCatalog::WALLET_BALANCE_IRR, (float) $wallet->balance);

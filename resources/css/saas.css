@@ -23,6 +23,17 @@
     --color-foreground: #09090b;
     --color-accent: #18181b;
     --color-accent-foreground: #fafafa;
+    --color-brand: #7c25fd;
+    --color-brand-hover: #6820db;
+    --color-ai: #6366f1;
+    --color-lavender: #f5f3ff;
+    --color-canvas: #fafafa;
+    --color-ink: #18181b;
+    --color-line: #e7e7ee;
+    --color-white: #ffffff;
+    --color-success: #059669;
+    --color-warning: #d97706;
+    --color-danger: #e11d48;
 
     --radius-card: 0.5rem;
     --radius-control: 0.375rem;

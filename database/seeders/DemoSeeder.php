@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Database\Seeders\Demo\DemoAnalyticsSeeder;
 use Database\Seeders\Demo\DemoOrganizationsSeeder;
+use Database\Seeders\Demo\DemoWorkspaceCoverageSeeder;
 use Illuminate\Database\Seeder;
 
 class DemoSeeder extends Seeder
@@ -15,6 +16,9 @@ class DemoSeeder extends Seeder
 
         $this->command?->info('Creating demo calls, customers, and analyses...');
         $this->call(DemoAnalyticsSeeder::class);
+
+        $this->command?->info('Filling VoIP, CRM, uploads, queue, and wallet samples...');
+        $this->call(DemoWorkspaceCoverageSeeder::class);
 
         $this->command?->newLine();
         $this->command?->info('Demo seed complete.');

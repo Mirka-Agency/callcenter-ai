@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" class="scroll-smooth">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="آوایار مکالمه‌های مرکز تماس را تحلیل می‌کند؛ خلاصه، احساس مشتری، کیفیت لید، عملکرد کارشناسان و کوچینگ را در یک پلتفرم کنار هم می‌گذارد.">
+    <title>{{ config('app.name') }} — هوش تماس برای مرکز تماس</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    @vite(['resources/css/saas.css', 'resources/css/landing.css', 'resources/js/landing.js'])
+    <script>
+        (function () {
+            document.documentElement.classList.toggle('dark', localStorage.getItem('theme') === 'dark');
+        })();
+    </script>
+</head>
+<body class="bg-zinc-50 font-sans text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
+    <div class="landing-frame">
+        <x-landing.navbar />
+
+        <main>
+            <x-landing.hero />
+            <x-landing.journey />
+
+            <div class="insight" data-insight>
+                <div class="insight__main">
+                    <x-landing.challenges />
+                    <x-landing.sample-call />
+                </div>
+                <x-landing.coaching />
+                <x-landing.faq />
+            </div>
+        </main>
+
+        <x-landing.footer />
+    </div>
+
+    <x-landing.consult-dialog />
+</body>
+</html>

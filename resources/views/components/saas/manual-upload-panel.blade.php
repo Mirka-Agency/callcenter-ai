@@ -1,6 +1,7 @@
 @props([
     'employees' => collect(),
     'showEmployeeAssign' => false,
+    'createEmployeeUrl' => null,
     'uploadZoneState' => 'idle',
     'selectedFileName' => null,
     'selectedFileSize' => null,
@@ -14,6 +15,27 @@
         :file-name="$selectedFileName"
         :file-size="$selectedFileSize"
     />
+
+    @if ($showEmployeeAssign)
+        <div>
+            <label class="text-sm font-medium text-zinc-700 dark:text-zinc-300">کارشناس این تماس</label>
+            <select wire:model="employeeId" class="saas-input mt-1 text-sm">
+                <option value="">انتخاب کارشناس…</option>
+                @foreach ($employees as $employee)
+                    <option value="{{ $employee->id }}">{{ $employee->full_name }}</option>
+                @endforeach
+            </select>
+            <p class="mt-1.5 text-xs text-zinc-500">امتیاز مکالمه، کوچینگ و متریک عملکرد برای همین کارشناس محاسبه می‌شود.</p>
+            @error('employeeId')
+                <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+            @enderror
+            @if ($employees->isEmpty() && $createEmployeeUrl)
+                <a href="{{ $createEmployeeUrl }}" class="mt-2 inline-flex text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
+                    هنوز کارشناسی ندارید. اول یک کارشناس بسازید.
+                </a>
+            @endif
+        </div>
+    @endif
 
     <div class="rounded-lg border border-zinc-200/80 dark:border-zinc-800">
         <button
@@ -29,17 +51,6 @@
 
         @if ($showMetadata)
             <div class="grid gap-4 border-t border-zinc-200/80 p-4 dark:border-zinc-800 sm:grid-cols-2">
-                @if ($showEmployeeAssign)
-                    <div class="sm:col-span-2">
-                        <label class="text-sm font-medium text-zinc-700 dark:text-zinc-300">اختصاص به کارشناس</label>
-                        <select wire:model="employeeId" class="saas-input mt-1 text-sm">
-                            <option value="">— بدون اختصاص —</option>
-                            @foreach ($employees as $employee)
-                                <option value="{{ $employee->id }}">{{ $employee->full_name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                @endif
                 <div>
                     <label class="text-sm font-medium text-zinc-700 dark:text-zinc-300">عنوان</label>
                     <input wire:model="title" class="saas-input mt-1 text-sm" placeholder="مثلاً تماس پیگیری فروش">

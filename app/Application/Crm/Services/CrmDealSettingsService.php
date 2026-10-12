@@ -5,6 +5,7 @@ namespace App\Application\Crm\Services;
 use App\Application\Crm\CrmManager;
 use App\Domain\Crm\DTOs\CrmSettings;
 use App\Models\OrganizationCrmConnection;
+use App\Support\Seeding\DemoCrmCatalog;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -15,6 +16,13 @@ class CrmDealSettingsService
      */
     public function loadPipelines(OrganizationCrmConnection $connection): array
     {
+        if ($this->usesDemoCatalog($connection)) {
+            return [
+                'pipelines' => DemoCrmCatalog::pipelines(),
+                'error' => null,
+            ];
+        }
+
         $result = CrmManager::forOrganization($connection->organization_id)
             ->connection($connection->id)
             ->listPipelines();
@@ -30,6 +38,13 @@ class CrmDealSettingsService
      */
     public function loadUsers(OrganizationCrmConnection $connection): array
     {
+        if ($this->usesDemoCatalog($connection)) {
+            return [
+                'users' => DemoCrmCatalog::users(),
+                'error' => null,
+            ];
+        }
+
         $result = CrmManager::forOrganization($connection->organization_id)
             ->connection($connection->id)
             ->listUsers();
@@ -79,6 +94,13 @@ class CrmDealSettingsService
 
             return $connection->fresh(['provider']);
         });
+    }
+
+    private function usesDemoCatalog(OrganizationCrmConnection $connection): bool
+    {
+        $connection->loadMissing('organization');
+
+        return (bool) $connection->organization?->is_demo;
     }
 
     private function nullable(?string $value): ?string

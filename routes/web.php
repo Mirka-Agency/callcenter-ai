@@ -1,8 +1,9 @@
 <?php
 
-use App\Enums\UserRole;
+use App\Http\Controllers\ConsultationRequestController;
 use App\Livewire\Auth\Login;
 use App\Models\User;
+use App\Support\LandingHost;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -11,8 +12,16 @@ Route::get('/', function () {
         return redirect(auth()->user()->portalRoute());
     }
 
-    return redirect()->route('login');
+    if (! LandingHost::matches(request())) {
+        return redirect()->route('login');
+    }
+
+    return view('landing');
 })->name('home');
+
+Route::post('/consultation-requests', [ConsultationRequestController::class, 'store'])
+    ->middleware(['throttle:8,1', 'landing-host'])
+    ->name('consultation-requests.store');
 
 Route::middleware('guest')->group(function () {
     Route::get('login', Login::class)->name('login');
@@ -29,7 +38,7 @@ Route::post('/logout', function () {
     request()->session()->invalidate();
     request()->session()->regenerateToken();
 
-    return redirect()->route('login');
+    return redirect()->route('home');
 })->name('logout');
 
 Route::post('/impersonation/stop', [\App\Http\Controllers\ImpersonationController::class, 'stop'])

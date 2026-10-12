@@ -219,6 +219,7 @@ return [
         'unmatched_add_employee' => 'افزودن کارشناس',
         'unmatched_extension_assigned' => ':count تماس به کارشناس وصل شد. اگر فایل صوتی داشته باشند، تحلیل هم شروع می‌شود.',
         'analysis_employee_assigned' => 'کارشناس به این تماس و تحلیل متصل شد.',
+        'analysis_employee_assigned_reanalyze' => 'کارشناس به این تماس وصل شد و تحلیل دوباره برای امتیاز و متریک همان کارشناس در صف قرار گرفت.',
         'unmatched_extension_conflict' => 'این شماره داخلی قبلاً به کارشناس دیگری روی همین خط تلفن وصل شده است.',
         'unmatched_extension_employee_required' => 'یک کارشناس انتخاب کنید.',
         'recent_calls_extension_column' => 'شماره داخلی',

@@ -16,6 +16,7 @@ return [
         ],
         'dashboard' => 'داشبورد',
         'organizations' => 'شرکت‌ها',
+        'consultation_requests' => 'درخواست‌های مشاوره',
         'users' => 'کاربران',
         'token_usage' => 'مصرف توکن',
         'ai_costs' => 'هزینه‌های هوش مصنوعی',
@@ -42,6 +43,8 @@ return [
     'models' => [
         'organization' => 'شرکت',
         'organizations' => 'شرکت‌ها',
+        'consultation_request' => 'درخواست مشاوره',
+        'consultation_requests' => 'درخواست‌های مشاوره',
         'user' => 'کاربر',
         'users' => 'کاربران',
         'conversation_analysis' => 'تحلیل گفتگو',
@@ -65,8 +68,12 @@ return [
 
     'fields' => [
         'name' => 'نام',
+        'full_name' => 'نام و نام خانوادگی',
+        'company_name' => 'نام شرکت',
+        'department' => 'واحد',
         'email' => 'ایمیل',
         'phone' => 'شماره موبایل',
+        'contact_phone' => 'شماره تماس',
         'email_address' => 'آدرس ایمیل',
         'password' => 'رمز عبور',
         'role' => 'نقش',

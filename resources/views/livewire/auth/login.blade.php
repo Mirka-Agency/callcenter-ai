@@ -16,9 +16,14 @@
             <input wire:model="password" type="password" class="saas-input" autocomplete="current-password" required>
             @error('password') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
         </div>
+        @include('auth.recaptcha', ['statePath' => 'captcha'])
         <button type="submit" class="saas-btn-primary w-full" wire:loading.attr="disabled">
             <span wire:loading.remove wire:target="authenticate">ورود به داشبورد</span>
             <span wire:loading wire:target="authenticate">در حال ورود...</span>
         </button>
     </form>
+
+    <p class="mt-6 text-center text-sm text-zinc-500">
+        <a href="{{ route('home') }}" class="transition hover:text-zinc-800 dark:hover:text-zinc-200">بازگشت به صفحه آوایار</a>
+    </p>
 </div>

@@ -35,4 +35,28 @@ return [
         ],
     ],
 
+    /*
+    | Google reCAPTCHA v3 on the public and admin login pages.
+    | RECAPTCHA_ENABLED defaults to on. On-prem is always off (see Recaptcha::enabled).
+    | Verification stays off until both keys are set.
+    | min_score is the lowest v3 score (0–1) accepted for the login action.
+    */
+    'recaptcha' => [
+        'site_key' => env('RECAPTCHA_SITE_KEY'),
+        'secret_key' => env('RECAPTCHA_SECRET_KEY'),
+        'enabled' => env('RECAPTCHA_ENABLED', true),
+        'min_score' => env('RECAPTCHA_MIN_SCORE', 0.5),
+    ],
+
+    /*
+    | sms.ir REST API. Keys live in the developers panel.
+    | SMSIR_NOTIFY_MOBILE receives a copy of every consultation request.
+    */
+    'smsir' => [
+        'api_key' => env('SMSIR_API_KEY'),
+        'line_number' => env('SMSIR_LINE_NUMBER'),
+        'base_url' => env('SMSIR_BASE_URL', 'https://api.sms.ir/v1'),
+        'notify_mobile' => env('SMSIR_NOTIFY_MOBILE'),
+    ],
+
 ];

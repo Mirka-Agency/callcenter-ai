@@ -115,14 +115,18 @@ class Index extends Component
                 'category' => 'nullable|string|max:100',
                 'tags' => 'nullable|string|max:500',
                 'conversationDate' => 'nullable|date',
-                'employeeId' => 'nullable|integer|exists:organization_user,id',
+                'employeeId' => 'required|integer|exists:organization_user,id',
+            ], [
+                'employeeId.required' => 'برای شروع تحلیل، کارشناس این تماس را انتخاب کنید.',
             ]);
         } catch (ValidationException $e) {
+            $this->setErrorBag($e->validator->errors());
+
             $message = $e->validator->errors()->first('audio')
+                ?: $e->validator->errors()->first('employeeId')
                 ?: $e->validator->errors()->first()
                 ?: __('ui.upload.validation_failed');
 
-            $this->addError('audio', $message);
             $this->dispatchUploadErrorToast($message);
 
             return;

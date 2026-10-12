@@ -4,6 +4,7 @@ namespace App\Livewire\Employer\Intelligence;
 
 use App\Application\Call\Services\CallEmployeeResolver;
 use App\Application\Call\Services\UnmatchedVoipExtensionService;
+use App\Application\Intelligence\Jobs\UpdateEmployeeMetricsJob;
 use App\Application\Intelligence\Services\CallAnalysisQueueService;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
@@ -42,6 +43,12 @@ class Show extends Component
 
         if ($call === null) {
             session()->flash('error', __('ui.intelligence.reanalyze_one_unavailable'));
+
+            return;
+        }
+
+        if (! $call->organization_user_id) {
+            session()->flash('error', __('ui.intelligence.reanalyze_one_employee_required'));
 
             return;
         }
@@ -106,13 +113,24 @@ class Show extends Component
             );
         }
 
+        $call = $this->analysis->call?->fresh(['recording', 'voipCallLog']);
+        $queued = $call
+            ? app(CallAnalysisQueueService::class)->dispatchForCall($call, forceReanalyze: true)
+            : false;
+
+        if (! $queued && $this->analysis->call_id) {
+            UpdateEmployeeMetricsJob::dispatch($this->analysis->call_id);
+        }
+
         $this->analysis->refresh();
         $this->loadAnalysis();
         $this->assignEmployeeId = 0;
 
-        session()->flash('status', $extension
-            ? __('ui.voip.unmatched_extension_assigned', ['count' => 1])
-            : __('ui.voip.analysis_employee_assigned'));
+        session()->flash('status', $queued
+            ? __('ui.voip.analysis_employee_assigned_reanalyze')
+            : ($extension
+                ? __('ui.voip.unmatched_extension_assigned', ['count' => 1])
+                : __('ui.voip.analysis_employee_assigned')));
     }
 
     public function render()
