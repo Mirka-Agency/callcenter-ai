@@ -92,9 +92,10 @@ COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisord.conf
 COPY docker/bin/queue-worker /usr/local/bin/queue-worker
 COPY docker/bin/scheduler /usr/local/bin/scheduler
+COPY docker/bin/healthcheck /usr/local/bin/healthcheck
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
-RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/queue-worker /usr/local/bin/scheduler
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/queue-worker /usr/local/bin/scheduler /usr/local/bin/healthcheck
 
 WORKDIR /var/www/html
 
@@ -123,7 +124,7 @@ ENV APP_ENV=production \
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD wget -qO- http://127.0.0.1:8000/up || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD /usr/local/bin/healthcheck
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
