@@ -17,6 +17,10 @@
             'label' => 'اشخاص',
             'route' => $portal === 'employee' ? 'employee.customers.contacts.index' : 'employer.customers.contacts.index',
         ],
+        'reviews' => [
+            'label' => 'نیازمند بررسی',
+            'route' => $portal === 'employee' ? 'employee.customers.reviews.index' : 'employer.customers.reviews.index',
+        ],
     ];
 @endphp
 

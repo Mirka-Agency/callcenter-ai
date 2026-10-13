@@ -1,4 +1,5 @@
 @php
+    use App\Domain\Customer\CustomerLifecycleStage;
     use App\Support\AnalysisInsightPresenter;
     use App\Support\CustomerPresenter;
     use App\Support\JalaliDate;
@@ -7,7 +8,7 @@
         $customer->total_calls.' تماس',
         JalaliDate::ago($customer->last_contact_at),
         $customer->latest_lead_level
-            ? 'لید '.AnalysisInsightPresenter::leadLevelLabel($customer->latest_lead_level)
+            ? 'کیفیت لید: '.AnalysisInsightPresenter::leadLevelLabel($customer->latest_lead_level)
             : null,
         $customer->purchase_intent
             ? 'تمایل '.$customer->purchase_intent
@@ -25,6 +26,19 @@
             </h3>
             <p class="mt-0.5 truncate text-sm text-zinc-500">
                 {{ CustomerPresenter::listSubtitle($customer) }}
+            </p>
+            @if ($customer->owner_organization_user_id)
+                <p class="mt-1 truncate text-xs text-zinc-500">مسئول: {{ $customer->owner?->full_name ?: '—' }}</p>
+            @else
+                <p class="mt-1 text-xs font-medium text-amber-700">بدون مسئول</p>
+            @endif
+            <p class="mt-1">
+                <span @class([
+                    'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
+                    $customer->lifecycle_stage?->badgeClass() ?? CustomerLifecycleStage::unknownBadgeClass(),
+                ])>
+                    مرحله: {{ $customer->lifecycle_stage?->label() ?? CustomerLifecycleStage::unknownLabel() }}
+                </span>
             </p>
         </div>
 

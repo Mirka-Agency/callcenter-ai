@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Application\Customer\Actions\ReleaseCustomerOwners;
 use App\Enums\Gender;
 use App\Models\Concerns\HasAvatar;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -27,6 +28,19 @@ class OrganizationUser extends Pivot
     public $incrementing = true;
 
     protected $table = 'organization_user';
+
+    protected static function booted(): void
+    {
+        static::updated(function (OrganizationUser $member): void {
+            if ($member->wasChanged('is_active') && ! $member->is_active) {
+                app(ReleaseCustomerOwners::class)->handle($member, 'عضویت غیرفعال شد');
+            }
+        });
+
+        static::deleting(function (OrganizationUser $member): void {
+            app(ReleaseCustomerOwners::class)->handle($member, 'عضویت حذف شد');
+        });
+    }
 
     protected function casts(): array
     {

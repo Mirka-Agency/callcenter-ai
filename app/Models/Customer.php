@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Customer\CustomerLifecycleStage;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'organization_id',
     'customer_company_id',
+    'owner_organization_user_id',
+    'lifecycle_stage',
     'normalized_phone',
     'phone_number',
     'name',
@@ -18,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'email',
     'job_title',
     'identity_confidence',
+    'identity_field_sources',
     'latest_lead_score',
     'latest_lead_level',
     'common_concerns_json',
@@ -48,6 +52,8 @@ class Customer extends Model
     {
         return [
             'identity_confidence' => 'float',
+            'identity_field_sources' => 'array',
+            'lifecycle_stage' => CustomerLifecycleStage::class,
             'common_concerns_json' => 'array',
             'first_contact_at' => 'datetime',
             'last_contact_at' => 'datetime',
@@ -64,9 +70,26 @@ class Customer extends Model
         return $this->belongsTo(CustomerCompany::class, 'customer_company_id');
     }
 
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(OrganizationUser::class, 'owner_organization_user_id');
+    }
+
     public function calls(): HasMany
     {
         return $this->hasMany(Call::class);
+    }
+
+    /** @return HasMany<CustomerContactMethod, $this> */
+    public function contactMethods(): HasMany
+    {
+        return $this->hasMany(CustomerContactMethod::class);
+    }
+
+    /** @return HasMany<CustomerLifecycleEvent, $this> */
+    public function lifecycleEvents(): HasMany
+    {
+        return $this->hasMany(CustomerLifecycleEvent::class);
     }
 
     /** @param  Builder<Customer>  $query */

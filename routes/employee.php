@@ -13,6 +13,7 @@ use App\Livewire\Employee\Customers\Contacts\Create as CustomerContactsCreate;
 use App\Livewire\Employee\Customers\Contacts\Index as CustomerContactsIndex;
 use App\Livewire\Employee\Customers\Edit as CustomersEdit;
 use App\Livewire\Employee\Customers\Index as CustomersIndex;
+use App\Livewire\Employee\Customers\Reviews\Index as CustomerReviewsIndex;
 use App\Livewire\Employee\Customers\Show as CustomersShow;
 use App\Livewire\Employee\Dashboard\Overview as EmployeeDashboard;
 use App\Livewire\Employee\Performance\Index as PerformanceIndex;
@@ -47,6 +48,7 @@ Route::middleware(['auth', 'employee'])->group(function () {
             ->name('contacts.export')
             ->whereIn('format', ['xlsx', 'pdf']);
         Route::get('/contacts/create', CustomerContactsCreate::class)->name('contacts.create');
+        Route::get('/reviews', CustomerReviewsIndex::class)->name('reviews.index');
         Route::get('/companies/create', CustomerCompaniesCreate::class)->name('companies.create');
         Route::get('/companies/{customerCompany}/edit', CustomerCompaniesEdit::class)->name('companies.edit');
         Route::get('/companies/{customerCompany}', CustomerCompaniesShow::class)->name('companies.show');

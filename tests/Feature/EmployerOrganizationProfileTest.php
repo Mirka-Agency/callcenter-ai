@@ -24,10 +24,18 @@ class EmployerOrganizationProfileTest extends TestCase
 
     public function test_sidebar_lists_organization_profile_and_drops_company_holidays(): void
     {
-        $routes = collect(EmployerNavigation::items())->pluck('route');
+        $items = collect(EmployerNavigation::items());
+        $routes = $items->pluck('route');
+        $crm = $items->firstWhere('label', 'CRM');
 
         $this->assertTrue($routes->contains('employer.organization.profile'));
         $this->assertFalse($routes->contains('employer.holidays.index'));
+        $this->assertFalse($routes->contains('employer.customers.index'));
+        $this->assertFalse($routes->contains('employer.crm.index'));
+        $this->assertSame(
+            ['employer.crm.index', 'employer.customers.index'],
+            array_column($crm['children'] ?? [], 'route'),
+        );
 
         $employer = User::factory()->create(['role' => UserRole::Employer]);
         Organization::factory()->create([
@@ -35,13 +43,24 @@ class EmployerOrganizationProfileTest extends TestCase
             'title' => 'شرکت نمونه',
         ]);
 
-        $this->actingAs($employer)
+        $sidebar = $this->actingAs($employer)
             ->get(route('employer.organization.profile'))
             ->assertOk()
+            ->assertSee('>CRM<', false)
+            ->assertSee('>یکپارچه‌سازی<', false)
+            ->assertSee('>مشتریان<', false)
             ->assertSee('پروفایل سازمان')
             ->assertSee('شرکت نمونه')
             ->assertSee('تعطیلات شرکت')
-            ->assertDontSee(route('employer.holidays.index'), false);
+            ->assertDontSee(route('employer.holidays.index'), false)
+            ->getContent();
+
+        $crmPosition = strpos($sidebar, '>CRM<');
+        $integrationPosition = strpos($sidebar, '>یکپارچه‌سازی<');
+        $customersPosition = strpos($sidebar, '>مشتریان<');
+
+        $this->assertLessThan($integrationPosition, $crmPosition);
+        $this->assertLessThan($customersPosition, $integrationPosition);
     }
 
     public function test_old_holidays_address_opens_the_organization_profile(): void

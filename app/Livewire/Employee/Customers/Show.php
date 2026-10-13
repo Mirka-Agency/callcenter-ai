@@ -22,7 +22,7 @@ class Show extends Component
             $customer,
             EmployeeContext::membership()->organization_id,
         );
-        $this->customer = $customer->load('company');
+        $this->customer = $customer->load(['company', 'owner']);
     }
 
     public function render()
@@ -45,6 +45,9 @@ class Show extends Component
             'customersIndexRoute' => route('employee.customers.contacts.index'),
             'customersHubRoute' => route('employee.customers.index'),
             'companiesListRoute' => route('employee.customers.companies.index'),
+            'canAssignOwner' => false,
+            'canChangeLifecycle' => false,
+            'lifecycleEvents' => $this->customer->lifecycleEvents()->latest('id')->limit(8)->get(),
         ]);
     }
 }

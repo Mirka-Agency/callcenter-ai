@@ -2,30 +2,41 @@
 
 namespace App\Services;
 
+use App\Application\Customer\Actions\AssignCustomerOwner;
+use App\Application\Customer\Actions\RecordIdentityReview;
+use App\Application\Customer\CustomerContactMethodMirror;
+use App\Application\Customer\ExternalPartyPhoneResolver;
+use App\Application\Customer\FieldEnrichmentPolicy;
+use App\Domain\Customer\CustomerLifecycleStage;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
+use App\Models\CustomerContactMethod;
 use App\Models\OrganizationUser;
 use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Support\CompanyName;
+use App\Support\CustomerFieldProvenance;
 use App\Support\CustomerNextActionAggregator;
 use App\Support\CustomerPresenter;
 use App\Support\CustomerTenantGuard;
 use App\Support\JalaliDate;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class CustomerIntelligenceService
 {
-    private const MIN_IDENTITY_CONFIDENCE = 0.5;
-
     public function __construct(
         private CustomerPhoneResolver $phoneResolver,
-        private CustomerCompanyResolver $companyResolver,
         private CustomerCompanyService $companyService,
+        private ExternalPartyPhoneResolver $parties,
+        private FieldEnrichmentPolicy $enrichment,
+        private RecordIdentityReview $reviews,
+        private CustomerContactMethodMirror $contactMethods,
+        private AssignCustomerOwner $owners,
     ) {}
 
     public function syncFromAnalysis(ConversationAnalysis $analysis): ?Customer
@@ -37,25 +48,47 @@ class CustomerIntelligenceService
         $analysis->loadMissing(['call']);
 
         return DB::transaction(function () use ($analysis) {
-            $phone = $this->primaryCustomerPhone($analysis);
-            $keys = $this->phoneResolver->equivalentKeys($phone);
+            $party = $this->parties->resolve($analysis);
+
+            if (! $party->isValid || $party->normalized === null) {
+                $this->reviews->unresolved($analysis, $party->reason);
+
+                return null;
+            }
+
+            $keys = $this->phoneResolver->equivalentKeys($party->raw);
             $matches = $this->customersMatchingPhones((int) $analysis->organization_id, $keys);
 
-            if ($matches->isNotEmpty()) {
-                $customer = $this->mergeCustomers($matches);
+            if ($matches->count() > 1) {
+                $this->reviews->duplicates($analysis, $matches->pluck('id')->map(fn ($id) => (int) $id)->all());
+
+                return null;
+            }
+
+            $createdNow = false;
+
+            if ($matches->count() === 1) {
+                $customer = $matches->first();
             } else {
-                $normalized = $this->phoneResolver->normalize($phone);
+                $key = CustomerTenantGuard::tenantPhoneKey($analysis->organization_id, $party->normalized);
 
-                if (! $normalized) {
-                    return null;
+                try {
+                    $customer = Customer::query()->firstOrCreate($key, [
+                        'phone_number' => trim((string) $party->raw),
+                        'lifecycle_stage' => CustomerLifecycleStage::NewLead,
+                    ]);
+                    $createdNow = $customer->wasRecentlyCreated;
+                } catch (UniqueConstraintViolationException) {
+                    $customer = Customer::query()->where($key)->first();
+
+                    if (! $customer) {
+                        throw new \RuntimeException('Customer phone key collided but the existing record was not found.');
+                    }
                 }
+            }
 
-                $customer = Customer::query()->firstOrCreate(
-                    CustomerTenantGuard::tenantPhoneKey($analysis->organization_id, $normalized),
-                    [
-                        'phone_number' => $phone,
-                    ],
-                );
+            if (! $customer instanceof Customer) {
+                return null;
             }
 
             if ($analysis->call) {
@@ -63,13 +96,18 @@ class CustomerIntelligenceService
                 $this->linkCallToCustomer($analysis->call, $customer);
             }
 
-            $this->linkCallsByPhone($customer);
-
             $customer->loadMissing('organization');
-            $this->mergeIdentity($customer, $analysis, $phone ?? $customer->phone_number);
-            $this->refreshAggregates($customer->fresh() ?? $customer);
+            $this->proposeIdentity($customer, $analysis);
+            $fresh = $customer->fresh() ?? $customer;
 
-            return $customer->fresh();
+            if ($createdNow) {
+                $fresh = $this->owners->assignFromFirstCall($fresh, $analysis);
+            }
+
+            $this->contactMethods->mirrorFromCustomer($fresh);
+            $this->refreshAggregates($fresh);
+
+            return $fresh->fresh();
         });
     }
 
@@ -88,104 +126,7 @@ class CustomerIntelligenceService
 
     public function relinkCallsByPhone(Customer $customer): void
     {
-        $this->linkCallsByPhone($customer);
-    }
-
-    /** @param  list<string>  $extraKeys */
-    private function linkCallsByPhone(Customer $customer, array $extraKeys = []): void
-    {
-        $keys = $this->phoneResolver->equivalentKeysForMany([
-            $customer->normalized_phone,
-            $customer->phone_number,
-            ...$extraKeys,
-        ]);
-
-        if ($keys === []) {
-            return;
-        }
-
-        Call::query()
-            ->where('organization_id', $customer->organization_id)
-            ->whereNull('customer_id')
-            ->where(function ($query) use ($keys) {
-                $query->where(function ($inbound) use ($keys) {
-                    $inbound->where('direction', 'inbound')
-                        ->where(function ($numbers) use ($keys) {
-                            $numbers->whereIn('normalized_caller_number', $keys)
-                                ->orWhereIn('normalized_customer_phone', $keys);
-                        });
-                })->orWhere(function ($outbound) use ($keys) {
-                    $outbound->where('direction', 'outbound')
-                        ->where(function ($numbers) use ($keys) {
-                            $numbers->whereIn('normalized_receiver_number', $keys)
-                                ->orWhereIn('normalized_customer_phone', $keys);
-                        });
-                });
-            })
-            ->update(['customer_id' => $customer->id]);
-    }
-
-    /** @return list<string> */
-    private function customerPhoneCandidates(ConversationAnalysis $analysis): array
-    {
-        $call = $analysis->call;
-        $candidates = [];
-
-        if ($call) {
-            $resolved = $this->phoneResolver->resolveFromCall($call);
-
-            if ($resolved) {
-                $candidates[] = $resolved;
-            }
-
-            if (filled($call->customer_phone)) {
-                $candidates[] = trim((string) $call->customer_phone);
-            }
-        }
-
-        return $this->withoutCounterparty($call, $candidates);
-    }
-
-    private function primaryCustomerPhone(ConversationAnalysis $analysis): ?string
-    {
-        $phones = $this->customerPhoneCandidates($analysis);
-
-        if ($phones !== []) {
-            return $phones[0];
-        }
-
-        $spoken = trim((string) ($analysis->customer_identity_json['phone_number'] ?? ''));
-
-        return $this->phoneResolver->normalize($spoken) ? $spoken : null;
-    }
-
-    /** @param  list<string>  $candidates
-     * @return list<string>
-     */
-    private function withoutCounterparty(?Call $call, array $candidates): array
-    {
-        $candidates = array_values(array_unique(array_filter($candidates, fn (string $phone) => $this->phoneResolver->normalize($phone) !== null)));
-
-        if (! $call || $candidates === []) {
-            return $candidates;
-        }
-
-        $counterparty = match ($call->direction) {
-            'inbound' => $call->receiver_number,
-            'outbound' => $call->caller_number,
-            default => null,
-        };
-        $blocked = $this->phoneResolver->equivalentKeys($counterparty);
-
-        if ($blocked === []) {
-            return $candidates;
-        }
-
-        $filtered = array_values(array_filter($candidates, function (string $phone) use ($blocked) {
-            return array_intersect($this->phoneResolver->equivalentKeys($phone), $blocked) === [];
-        }));
-
-        return $filtered;
+        // A phone change must not attach another person's older calls.
     }
 
     /**
@@ -200,67 +141,18 @@ class CustomerIntelligenceService
 
         return Customer::query()
             ->where('organization_id', $organizationId)
-            ->whereIn('normalized_phone', $keys)
+            ->where(function ($query) use ($organizationId, $keys): void {
+                $query->whereIn('normalized_phone', $keys)
+                    ->orWhereIn('id', CustomerContactMethod::query()
+                        ->where('organization_id', $organizationId)
+                        ->where('is_active', true)
+                        ->where('verification_status', 'verified')
+                        ->whereIn('type', ['mobile', 'phone'])
+                        ->whereIn('normalized_value', $keys)
+                        ->select('customer_id'));
+            })
             ->orderBy('id')
             ->get();
-    }
-
-    /** @param  Collection<int, Customer>  $customers */
-    private function mergeCustomers(Collection $customers): Customer
-    {
-        $keeper = $customers->sortBy('id')->first();
-
-        if (! $keeper instanceof Customer) {
-            throw new \RuntimeException('Cannot merge an empty customer set.');
-        }
-
-        $duplicates = $customers->where('id', '!=', $keeper->id)->values();
-
-        if ($duplicates->isEmpty()) {
-            return $keeper;
-        }
-
-        $duplicateIds = $duplicates->pluck('id')->all();
-
-        Call::query()
-            ->where('organization_id', $keeper->organization_id)
-            ->whereIn('customer_id', $duplicateIds)
-            ->update(['customer_id' => $keeper->id]);
-
-        $updates = [];
-
-        foreach (['name', 'company_name', 'email', 'job_title', 'phone_number'] as $field) {
-            if (filled($keeper->{$field})) {
-                continue;
-            }
-
-            $value = $duplicates->pluck($field)->first(fn ($item) => filled($item));
-
-            if ($value) {
-                $updates[$field] = $value;
-            }
-        }
-
-        if (! $keeper->customer_company_id) {
-            $companyId = $duplicates->pluck('customer_company_id')->first(fn ($item) => filled($item));
-
-            if ($companyId) {
-                $updates['customer_company_id'] = $companyId;
-            }
-        }
-
-        if ($updates !== []) {
-            $keeper->update($updates);
-        }
-
-        $companyIds = $duplicates->pluck('customer_company_id')->filter()->unique()->all();
-        Customer::query()->whereIn('id', $duplicateIds)->delete();
-
-        foreach (CustomerCompany::query()->whereIn('id', $companyIds)->get() as $company) {
-            $this->companyService->refreshAggregates($company);
-        }
-
-        return $keeper->fresh() ?? $keeper;
     }
 
     /** @return list<int> */
@@ -448,53 +340,65 @@ class CustomerIntelligenceService
         ];
     }
 
-    private function mergeIdentity(Customer $customer, ConversationAnalysis $analysis, ?string $phone): void
+    private function proposeIdentity(Customer $customer, ConversationAnalysis $analysis): void
     {
         $identity = $analysis->customer_identity_json ?? [];
         $confidence = (float) ($identity['confidence'] ?? 0);
-        $currentConfidence = (float) ($customer->identity_confidence ?? 0);
-        $call = $analysis->call;
-        $organizationTitle = (string) ($customer->organization?->title ?? '');
-
-        $incomingCompany = CompanyName::display((string) ($identity['company_name'] ?? ''));
-        if ($incomingCompany !== '' && CompanyName::isOwnOrganization($incomingCompany, $organizationTitle)) {
-            $incomingCompany = '';
-        }
-
+        $evidence = (string) ($identity['evidence'] ?? '');
+        $sources = $customer->identity_field_sources ?? [];
         $updates = [];
 
-        if ($phone && ! $customer->phone_number) {
-            $updates['phone_number'] = $phone;
+        foreach (['name' => 'person_name', 'email' => 'email', 'job_title' => 'job_title'] as $column => $identityKey) {
+            $incoming = trim((string) ($identity[$identityKey] ?? ''));
+            $decision = $this->enrichment->decision(
+                $customer->{$column},
+                CustomerFieldProvenance::isHumanLocked($sources, $column),
+                $incoming,
+                $evidence,
+                $confidence,
+            );
+
+            if ($decision === 'fill') {
+                $updates[$column] = $incoming;
+                $sources = CustomerFieldProvenance::markAi($sources, $column, $confidence);
+            }
+
+            if ($decision === 'suggest') {
+                $this->reviews->suggestion(
+                    $analysis,
+                    $customer,
+                    'field_suggestion',
+                    $column,
+                    $customer->{$column},
+                    $incoming,
+                    $evidence,
+                );
+            }
         }
 
-        if ($call?->customer_name && ! $customer->name) {
-            $updates['name'] = $call->customer_name;
-        }
+        $incomingCompany = CompanyName::display((string) ($identity['company_name'] ?? ''));
+        $organizationTitle = (string) ($customer->organization?->title ?? '');
+        $companyLocked = CustomerFieldProvenance::companyIsHumanLocked($sources);
 
-        if ($confidence >= self::MIN_IDENTITY_CONFIDENCE || $currentConfidence < self::MIN_IDENTITY_CONFIDENCE) {
-            if ($this->shouldReplaceField($customer->name, $identity['person_name'] ?? '', $confidence, $currentConfidence)) {
-                $updates['name'] = trim((string) $identity['person_name']);
-            }
+        if ($incomingCompany !== '' && ! CompanyName::isOwnOrganization($incomingCompany, $organizationTitle)) {
+            $currentCompany = trim((string) ($customer->company_name ?? ''));
+            $sameCompany = $currentCompany !== '' && CompanyName::key($currentCompany) === CompanyName::key($incomingCompany);
 
-            if ($this->shouldReplaceCompanyName($customer->company_name, $incomingCompany, $confidence, $currentConfidence)) {
-                $updates['company_name'] = $incomingCompany;
-            }
-
-            if ($this->shouldReplaceField($customer->email, $identity['email'] ?? '', $confidence, $currentConfidence)) {
-                $updates['email'] = trim((string) $identity['email']);
-            }
-
-            if ($this->shouldReplaceField($customer->job_title, $identity['job_title'] ?? '', $confidence, $currentConfidence)) {
-                $updates['job_title'] = trim((string) $identity['job_title']);
-            }
-
-            if ($confidence > $currentConfidence) {
-                $updates['identity_confidence'] = $confidence;
+            if (! $sameCompany) {
+                $this->reviews->suggestion(
+                    $analysis,
+                    $customer,
+                    'company_candidate',
+                    'company_name',
+                    $currentCompany !== '' ? $currentCompany : null,
+                    $incomingCompany,
+                    $evidence,
+                );
             }
         }
 
         if (
-            $incomingCompany === ''
+            ! $companyLocked
             && $customer->company_name
             && CompanyName::isOwnOrganization($customer->company_name, $organizationTitle)
         ) {
@@ -502,103 +406,50 @@ class CustomerIntelligenceService
             $updates['customer_company_id'] = null;
         }
 
-        $previousCompanyId = $customer->customer_company_id;
+        if ($sources !== ($customer->identity_field_sources ?? [])) {
+            $updates['identity_field_sources'] = $sources;
+        }
 
         if ($updates !== []) {
             $customer->update($updates);
             $customer->refresh();
         }
 
-        $this->syncCompanyFromIdentity($customer, $incomingCompany);
-
-        if (
-            $previousCompanyId
-            && $customer->customer_company_id !== $previousCompanyId
-        ) {
-            $previous = CustomerCompany::query()->find($previousCompanyId);
-            if ($previous) {
-                $this->companyService->refreshAggregates($previous);
-            }
-        }
+        $this->suggestSpokenPhone($customer, $analysis, $identity);
     }
 
-    private function syncCompanyFromIdentity(Customer $customer, string $incomingCompany): void
+    /** @param  array<string, mixed>  $identity */
+    private function suggestSpokenPhone(Customer $customer, ConversationAnalysis $analysis, array $identity): void
     {
-        $companyName = trim($incomingCompany !== '' ? $incomingCompany : (string) ($customer->company_name ?? ''));
+        $spoken = trim((string) ($identity['phone_number'] ?? ''));
+        $inspection = $this->phoneResolver->inspect($spoken);
 
-        if ($companyName === '') {
+        if (! $inspection->isValid || $inspection->normalized === null) {
             return;
         }
 
-        $organizationTitle = (string) ($customer->organization?->title ?? '');
-        if (CompanyName::isOwnOrganization($companyName, $organizationTitle)) {
-            if ($customer->customer_company_id || $customer->company_name) {
-                $customer->update([
-                    'customer_company_id' => null,
-                    'company_name' => null,
-                ]);
-            }
+        $keys = $this->phoneResolver->equivalentKeys($spoken);
+        $alreadyKnown = in_array($customer->normalized_phone, $keys, true)
+            || CustomerContactMethod::query()
+                ->where('customer_id', $customer->id)
+                ->where('is_active', true)
+                ->whereIn('type', ['mobile', 'phone'])
+                ->whereIn('normalized_value', $keys)
+                ->exists();
 
+        if ($alreadyKnown) {
             return;
         }
 
-        $company = $this->companyResolver->findOrCreate($customer->organization_id, $companyName, excludeOwnOrganization: true);
-
-        if (! $company) {
-            if ($customer->customer_company_id || $customer->company_name) {
-                $customer->update([
-                    'customer_company_id' => null,
-                    'company_name' => null,
-                ]);
-            }
-
-            return;
-        }
-
-        if ($customer->customer_company_id !== $company->id || $customer->company_name !== $company->name) {
-            $customer->update([
-                'customer_company_id' => $company->id,
-                'company_name' => $company->name,
-            ]);
-        }
-
-        $this->companyService->refreshAggregates($company);
-    }
-
-    private function shouldReplaceField(?string $current, string $incoming, float $newConfidence, float $currentConfidence): bool
-    {
-        $incoming = trim($incoming);
-
-        if ($incoming === '') {
-            return false;
-        }
-
-        if ($current === null || $current === '') {
-            return true;
-        }
-
-        return $newConfidence > $currentConfidence;
-    }
-
-    private function shouldReplaceCompanyName(?string $current, string $incoming, float $newConfidence, float $currentConfidence): bool
-    {
-        $incoming = CompanyName::display($incoming);
-
-        if ($incoming === '') {
-            return false;
-        }
-
-        if ($current === null || $current === '') {
-            return true;
-        }
-
-        $preferred = CompanyName::preferDisplay($current, $incoming);
-
-        if (CompanyName::matches($current, $incoming)) {
-            return $preferred !== $current || $newConfidence > $currentConfidence;
-        }
-
-        return $newConfidence > $currentConfidence;
+        $this->reviews->suggestion(
+            $analysis,
+            $customer,
+            'phone_candidate',
+            'phone_number',
+            $customer->phone_number,
+            $spoken,
+            (string) ($identity['evidence'] ?? ''),
+        );
     }
 
     private function refreshAggregates(Customer $customer): void

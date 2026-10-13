@@ -169,6 +169,7 @@ class CustomerTenantIsolationTest extends TestCase
                 'customer_identity_json' => [
                     'person_name' => $name,
                     'confidence' => 0.9,
+                    'evidence' => 'مشتری گفت: '.$name,
                 ],
                 'analyzed_at' => now(),
             ]);

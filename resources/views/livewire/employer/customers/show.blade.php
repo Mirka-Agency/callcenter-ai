@@ -1,5 +1,8 @@
 @php
+    use App\Domain\Customer\CustomerLifecycleStage;
     use App\Support\AnalysisInsightPresenter;
+    use App\Support\JalaliDate;
+    use App\Support\CustomerFieldProvenance;
     use App\Support\CustomerPresenter;
 
     $analysisShowRoute = $analysisShowRoute ?? 'employer.intelligence.show';
@@ -112,7 +115,76 @@
                 <div class="min-w-0">
                     <p class="text-sm font-medium text-indigo-600">شخص{{ $customer->company ? ' · '.$customer->company->displayName() : '' }}</p>
                     <h1 class="text-3xl font-semibold tracking-tight">{{ $customer->displayName() }}</h1>
+                    @unless ($customer->name)
+                        <p class="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">نام تأیید نشده</p>
+                    @endunless
+                    @if (CustomerFieldProvenance::hasHumanLock($customer->identity_field_sources))
+                        <p class="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">هویت تأییدشده توسط کاربر؛ پیشنهاد هوش مصنوعی این فیلدها را عوض نمی‌کند.</p>
+                    @endif
                     <p class="mt-1 text-zinc-500">{{ CustomerPresenter::subtitle($customer) }}</p>
+                    <div class="mt-4 max-w-sm space-y-2">
+                        <p class="text-xs font-medium text-zinc-500">مسئول مشتری</p>
+                        @if ($canAssignOwner ?? false)
+                            <div class="flex flex-col gap-2 sm:flex-row">
+                                <select wire:model="ownerOrganizationUserId" class="saas-input">
+                                    <option value="">بدون مسئول</option>
+                                    @foreach ($ownerChoices as $member)
+                                        <option value="{{ $member->id }}">{{ $member->full_name }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="button" wire:click="saveOwner" class="saas-btn-secondary shrink-0 text-sm">ثبت مسئول</button>
+                            </div>
+                            @error('owner')
+                                <p class="text-xs text-rose-600">{{ $message }}</p>
+                            @enderror
+                        @elseif ($customer->owner)
+                            <p class="text-sm text-zinc-800">{{ $customer->owner->full_name }}</p>
+                        @else
+                            <p class="text-sm font-medium text-amber-700">بدون مسئول</p>
+                        @endif
+                    </div>
+                    <div class="mt-4 max-w-md space-y-2">
+                        <p class="text-xs font-medium text-zinc-500">مرحله چرخه عمر</p>
+                        @if ($canChangeLifecycle ?? false)
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                <select wire:model.live="lifecycleStage" class="saas-input">
+                                    <option value="">{{ CustomerLifecycleStage::unknownLabel() }}</option>
+                                    @foreach (CustomerLifecycleStage::cases() as $stage)
+                                        <option value="{{ $stage->value }}">{{ $stage->label() }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="button" wire:click="saveLifecycle" class="saas-btn-secondary shrink-0 text-sm">ثبت مرحله</button>
+                            </div>
+                            @if ($lifecycleStage === 'customer')
+                                <label class="flex items-start gap-2 text-sm text-zinc-700">
+                                    <input wire:model="confirmCustomerStage" type="checkbox" class="mt-1 rounded border-zinc-300 text-indigo-600">
+                                    <span>تبدیل واقعی این شخص به مشتری را تأیید می‌کنم. امتیاز لید به‌تنهایی این مرحله را عوض نمی‌کند.</span>
+                                </label>
+                            @endif
+                            @error('lifecycle')
+                                <p class="text-xs text-rose-600">{{ $message }}</p>
+                            @enderror
+                        @else
+                            <span @class([
+                                'inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium',
+                                $customer->lifecycle_stage?->badgeClass() ?? CustomerLifecycleStage::unknownBadgeClass(),
+                            ])>
+                                مرحله: {{ $customer->lifecycle_stage?->label() ?? CustomerLifecycleStage::unknownLabel() }}
+                            </span>
+                        @endif
+                        @if (($lifecycleEvents ?? collect())->isNotEmpty())
+                            <ul class="space-y-1 text-xs text-zinc-500">
+                                @foreach ($lifecycleEvents as $event)
+                                    <li>
+                                        {{ CustomerLifecycleStage::tryFrom((string) $event->from_stage)?->label() ?? CustomerLifecycleStage::unknownLabel() }}
+                                        به
+                                        {{ CustomerLifecycleStage::tryFrom((string) $event->to_stage)?->label() ?? CustomerLifecycleStage::unknownLabel() }}
+                                        · {{ JalaliDate::datetime($event->changed_at) }}
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
                     <div class="mt-3 flex flex-wrap gap-2">
                         @if ($customer->conversation_trend)
                             <span @class(['inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium', CustomerPresenter::trendBadgeClass($customer->conversation_trend)])>
@@ -121,7 +193,7 @@
                         @endif
                         @if ($customer->latest_lead_level)
                             <span @class(['inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium', CustomerPresenter::leadBadgeClass($customer->latest_lead_level)])>
-                                لید {{ AnalysisInsightPresenter::leadLevelLabel($customer->latest_lead_level) }}
+                                کیفیت لید: {{ AnalysisInsightPresenter::leadLevelLabel($customer->latest_lead_level) }}
                             </span>
                         @endif
                         @if ($customer->purchase_intent)
@@ -142,7 +214,6 @@
                 @endif
                 <div class="flex flex-wrap gap-2">
                     <a href="{{ route($customerEditRouteName, $customer) }}" class="saas-btn-primary text-sm" wire:navigate>ویرایش شخص</a>
-                    <a href="{{ $customersIndexRoute }}" class="saas-btn-secondary text-sm" wire:navigate>لیست اشخاص</a>
                 </div>
             </div>
         </div>
@@ -219,20 +290,17 @@
         </div>
 
         <div class="space-y-6">
-            <div class="saas-card">
-                <h2 class="text-lg font-semibold">اطلاعات تماس</h2>
-                <dl class="mt-4 space-y-3 text-sm">
-                    <div class="flex justify-between gap-4">
-                        <dt class="text-zinc-500">شماره</dt>
-                        <dd class="font-medium text-left">{{ $customer->phone_number ?: '—' }}</dd>
-                    </div>
-                    <div class="flex justify-between gap-4">
-                        <dt class="text-zinc-500">ایمیل</dt>
-                        <dd class="font-medium text-left">{{ $customer->email ?: '—' }}</dd>
-                    </div>
+            <div class="saas-card space-y-4">
+                <livewire:customers.contact-methods :customer-id="$customer->id" :key="'contact-methods-'.$customer->id" />
+                <dl class="space-y-3 text-sm">
                     <div class="flex justify-between gap-4">
                         <dt class="text-zinc-500">سمت</dt>
-                        <dd class="font-medium text-left">{{ $customer->job_title ?: '—' }}</dd>
+                        <dd class="font-medium text-left">
+                            {{ $customer->job_title ?: '—' }}
+                            @if (CustomerFieldProvenance::isHumanLocked($customer->identity_field_sources, 'job_title'))
+                                <span class="ms-1 text-xs font-normal text-emerald-700 dark:text-emerald-300">دستی</span>
+                            @endif
+                        </dd>
                     </div>
                     <div class="flex justify-between gap-4">
                         <dt class="text-zinc-500">اولین تماس</dt>

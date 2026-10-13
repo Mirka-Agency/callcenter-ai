@@ -13,17 +13,18 @@ use App\Livewire\Employer\Customers\Contacts\Create as CustomerContactsCreate;
 use App\Livewire\Employer\Customers\Contacts\Index as CustomerContactsIndex;
 use App\Livewire\Employer\Customers\Edit as CustomersEdit;
 use App\Livewire\Employer\Customers\Index as CustomersIndex;
+use App\Livewire\Employer\Customers\Reviews\Index as CustomerReviewsIndex;
 use App\Livewire\Employer\Customers\Show as CustomersShow;
 use App\Livewire\Employer\Dashboard\Overview as EmployerDashboard;
 use App\Livewire\Employer\Employees\Create as EmployeeCreate;
 use App\Livewire\Employer\Employees\Edit as EmployeeEdit;
-use App\Livewire\Employer\Organization\Profile as OrganizationProfile;
 use App\Livewire\Employer\Intelligence\Index as IntelligenceIndex;
 use App\Livewire\Employer\Intelligence\Performance as IntelligencePerformance;
 use App\Livewire\Employer\Intelligence\PerformanceShow as IntelligencePerformanceShow;
 use App\Livewire\Employer\Intelligence\Show as IntelligenceShow;
 use App\Livewire\Employer\ManualAnalyses\Index as ManualAnalysesIndex;
 use App\Livewire\Employer\ManualAnalyses\Show as ManualAnalysesShow;
+use App\Livewire\Employer\Organization\Profile as OrganizationProfile;
 use App\Livewire\Employer\ProcessingQueue\Index;
 use App\Livewire\Employer\ProcessingQueue\Show;
 use App\Livewire\Employer\Profile\Edit as ProfileEdit;
@@ -85,6 +86,7 @@ Route::middleware(['auth', 'employer'])->group(function () {
             ->name('contacts.export')
             ->whereIn('format', ['xlsx', 'pdf']);
         Route::get('/contacts/create', CustomerContactsCreate::class)->name('contacts.create');
+        Route::get('/reviews', CustomerReviewsIndex::class)->name('reviews.index');
         Route::get('/companies/create', CustomerCompaniesCreate::class)->name('companies.create');
         Route::get('/companies/{customerCompany}/edit', CustomerCompaniesEdit::class)->name('companies.edit');
         Route::get('/companies/{customerCompany}', CustomerCompaniesShow::class)->name('companies.show');

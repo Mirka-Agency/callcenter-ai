@@ -5,6 +5,7 @@
     $contactListRoute = $portal === 'employee' ? 'employee.customers.contacts.index' : 'employer.customers.contacts.index';
     $companyCreateRoute = $portal === 'employee' ? 'employee.customers.companies.create' : 'employer.customers.companies.create';
     $contactCreateRoute = $portal === 'employee' ? 'employee.customers.contacts.create' : 'employer.customers.contacts.create';
+    $reviewRoute = $portal === 'employee' ? 'employee.customers.reviews.index' : 'employer.customers.reviews.index';
 @endphp
 
 <div class="saas-page space-y-8">
@@ -19,6 +20,11 @@
             class="saas-btn border border-zinc-900 bg-white text-zinc-900 hover:bg-zinc-50 dark:border-white dark:bg-transparent dark:text-white dark:hover:bg-zinc-800"
             wire:navigate
         >شخص جدید</a>
+        <a
+            href="{{ route($reviewRoute) }}"
+            class="saas-btn border border-zinc-200 bg-white text-sm text-zinc-700 hover:bg-zinc-50"
+            wire:navigate
+        >نیازمند بررسی</a>
     </div>
 
     <section class="saas-hero saas-hero--accent" data-tour="customers-hub-hero">
