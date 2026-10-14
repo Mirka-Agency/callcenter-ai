@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\CustomerListExportController;
+use App\Livewire\Crm\Deals\Index as CrmDealsIndex;
+use App\Livewire\Crm\Deals\Show as CrmDealsShow;
+use App\Livewire\Crm\Overview as CrmOverview;
 use App\Livewire\Employee\Activity\Index as ActivityIndex;
 use App\Livewire\Employee\Calls\Index as CallsIndex;
 use App\Livewire\Employee\Calls\Show as CallsShow;
@@ -37,6 +40,13 @@ Route::middleware(['auth', 'employee'])->group(function () {
     Route::get('/processing-queue/{job}', Show::class)->name('processing-queue.show');
     Route::get('/calls', CallsIndex::class)->name('calls');
     Route::get('/calls/{analysis}', CallsShow::class)->name('calls.show');
+    Route::middleware('organization-crm:internal')->group(function () {
+        Route::get('/crm/overview', CrmOverview::class)->name('crm.overview');
+        Route::prefix('crm/deals')->name('crm.deals.')->group(function () {
+            Route::get('/', CrmDealsIndex::class)->name('index');
+            Route::get('/{deal}', CrmDealsShow::class)->name('show')->whereNumber('deal');
+        });
+    });
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', CustomersIndex::class)->name('index');
         Route::get('/companies', CustomerCompaniesIndex::class)->name('companies.index');

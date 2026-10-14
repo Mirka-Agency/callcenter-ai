@@ -2,6 +2,7 @@
 
 namespace App\Support\Navigation;
 
+use App\Domain\Crm\OrganizationCrmMode;
 use App\Support\OnPrem;
 
 class EmployerNavigation
@@ -18,21 +19,8 @@ class EmployerNavigation
             [
                 'label' => 'CRM',
                 'key' => 'crm',
-                'icon' => 'cloud',
-                'children' => [
-                    [
-                        'label' => 'یکپارچه‌سازی',
-                        'route' => 'employer.crm.index',
-                        'icon' => 'cloud',
-                        'matches' => ['employer.crm.*'],
-                    ],
-                    [
-                        'label' => 'مشتریان',
-                        'route' => 'employer.customers.index',
-                        'icon' => 'users',
-                        'matches' => ['employer.customers.*'],
-                    ],
-                ],
+                'icon' => 'users',
+                'children' => self::crmChildren(),
             ],
             ['label' => 'خطوط تلفنی', 'route' => 'employer.voip.index', 'icon' => 'phone'],
             ['label' => 'پروفایل سازمان', 'route' => 'employer.organization.profile', 'icon' => 'building'],
@@ -43,5 +31,60 @@ class EmployerNavigation
         }
 
         return $items;
+    }
+
+    /** @return list<array<string, mixed>> */
+    private static function crmChildren(): array
+    {
+        $customers = [
+            'label' => 'اشخاص و شرکت‌ها',
+            'route' => 'employer.customers.index',
+            'icon' => 'users',
+            'matches' => ['employer.customers.*'],
+        ];
+
+        if (! CurrentOrganizationCrmMode::isConfigured()) {
+            return [$customers];
+        }
+
+        if (CurrentOrganizationCrmMode::resolve() === OrganizationCrmMode::External) {
+            return [
+                $customers,
+                [
+                    'label' => 'اتصالات خارجی',
+                    'route' => 'employer.crm.index',
+                    'icon' => 'cloud',
+                    'matches' => ['employer.crm.index', 'employer.crm.connections.*'],
+                ],
+            ];
+        }
+
+        return [
+            [
+                'label' => 'نمای کلی',
+                'route' => 'employer.crm.overview',
+                'icon' => 'chart',
+                'matches' => ['employer.crm.overview'],
+            ],
+            $customers,
+            [
+                'label' => 'معاملات',
+                'route' => 'employer.crm.deals.index',
+                'icon' => 'document',
+                'matches' => ['employer.crm.deals.*'],
+            ],
+            [
+                'label' => 'پایپ‌لاین‌های فروش',
+                'route' => 'employer.crm.pipelines.index',
+                'icon' => 'analytics',
+                'matches' => ['employer.crm.pipelines.*'],
+            ],
+            [
+                'label' => 'تنظیمات CRM',
+                'route' => 'employer.crm.settings',
+                'icon' => 'document',
+                'matches' => ['employer.crm.settings'],
+            ],
+        ];
     }
 }

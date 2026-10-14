@@ -58,6 +58,16 @@ class Call extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function conversationAnalysis(): HasOne
+    {
+        return $this->hasOne(ConversationAnalysis::class)->latestOfMany();
+    }
+
+    public function dealLink(): HasOne
+    {
+        return $this->hasOne(CrmDealCall::class);
+    }
+
     protected static function booted(): void
     {
         static::saving(function (Call $call): void {

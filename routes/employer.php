@@ -2,6 +2,12 @@
 
 use App\Http\Controllers\CustomerListExportController;
 use App\Http\Controllers\Employer\ReportExportController;
+use App\Livewire\Crm\Deals\Index as CrmDealsIndex;
+use App\Livewire\Crm\Deals\Show as CrmDealsShow;
+use App\Livewire\Crm\Overview as CrmOverview;
+use App\Livewire\Crm\Pipelines\Index as CrmPipelinesIndex;
+use App\Livewire\Crm\Pipelines\Show as CrmPipelinesShow;
+use App\Livewire\Crm\Settings as CrmSettings;
 use App\Livewire\Employer\Crm\Connections\Create;
 use App\Livewire\Employer\Crm\Connections\Edit;
 use App\Livewire\Employer\Crm\Index as CrmIndex;
@@ -69,11 +75,25 @@ Route::middleware(['auth', 'employer'])->group(function () {
         Route::get('/{job}', Show::class)->name('show');
     });
 
-    Route::get('/crm', CrmIndex::class)->name('crm.index');
-    Route::prefix('crm/connections')->name('crm.connections.')->group(function () {
-        Route::get('/', App\Livewire\Employer\Crm\Connections\Index::class)->name('index');
-        Route::get('/create', Create::class)->name('create');
-        Route::get('/{connection}/edit', Edit::class)->name('edit');
+    Route::middleware('organization-crm:external')->group(function () {
+        Route::get('/crm', CrmIndex::class)->name('crm.index');
+        Route::prefix('crm/connections')->name('crm.connections.')->group(function () {
+            Route::get('/', App\Livewire\Employer\Crm\Connections\Index::class)->name('index');
+            Route::get('/create', Create::class)->name('create');
+            Route::get('/{connection}/edit', Edit::class)->name('edit');
+        });
+    });
+    Route::middleware('organization-crm:internal')->group(function () {
+        Route::get('/crm/overview', CrmOverview::class)->name('crm.overview');
+        Route::get('/crm/settings', CrmSettings::class)->name('crm.settings');
+        Route::prefix('crm/deals')->name('crm.deals.')->group(function () {
+            Route::get('/', CrmDealsIndex::class)->name('index');
+            Route::get('/{deal}', CrmDealsShow::class)->name('show')->whereNumber('deal');
+        });
+        Route::prefix('crm/pipelines')->name('crm.pipelines.')->group(function () {
+            Route::get('/', CrmPipelinesIndex::class)->name('index');
+            Route::get('/{pipeline}', CrmPipelinesShow::class)->name('show')->whereNumber('pipeline');
+        });
     });
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', CustomersIndex::class)->name('index');

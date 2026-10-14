@@ -33,7 +33,13 @@ class EmployerOrganizationProfileTest extends TestCase
         $this->assertFalse($routes->contains('employer.customers.index'));
         $this->assertFalse($routes->contains('employer.crm.index'));
         $this->assertSame(
-            ['employer.crm.index', 'employer.customers.index'],
+            [
+                'employer.crm.overview',
+                'employer.customers.index',
+                'employer.crm.deals.index',
+                'employer.crm.pipelines.index',
+                'employer.crm.settings',
+            ],
             array_column($crm['children'] ?? [], 'route'),
         );
 
@@ -47,8 +53,10 @@ class EmployerOrganizationProfileTest extends TestCase
             ->get(route('employer.organization.profile'))
             ->assertOk()
             ->assertSee('>CRM<', false)
-            ->assertSee('>یکپارچه‌سازی<', false)
-            ->assertSee('>مشتریان<', false)
+            ->assertSee('>نمای کلی<', false)
+            ->assertSee('>اشخاص و شرکت‌ها<', false)
+            ->assertSee('>معاملات<', false)
+            ->assertDontSee('>اتصالات خارجی<', false)
             ->assertSee('پروفایل سازمان')
             ->assertSee('شرکت نمونه')
             ->assertSee('تعطیلات شرکت')
@@ -56,11 +64,11 @@ class EmployerOrganizationProfileTest extends TestCase
             ->getContent();
 
         $crmPosition = strpos($sidebar, '>CRM<');
-        $integrationPosition = strpos($sidebar, '>یکپارچه‌سازی<');
-        $customersPosition = strpos($sidebar, '>مشتریان<');
+        $overviewPosition = strpos($sidebar, '>نمای کلی<');
+        $customersPosition = strpos($sidebar, '>اشخاص و شرکت‌ها<');
 
-        $this->assertLessThan($integrationPosition, $crmPosition);
-        $this->assertLessThan($customersPosition, $integrationPosition);
+        $this->assertLessThan($overviewPosition, $crmPosition);
+        $this->assertLessThan($customersPosition, $overviewPosition);
     }
 
     public function test_old_holidays_address_opens_the_organization_profile(): void

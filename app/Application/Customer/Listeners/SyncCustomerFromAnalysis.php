@@ -3,6 +3,7 @@
 namespace App\Application\Customer\Listeners;
 
 use App\Application\Customer\Actions\EnrichCustomerFromAnalysis;
+use App\Domain\Customer\Events\CustomerSyncedFromAnalysis;
 use App\Domain\Llm\Events\ConversationAnalyzed;
 use App\Models\ConversationAnalysis;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -30,6 +31,14 @@ class SyncCustomerFromAnalysis implements ShouldQueue
             return;
         }
 
-        $this->enrich->handle($analysis);
+        $customer = $this->enrich->handle($analysis);
+
+        if ($customer) {
+            event(new CustomerSyncedFromAnalysis(
+                organizationId: (int) $analysis->organization_id,
+                analysisId: (int) $analysis->id,
+                customerId: (int) $customer->id,
+            ));
+        }
     }
 }

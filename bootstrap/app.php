@@ -1,9 +1,16 @@
 <?php
 
+use App\Http\Middleware\EnsureEmployee;
+use App\Http\Middleware\EnsureEmployer;
+use App\Http\Middleware\EnsureLandingHost;
+use App\Http\Middleware\EnsureOrganizationCrmMode;
+use App\Http\Middleware\ImpersonationMiddleware;
+use App\Http\Middleware\TrustCapRoverTlsTermination;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,11 +20,11 @@ return Application::configure(basePath: dirname(__DIR__))
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
         then: function () {
-            \Illuminate\Support\Facades\Route::middleware('web')
+            Route::middleware('web')
                 ->prefix('app')
                 ->name('employer.')
                 ->group(base_path('routes/employer.php'));
-            \Illuminate\Support\Facades\Route::middleware('web')
+            Route::middleware('web')
                 ->prefix('workspace')
                 ->name('employee.')
                 ->group(base_path('routes/employee.php'));
@@ -34,7 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $middleware->web(prepend: [
-            \App\Http\Middleware\TrustCapRoverTlsTermination::class,
+            TrustCapRoverTlsTermination::class,
         ]);
 
         // External VoIP providers POST CDR events without a CSRF cookie.
@@ -43,13 +50,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'employer' => \App\Http\Middleware\EnsureEmployer::class,
-            'employee' => \App\Http\Middleware\EnsureEmployee::class,
-            'landing-host' => \App\Http\Middleware\EnsureLandingHost::class,
+            'employer' => EnsureEmployer::class,
+            'employee' => EnsureEmployee::class,
+            'organization-crm' => EnsureOrganizationCrmMode::class,
+            'landing-host' => EnsureLandingHost::class,
         ]);
 
         $middleware->web(append: [
-            \App\Http\Middleware\ImpersonationMiddleware::class,
+            ImpersonationMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

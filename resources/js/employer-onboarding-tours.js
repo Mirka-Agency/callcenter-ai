@@ -475,6 +475,10 @@ export function buildFullEmployerTour() {
             return;
         }
 
+        if (! window.__employerOnboarding?.routes?.[route]) {
+            return;
+        }
+
         steps.push({
             selector: `[data-tour-nav="${route}"]`,
             title,

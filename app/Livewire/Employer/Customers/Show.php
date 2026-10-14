@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Employer\Customers;
 
+use App\Application\Crm\Deals\DealQuery;
 use App\Application\Customer\Actions\AssignCustomerOwner;
 use App\Application\Customer\Actions\ChangeCustomerLifecycle;
 use App\Models\Customer;
@@ -89,6 +90,8 @@ class Show extends Component
     public function render()
     {
         $service = app(CustomerIntelligenceService::class);
+        $organization = EmployerContext::organization();
+        $internalCrm = $organization->usesInternalCrm();
 
         return view('livewire.employer.customers.show', [
             'analytics' => $service->profileAnalytics($this->customer),
@@ -109,6 +112,11 @@ class Show extends Component
             'ownerChoices' => CustomerListQuery::ownerChoices(EmployerContext::organizationId()),
             'canChangeLifecycle' => true,
             'lifecycleEvents' => $this->customer->lifecycleEvents()->latest('id')->limit(8)->get(),
+            'relatedDeals' => $internalCrm
+                ? app(DealQuery::class)->forCustomer($organization->id, auth()->user(), $this->customer)
+                : collect(),
+            'dealShowRouteName' => $internalCrm ? 'employer.crm.deals.show' : null,
+            'dealsIndexRoute' => $internalCrm ? route('employer.crm.deals.index', ['customer' => $this->customer->id]) : null,
         ]);
     }
 

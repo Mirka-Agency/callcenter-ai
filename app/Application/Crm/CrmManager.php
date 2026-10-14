@@ -16,6 +16,7 @@ use App\Domain\Crm\Events\CrmConnectionTested;
 use App\Domain\Crm\Events\CrmSyncCompleted;
 use App\Domain\Crm\Exceptions\CrmConnectionNotFoundException;
 use App\Domain\Crm\ValueObjects\CrmOperationResult;
+use App\Models\Organization;
 
 class CrmManager
 {
@@ -152,6 +153,12 @@ class CrmManager
     ): CrmOperationResult {
         if ($this->organizationId === null) {
             throw new CrmConnectionNotFoundException('Organization context is required.');
+        }
+
+        $organization = Organization::query()->find($this->organizationId);
+
+        if (! $organization instanceof Organization || ! $organization->usesExternalCrm()) {
+            return CrmOperationResult::failure('این سازمان برای CRM خارجی فعال نیست.');
         }
 
         [$config, $adapter] = $this->resolver->resolve(

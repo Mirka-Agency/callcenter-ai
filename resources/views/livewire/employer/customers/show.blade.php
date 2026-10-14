@@ -328,6 +328,27 @@
         </div>
     </div>
 
+    @isset($dealShowRouteName)
+        <section class="saas-card p-4">
+            <div class="flex items-center justify-between gap-3">
+                <h2 class="text-lg font-semibold">معاملات این شخص</h2>
+                @if (! empty($dealsIndexRoute))
+                    <a href="{{ $dealsIndexRoute }}" class="text-sm font-medium text-indigo-600" wire:navigate>همه معاملات</a>
+                @endif
+            </div>
+            <ul class="mt-4 space-y-2 text-sm">
+                @forelse ($relatedDeals ?? [] as $deal)
+                    <li class="flex items-center justify-between gap-3" wire:key="customer-deal-{{ $deal->id }}">
+                        <a href="{{ route($dealShowRouteName, $deal) }}" class="font-medium text-indigo-700" wire:navigate>{{ $deal->title }}</a>
+                        <span class="text-zinc-500">{{ $deal->stage?->name }} · {{ $deal->status->label() }}</span>
+                    </li>
+                @empty
+                    <li class="text-zinc-500">معامله‌ای برای این شخص ثبت نشده است.</li>
+                @endforelse
+            </ul>
+        </section>
+    @endisset
+
     <div class="saas-card" data-tour="customer-timeline">
         <div class="flex items-center justify-between">
             <div>

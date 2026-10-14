@@ -8,6 +8,7 @@ use App\Domain\Call\Enums\UploaderType;
 use App\Domain\Crm\Enums\CrmLogStatus;
 use App\Domain\Crm\Enums\CrmOperation;
 use App\Domain\Crm\Enums\CrmProviderCode;
+use App\Domain\Crm\OrganizationCrmMode;
 use App\Domain\Processing\Enums\ProcessingJobStage;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Domain\Processing\Enums\ProcessingLogLevel;
@@ -36,6 +37,7 @@ use App\Models\WalletTransaction;
 use App\Services\Performance\EmployeePerformanceAnalytics;
 use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Services\Reports\OrganizationCallMetrics;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -64,6 +66,7 @@ final class DemoWorkspaceCoverage
         $this->seedVoipVerification($connection, $employees->first());
         $this->attachCalls($organization, $connection, $extensions);
         $this->seedCrm($organization);
+        app(DemoInternalCrm::class)->seed($organization);
         $this->seedWalletUsage($organization);
 
         app(DefinedExtensionCallConstraint::class)->refreshOrganization($organization->id);
@@ -335,6 +338,8 @@ final class DemoWorkspaceCoverage
     {
         $provider = CrmProvider::query()->where('code', CrmProviderCode::Didar->value)->firstOrFail();
 
+        $organization->forceFill(['crm_mode' => OrganizationCrmMode::External])->save();
+
         $connection = OrganizationCrmConnection::query()->updateOrCreate(
             [
                 'organization_id' => $organization->id,
@@ -432,7 +437,7 @@ final class DemoWorkspaceCoverage
         float $before,
         float $after,
         string $description,
-        \Carbon\CarbonInterface $at,
+        CarbonInterface $at,
     ): void {
         $transaction = new WalletTransaction([
             'organization_id' => $organizationId,

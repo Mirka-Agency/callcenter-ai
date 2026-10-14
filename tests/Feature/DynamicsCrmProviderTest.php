@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Domain\Crm\Enums\CrmProviderCode;
+use App\Domain\Crm\OrganizationCrmMode;
 use App\Livewire\Employer\Crm\Connections\Create as CrmConnectionCreate;
 use App\Models\CrmProvider;
 use App\Models\Organization;
@@ -45,6 +46,7 @@ class DynamicsCrmProviderTest extends TestCase
         $employer = User::factory()->employer()->create();
         $organization = Organization::factory()->withIntegrationSelfService()->create([
             'user_id' => $employer->id,
+            'crm_mode' => OrganizationCrmMode::External,
         ]);
 
         $dynamicsId = (int) CrmProvider::query()->where('code', CrmProviderCode::Dynamics->value)->value('id');

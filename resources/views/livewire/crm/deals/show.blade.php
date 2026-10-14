@@ -1,0 +1,222 @@
+@php
+    use App\Application\Crm\Deals\DealMoney;
+    use App\Domain\Crm\Deals\DealActivityType;
+@endphp
+
+<div class="saas-page space-y-6">
+    <nav class="text-sm text-zinc-500" aria-label="مسیر">
+        <a href="{{ $backUrl }}" class="hover:text-indigo-600" wire:navigate>معاملات</a>
+        <span class="mx-2">/</span>
+        <span class="text-zinc-800 dark:text-zinc-200">{{ $deal->title }}</span>
+    </nav>
+
+    <x-saas.page-header :title="$deal->title" :description="$deal->pipeline?->name.' · '.$deal->status->label().' · منبع '.$deal->source->label()">
+        <x-slot:actions>
+            @if ($canUpdate && ! $deal->trashed() && $deal->status->isOpen())
+                <button type="button" class="saas-btn-primary text-sm" wire:click="closeWon">ثبت موفق</button>
+            @endif
+            @if ($canReopen && $deal->status->isClosed() && ! $deal->trashed())
+                <button type="button" class="saas-btn-secondary text-sm" wire:click="reopen">بازگشایی</button>
+            @endif
+            @if ($canUpdate && ! $deal->trashed())
+                <button type="button" class="saas-btn-secondary text-sm" wire:click="archive" wire:confirm="معامله بایگانی شود؟ سوابق حفظ می‌شوند.">بایگانی</button>
+            @endif
+        </x-slot:actions>
+    </x-saas.page-header>
+
+    @if ($deal->trashed())
+        <p class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">این معامله بایگانی شده است.</p>
+    @endif
+
+    <div class="grid gap-6 lg:grid-cols-3">
+        <section class="saas-card space-y-4 p-4 lg:col-span-2">
+            <h2 class="text-lg font-semibold">اطلاعات معامله</h2>
+            <form wire:submit="save" class="grid gap-3 md:grid-cols-2">
+                <label class="block text-sm">
+                    <span class="mb-1 block text-zinc-600">عنوان</span>
+                    <input wire:model="title" class="saas-input" @disabled(! $canUpdate || ! $deal->status->isOpen() || $deal->trashed())>
+                    @error('title') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                </label>
+                <label class="block text-sm">
+                    <span class="mb-1 block text-zinc-600">مبلغ (ریال)</span>
+                    <input wire:model="amountRials" inputmode="numeric" class="saas-input" @disabled(! $canUpdate || ! $deal->status->isOpen() || $deal->trashed())>
+                    @error('amount_rials') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                </label>
+                <label class="block text-sm">
+                    <span class="mb-1 block text-zinc-600">مرحله</span>
+                    <select wire:model="stageId" class="saas-input" @disabled(! $canUpdate || ! $deal->status->isOpen() || $deal->trashed())>
+                        @foreach ($stages as $stage)
+                            <option value="{{ $stage->id }}" @disabled(! $stage->is_active && (int) $deal->crm_pipeline_stage_id !== (int) $stage->id)>{{ $stage->name }}</option>
+                        @endforeach
+                    </select>
+                    @if ($canUpdate && $deal->status->isOpen() && ! $deal->trashed())
+                        <button type="button" class="mt-2 text-sm text-indigo-700" wire:click="moveStage">ثبت تغییر مرحله</button>
+                    @endif
+                    @error('stage') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                    @error('status') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                </label>
+                <label class="block text-sm">
+                    <span class="mb-1 block text-zinc-600">تاریخ احتمالی بسته‌شدن</span>
+                    <input wire:model="expectedCloseOn" type="date" class="saas-input" @disabled(! $canUpdate || ! $deal->status->isOpen() || $deal->trashed())>
+                </label>
+                <label class="block text-sm md:col-span-2">
+                    <span class="mb-1 block text-zinc-600">توضیحات و یادداشت</span>
+                    <textarea wire:model="description" rows="4" class="saas-input" @disabled(! $canUpdate || $deal->trashed())></textarea>
+                    @error('description') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                </label>
+                @if ($canUpdate && ! $deal->trashed())
+                    <div>
+                        <button type="submit" class="saas-btn-primary text-sm" wire:loading.attr="disabled">ذخیره</button>
+                    </div>
+                @endif
+            </form>
+            @if ($deal->status->value === 'lost')
+                <p class="text-sm text-rose-700">دلیل شکست: {{ $deal->lost_reason }}</p>
+            @endif
+            @if ($canUpdate && $deal->status->isOpen() && ! $deal->trashed())
+                <form wire:submit="closeLost" class="flex flex-col gap-2 border-t border-zinc-100 pt-4 sm:flex-row">
+                    <label class="block flex-1 text-sm">
+                        <span class="mb-1 block text-zinc-600">ثبت ناموفق با دلیل</span>
+                        <input wire:model="lostReason" class="saas-input" placeholder="دلیل شکست">
+                        @error('lost_reason') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                    </label>
+                    <button type="submit" class="saas-btn-secondary self-end text-sm">ثبت ناموفق</button>
+                </form>
+            @endif
+        </section>
+
+        <div class="space-y-6">
+            <section class="saas-card space-y-3 p-4">
+                <h2 class="text-lg font-semibold">مسئول معامله</h2>
+                @if ($canAssignOwner && $deal->status->isOpen() && ! $deal->trashed())
+                    <div class="flex flex-col gap-2">
+                        <select wire:model="ownerId" class="saas-input">
+                            <option value="">بدون مسئول</option>
+                            @foreach ($owners as $member)
+                                <option value="{{ $member->id }}">{{ $member->full_name }}</option>
+                            @endforeach
+                        </select>
+                        <button type="button" class="saas-btn-secondary text-sm" wire:click="assignOwner">ثبت مسئول</button>
+                        @error('owner') <p class="text-xs text-rose-600">{{ $message }}</p> @enderror
+                    </div>
+                @else
+                    <p class="text-sm">{{ $deal->owner?->full_name ?: 'بدون مسئول' }}</p>
+                @endif
+                <p class="text-xs text-zinc-500">مسئول معامله با مسئول مشتری یکی نیست و مرحله معامله، چرخه عمر مشتری را عوض نمی‌کند.</p>
+            </section>
+
+            <section class="saas-card space-y-3 p-4">
+                <h2 class="text-lg font-semibold">شخص و شرکت</h2>
+                <p class="text-sm text-zinc-600">شرکت: {{ $deal->company?->name ?: '—' }}</p>
+                <ul class="space-y-2 text-sm">
+                    @foreach ($selectedCustomers as $customer)
+                        <li class="flex items-center justify-between gap-2" wire:key="contact-{{ $customer->id }}">
+                            <span>{{ $customer->displayName() }} @if ((string) $primaryCustomerId === (string) $customer->id) <span class="text-xs text-indigo-700">اصلی</span> @endif</span>
+                            @if ($canUpdate && $deal->status->isOpen() && ! $deal->trashed())
+                                <button type="button" class="text-xs text-rose-600" wire:click="removeCustomer({{ $customer->id }})">حذف</button>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+                @if ($canUpdate && $deal->status->isOpen() && ! $deal->trashed())
+                    <input wire:model.live.debounce.300ms="addCustomerQuery" class="saas-input" placeholder="افزودن شخص">
+                    <label class="block text-xs text-zinc-500">
+                        مخاطب اصلی
+                        <select wire:model="primaryCustomerId" class="saas-input mt-1">
+                            @foreach ($selectedCustomers as $customer)
+                                <option value="{{ $customer->id }}">{{ $customer->displayName() }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    @foreach ($customerChoices as $customer)
+                        <button type="button" class="block text-sm text-indigo-700" wire:click="addCustomer({{ $customer->id }})">{{ $customer->displayName() }}</button>
+                    @endforeach
+                @endif
+                <p class="text-sm">ارزش: {{ DealMoney::formatRials($deal->amount_rials) }}</p>
+            </section>
+        </div>
+    </div>
+
+    <section class="saas-card p-4">
+        <h2 class="text-lg font-semibold">تاریخچه مراحل</h2>
+        <ol class="mt-4 space-y-3">
+            @forelse ($deal->stageHistory->sortByDesc('id') as $entry)
+                <li class="text-sm" wire:key="history-{{ $entry->id }}">
+                    <span class="text-zinc-500">{{ shamsi($entry->changed_at) }}</span>
+                    {{ $entry->from_stage_name ?: '—' }} ← {{ $entry->to_stage_name ?: '—' }}
+                    ({{ $entry->from_status ?: '—' }} به {{ $entry->to_status }})
+                    <span class="text-zinc-400">{{ $entry->actor?->name ?: 'سامانه' }} · {{ $entry->source }}</span>
+                </li>
+            @empty
+                <li class="text-sm text-zinc-500">هنوز تغییری ثبت نشده است.</li>
+            @endforelse
+        </ol>
+    </section>
+
+    <section class="saas-card space-y-4 p-4">
+        <h2 class="text-lg font-semibold">تماس‌ها و تحلیل هوش مصنوعی</h2>
+        @if ($canUpdate && ! $deal->trashed() && $calls->isNotEmpty())
+            <div class="flex flex-col gap-2 sm:flex-row">
+                <select wire:model="linkCallId" class="saas-input">
+                    <option value="">انتخاب تماس شخص مرتبط</option>
+                    @foreach ($calls as $call)
+                        <option value="{{ $call->id }}">{{ $call->customer_phone ?: $call->caller_number }} · {{ shamsi($call->started_at) }}</option>
+                    @endforeach
+                </select>
+                <button type="button" class="saas-btn-secondary text-sm" wire:click="linkCall">اتصال تماس</button>
+            </div>
+            @error('call') <p class="text-xs text-rose-600">{{ $message }}</p> @enderror
+        @endif
+        @forelse ($deal->dealCalls as $link)
+            <article class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800" wire:key="call-link-{{ $link->id }}">
+                <p class="text-sm font-medium">تماس {{ $link->call?->customer_phone ?: $link->call?->caller_number }}</p>
+                <p class="mt-1 text-xs text-zinc-500">منبع اتصال: {{ $link->source === 'analysis' ? 'تحلیل' : 'دستی' }}</p>
+                @if (is_array($link->evidence_json))
+                    <div class="mt-3 space-y-1 text-sm text-zinc-600">
+                        <p class="text-xs font-medium text-indigo-700">خلاصه تحلیل، جدا از اطلاعات تأییدشده انسانی</p>
+                        @if (! empty($link->evidence_json['summary']))
+                            <p>{{ $link->evidence_json['summary'] }}</p>
+                        @endif
+                        <p>امتیاز لید: {{ $link->evidence_json['lead_score'] ?? '—' }} · قصد خرید: {{ $link->evidence_json['purchase_intent'] ?? '—' }}</p>
+                    </div>
+                @endif
+            </article>
+        @empty
+            <p class="text-sm text-zinc-500">تماسی به این معامله وصل نشده است.</p>
+        @endforelse
+        @foreach ($suggestions as $suggestion)
+            <article class="rounded-lg border border-indigo-100 bg-indigo-50/40 p-3" wire:key="deal-suggestion-{{ $suggestion->id }}">
+                <p class="text-sm font-medium">{{ $suggestion->suggestion_type->label() }} · {{ $suggestion->status->label() }}</p>
+                <p class="mt-1 text-sm text-zinc-600">{{ $suggestion->payload['summary'] ?? '' }}</p>
+                <div class="mt-3 flex gap-2">
+                    <button type="button" class="saas-btn-primary text-sm" wire:click="acceptSuggestion({{ $suggestion->id }})">تأیید</button>
+                    <button type="button" class="saas-btn-secondary text-sm" wire:click="dismissSuggestion({{ $suggestion->id }})">رد</button>
+                </div>
+            </article>
+        @endforeach
+    </section>
+
+    <section class="saas-card p-4">
+        <h2 class="text-lg font-semibold">فعالیت‌های معامله</h2>
+        <p class="mt-1 text-sm text-zinc-500">پیگیری و وظایف فروش در ماژول بعدی به همین معامله متصل می‌شوند. فعلاً تاریخچه همین صفحه منبع ثبت تغییرات است.</p>
+        <ul class="mt-4 space-y-2 text-sm">
+            @foreach ($deal->activities->sortByDesc('id') as $activity)
+                <li wire:key="activity-{{ $activity->id }}">
+                    {{ $activity->type instanceof DealActivityType ? $activity->type->label() : $activity->type }}
+                    <span class="text-zinc-400">{{ shamsi($activity->created_at) }} · {{ $activity->actor?->name ?: 'سامانه' }} · {{ $activity->source }}</span>
+                </li>
+            @endforeach
+        </ul>
+    </section>
+
+    @if ($deal->externalLinks->isNotEmpty())
+        <section class="saas-card p-4">
+            <h2 class="text-lg font-semibold">شناسه خارجی</h2>
+            <ul class="mt-3 space-y-2 text-sm">
+                @foreach ($deal->externalLinks as $link)
+                    <li wire:key="external-{{ $link->id }}">{{ $link->external_id }} · {{ $link->sync_status }}</li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
+</div>
