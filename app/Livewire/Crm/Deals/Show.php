@@ -9,17 +9,25 @@ use App\Application\Crm\Deals\Actions\ChangeDealStage;
 use App\Application\Crm\Deals\Actions\CloseDealAsLost;
 use App\Application\Crm\Deals\Actions\CloseDealAsWon;
 use App\Application\Crm\Deals\Actions\DismissDealSuggestion;
+use App\Application\Crm\Deals\Actions\EnsureDealCloseReasons;
 use App\Application\Crm\Deals\Actions\LinkCallToDeal;
 use App\Application\Crm\Deals\Actions\ReopenDeal;
+use App\Application\Crm\Deals\Actions\ResolveDealBarrier;
 use App\Application\Crm\Deals\Actions\UpdateDeal;
+use App\Application\Crm\Deals\DealAging;
 use App\Application\Crm\Deals\DealAuthorization;
+use App\Application\Crm\Deals\DealHealthScorer;
 use App\Application\Crm\Deals\DealQuery;
+use App\Domain\Crm\Deals\DealBarrierStatus;
+use App\Domain\Crm\Deals\DealCloseReasonKind;
 use App\Domain\Crm\Deals\DealSuggestionStatus;
 use App\Enums\UserRole;
 use App\Livewire\Crm\Concerns\ResolvesCrmContext;
 use App\Models\Call;
 use App\Models\CrmDeal;
 use App\Models\CrmDealAiSuggestion;
+use App\Models\CrmDealBarrier;
+use App\Models\CrmDealCloseReason;
 use App\Models\CrmPipelineStage;
 use App\Models\Customer;
 use App\Models\OrganizationUser;
@@ -51,11 +59,23 @@ class Show extends Component
 
     public string $lostReason = '';
 
+    public string $lostReasonCode = '';
+
+    public string $wonReason = '';
+
+    public string $wonReasonCode = '';
+
+    public string $nextActionText = '';
+
+    public string $nextActionDueOn = '';
+
     public string $linkCallId = '';
 
     public string $addCustomerQuery = '';
 
     public string $expectedUpdatedAt = '';
+
+    public string $expectedVersion = '';
 
     /** @var list<int> */
     public array $customerIds = [];
@@ -79,6 +99,9 @@ class Show extends Component
             'customer_ids' => $this->customerIds,
             'primary_customer_id' => $this->primaryCustomerId,
             'expected_updated_at' => $this->expectedUpdatedAt,
+            'expected_version' => $this->expectedVersion,
+            'next_action_text' => $this->nextActionText,
+            'next_action_due_on' => $this->nextActionDueOn,
         ]);
         $this->syncForm($updated);
         $this->toast('معامله ذخیره شد.');
@@ -87,7 +110,14 @@ class Show extends Component
     public function moveStage(ChangeDealStage $action): void
     {
         $deal = $this->loadDeal();
-        $updated = $action->handle($deal, $this->crmUser(), (int) $this->stageId, (int) $deal->crm_pipeline_stage_id);
+        $updated = $action->handle(
+            $deal,
+            $this->crmUser(),
+            (int) $this->stageId,
+            (int) $deal->crm_pipeline_stage_id,
+            false,
+            $this->expectedVersion,
+        );
         $this->syncForm($updated);
         $this->toast('مرحله معامله تغییر کرد.');
     }
@@ -96,28 +126,66 @@ class Show extends Component
     {
         $ownerId = $this->ownerId === '' ? null : (int) $this->ownerId;
         $expected = $this->expectedOwnerId === '' ? null : (int) $this->expectedOwnerId;
-        $updated = $action->handle($this->loadDeal(), $this->crmUser(), $ownerId, $expected, true);
+        $updated = $action->handle($this->loadDeal(), $this->crmUser(), $ownerId, $expected, true, $this->expectedVersion);
         $this->syncForm($updated);
         $this->toast('مسئول معامله ثبت شد.');
     }
 
     public function closeWon(CloseDealAsWon $action): void
     {
-        $this->syncForm($action->handle($this->loadDeal(), $this->crmUser()));
+        $this->syncForm($action->handle(
+            $this->loadDeal(),
+            $this->crmUser(),
+            $this->wonReasonCode !== '' ? $this->wonReasonCode : null,
+            $this->wonReason !== '' ? $this->wonReason : null,
+            $this->expectedVersion,
+        ));
+        $this->wonReason = '';
+        $this->wonReasonCode = '';
         $this->toast('معامله موفق ثبت شد.');
     }
 
     public function closeLost(CloseDealAsLost $action): void
     {
-        $this->syncForm($action->handle($this->loadDeal(), $this->crmUser(), $this->lostReason));
+        $this->syncForm($action->handle(
+            $this->loadDeal(),
+            $this->crmUser(),
+            $this->lostReason,
+            $this->lostReasonCode !== '' ? $this->lostReasonCode : null,
+            $this->expectedVersion,
+        ));
         $this->lostReason = '';
+        $this->lostReasonCode = '';
         $this->toast('معامله ناموفق ثبت شد.');
     }
 
     public function reopen(ReopenDeal $action): void
     {
-        $this->syncForm($action->handle($this->loadDeal(), $this->crmUser()));
+        $this->syncForm($action->handle($this->loadDeal(), $this->crmUser(), $this->expectedVersion));
         $this->toast('معامله بازگشایی شد.');
+    }
+
+    public function resolveBarrier(int $barrierId, string $status, ResolveDealBarrier $action): void
+    {
+        $barrier = CrmDealBarrier::query()
+            ->where('organization_id', $this->crmOrganizationId())
+            ->where('crm_deal_id', $this->dealId)
+            ->find($barrierId);
+
+        if (! $barrier instanceof CrmDealBarrier) {
+            abort(404);
+        }
+
+        $resolved = DealBarrierStatus::tryFrom($status);
+        if ($resolved === null) {
+            $this->addError('barrier', 'وضعیت مانع معتبر نیست.');
+
+            return;
+        }
+
+        $action->handle($barrier, $this->crmUser(), $resolved);
+        app(DealHealthScorer::class)->persist($this->loadDeal());
+        $this->toast('وضعیت مانع به‌روز شد.');
     }
 
     public function archive(ArchiveDeal $action): void
@@ -212,6 +280,8 @@ class Show extends Component
             'stageHistory.actor',
             'activities.actor',
             'externalLinks',
+            'barriers.sourceCall',
+            'barriers.sourceAnalysis',
         ]);
         $actor = $this->crmUser();
         $contactIds = $deal->contacts->pluck('customer_id')->map(fn ($id) => (int) $id)->all();
@@ -231,9 +301,33 @@ class Show extends Component
                 return in_array((int) $deal->id, $candidates, true);
             });
 
+        app(EnsureDealCloseReasons::class)->handle((int) $deal->organization_id);
+        $health = $deal->health_calculated_at
+            ? [
+                'score' => $deal->health_score,
+                'level' => $deal->health_level,
+                'factors' => $deal->health_factors_json ?? [],
+                'calculated_at' => $deal->health_calculated_at,
+            ]
+            : app(DealHealthScorer::class)->calculate($deal);
+
         return view('livewire.crm.deals.show', [
             'deal' => $deal,
             'portal' => $this->crmPortal(),
+            'aging' => app(DealAging::class)->forDeal($deal),
+            'health' => $health,
+            'lostReasons' => CrmDealCloseReason::query()
+                ->where('organization_id', $deal->organization_id)
+                ->where('kind', DealCloseReasonKind::Lost)
+                ->where('is_active', true)
+                ->orderBy('position')
+                ->get(),
+            'wonReasons' => CrmDealCloseReason::query()
+                ->where('organization_id', $deal->organization_id)
+                ->where('kind', DealCloseReasonKind::Won)
+                ->where('is_active', true)
+                ->orderBy('position')
+                ->get(),
             'stages' => CrmPipelineStage::query()->where('crm_pipeline_id', $deal->crm_pipeline_id)->orderBy('position')->get(),
             'owners' => OrganizationUser::query()->where('organization_id', $deal->organization_id)->where('is_active', true)->orderBy('last_name')->get(),
             'calls' => $contactIds === [] ? collect() : Call::query()
@@ -285,6 +379,9 @@ class Show extends Component
         $primary = $deal->contacts->firstWhere('is_primary', true);
         $this->primaryCustomerId = $primary ? (string) $primary->customer_id : '';
         $this->expectedUpdatedAt = $deal->updated_at?->toDateTimeString() ?? '';
+        $this->expectedVersion = (string) ($deal->version ?? 1);
+        $this->nextActionText = (string) ($deal->next_action_text ?? '');
+        $this->nextActionDueOn = $deal->next_action_due_on?->toDateString() ?? '';
     }
 
     private function suggestion(int $suggestionId): CrmDealAiSuggestion

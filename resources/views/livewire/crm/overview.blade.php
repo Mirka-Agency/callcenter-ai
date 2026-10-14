@@ -34,7 +34,7 @@
             <x-saas.stat-card label="معاملات موفق" :value="PersianNumber::format($summary['won_count'])" tone="good" />
             <x-saas.stat-card label="معاملات ناموفق" :value="PersianNumber::format($summary['lost_count'])" tone="bad" />
             <x-saas.stat-card label="نرخ موفقیت بسته‌شده‌ها" :value="$summary['win_rate'] === null ? '—' : PersianNumber::format($summary['win_rate'], 1).'٪'" />
-            <x-saas.stat-card label="بدون فعالیت اخیر" :value="PersianNumber::format($summary['stale_count'])" hint="باز و بدون فعالیت در ۱۴ روز اخیر" />
+            <x-saas.stat-card label="بدون فعالیت اخیر" :value="PersianNumber::format($summary['stale_count'])" :hint="$summary['stale_inactivity_hint'] ?? 'باز و بدون فعالیت در ۱۴ روز اخیر، یا عبور از آستانه توقف مرحله'" />
         </div>
 
         <section class="saas-card p-4">

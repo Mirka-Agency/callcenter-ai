@@ -13,7 +13,6 @@
     <x-saas.page-header :title="$deal->title" :description="$deal->pipeline?->name.' · '.$deal->status->label().' · منبع '.$deal->source->label()">
         <x-slot:actions>
             @if ($canUpdate && ! $deal->trashed() && $deal->status->isOpen())
-                <button type="button" class="saas-btn-primary text-sm" wire:click="closeWon">ثبت موفق</button>
             @endif
             @if ($canReopen && $deal->status->isClosed() && ! $deal->trashed())
                 <button type="button" class="saas-btn-secondary text-sm" wire:click="reopen">بازگشایی</button>
@@ -70,22 +69,97 @@
                     </div>
                 @endif
             </form>
+            <div class="grid gap-3 border-t border-zinc-100 pt-4 md:grid-cols-2">
+                <label class="block text-sm md:col-span-2">
+                    <span class="mb-1 block text-zinc-600">اقدام بعدی</span>
+                    <input wire:model="nextActionText" class="saas-input" @disabled(! $canUpdate || $deal->trashed()) placeholder="مثلاً ارسال پیشنهاد به‌روز">
+                </label>
+                <label class="block text-sm">
+                    <span class="mb-1 block text-zinc-600">موعد اقدام بعدی</span>
+                    <input wire:model="nextActionDueOn" type="date" class="saas-input" @disabled(! $canUpdate || $deal->trashed())>
+                </label>
+            </div>
             @if ($deal->status->value === 'lost')
-                <p class="text-sm text-rose-700">دلیل شکست: {{ $deal->lost_reason }}</p>
+                <p class="text-sm text-rose-700">دلیل شکست: {{ $deal->lost_reason }}@if($deal->lost_reason_code) ({{ $deal->lost_reason_code }})@endif</p>
+            @endif
+            @if ($deal->status->value === 'won' && $deal->won_reason)
+                <p class="text-sm text-emerald-700">دلیل موفقیت: {{ $deal->won_reason }}</p>
             @endif
             @if ($canUpdate && $deal->status->isOpen() && ! $deal->trashed())
-                <form wire:submit="closeLost" class="flex flex-col gap-2 border-t border-zinc-100 pt-4 sm:flex-row">
-                    <label class="block flex-1 text-sm">
-                        <span class="mb-1 block text-zinc-600">ثبت ناموفق با دلیل</span>
-                        <input wire:model="lostReason" class="saas-input" placeholder="دلیل شکست">
-                        @error('lost_reason') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
-                    </label>
-                    <button type="submit" class="saas-btn-secondary self-end text-sm">ثبت ناموفق</button>
-                </form>
+                <div class="space-y-3 border-t border-zinc-100 pt-4">
+                    <form wire:submit="closeWon" class="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                        <label class="block text-sm">
+                            <span class="mb-1 block text-zinc-600">دلیل موفقیت (اختیاری)</span>
+                            <select wire:model="wonReasonCode" class="saas-input">
+                                <option value="">بدون کد</option>
+                                @foreach ($wonReasons as $reason)
+                                    <option value="{{ $reason->code }}">{{ $reason->label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                        <label class="block text-sm">
+                            <span class="mb-1 block text-zinc-600">توضیح موفقیت</span>
+                            <input wire:model="wonReason" class="saas-input" placeholder="اختیاری">
+                            @error('won_reason') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                        </label>
+                        <button type="submit" class="saas-btn-primary self-end text-sm">ثبت موفق</button>
+                    </form>
+                    <form wire:submit="closeLost" class="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                        <label class="block text-sm">
+                            <span class="mb-1 block text-zinc-600">دلیل شکست</span>
+                            <select wire:model="lostReasonCode" class="saas-input">
+                                <option value="">انتخاب دلیل</option>
+                                @foreach ($lostReasons as $reason)
+                                    <option value="{{ $reason->code }}">{{ $reason->label }}</option>
+                                @endforeach
+                            </select>
+                            @error('lost_reason_code') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                        </label>
+                        <label class="block text-sm">
+                            <span class="mb-1 block text-zinc-600">توضیح</span>
+                            <input wire:model="lostReason" class="saas-input" placeholder="در صورت نیاز توضیح">
+                            @error('lost_reason') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                        </label>
+                        <button type="submit" class="saas-btn-secondary self-end text-sm">ثبت ناموفق</button>
+                    </form>
+                </div>
             @endif
+            @error('deal') <p class="text-sm text-rose-600">{{ $message }}</p> @enderror
         </section>
 
         <div class="space-y-6">
+            <section class="saas-card space-y-3 p-4">
+                <h2 class="text-lg font-semibold">سلامت معامله</h2>
+                @php
+                    $healthLevel = $health['level'] ?? null;
+                    $healthLabel = $healthLevel instanceof \App\Domain\Crm\Deals\DealHealthLevel
+                        ? $healthLevel->label()
+                        : (\App\Domain\Crm\Deals\DealHealthLevel::tryFrom((string) $healthLevel)?->label() ?? 'داده ناکافی');
+                @endphp
+                <p class="text-2xl font-semibold">{{ $health['score'] === null ? '—' : $health['score'] }}</p>
+                <p class="text-sm text-zinc-600">سطح: {{ $healthLabel }}</p>
+                <p class="text-xs text-zinc-500">این شاخص احتمال آماری برد نیست و مستقل از امتیاز لید و مرحله فروش است.</p>
+                @if (! empty($health['calculated_at']))
+                    <p class="text-xs text-zinc-400">آخرین محاسبه: {{ shamsi($health['calculated_at']) }}</p>
+                @endif
+                <ul class="space-y-1 text-sm text-zinc-600">
+                    @foreach (($health['factors'] ?? []) as $factor)
+                        <li>{{ $factor['label'] ?? '' }}@if(($factor['impact'] ?? 0) !== 0) ({{ $factor['impact'] > 0 ? '+' : '' }}{{ $factor['impact'] }})@endif</li>
+                    @endforeach
+                </ul>
+            </section>
+
+            <section class="saas-card space-y-3 p-4">
+                <h2 class="text-lg font-semibold">توقف و فعالیت</h2>
+                <p class="text-sm">روز در مرحله فعلی: {{ $aging['days_in_current_stage'] ?? '—' }}</p>
+                <p class="text-sm">روز بدون فعالیت: {{ $aging['inactive_days'] ?? '—' }}</p>
+                <p class="text-sm">آخرین فعالیت: {{ $aging['last_activity_at'] ? shamsi($aging['last_activity_at']) : '—' }}</p>
+                <p class="text-sm">آخرین تماس مرتبط: {{ $aging['last_related_call_at'] ? shamsi($aging['last_related_call_at']) : '—' }}</p>
+                @if ($aging['is_stale'] ?? false)
+                    <p class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">این معامله متوقف یا بدون فعالیت کافی تشخیص داده شده است.</p>
+                @endif
+            </section>
+
             <section class="saas-card space-y-3 p-4">
                 <h2 class="text-lg font-semibold">مسئول معامله</h2>
                 @if ($canAssignOwner && $deal->status->isOpen() && ! $deal->trashed())
@@ -196,14 +270,45 @@
         @endforeach
     </section>
 
+    <section class="saas-card space-y-3 p-4">
+        <h2 class="text-lg font-semibold">موانع فروش</h2>
+        <p class="text-sm text-zinc-500">فقط از دغدغه‌های استخراج‌شده از تحلیل تماس‌های متصل ساخته می‌شود؛ نقل‌قول ساختگی ندارد.</p>
+        @forelse ($deal->barriers->sortByDesc('last_seen_at') as $barrier)
+            <article class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800" wire:key="barrier-{{ $barrier->id }}">
+                <p class="text-sm font-medium">{{ $barrier->label }}</p>
+                <p class="mt-1 text-xs text-zinc-500">{{ $barrier->status->label() }} · {{ $barrier->occurrence_count }} بار · آخرین: {{ $barrier->last_seen_at ? shamsi($barrier->last_seen_at) : '—' }}</p>
+                @if ($barrier->evidence_text)
+                    <p class="mt-2 text-sm text-zinc-600">شاهد: {{ $barrier->evidence_text }}</p>
+                @endif
+                @if ($barrier->suggested_action)
+                    <p class="mt-1 text-sm text-indigo-700">اقدام پیشنهادی: {{ $barrier->suggested_action }}</p>
+                @endif
+                @if ($canUpdate && $barrier->status->value === 'suggested')
+                    <div class="mt-3 flex gap-2">
+                        <button type="button" class="saas-btn-primary text-sm" wire:click="resolveBarrier({{ $barrier->id }}, 'confirmed')">تأیید</button>
+                        <button type="button" class="saas-btn-secondary text-sm" wire:click="resolveBarrier({{ $barrier->id }}, 'dismissed')">رد</button>
+                    </div>
+                @endif
+            </article>
+        @empty
+            <p class="text-sm text-zinc-500">مانعی ثبت نشده است.</p>
+        @endforelse
+    </section>
+
     <section class="saas-card p-4">
         <h2 class="text-lg font-semibold">فعالیت‌های معامله</h2>
-        <p class="mt-1 text-sm text-zinc-500">پیگیری و وظایف فروش در ماژول بعدی به همین معامله متصل می‌شوند. فعلاً تاریخچه همین صفحه منبع ثبت تغییرات است.</p>
+        <p class="mt-1 text-sm text-zinc-500">پیگیری و وظایف فروش در ماژول سوم با فیلد استاندارد <code>crm_deal_id</code> به همین معامله وصل می‌شوند. سیستم وظایف موازی ساخته نشده است.</p>
         <ul class="mt-4 space-y-2 text-sm">
             @foreach ($deal->activities->sortByDesc('id') as $activity)
                 <li wire:key="activity-{{ $activity->id }}">
                     {{ $activity->type instanceof DealActivityType ? $activity->type->label() : $activity->type }}
                     <span class="text-zinc-400">{{ shamsi($activity->created_at) }} · {{ $activity->actor?->name ?: 'سامانه' }} · {{ $activity->source }}</span>
+                    @if (is_array($activity->previous_json) || is_array($activity->next_json))
+                        <p class="mt-1 text-xs text-zinc-500">
+                            قبل: {{ \Illuminate\Support\Str::limit(json_encode($activity->previous_json, JSON_UNESCAPED_UNICODE) ?: '—', 120) }}
+                            · بعد: {{ \Illuminate\Support\Str::limit(json_encode($activity->next_json, JSON_UNESCAPED_UNICODE) ?: '—', 120) }}
+                        </p>
+                    @endif
                 </li>
             @endforeach
         </ul>

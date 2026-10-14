@@ -44,6 +44,7 @@
                     <span class="mb-1 block">وضعیت</span>
                     <select wire:model.live="status" class="saas-input">
                         <option value="open">باز</option>
+                        <option value="stale">متوقف / بدون فعالیت</option>
                         <option value="won">موفق</option>
                         <option value="lost">ناموفق</option>
                         <option value="all">همه به‌جز بایگانی</option>

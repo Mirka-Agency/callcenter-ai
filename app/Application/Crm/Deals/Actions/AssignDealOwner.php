@@ -4,6 +4,7 @@ namespace App\Application\Crm\Deals\Actions;
 
 use App\Application\Crm\Deals\DealAudit;
 use App\Application\Crm\Deals\DealAuthorization;
+use App\Application\Crm\Deals\DealConcurrency;
 use App\Application\Crm\Deals\DealState;
 use App\Application\Crm\Deals\DealTenant;
 use App\Domain\Crm\Deals\DealActivityType;
@@ -19,13 +20,20 @@ class AssignDealOwner
         private DealAuthorization $auth,
         private DealTenant $tenant,
         private DealAudit $audit,
+        private DealConcurrency $concurrency,
     ) {}
 
-    public function handle(CrmDeal $deal, User $actor, ?int $ownerId, ?int $expectedOwnerId = null, bool $checkExpected = false): CrmDeal
-    {
+    public function handle(
+        CrmDeal $deal,
+        User $actor,
+        ?int $ownerId,
+        ?int $expectedOwnerId = null,
+        bool $checkExpected = false,
+        mixed $expectedVersion = null,
+    ): CrmDeal {
         $this->auth->authorize($this->auth->canAssignOwner($actor, $deal));
 
-        return DB::transaction(function () use ($deal, $actor, $ownerId, $expectedOwnerId, $checkExpected): CrmDeal {
+        return DB::transaction(function () use ($deal, $actor, $ownerId, $expectedOwnerId, $checkExpected, $expectedVersion): CrmDeal {
             $locked = CrmDeal::query()->whereKey($deal->id)->lockForUpdate()->first();
 
             if (! $locked instanceof CrmDeal) {
@@ -33,6 +41,7 @@ class AssignDealOwner
             }
 
             DealState::assertOpen($locked);
+            $this->concurrency->assertExpectedVersion($locked, $expectedVersion);
             $current = $locked->owner_organization_user_id ? (int) $locked->owner_organization_user_id : null;
 
             if ($checkExpected && $current !== $expectedOwnerId) {
@@ -50,7 +59,7 @@ class AssignDealOwner
             }
 
             $previous = $locked->auditSnapshot();
-            $locked->update([
+            $this->concurrency->bump($locked, [
                 'owner_organization_user_id' => $ownerId,
                 'last_activity_at' => now(),
             ]);

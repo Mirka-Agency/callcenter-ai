@@ -41,6 +41,8 @@ class Show extends Component
 
     public bool $stageActive = true;
 
+    public string $stageStaleAfterDays = '';
+
     public string $transferStageId = '';
 
     public bool $confirmDelete = false;
@@ -82,6 +84,7 @@ class Show extends Component
         $this->stageName = $stage->name;
         $this->stageColor = $stage->color;
         $this->stageActive = (bool) $stage->is_active;
+        $this->stageStaleAfterDays = $stage->stale_after_days === null ? '' : (string) $stage->stale_after_days;
         $this->confirmDelete = false;
         $this->transferStageId = '';
     }
@@ -92,7 +95,15 @@ class Show extends Component
             return;
         }
 
-        $action->handle($this->stage($this->editingStageId), $this->crmUser(), $this->stageName, $this->stageColor, $this->stageActive);
+        $stale = $this->stageStaleAfterDays === '' ? null : (int) $this->stageStaleAfterDays;
+        $action->handle(
+            $this->stage($this->editingStageId),
+            $this->crmUser(),
+            $this->stageName,
+            $this->stageColor,
+            $this->stageActive,
+            $stale,
+        );
         $this->editingStageId = null;
         $this->toast('مرحله ذخیره شد.');
     }

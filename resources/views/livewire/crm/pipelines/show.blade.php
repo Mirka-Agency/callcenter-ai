@@ -66,6 +66,11 @@
                             <input wire:model="stageActive" type="checkbox" class="rounded border-zinc-300 text-indigo-600">
                             فعال
                         </label>
+                        <label class="text-sm">
+                            <span class="mb-1 block">آستانه توقف (روز)</span>
+                            <input wire:model="stageStaleAfterDays" type="number" min="1" max="3650" class="saas-input" placeholder="خالی = بدون هشدار مرحله">
+                            @error('stale_after_days') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                        </label>
                         <div class="flex gap-2">
                             <button type="submit" class="saas-btn-primary text-sm">ذخیره مرحله</button>
                         </div>

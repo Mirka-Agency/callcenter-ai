@@ -5,6 +5,7 @@ namespace App\Application\Crm\Deals\Actions;
 use App\Application\Crm\Deals\AnalysisDealEvidence;
 use App\Application\Crm\Deals\DealAudit;
 use App\Application\Crm\Deals\DealAuthorization;
+use App\Application\Crm\Deals\DealHealthScorer;
 use App\Application\Crm\Deals\DealTenant;
 use App\Domain\Crm\Deals\DealActivityType;
 use App\Models\Call;
@@ -23,6 +24,8 @@ class LinkCallToDeal
         private DealAuthorization $auth,
         private DealTenant $tenant,
         private DealAudit $audit,
+        private SyncDealBarriersFromAnalysis $barriers,
+        private DealHealthScorer $health,
     ) {}
 
     public function handle(CrmDeal $deal, Call $call, ?User $actor, string $source = 'manual', ?ConversationAnalysis $analysis = null, bool $asSystem = false): CrmDealCall
@@ -129,6 +132,12 @@ class LinkCallToDeal
                 null,
                 ['call_id' => (int) $call->id, 'conversation_analysis_id' => $analysis?->id],
             );
+
+            if ($analysis instanceof ConversationAnalysis) {
+                $this->barriers->handle($locked, $analysis);
+            }
+
+            $this->health->persist($locked);
 
             return $link;
         });

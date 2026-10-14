@@ -53,6 +53,8 @@ class DealQuery
 
         if ($status === 'archived') {
             $query->onlyTrashed();
+        } elseif ($status === 'stale') {
+            app(DealAging::class)->scopeStaleCandidates($query);
         } elseif ($status !== 'all') {
             $query->where('crm_deals.status', $status);
         }

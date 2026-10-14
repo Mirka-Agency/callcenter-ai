@@ -13,8 +13,14 @@ class UpdatePipelineStage
 {
     public function __construct(private DealAuthorization $auth) {}
 
-    public function handle(CrmPipelineStage $stage, User $actor, string $name, string $color, bool $isActive): CrmPipelineStage
-    {
+    public function handle(
+        CrmPipelineStage $stage,
+        User $actor,
+        string $name,
+        string $color,
+        bool $isActive,
+        ?int $staleAfterDays = null,
+    ): CrmPipelineStage {
         $this->auth->authorize($this->auth->canManagePipelines($actor, (int) $stage->organization_id));
         $name = trim($name);
         $color = PipelineStagePalette::normalize($color);
@@ -25,7 +31,13 @@ class UpdatePipelineStage
             ]);
         }
 
-        return DB::transaction(function () use ($stage, $name, $color, $isActive): CrmPipelineStage {
+        if ($staleAfterDays !== null && ($staleAfterDays < 1 || $staleAfterDays > 3650)) {
+            throw ValidationException::withMessages([
+                'stale_after_days' => 'آستانه توقف باید بین ۱ تا ۳۶۵۰ روز باشد یا خالی بماند.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($stage, $name, $color, $isActive, $staleAfterDays): CrmPipelineStage {
             $locked = CrmPipelineStage::query()->whereKey($stage->id)->lockForUpdate()->first();
 
             if (! $locked instanceof CrmPipelineStage) {
@@ -50,6 +62,7 @@ class UpdatePipelineStage
                 'name' => $name,
                 'color' => $color,
                 'is_active' => $isActive,
+                'stale_after_days' => $staleAfterDays,
             ]);
 
             return $locked;

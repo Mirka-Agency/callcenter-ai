@@ -4,6 +4,8 @@ namespace App\Application\Crm\Deals\Actions;
 
 use App\Application\Crm\Deals\DealAudit;
 use App\Application\Crm\Deals\DealAuthorization;
+use App\Application\Crm\Deals\DealConcurrency;
+use App\Application\Crm\Deals\DealHealthScorer;
 use App\Domain\Crm\Deals\DealActivityType;
 use App\Domain\Crm\Deals\DealStatus;
 use App\Domain\Crm\Deals\Events\DealReopened;
@@ -17,18 +19,22 @@ class ReopenDeal
     public function __construct(
         private DealAuthorization $auth,
         private DealAudit $audit,
+        private DealConcurrency $concurrency,
+        private DealHealthScorer $health,
     ) {}
 
-    public function handle(CrmDeal $deal, User $actor): CrmDeal
+    public function handle(CrmDeal $deal, User $actor, mixed $expectedVersion = null): CrmDeal
     {
         $this->auth->authorize($this->auth->canReopen($actor, $deal));
 
-        return DB::transaction(function () use ($deal, $actor): CrmDeal {
+        return DB::transaction(function () use ($deal, $actor, $expectedVersion): CrmDeal {
             $locked = CrmDeal::query()->whereKey($deal->id)->lockForUpdate()->first();
 
             if (! $locked instanceof CrmDeal) {
                 throw new \RuntimeException('Deal disappeared before reopen.');
             }
+
+            $this->concurrency->assertExpectedVersion($locked, $expectedVersion);
 
             if ($locked->status->isOpen()) {
                 return $locked;
@@ -44,10 +50,12 @@ class ReopenDeal
 
             $fromStatus = $locked->status->value;
             $previous = $locked->auditSnapshot();
-            $locked->update([
+            $this->concurrency->bump($locked, [
                 'status' => DealStatus::Open,
                 'closed_at' => null,
                 'lost_reason' => null,
+                'lost_reason_code' => null,
+                'won_reason' => null,
                 'last_activity_at' => now(),
             ]);
             $fresh = $locked->fresh() ?? $locked;
@@ -60,8 +68,9 @@ class ReopenDeal
                 'manual',
                 $fromStatus,
             ));
+            $this->health->persist($fresh);
 
-            return $fresh;
+            return $fresh->fresh() ?? $fresh;
         });
     }
 }

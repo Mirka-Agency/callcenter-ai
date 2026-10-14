@@ -19,7 +19,7 @@ class DealOverview
         $won = (clone $visible)->where('status', DealStatus::Won)->count();
         $lost = (clone $visible)->where('status', DealStatus::Lost)->count();
         $closed = $won + $lost;
-        $staleBefore = now()->subDays(14);
+        $aging = app(DealAging::class);
 
         $pipeline = null;
 
@@ -72,9 +72,10 @@ class DealOverview
             'won_count' => $won,
             'lost_count' => $lost,
             'win_rate' => $closed > 0 ? round(($won / $closed) * 100, 1) : null,
-            'stale_count' => (clone $open)->where(function ($query) use ($staleBefore): void {
-                $query->whereNull('last_activity_at')->orWhere('last_activity_at', '<', $staleBefore);
-            })->count(),
+            'stale_count' => $aging->filterStaleCollection(
+                (clone $open)->with('stage')->limit(500)->get()
+            )->count(),
+            'stale_inactivity_hint' => 'باز و بدون فعالیت در ۱۴ روز اخیر، یا عبور از آستانه توقف مرحله',
             'stages' => $stageRows,
         ];
     }
