@@ -7,20 +7,6 @@
                         <x-landing.brand-mark aria-hidden="true" />
                     </a>
                     <p class="site-footer__lead">تحلیل تماس‌های پایان‌یافته برای رشد تیم فروش، پشتیبانی و کیفیت. خلاصه، احساس مشتری، کیفیت لید و کوچینگ در یک داشبورد.</p>
-                    <ul class="site-footer__pills">
-                        <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="4" y="5" width="16" height="12" rx="2" /><path d="M8 19h8" /></svg>
-                            رابط فارسی
-                        </li>
-                        <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3.5V7M16 3.5V7M4 10h16" /></svg>
-                            تاریخ شمسی
-                        </li>
-                        <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3.6 19 6.4v5.3c0 4.2-2.8 7.2-7 8.7-4.2-1.5-7-4.5-7-8.7V6.4L12 3.6Z" /></svg>
-                            نصب داخلی
-                        </li>
-                    </ul>
                 </div>
 
                 <nav class="site-footer__col" aria-label="دسترسی سریع">
@@ -73,37 +59,10 @@
                         </li>
                     </ul>
                 </div>
-
-                <div class="site-footer__col">
-                    <h2>یکپارچگی‌ها</h2>
-                    <ul class="site-footer__integrations">
-                        @foreach ([
-                            ['label' => 'Navatel', 'ltr' => true],
-                            ['label' => 'Simotel', 'ltr' => true],
-                            ['label' => 'وب‌هوک و Asterisk', 'ltr' => false],
-                            ['label' => 'دیدار', 'ltr' => false],
-                            ['label' => 'Dynamics 365', 'ltr' => true],
-                        ] as $integration)
-                            <li>
-                                <a href="#faq">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M10 13.5a4 4 0 0 0 5.6.2l1.8-1.8a4 4 0 0 0-5.6-5.6L10.6 7.5" /><path d="M14 10.5a4 4 0 0 0-5.6-.2l-1.8 1.8a4 4 0 0 0 5.6 5.6l1.2-1.2" /></svg>
-                                    @if ($integration['ltr'])
-                                        <span dir="ltr">{{ $integration['label'] }}</span>
-                                    @else
-                                        {{ $integration['label'] }}
-                                    @endif
-                                </a>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
             </div>
 
             <div class="site-footer__bar">
-                <p class="site-footer__copy">
-                    <span>© تمامی حقوق برای آوایار محفوظ است.</span>
-                    <a class="site-footer__credit" href="https://mirka.agency/" target="_blank" rel="noopener noreferrer">درخشان با میرکا 💎</a>
-                </p>
+                <p class="site-footer__copy">© تمامی حقوق برای آوایار محفوظ است.</p>
                 <svg class="site-footer__wave" viewBox="0 0 260 36" fill="none" aria-hidden="true">
                     <path d="M4 24c28-16 48-16 76-4 22 10 40 12 68 2 24-8 48-8 76 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
                     <circle cx="18" cy="22" r="1.4" fill="currentColor" />
@@ -113,11 +72,7 @@
                     <circle cx="178" cy="16" r="1.4" fill="currentColor" />
                     <circle cx="226" cy="22" r="1.4" fill="currentColor" />
                 </svg>
-                <ul class="site-footer__notes">
-                    <li><a href="#journey">تحلیل پس از پایان تماس</a></li>
-                    <li><a href="#sample-call">داشبورد مدیر</a></li>
-                    <li><a href="#coaching">فضای کارشناس</a></li>
-                </ul>
+                <a class="site-footer__credit" href="https://mirka.agency/" target="_blank" rel="noopener noreferrer">محصولی از میرکا</a>
             </div>
         </div>
     </footer>
