@@ -72,7 +72,7 @@
                     <circle cx="178" cy="16" r="1.4" fill="currentColor" />
                     <circle cx="226" cy="22" r="1.4" fill="currentColor" />
                 </svg>
-                <a class="site-footer__credit" href="https://mirka.agency/" target="_blank" rel="noopener noreferrer">محصولی از میرکا</a>
+                <a class="site-footer__credit" href="https://mirka.agency/" target="_blank" rel="noopener noreferrer">محصولی از میرکا💎</a>
             </div>
         </div>
     </footer>
