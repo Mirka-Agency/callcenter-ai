@@ -92,6 +92,12 @@ class EmployerNavigation
                 'matches' => ['employer.crm.products.*'],
             ],
             [
+                'label' => 'فاکتور و پیش فاکتور',
+                'route' => 'employer.crm.invoices.index',
+                'icon' => 'document',
+                'matches' => ['employer.crm.invoices.*'],
+            ],
+            [
                 'label' => 'تنظیمات CRM',
                 'route' => 'employer.crm.settings',
                 'icon' => 'document',

@@ -339,6 +339,7 @@ class CrmDealsAndPipelinesTest extends TestCase
         $this->get(route('employer.crm.settings'))->assertOk()->assertSee('ساخت خودکار خاموش');
         $this->get(route('employer.crm.index'))->assertNotFound();
         $this->get(route('employer.crm.products.index'))->assertOk()->assertSee('محصولات و خدمات');
+        $this->get(route('employer.crm.invoices.index'))->assertOk()->assertSee('فاکتور و پیش فاکتور');
         $this->get('/app/crm/pipelines')->assertNotFound();
 
         $routes = array_column(collect(EmployeeNavigation::items())->firstWhere('label', 'CRM')['children'], 'route');
@@ -349,6 +350,7 @@ class CrmDealsAndPipelinesTest extends TestCase
             'employee.crm.deals.list',
             'employee.crm.reminders.index',
             'employee.crm.products.index',
+            'employee.crm.invoices.index',
         ], $routes);
         $this->assertFalse(collect(EmployeeNavigation::items())->contains(fn (array $item) => ($item['route'] ?? null) === 'employee.customers.index'));
     }

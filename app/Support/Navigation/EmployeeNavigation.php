@@ -72,6 +72,12 @@ class EmployeeNavigation
                 'icon' => 'document',
                 'matches' => ['employee.crm.products.*'],
             ],
+            [
+                'label' => 'فاکتور و پیش فاکتور',
+                'route' => 'employee.crm.invoices.index',
+                'icon' => 'document',
+                'matches' => ['employee.crm.invoices.*'],
+            ],
         ];
     }
 }

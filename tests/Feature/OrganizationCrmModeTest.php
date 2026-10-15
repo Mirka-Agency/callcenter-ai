@@ -71,6 +71,7 @@ class OrganizationCrmModeTest extends TestCase
             'employer.crm.deals.list',
             'employer.crm.reminders.index',
             'employer.crm.products.index',
+            'employer.crm.invoices.index',
             'employer.crm.settings',
         ], $this->crmRoutes(EmployerNavigation::items()));
 
@@ -80,6 +81,7 @@ class OrganizationCrmModeTest extends TestCase
         $this->get(route('employer.crm.deals.list'))->assertOk()->assertSee('فهرست فرصت‌ها', false);
         $this->get(route('employer.crm.reminders.index'))->assertOk()->assertSee('یادآوری‌ها', false);
         $this->get(route('employer.crm.products.index'))->assertOk()->assertSee('محصولات و خدمات', false);
+        $this->get(route('employer.crm.invoices.index'))->assertOk()->assertSee('فاکتور و پیش فاکتور', false);
         $this->get(route('employer.crm.tasks.index'))->assertOk();
 
         $this->actingAs($employee);
@@ -91,12 +93,14 @@ class OrganizationCrmModeTest extends TestCase
             'employee.crm.deals.list',
             'employee.crm.reminders.index',
             'employee.crm.products.index',
+            'employee.crm.invoices.index',
         ], $this->crmRoutes(EmployeeNavigation::items()));
 
         $this->get(route('employee.crm.deals.index'))->assertOk();
         $this->get(route('employee.crm.deals.list'))->assertOk()->assertSee('فهرست فرصت‌ها', false);
         $this->get(route('employee.crm.reminders.index'))->assertOk()->assertSee('یادآوری‌ها', false);
         $this->get(route('employee.crm.products.index'))->assertOk()->assertSee('محصولات و خدمات', false);
+        $this->get(route('employee.crm.invoices.index'))->assertOk()->assertSee('فاکتور و پیش فاکتور', false);
     }
 
     public function test_external_mode_opens_only_the_external_connection(): void
@@ -114,6 +118,7 @@ class OrganizationCrmModeTest extends TestCase
         $this->get(route('employer.crm.index'))->assertOk();
         $this->get(route('employer.crm.deals.index'))->assertNotFound();
         $this->get(route('employer.crm.products.index'))->assertNotFound();
+        $this->get(route('employer.crm.invoices.index'))->assertNotFound();
         $this->get(route('employer.customers.index'))->assertOk();
 
         $this->actingAs($employee);

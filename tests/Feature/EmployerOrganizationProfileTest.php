@@ -40,6 +40,7 @@ class EmployerOrganizationProfileTest extends TestCase
                 'employer.crm.deals.list',
                 'employer.crm.reminders.index',
                 'employer.crm.products.index',
+                'employer.crm.invoices.index',
                 'employer.crm.settings',
             ],
             array_column($crm['children'] ?? [], 'route'),

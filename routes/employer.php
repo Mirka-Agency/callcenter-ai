@@ -6,6 +6,8 @@ use App\Livewire\Crm\Deals\Index as CrmDealsIndex;
 use App\Livewire\Crm\Deals\OpportunityList as CrmDealsOpportunityList;
 use App\Livewire\Crm\Deals\Show as CrmDealsShow;
 use App\Livewire\Crm\Overview as CrmOverview;
+use App\Livewire\Crm\Invoices\Index as CrmInvoicesIndex;
+use App\Livewire\Crm\Invoices\Show as CrmInvoicesShow;
 use App\Livewire\Crm\Products\Index as CrmProductsIndex;
 use App\Livewire\Crm\Settings as CrmSettings;
 use App\Livewire\Crm\Reminders\Index as CrmRemindersIndex;
@@ -100,6 +102,10 @@ Route::middleware(['auth', 'employer'])->group(function () {
         });
         Route::get('/crm/reminders', CrmRemindersIndex::class)->name('crm.reminders.index');
         Route::get('/crm/products', CrmProductsIndex::class)->name('crm.products.index');
+        Route::prefix('crm/invoices')->name('crm.invoices.')->group(function () {
+            Route::get('/', CrmInvoicesIndex::class)->name('index');
+            Route::get('/{invoice}', CrmInvoicesShow::class)->name('show')->whereNumber('invoice');
+        });
     });
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', CustomersIndex::class)->name('index');
