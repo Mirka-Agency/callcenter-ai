@@ -15,10 +15,6 @@ class DealOverview
     public function summarize(int $organizationId, User $actor, ?int $pipelineId = null): array
     {
         $visible = $this->deals->visible($organizationId, $actor);
-        $open = (clone $visible)->where('status', DealStatus::Open);
-        $won = (clone $visible)->where('status', DealStatus::Won)->count();
-        $lost = (clone $visible)->where('status', DealStatus::Lost)->count();
-        $closed = $won + $lost;
         $aging = app(DealAging::class);
 
         $pipeline = null;
@@ -35,6 +31,15 @@ class DealOverview
             ->where('is_default', true)
             ->first();
 
+        if ($pipeline instanceof CrmPipeline) {
+            $visible->where('crm_pipeline_id', $pipeline->id);
+        }
+
+        $open = (clone $visible)->where('status', DealStatus::Open);
+        $won = (clone $visible)->where('status', DealStatus::Won)->count();
+        $lost = (clone $visible)->where('status', DealStatus::Lost)->count();
+        $closed = $won + $lost;
+
         $stageRows = collect();
 
         if ($pipeline instanceof CrmPipeline) {
@@ -43,7 +48,6 @@ class DealOverview
                 ->orderBy('position')
                 ->get();
             $sums = (clone $open)
-                ->where('crm_pipeline_id', $pipeline->id)
                 ->select('crm_pipeline_stage_id')
                 ->selectRaw('COUNT(*) as deal_count')
                 ->selectRaw('COALESCE(SUM(amount_rials), 0) as amount_sum')

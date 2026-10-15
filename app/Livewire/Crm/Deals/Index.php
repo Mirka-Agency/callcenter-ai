@@ -5,8 +5,11 @@ namespace App\Livewire\Crm\Deals;
 use App\Application\Crm\Deals\Actions\AcceptDealSuggestion;
 use App\Application\Crm\Deals\Actions\ChangeDealStage;
 use App\Application\Crm\Deals\Actions\CreateDeal;
+use App\Application\Crm\Deals\Actions\CreatePipeline;
+use App\Application\Crm\Deals\Actions\DeletePipeline;
 use App\Application\Crm\Deals\Actions\DismissDealSuggestion;
 use App\Application\Crm\Deals\DealAuthorization;
+use App\Application\Crm\Deals\DealOverview;
 use App\Application\Crm\Deals\DealQuery;
 use App\Domain\Crm\Deals\DealSource;
 use App\Enums\UserRole;
@@ -21,7 +24,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-#[Title('معاملات')]
+#[Title('کاریز')]
 class Index extends Component
 {
     use ResolvesCrmContext;
@@ -53,6 +56,12 @@ class Index extends Component
 
     public bool $showCreate = false;
 
+    public bool $showCreatePipeline = false;
+
+    public string $pipelineName = '';
+
+    public string $pipelineDescription = '';
+
     public string $title = '';
 
     public string $amountRials = '';
@@ -82,6 +91,7 @@ class Index extends Component
             $this->pipelineId = $pipeline ? (string) $pipeline->id : '';
         }
 
+        $this->syncViewModeForStatus();
         $this->syncDefaultStage();
     }
 
@@ -92,10 +102,7 @@ class Index extends Component
 
     public function updatedStatus(): void
     {
-        if ($this->status !== 'open') {
-            $this->viewMode = 'table';
-        }
-
+        $this->syncViewModeForStatus();
         $this->resetPage();
     }
 
@@ -107,6 +114,24 @@ class Index extends Component
 
     public function updatedOwner(): void
     {
+        $this->resetPage();
+    }
+
+    public function selectPipeline(string $pipelineId): void
+    {
+        $this->pipelineId = $pipelineId;
+        $this->syncDefaultStage();
+        $this->resetPage();
+    }
+
+    public function selectStatus(string $status): void
+    {
+        if (! in_array($status, ['open', 'won', 'lost'], true)) {
+            return;
+        }
+
+        $this->status = $status;
+        $this->syncViewModeForStatus();
         $this->resetPage();
     }
 
@@ -127,6 +152,27 @@ class Index extends Component
 
         $this->viewMode = 'table';
         $this->resetPage();
+    }
+
+    public function startCreateInStage(int $stageId): void
+    {
+        if (! ctype_digit($this->pipelineId)) {
+            return;
+        }
+
+        $stage = CrmPipelineStage::query()
+            ->where('organization_id', $this->crmOrganizationId())
+            ->where('crm_pipeline_id', (int) $this->pipelineId)
+            ->whereKey($stageId)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $stage instanceof CrmPipelineStage) {
+            return;
+        }
+
+        $this->stageId = (string) $stage->id;
+        $this->showCreate = true;
     }
 
     public function chooseCustomer(int $customerId): void
@@ -160,22 +206,64 @@ class Index extends Component
         ], DealSource::Manual);
 
         $this->reset(['showCreate', 'title', 'amountRials', 'customerQuery', 'customerId', 'companyId', 'ownerId', 'expectedCloseOn', 'description']);
-        $this->toast('معامله ثبت شد.');
+        $this->toast('فرصت ثبت شد.');
         $this->redirect(route($this->crmPortal().'.crm.deals.show', $deal), navigate: true);
+    }
+
+    public function createPipeline(CreatePipeline $action): void
+    {
+        $pipeline = $action->handle(
+            $this->crmOrganizationId(),
+            $this->crmUser(),
+            $this->pipelineName,
+            $this->pipelineDescription !== '' ? $this->pipelineDescription : null,
+        );
+
+        $this->reset(['showCreatePipeline', 'pipelineName', 'pipelineDescription']);
+        $this->pipelineId = (string) $pipeline->id;
+        $this->syncDefaultStage();
+        $this->toast('کاریز ساخته شد.');
+    }
+
+    public function deleteCurrentPipeline(DeletePipeline $action): void
+    {
+        if (! ctype_digit($this->pipelineId)) {
+            return;
+        }
+
+        $pipeline = CrmPipeline::query()
+            ->where('organization_id', $this->crmOrganizationId())
+            ->find((int) $this->pipelineId);
+
+        if (! $pipeline instanceof CrmPipeline) {
+            abort(404);
+        }
+
+        $action->handle($pipeline, $this->crmUser());
+
+        $next = CrmPipeline::query()
+            ->where('organization_id', $this->crmOrganizationId())
+            ->orderByDesc('is_default')
+            ->orderBy('id')
+            ->first();
+
+        $this->pipelineId = $next ? (string) $next->id : '';
+        $this->syncDefaultStage();
+        $this->toast('کاریز حذف شد.');
     }
 
     public function moveDeal(int $dealId, int $stageId, ChangeDealStage $action, DealQuery $query): void
     {
         $deal = $query->findVisible($this->crmOrganizationId(), $this->crmUser(), $dealId);
         $action->handle($deal, $this->crmUser(), $stageId, (int) $deal->crm_pipeline_stage_id);
-        $this->toast('مرحله معامله به‌روز شد.');
+        $this->toast('مرحله فرصت به‌روز شد.');
     }
 
     public function acceptSuggestion(int $suggestionId, ?int $dealId, AcceptDealSuggestion $action): void
     {
         $suggestion = $this->suggestion($suggestionId);
         $deal = $action->handle($suggestion, $this->crmUser(), $dealId);
-        $this->toast('پیشنهاد روی معامله اعمال شد.');
+        $this->toast('پیشنهاد روی فرصت اعمال شد.');
         $this->redirect(route($this->crmPortal().'.crm.deals.show', $deal), navigate: true);
     }
 
@@ -185,7 +273,7 @@ class Index extends Component
         $this->toast('پیشنهاد رد شد.');
     }
 
-    public function render(DealQuery $query, DealAuthorization $auth)
+    public function render(DealQuery $query, DealAuthorization $auth, DealOverview $overview)
     {
         $organizationId = $this->crmOrganizationId();
         $actor = $this->crmUser();
@@ -215,23 +303,36 @@ class Index extends Component
                 ->limit(8)
                 ->get()
             : collect();
+        $pipelineId = ctype_digit($this->pipelineId) ? (int) $this->pipelineId : null;
+        $currentPipeline = $pipelines->firstWhere('id', $pipelineId);
+        $showKanban = $this->status === 'open' && $pipelineId !== null;
 
         return view('livewire.crm.deals.index', [
             'portal' => $this->crmPortal(),
             'isManager' => $actor->role === UserRole::Employer,
             'pipelines' => $pipelines,
+            'currentPipeline' => $currentPipeline,
             'stages' => $stages,
-            'deals' => $this->viewMode === 'table'
-                ? $query->paginate($organizationId, $actor, $filters)
-                : null,
-            'board' => $this->viewMode === 'kanban' && ctype_digit($this->pipelineId)
-                ? $query->board($organizationId, $actor, (int) $this->pipelineId, $filters)->groupBy('crm_pipeline_stage_id')
+            'summary' => $overview->summarize($organizationId, $actor, $pipelineId),
+            'pipelineOpenCounts' => $query->openCountsByPipeline($organizationId, $actor),
+            'deals' => $showKanban
+                ? null
+                : $query->paginate($organizationId, $actor, $filters),
+            'board' => $showKanban
+                ? $query->board($organizationId, $actor, $pipelineId, $filters)
+                    ->groupBy(fn ($deal) => (int) $deal->crm_pipeline_stage_id)
                 : collect(),
             'suggestions' => $query->pendingSuggestions($organizationId, $actor),
             'owners' => OrganizationUser::query()->where('organization_id', $organizationId)->where('is_active', true)->orderBy('last_name')->get(),
             'customerChoices' => $customerChoices,
             'canCreate' => $auth->canCreate($actor, $organizationId),
+            'canManagePipelines' => $auth->canManagePipelines($actor, $organizationId),
         ])->layout($this->crmLayout());
+    }
+
+    private function syncViewModeForStatus(): void
+    {
+        $this->viewMode = $this->status === 'open' ? 'kanban' : 'table';
     }
 
     private function syncDefaultStage(): void

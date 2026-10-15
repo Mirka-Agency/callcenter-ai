@@ -270,7 +270,8 @@ class CrmDealsAndPipelinesTest extends TestCase
         Livewire::test(DealsIndex::class)
             ->assertSee('معامله من')
             ->assertDontSee('معامله همکار')
-            ->set('viewMode', 'table')
+            ->call('selectStatus', 'won')
+            ->call('selectStatus', 'open')
             ->assertSee('معامله من')
             ->call('sortBy', 'owner')
             ->assertSee('معامله من')
@@ -285,7 +286,7 @@ class CrmDealsAndPipelinesTest extends TestCase
         $this->get(route('employee.crm.deals.index'))
             ->assertOk()
             ->assertSee('dir="rtl"', false)
-            ->assertSee('معاملات');
+            ->assertSee('کاریز');
 
         $this->get('/workspace/crm/pipelines')->assertNotFound();
 

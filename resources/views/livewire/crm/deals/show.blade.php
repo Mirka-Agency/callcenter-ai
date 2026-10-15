@@ -5,7 +5,7 @@
 
 <div class="saas-page space-y-6">
     <nav class="text-sm text-zinc-500" aria-label="مسیر">
-        <a href="{{ $backUrl }}" class="hover:text-indigo-600" wire:navigate>معاملات</a>
+        <a href="{{ $backUrl }}" class="hover:text-indigo-600" wire:navigate>کاریز</a>
         <span class="mx-2">/</span>
         <span class="text-zinc-800 dark:text-zinc-200">{{ $deal->title }}</span>
     </nav>

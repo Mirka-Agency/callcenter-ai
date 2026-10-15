@@ -49,9 +49,9 @@ class EmployeeNavigation
             ],
             $customers,
             [
-                'label' => 'معاملات',
+                'label' => 'کاریز',
                 'route' => 'employee.crm.deals.index',
-                'icon' => 'document',
+                'icon' => 'analytics',
                 'matches' => ['employee.crm.deals.*'],
             ],
             [

@@ -5,7 +5,7 @@
         <span class="text-zinc-800 dark:text-zinc-200">پایپ‌لاین‌های فروش</span>
     </nav>
 
-    <x-saas.page-header title="پایپ‌لاین‌های فروش" description="مراحل داخلی آوایار از کاریز دیدار و داینامیکس مستقل است.">
+    <x-saas.page-header title="مدیریت مراحل کاریز" description="کاریزها و مراحل داخلی آوایار از اتصالات خارجی مستقل است.">
         <x-slot:actions>
             <button type="button" class="saas-btn-secondary text-sm" wire:click="createDefault">پایپ‌لاین پیش‌فرض</button>
             <button type="button" class="saas-btn-primary text-sm" wire:click="$toggle('showCreate')">پایپ‌لاین جدید</button>

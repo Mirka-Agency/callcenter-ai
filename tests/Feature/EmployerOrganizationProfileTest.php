@@ -56,7 +56,7 @@ class EmployerOrganizationProfileTest extends TestCase
             ->assertSee('>CRM<', false)
             ->assertSee('>نمای کلی<', false)
             ->assertSee('>اشخاص و شرکت‌ها<', false)
-            ->assertSee('>معاملات<', false)
+            ->assertSee('>کاریز<', false)
             ->assertDontSee('>اتصالات خارجی<', false)
             ->assertSee('پروفایل سازمان')
             ->assertSee('شرکت نمونه')

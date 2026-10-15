@@ -68,9 +68,9 @@ class EmployerNavigation
             ],
             $customers,
             [
-                'label' => 'معاملات',
+                'label' => 'کاریز',
                 'route' => 'employer.crm.deals.index',
-                'icon' => 'document',
+                'icon' => 'analytics',
                 'matches' => ['employer.crm.deals.*'],
             ],
             [
@@ -80,9 +80,9 @@ class EmployerNavigation
                 'matches' => ['employer.crm.tasks.*'],
             ],
             [
-                'label' => 'پایپ‌لاین‌های فروش',
+                'label' => 'مدیریت مراحل',
                 'route' => 'employer.crm.pipelines.index',
-                'icon' => 'analytics',
+                'icon' => 'document',
                 'matches' => ['employer.crm.pipelines.*'],
             ],
             [

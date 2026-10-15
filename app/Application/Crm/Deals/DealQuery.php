@@ -3,6 +3,8 @@
 namespace App\Application\Crm\Deals;
 
 use App\Domain\Crm\Deals\DealSuggestionStatus;
+use App\Domain\Crm\Deals\DealStatus;
+use App\Domain\Crm\Tasks\TaskStatus;
 use App\Models\CrmDeal;
 use App\Models\CrmDealAiSuggestion;
 use App\Models\Customer;
@@ -132,8 +134,27 @@ class DealQuery
 
         return $this->filtered($organizationId, $actor, $filters)
             ->with(['stage', 'owner', 'company', 'primaryContact.customer'])
+            ->withCount([
+                'tasks as open_tasks_count' => fn (Builder $tasks) => $tasks->whereIn('status', [
+                    TaskStatus::Pending->value,
+                    TaskStatus::InProgress->value,
+                ]),
+            ])
             ->limit(300)
             ->get();
+    }
+
+    /** @return array<int, int> */
+    public function openCountsByPipeline(int $organizationId, User $actor): array
+    {
+        return $this->visible($organizationId, $actor)
+            ->where('status', DealStatus::Open)
+            ->select('crm_pipeline_id')
+            ->selectRaw('COUNT(*) as deal_count')
+            ->groupBy('crm_pipeline_id')
+            ->pluck('deal_count', 'crm_pipeline_id')
+            ->map(fn ($count) => (int) $count)
+            ->all();
     }
 
     /** @return Collection<int, CrmDeal> */

@@ -195,4 +195,10 @@ class CrmDeal extends Model
     {
         return $this->hasMany(CrmDealBarrier::class);
     }
+
+    /** @return HasMany<CrmTask, $this> */
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(CrmTask::class, 'crm_deal_id');
+    }
 }

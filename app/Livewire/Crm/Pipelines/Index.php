@@ -12,7 +12,7 @@ use App\Models\CrmPipeline;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Title('پایپ‌لاین‌های فروش')]
+#[Title('مدیریت مراحل کاریز')]
 class Index extends Component
 {
     use ResolvesCrmContext;
