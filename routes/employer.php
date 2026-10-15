@@ -3,10 +3,10 @@
 use App\Http\Controllers\CustomerListExportController;
 use App\Http\Controllers\Employer\ReportExportController;
 use App\Livewire\Crm\Deals\Index as CrmDealsIndex;
+use App\Livewire\Crm\Deals\OpportunityList as CrmDealsOpportunityList;
 use App\Livewire\Crm\Deals\Show as CrmDealsShow;
 use App\Livewire\Crm\Overview as CrmOverview;
-use App\Livewire\Crm\Pipelines\Index as CrmPipelinesIndex;
-use App\Livewire\Crm\Pipelines\Show as CrmPipelinesShow;
+use App\Livewire\Crm\Products\Index as CrmProductsIndex;
 use App\Livewire\Crm\Settings as CrmSettings;
 use App\Livewire\Crm\Reminders\Index as CrmRemindersIndex;
 use App\Livewire\Crm\Tasks\Index as CrmTasksIndex;
@@ -91,17 +91,15 @@ Route::middleware(['auth', 'employer'])->group(function () {
         Route::get('/crm/settings', CrmSettings::class)->name('crm.settings');
         Route::prefix('crm/deals')->name('crm.deals.')->group(function () {
             Route::get('/', CrmDealsIndex::class)->name('index');
+            Route::get('/list', CrmDealsOpportunityList::class)->name('list');
             Route::get('/{deal}', CrmDealsShow::class)->name('show')->whereNumber('deal');
-        });
-        Route::prefix('crm/pipelines')->name('crm.pipelines.')->group(function () {
-            Route::get('/', CrmPipelinesIndex::class)->name('index');
-            Route::get('/{pipeline}', CrmPipelinesShow::class)->name('show')->whereNumber('pipeline');
         });
         Route::prefix('crm/tasks')->name('crm.tasks.')->group(function () {
             Route::get('/', CrmTasksIndex::class)->name('index');
             Route::get('/{task}', CrmTasksShow::class)->name('show')->whereNumber('task');
         });
         Route::get('/crm/reminders', CrmRemindersIndex::class)->name('crm.reminders.index');
+        Route::get('/crm/products', CrmProductsIndex::class)->name('crm.products.index');
     });
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', CustomersIndex::class)->name('index');

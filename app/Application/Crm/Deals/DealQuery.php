@@ -45,7 +45,7 @@ class DealQuery
     }
 
     /**
-     * @param  array{search?: string, status?: string, pipeline_id?: int|null, owner?: string, customer_id?: int|null, sort?: string, direction?: string}  $filters
+     * @param  array{search?: string, status?: string, pipeline_id?: int|null, owner?: string, customer_id?: int|null, date_from?: string|null, date_to?: string|null, sort?: string, direction?: string}  $filters
      * @return Builder<CrmDeal>
      */
     public function filtered(int $organizationId, User $actor, array $filters): Builder
@@ -75,6 +75,14 @@ class DealQuery
         if (! empty($filters['customer_id'])) {
             $customerId = (int) $filters['customer_id'];
             $query->whereHas('contacts', fn (Builder $contacts) => $contacts->where('customer_id', $customerId));
+        }
+
+        if (! empty($filters['date_from'])) {
+            $query->whereDate('crm_deals.created_at', '>=', $filters['date_from']);
+        }
+
+        if (! empty($filters['date_to'])) {
+            $query->whereDate('crm_deals.created_at', '<=', $filters['date_to']);
         }
 
         $search = trim((string) ($filters['search'] ?? ''));
@@ -117,12 +125,12 @@ class DealQuery
     }
 
     /**
-     * @param  array{search?: string, status?: string, pipeline_id?: int|null, owner?: string, customer_id?: int|null, sort?: string, direction?: string}  $filters
+     * @param  array{search?: string, status?: string, pipeline_id?: int|null, owner?: string, customer_id?: int|null, date_from?: string|null, date_to?: string|null, sort?: string, direction?: string}  $filters
      */
     public function paginate(int $organizationId, User $actor, array $filters, int $perPage = 15): LengthAwarePaginator
     {
         return $this->filtered($organizationId, $actor, $filters)
-            ->with(['stage', 'owner', 'company', 'primaryContact.customer'])
+            ->with(['pipeline', 'stage', 'owner', 'company', 'primaryContact.customer'])
             ->paginate($perPage);
     }
 

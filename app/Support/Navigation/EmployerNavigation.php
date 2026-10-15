@@ -71,7 +71,13 @@ class EmployerNavigation
                 'label' => 'کاریز',
                 'route' => 'employer.crm.deals.index',
                 'icon' => 'analytics',
-                'matches' => ['employer.crm.deals.*'],
+                'matches' => ['employer.crm.deals.index', 'employer.crm.deals.show'],
+            ],
+            [
+                'label' => 'فهرست فرصت‌ها',
+                'route' => 'employer.crm.deals.list',
+                'icon' => 'activity',
+                'matches' => ['employer.crm.deals.list'],
             ],
             [
                 'label' => 'یادآوری‌ها',
@@ -80,10 +86,10 @@ class EmployerNavigation
                 'matches' => ['employer.crm.reminders.*'],
             ],
             [
-                'label' => 'مدیریت مراحل',
-                'route' => 'employer.crm.pipelines.index',
+                'label' => 'محصولات و خدمات',
+                'route' => 'employer.crm.products.index',
                 'icon' => 'document',
-                'matches' => ['employer.crm.pipelines.*'],
+                'matches' => ['employer.crm.products.*'],
             ],
             [
                 'label' => 'تنظیمات CRM',

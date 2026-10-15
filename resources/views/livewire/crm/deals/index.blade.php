@@ -22,27 +22,23 @@
                         </svg>
                         حذف کاریز
                     </button>
-                    <button type="button" class="saas-btn-secondary text-sm" wire:click="$set('showCreatePipeline', true)">
+                    <button type="button" class="saas-btn-secondary text-sm" wire:click="openCreatePipelineModal">
                         + کاریز جدید
                     </button>
-                    <a
-                        href="{{ route('employer.crm.pipelines.show', $currentPipeline) }}"
-                        class="saas-btn-secondary text-sm"
-                        wire:navigate
-                    >
+                    <button type="button" class="saas-btn-secondary text-sm" wire:click="openStagesModal">
                         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h10M4 18h7" />
                         </svg>
                         مدیریت مراحل
-                    </a>
+                    </button>
                 @elseif ($canManagePipelines)
-                    <button type="button" class="saas-btn-secondary text-sm" wire:click="$set('showCreatePipeline', true)">
+                    <button type="button" class="saas-btn-secondary text-sm" wire:click="openCreatePipelineModal">
                         + کاریز جدید
                     </button>
                 @endif
 
                 @if ($canCreate && $pipelines->isNotEmpty())
-                    <button type="button" class="saas-btn-primary text-sm" wire:click="$toggle('showCreate')">
+                    <button type="button" class="saas-btn-primary text-sm" wire:click="openCreateDealModal">
                         + فرصت جدید
                     </button>
                 @endif
@@ -56,7 +52,7 @@
             description="مدیر سازمان می‌تواند اولین کاریز فروش را با مراحل نمونه بسازد."
         >
             @if ($canManagePipelines)
-                <button type="button" class="saas-btn-primary mt-6 text-sm" wire:click="$set('showCreatePipeline', true)">ساخت کاریز</button>
+                <button type="button" class="saas-btn-primary mt-6 text-sm" wire:click="openCreatePipelineModal">ساخت کاریز</button>
             @endif
         </x-saas.empty-state>
     @else
@@ -175,96 +171,6 @@
                 <p class="mt-0.5 text-base font-semibold text-rose-700 dark:text-rose-400">{{ PersianNumber::format($summary['lost_count']) }}</p>
             </div>
         </div>
-
-        @if ($showCreatePipeline && $canManagePipelines)
-            <form wire:submit="createPipeline" class="saas-card space-y-4 p-4">
-                <h2 class="text-lg font-semibold">کاریز جدید</h2>
-                <div class="grid gap-3 md:grid-cols-2">
-                    <label class="block text-sm">
-                        <span class="mb-1 block text-zinc-600">نام کاریز</span>
-                        <input wire:model="pipelineName" class="saas-input" required placeholder="مثلاً فروش">
-                        @error('name') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
-                    </label>
-                    <label class="block text-sm">
-                        <span class="mb-1 block text-zinc-600">توضیح (اختیاری)</span>
-                        <input wire:model="pipelineDescription" class="saas-input" placeholder="مثلاً فرصت‌های سازمانی">
-                    </label>
-                </div>
-                <div class="flex gap-2">
-                    <button type="submit" class="saas-btn-primary text-sm" wire:loading.attr="disabled">ساخت کاریز</button>
-                    <button type="button" class="saas-btn-secondary text-sm" wire:click="$set('showCreatePipeline', false)">انصراف</button>
-                </div>
-            </form>
-        @endif
-
-        @if ($showCreate)
-            <form wire:submit="createDeal" class="saas-card space-y-4 p-4">
-                <h2 class="text-lg font-semibold">فرصت جدید</h2>
-                <div class="grid gap-3 md:grid-cols-2">
-                    <label class="block text-sm">
-                        <span class="mb-1 block text-zinc-600">عنوان</span>
-                        <input wire:model="title" class="saas-input" required>
-                        @error('title') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
-                    </label>
-                    <label class="block text-sm">
-                        <span class="mb-1 block text-zinc-600">مبلغ (ریال)</span>
-                        <input wire:model="amountRials" inputmode="numeric" class="saas-input" placeholder="مثلاً ۱۰۰۰۰۰۰">
-                        <span class="mt-1 block text-xs text-zinc-500">هر ۱۰ ریال برابر ۱ تومان است. مبلغ اعشاری پذیرفته نمی‌شود.</span>
-                        @error('amount_rials') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
-                    </label>
-                    <label class="block text-sm">
-                        <span class="mb-1 block text-zinc-600">مرحله</span>
-                        <select wire:model="stageId" class="saas-input">
-                            @foreach ($stages as $stage)
-                                @if ($stage->is_active)
-                                    <option value="{{ $stage->id }}">{{ $stage->name }}</option>
-                                @endif
-                            @endforeach
-                        </select>
-                        @error('stage') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
-                    </label>
-                    <label class="block text-sm">
-                        <span class="mb-1 block text-zinc-600">تاریخ احتمالی بسته‌شدن</span>
-                        <input wire:model="expectedCloseOn" type="date" class="saas-input">
-                        @error('expected_close_on') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
-                    </label>
-                    @if ($isManager)
-                        <label class="block text-sm">
-                            <span class="mb-1 block text-zinc-600">کارشناس مسئول</span>
-                            <select wire:model="ownerId" class="saas-input">
-                                <option value="">بدون مسئول</option>
-                                @foreach ($owners as $member)
-                                    <option value="{{ $member->id }}">{{ $member->full_name }}</option>
-                                @endforeach
-                            </select>
-                            @error('owner') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
-                        </label>
-                    @endif
-                    <label class="block text-sm">
-                        <span class="mb-1 block text-zinc-600">شخص مرتبط</span>
-                        <input wire:model.live.debounce.300ms="customerQuery" class="saas-input" placeholder="نام یا شماره">
-                        @if ($customerChoices->isNotEmpty())
-                            <ul class="mt-2 space-y-1">
-                                @foreach ($customerChoices as $customer)
-                                    <li>
-                                        <button type="button" class="text-sm text-indigo-700" wire:click="chooseCustomer({{ $customer->id }})">{{ $customer->displayName() }}</button>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        @endif
-                        @error('customer') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
-                    </label>
-                    <label class="block text-sm md:col-span-2">
-                        <span class="mb-1 block text-zinc-600">توضیحات</span>
-                        <textarea wire:model="description" rows="3" class="saas-input"></textarea>
-                    </label>
-                </div>
-                <div class="flex gap-2">
-                    <button type="submit" class="saas-btn-primary text-sm" wire:loading.attr="disabled">ثبت فرصت</button>
-                    <button type="button" class="saas-btn-secondary text-sm" wire:click="$set('showCreate', false)">انصراف</button>
-                </div>
-            </form>
-        @endif
 
         @if ($suggestions->isNotEmpty())
             <section class="saas-card space-y-3 border-indigo-100 bg-indigo-50/40 p-4 dark:border-indigo-900/40 dark:bg-indigo-950/20" aria-labelledby="deal-suggestions-heading">
@@ -387,5 +293,295 @@
                 <div class="p-4">{{ $deals?->links() }}</div>
             </div>
         @endif
+    @endif
+
+    @if ($showCreate && $canCreate && $pipelines->isNotEmpty())
+        <div
+            class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/40 p-4 sm:items-center"
+            wire:click.self="closeCreateDealModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="kariz-deal-modal-title"
+        >
+            <form
+                wire:submit="createDeal"
+                class="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-950"
+            >
+                <div class="flex items-start justify-between gap-3 border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
+                    <div class="min-w-0">
+                        <h2 id="kariz-deal-modal-title" class="text-lg font-bold text-zinc-900 dark:text-white">فرصت جدید</h2>
+                        <p class="mt-1 text-sm leading-6 text-zinc-500">
+                            فرصت را در کاریز فعلی ثبت کنید. مرحله را می‌توانید همین‌جا انتخاب کنید.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                        wire:click="closeCreateDealModal"
+                        aria-label="بستن"
+                    >
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6 6 18" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-4 overflow-y-auto px-5 py-4">
+                    <div class="grid gap-3 md:grid-cols-2">
+                        <label class="block text-sm">
+                            <span class="mb-1.5 block font-medium text-zinc-700 dark:text-zinc-300">عنوان</span>
+                            <input wire:model="title" class="saas-input" required>
+                            @error('title') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                        </label>
+                        <label class="block text-sm">
+                            <span class="mb-1.5 block font-medium text-zinc-700 dark:text-zinc-300">مبلغ (ریال)</span>
+                            <input wire:model="amountRials" inputmode="numeric" class="saas-input" placeholder="مثلاً ۱۰۰۰۰۰۰">
+                            <span class="mt-1 block text-xs text-zinc-500">هر ۱۰ ریال برابر ۱ تومان است.</span>
+                            @error('amount_rials') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                        </label>
+                        <label class="block text-sm">
+                            <span class="mb-1.5 block font-medium text-zinc-700 dark:text-zinc-300">مرحله</span>
+                            <select wire:model="stageId" class="saas-input">
+                                @foreach ($stages as $stage)
+                                    @if ($stage->is_active)
+                                        <option value="{{ $stage->id }}">{{ $stage->name }}</option>
+                                    @endif
+                                @endforeach
+                            </select>
+                            @error('stage') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                        </label>
+                        <label class="block text-sm">
+                            <span class="mb-1.5 block font-medium text-zinc-700 dark:text-zinc-300">تاریخ احتمالی بسته‌شدن</span>
+                            <input wire:model="expectedCloseOn" type="date" class="saas-input">
+                            @error('expected_close_on') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                        </label>
+                        @if ($isManager)
+                            <label class="block text-sm">
+                                <span class="mb-1.5 block font-medium text-zinc-700 dark:text-zinc-300">کارشناس مسئول</span>
+                                <select wire:model="ownerId" class="saas-input">
+                                    <option value="">بدون مسئول</option>
+                                    @foreach ($owners as $member)
+                                        <option value="{{ $member->id }}">{{ $member->full_name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('owner') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                            </label>
+                        @endif
+                        <label class="block text-sm">
+                            <span class="mb-1.5 block font-medium text-zinc-700 dark:text-zinc-300">شخص مرتبط</span>
+                            <input wire:model.live.debounce.300ms="customerQuery" class="saas-input" placeholder="نام یا شماره">
+                            @if ($customerChoices->isNotEmpty())
+                                <ul class="mt-2 space-y-1">
+                                    @foreach ($customerChoices as $customer)
+                                        <li>
+                                            <button type="button" class="text-sm text-indigo-700" wire:click="chooseCustomer({{ $customer->id }})">{{ $customer->displayName() }}</button>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                            @error('customer') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                        </label>
+                        <label class="block text-sm md:col-span-2">
+                            <span class="mb-1.5 block font-medium text-zinc-700 dark:text-zinc-300">توضیحات</span>
+                            <textarea wire:model="description" rows="3" class="saas-input"></textarea>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-3 border-t border-zinc-100 px-5 py-4 dark:border-zinc-800">
+                    <button type="button" class="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-300" wire:click="closeCreateDealModal">
+                        انصراف
+                    </button>
+                    <button type="submit" class="saas-btn-primary text-sm" wire:loading.attr="disabled">
+                        ثبت فرصت
+                    </button>
+                </div>
+            </form>
+        </div>
+    @endif
+
+    @if ($showCreatePipeline && $canManagePipelines)
+        <div
+            class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/40 p-4 sm:items-center"
+            wire:click.self="closeCreatePipelineModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="kariz-create-modal-title"
+        >
+            <div class="w-full max-w-lg overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-950">
+                <div class="flex items-start justify-between gap-3 border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
+                    <div class="min-w-0">
+                        <h2 id="kariz-create-modal-title" class="text-lg font-bold text-zinc-900 dark:text-white">کاریز جدید</h2>
+                        <p class="mt-1 text-sm leading-6 text-zinc-500">
+                            کاریز فروش یا پشتیبانی بسازید؛ مراحل پیش‌فرض ساخته می‌شوند.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                        wire:click="closeCreatePipelineModal"
+                        aria-label="بستن"
+                    >
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6 6 18" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-5 px-5 py-4">
+                    <div>
+                        <p class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">نوع</p>
+                        <div class="grid grid-cols-2 gap-3" role="radiogroup" aria-label="نوع کاریز">
+                            <button
+                                type="button"
+                                role="radio"
+                                aria-checked="{{ $pipelineKind === 'sales' ? 'true' : 'false' }}"
+                                wire:click="selectPipelineKind('sales')"
+                                @class([
+                                    'rounded-xl border px-4 py-3 text-start transition',
+                                    'border-zinc-900 bg-zinc-50 dark:border-white dark:bg-zinc-900' => $pipelineKind === 'sales',
+                                    'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-500' => $pipelineKind !== 'sales',
+                                ])
+                            >
+                                <span class="block text-sm font-semibold text-zinc-900 dark:text-white">فروش</span>
+                                <span class="mt-1 block text-xs text-zinc-500">سرنخ تا موفق/ناموفق</span>
+                            </button>
+                            <button
+                                type="button"
+                                role="radio"
+                                aria-checked="{{ $pipelineKind === 'support' ? 'true' : 'false' }}"
+                                wire:click="selectPipelineKind('support')"
+                                @class([
+                                    'rounded-xl border px-4 py-3 text-start transition',
+                                    'border-zinc-900 bg-zinc-50 dark:border-white dark:bg-zinc-900' => $pipelineKind === 'support',
+                                    'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-500' => $pipelineKind !== 'support',
+                                ])
+                            >
+                                <span class="block text-sm font-semibold text-zinc-900 dark:text-white">پشتیبانی</span>
+                                <span class="mt-1 block text-xs text-zinc-500">تیکت تا حل‌شده/بسته</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <label class="block text-sm">
+                        <span class="mb-1.5 block font-medium text-zinc-700 dark:text-zinc-300">نام کاریز</span>
+                        <input
+                            wire:model="pipelineName"
+                            type="text"
+                            class="saas-input"
+                            maxlength="120"
+                            required
+                        >
+                        @error('name') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between gap-3 border-t border-zinc-100 px-5 py-4 dark:border-zinc-800">
+                    <button type="button" class="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-300" wire:click="closeCreatePipelineModal">
+                        انصراف
+                    </button>
+                    <button type="button" class="saas-btn-primary text-sm" wire:click="createPipeline" wire:loading.attr="disabled">
+                        ایجاد کاریز
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if ($showStagesModal && $canManagePipelines && $currentPipeline)
+        <div
+            class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/40 p-4 sm:items-center"
+            wire:click.self="closeStagesModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="kariz-stages-modal-title"
+        >
+            <div class="w-full max-w-xl overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-950">
+                <div class="flex items-start justify-between gap-3 border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
+                    <div class="min-w-0">
+                        <h2 id="kariz-stages-modal-title" class="text-lg font-bold text-zinc-900 dark:text-white">مدیریت مراحل کاریز</h2>
+                        <p class="mt-1 text-sm leading-6 text-zinc-500">
+                            مراحل باز کاریز را اضافه یا حذف کنید. موفق/ناموفق ستون کاریز نیستند و از منوی کارت ثبت می‌شوند.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                        wire:click="closeStagesModal"
+                        aria-label="بستن"
+                    >
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6 6 18" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-5 px-5 py-4">
+                    <label class="block text-sm">
+                        <span class="mb-1.5 block font-medium text-zinc-700 dark:text-zinc-300">نام مرحله جدید</span>
+                        <input
+                            wire:model="newStageName"
+                            type="text"
+                            class="saas-input"
+                            placeholder="مثلاً مذاکره"
+                            maxlength="80"
+                            wire:keydown.enter.prevent="addStage"
+                        >
+                        @error('name') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                    </label>
+
+                    <div>
+                        <h3 class="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">مراحل فعلی</h3>
+                        <div class="space-y-2">
+                            @forelse ($stages as $stage)
+                                <div
+                                    class="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-900"
+                                    wire:key="manage-stage-{{ $stage->id }}"
+                                >
+                                    <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {{ $stage->color }}"></span>
+                                    <input
+                                        type="text"
+                                        class="saas-input min-w-0 flex-1 border-zinc-200 py-1.5 text-sm"
+                                        wire:model="stageNames.{{ $stage->id }}"
+                                        wire:blur="saveStageName({{ $stage->id }})"
+                                        maxlength="80"
+                                        aria-label="نام مرحله {{ $stage->name }}"
+                                    >
+                                    <span class="min-w-6 text-center text-sm tabular-nums text-zinc-500">
+                                        {{ PersianNumber::format($stageOpenCounts[$stage->id] ?? 0) }}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        class="rounded-lg p-1.5 text-zinc-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
+                                        wire:click="deleteManagedStage({{ $stage->id }})"
+                                        wire:confirm="این مرحله حذف شود؟ اگر فرصتی داشته باشد به نزدیک‌ترین مرحله دیگر منتقل می‌شود."
+                                        aria-label="حذف مرحله {{ $stage->name }}"
+                                    >
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12m-9 0V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12Z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            @empty
+                                <p class="rounded-xl border border-dashed border-zinc-200 px-3 py-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
+                                    هنوز مرحله‌ای برای این کاریز نیست.
+                                </p>
+                            @endforelse
+                        </div>
+                        @error('stage') <p class="mt-2 text-xs text-rose-600">{{ $message }}</p> @enderror
+                        @error('transfer') <p class="mt-2 text-xs text-rose-600">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-3 border-t border-zinc-100 px-5 py-4 dark:border-zinc-800">
+                    <button type="button" class="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-300" wire:click="closeStagesModal">
+                        انصراف
+                    </button>
+                    <button type="button" class="saas-btn-primary text-sm" wire:click="addStage" wire:loading.attr="disabled">
+                        افزودن مرحله
+                    </button>
+                </div>
+            </div>
+        </div>
     @endif
 </div>

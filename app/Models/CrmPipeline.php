@@ -82,9 +82,9 @@ class CrmPipeline extends Model
         return $description;
     }
 
-    public function seedDefaultStages(): void
+    public function seedDefaultStages(?string $kind = null): void
     {
-        foreach (PipelineStagePalette::DEFAULT_STAGES as $index => $stage) {
+        foreach (PipelineStagePalette::stagesForKind($kind) as $index => $stage) {
             $this->stages()->create([
                 'organization_id' => $this->organization_id,
                 'name' => $stage['name'],

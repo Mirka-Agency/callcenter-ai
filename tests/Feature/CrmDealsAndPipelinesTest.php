@@ -20,8 +20,8 @@ use App\Domain\Customer\CustomerLifecycleStage;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Enums\UserRole;
 use App\Livewire\Crm\Deals\Index as DealsIndex;
+use App\Livewire\Crm\Deals\OpportunityList as DealsOpportunityList;
 use App\Livewire\Crm\Deals\Show as DealsShow;
-use App\Livewire\Crm\Pipelines\Index as PipelinesIndex;
 use App\Models\Call;
 use App\Models\CallRecording;
 use App\Models\ConversationAnalysis;
@@ -64,6 +64,24 @@ class CrmDealsAndPipelinesTest extends TestCase
         $updated = app(ReorderPipelineStages::class)->handle($pipeline, $manager, $reordered);
 
         $this->assertSame($reordered, $updated->stages->pluck('id')->map(fn ($id) => (int) $id)->all());
+    }
+
+    public function test_support_pipeline_gets_support_default_stages(): void
+    {
+        [$organization, $manager] = $this->organization();
+        $pipeline = app(CreatePipeline::class)->handle(
+            $organization->id,
+            $manager,
+            'پشتیبانی',
+            null,
+            true,
+            'support',
+        );
+
+        $this->assertSame(
+            ['تیکت جدید', 'در حال پیگیری', 'در انتظار مشتری', 'آماده بستن'],
+            $pipeline->stages->pluck('name')->all(),
+        );
     }
 
     public function test_default_pipeline_is_created_once(): void
@@ -288,6 +306,17 @@ class CrmDealsAndPipelinesTest extends TestCase
             ->assertSee('dir="rtl"', false)
             ->assertSee('کاریز');
 
+        Livewire::test(DealsOpportunityList::class)
+            ->assertSee('فهرست فرصت‌ها')
+            ->assertSee('معامله من')
+            ->assertDontSee('معامله همکار')
+            ->assertSee('رفتن به کاریز');
+
+        $this->get(route('employee.crm.deals.list'))
+            ->assertOk()
+            ->assertSee('dir="rtl"', false)
+            ->assertSee('فهرست فرصت‌ها');
+
         $this->get('/workspace/crm/pipelines')->assertNotFound();
 
         $this->actingAs($manager);
@@ -297,19 +326,29 @@ class CrmDealsAndPipelinesTest extends TestCase
             ->assertSee('dir="rtl"', false)
             ->assertSee('معامله همکار');
 
+        Livewire::test(DealsOpportunityList::class)
+            ->assertSee('معامله من')
+            ->assertSee('معامله همکار')
+            ->set('search', 'همکار')
+            ->assertSee('معامله همکار')
+            ->assertDontSee('معامله من')
+            ->call('archiveDeal', $other->id)
+            ->assertDontSee('معامله همکار');
+
         $this->get(route('employer.crm.overview'))->assertOk()->assertSee('نمای کلی فروش');
         $this->get(route('employer.crm.settings'))->assertOk()->assertSee('ساخت خودکار خاموش');
         $this->get(route('employer.crm.index'))->assertNotFound();
-        $this->get(route('employer.crm.pipelines.index'))->assertOk()->assertSee('پایپ‌لاین پیش‌فرض');
-
-        Livewire::test(PipelinesIndex::class)->assertSee('فروش');
+        $this->get(route('employer.crm.products.index'))->assertOk()->assertSee('محصولات و خدمات');
+        $this->get('/app/crm/pipelines')->assertNotFound();
 
         $routes = array_column(collect(EmployeeNavigation::items())->firstWhere('label', 'CRM')['children'], 'route');
         $this->assertSame([
             'employee.crm.overview',
             'employee.customers.index',
             'employee.crm.deals.index',
-            'employee.crm.tasks.index',
+            'employee.crm.deals.list',
+            'employee.crm.reminders.index',
+            'employee.crm.products.index',
         ], $routes);
         $this->assertFalse(collect(EmployeeNavigation::items())->contains(fn (array $item) => ($item['route'] ?? null) === 'employee.customers.index'));
     }

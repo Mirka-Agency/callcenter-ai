@@ -20,10 +20,10 @@
     </section>
 
     <section class="saas-card p-4">
-        <div class="flex items-center justify-between gap-3">
-            <h2 class="text-lg font-semibold">پایپ‌لاین‌ها</h2>
-            <a href="{{ route('employer.crm.pipelines.index') }}" class="saas-btn-secondary text-sm" wire:navigate>مدیریت پایپ‌لاین</a>
-        </div>
+        <h2 class="text-lg font-semibold">کاریزها</h2>
+        <p class="mt-1 text-sm leading-6 text-zinc-600">
+            مدیریت مراحل هر کاریز از داخل صفحه کاریز انجام می‌شود.
+        </p>
         <ul class="mt-4 space-y-2 text-sm">
             @forelse ($pipelines as $pipeline)
                 <li class="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800">
@@ -31,7 +31,7 @@
                     <span class="text-zinc-500">{{ $pipeline->is_default ? 'پیش‌فرض' : ($pipeline->is_active ? 'فعال' : 'غیرفعال') }}</span>
                 </li>
             @empty
-                <li class="text-zinc-500">هنوز پایپ‌لاینی ثبت نشده است.</li>
+                <li class="text-zinc-500">هنوز کاریزی ثبت نشده است. با ورود به صفحه کاریز، کاریز پیش‌فرض ساخته می‌شود.</li>
             @endforelse
         </ul>
     </section>

@@ -52,13 +52,25 @@ class EmployeeNavigation
                 'label' => 'کاریز',
                 'route' => 'employee.crm.deals.index',
                 'icon' => 'analytics',
-                'matches' => ['employee.crm.deals.*'],
+                'matches' => ['employee.crm.deals.index', 'employee.crm.deals.show'],
+            ],
+            [
+                'label' => 'فهرست فرصت‌ها',
+                'route' => 'employee.crm.deals.list',
+                'icon' => 'activity',
+                'matches' => ['employee.crm.deals.list'],
             ],
             [
                 'label' => 'یادآوری‌ها',
                 'route' => 'employee.crm.reminders.index',
                 'icon' => 'calendar',
                 'matches' => ['employee.crm.reminders.*'],
+            ],
+            [
+                'label' => 'محصولات و خدمات',
+                'route' => 'employee.crm.products.index',
+                'icon' => 'document',
+                'matches' => ['employee.crm.products.*'],
             ],
         ];
     }

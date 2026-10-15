@@ -6,14 +6,19 @@ use App\Application\Crm\Deals\Actions\AcceptDealSuggestion;
 use App\Application\Crm\Deals\Actions\ChangeDealStage;
 use App\Application\Crm\Deals\Actions\CreateDeal;
 use App\Application\Crm\Deals\Actions\CreatePipeline;
+use App\Application\Crm\Deals\Actions\CreatePipelineStage;
 use App\Application\Crm\Deals\Actions\DeletePipeline;
+use App\Application\Crm\Deals\Actions\DeletePipelineStage;
 use App\Application\Crm\Deals\Actions\DismissDealSuggestion;
+use App\Application\Crm\Deals\Actions\UpdatePipelineStage;
 use App\Application\Crm\Deals\DealAuthorization;
 use App\Application\Crm\Deals\DealOverview;
 use App\Application\Crm\Deals\DealQuery;
 use App\Domain\Crm\Deals\DealSource;
+use App\Domain\Crm\Deals\PipelineStagePalette;
 use App\Enums\UserRole;
 use App\Livewire\Crm\Concerns\ResolvesCrmContext;
+use App\Models\CrmDeal;
 use App\Models\CrmDealAiSuggestion;
 use App\Models\CrmPipeline;
 use App\Models\CrmPipelineStage;
@@ -58,9 +63,18 @@ class Index extends Component
 
     public bool $showCreatePipeline = false;
 
+    public bool $showStagesModal = false;
+
+    public string $pipelineKind = 'sales';
+
     public string $pipelineName = '';
 
     public string $pipelineDescription = '';
+
+    public string $newStageName = '';
+
+    /** @var array<string, string> */
+    public array $stageNames = [];
 
     public string $title = '';
 
@@ -154,25 +168,43 @@ class Index extends Component
         $this->resetPage();
     }
 
-    public function startCreateInStage(int $stageId): void
+    public function openCreateDealModal(?int $stageId = null): void
     {
         if (! ctype_digit($this->pipelineId)) {
             return;
         }
 
-        $stage = CrmPipelineStage::query()
-            ->where('organization_id', $this->crmOrganizationId())
-            ->where('crm_pipeline_id', (int) $this->pipelineId)
-            ->whereKey($stageId)
-            ->where('is_active', true)
-            ->first();
+        if ($stageId !== null) {
+            $stage = CrmPipelineStage::query()
+                ->where('organization_id', $this->crmOrganizationId())
+                ->where('crm_pipeline_id', (int) $this->pipelineId)
+                ->whereKey($stageId)
+                ->where('is_active', true)
+                ->first();
 
-        if (! $stage instanceof CrmPipelineStage) {
-            return;
+            if (! $stage instanceof CrmPipelineStage) {
+                return;
+            }
+
+            $this->stageId = (string) $stage->id;
+        } elseif ($this->stageId === '') {
+            $this->syncDefaultStage();
         }
 
-        $this->stageId = (string) $stage->id;
+        $this->resetErrorBag();
         $this->showCreate = true;
+    }
+
+    public function closeCreateDealModal(): void
+    {
+        $this->showCreate = false;
+        $this->reset(['title', 'amountRials', 'customerQuery', 'customerId', 'companyId', 'ownerId', 'expectedCloseOn', 'description']);
+        $this->resetErrorBag();
+    }
+
+    public function startCreateInStage(int $stageId): void
+    {
+        $this->openCreateDealModal($stageId);
     }
 
     public function chooseCustomer(int $customerId): void
@@ -205,9 +237,37 @@ class Index extends Component
             'description' => $this->description,
         ], DealSource::Manual);
 
-        $this->reset(['showCreate', 'title', 'amountRials', 'customerQuery', 'customerId', 'companyId', 'ownerId', 'expectedCloseOn', 'description']);
+        $this->closeCreateDealModal();
         $this->toast('فرصت ثبت شد.');
         $this->redirect(route($this->crmPortal().'.crm.deals.show', $deal), navigate: true);
+    }
+
+    public function openCreatePipelineModal(): void
+    {
+        $this->pipelineKind = PipelineStagePalette::KIND_SALES;
+        $this->pipelineName = PipelineStagePalette::defaultName($this->pipelineKind);
+        $this->pipelineDescription = '';
+        $this->resetErrorBag();
+        $this->showCreatePipeline = true;
+    }
+
+    public function closeCreatePipelineModal(): void
+    {
+        $this->showCreatePipeline = false;
+        $this->reset(['pipelineName', 'pipelineDescription']);
+        $this->pipelineKind = PipelineStagePalette::KIND_SALES;
+        $this->resetErrorBag();
+    }
+
+    public function selectPipelineKind(string $kind): void
+    {
+        $kind = PipelineStagePalette::normalizeKind($kind);
+        $previousDefault = PipelineStagePalette::defaultName($this->pipelineKind);
+        $this->pipelineKind = $kind;
+
+        if (trim($this->pipelineName) === '' || trim($this->pipelineName) === $previousDefault) {
+            $this->pipelineName = PipelineStagePalette::defaultName($kind);
+        }
     }
 
     public function createPipeline(CreatePipeline $action): void
@@ -217,9 +277,11 @@ class Index extends Component
             $this->crmUser(),
             $this->pipelineName,
             $this->pipelineDescription !== '' ? $this->pipelineDescription : null,
+            true,
+            $this->pipelineKind,
         );
 
-        $this->reset(['showCreatePipeline', 'pipelineName', 'pipelineDescription']);
+        $this->closeCreatePipelineModal();
         $this->pipelineId = (string) $pipeline->id;
         $this->syncDefaultStage();
         $this->toast('کاریز ساخته شد.');
@@ -231,14 +293,7 @@ class Index extends Component
             return;
         }
 
-        $pipeline = CrmPipeline::query()
-            ->where('organization_id', $this->crmOrganizationId())
-            ->find((int) $this->pipelineId);
-
-        if (! $pipeline instanceof CrmPipeline) {
-            abort(404);
-        }
-
+        $pipeline = $this->pipeline();
         $action->handle($pipeline, $this->crmUser());
 
         $next = CrmPipeline::query()
@@ -248,8 +303,85 @@ class Index extends Component
             ->first();
 
         $this->pipelineId = $next ? (string) $next->id : '';
+        $this->showStagesModal = false;
         $this->syncDefaultStage();
         $this->toast('کاریز حذف شد.');
+    }
+
+    public function openStagesModal(): void
+    {
+        if (! ctype_digit($this->pipelineId)) {
+            return;
+        }
+
+        $this->pipeline();
+        $this->syncStageNames();
+        $this->newStageName = '';
+        $this->resetErrorBag();
+        $this->showStagesModal = true;
+    }
+
+    public function closeStagesModal(): void
+    {
+        $this->showStagesModal = false;
+        $this->reset(['newStageName']);
+        $this->resetErrorBag();
+    }
+
+    public function addStage(CreatePipelineStage $action): void
+    {
+        $pipeline = $this->pipeline()->loadCount('stages');
+        $palette = PipelineStagePalette::ALLOWED;
+        $color = $palette[((int) $pipeline->stages_count) % count($palette)];
+
+        $action->handle($pipeline, $this->crmUser(), $this->newStageName, $color);
+        $this->newStageName = '';
+        $this->syncStageNames();
+        $this->toast('مرحله اضافه شد.');
+    }
+
+    public function saveStageName(int $stageId, UpdatePipelineStage $action): void
+    {
+        $stage = $this->stage($stageId);
+        $name = trim((string) ($this->stageNames[(string) $stageId] ?? ''));
+
+        $action->handle(
+            $stage,
+            $this->crmUser(),
+            $name,
+            $stage->color,
+            (bool) $stage->is_active,
+            $stage->stale_after_days,
+        );
+        $this->stageNames[(string) $stageId] = $stage->fresh()->name;
+        $this->toast('نام مرحله ذخیره شد.');
+    }
+
+    public function deleteManagedStage(int $stageId, DeletePipelineStage $action): void
+    {
+        $stage = $this->stage($stageId);
+        $transferId = null;
+
+        $hasDeals = CrmDeal::withTrashed()
+            ->where('crm_pipeline_stage_id', $stage->id)
+            ->exists();
+
+        if ($hasDeals) {
+            $transferId = CrmPipelineStage::query()
+                ->where('crm_pipeline_id', $stage->crm_pipeline_id)
+                ->whereKeyNot($stage->id)
+                ->orderBy('position')
+                ->value('id');
+        }
+
+        $action->handle($stage, $this->crmUser(), $transferId ? (int) $transferId : null);
+
+        if ((string) $this->stageId === (string) $stageId) {
+            $this->syncDefaultStage();
+        }
+
+        $this->syncStageNames();
+        $this->toast('مرحله حذف شد.');
     }
 
     public function moveDeal(int $dealId, int $stageId, ChangeDealStage $action, DealQuery $query): void
@@ -306,6 +438,10 @@ class Index extends Component
         $pipelineId = ctype_digit($this->pipelineId) ? (int) $this->pipelineId : null;
         $currentPipeline = $pipelines->firstWhere('id', $pipelineId);
         $showKanban = $this->status === 'open' && $pipelineId !== null;
+        $summary = $overview->summarize($organizationId, $actor, $pipelineId);
+        $stageOpenCounts = collect($summary['stages'] ?? [])
+            ->mapWithKeys(fn (array $row) => [(int) $row['id'] => (int) $row['count']])
+            ->all();
 
         return view('livewire.crm.deals.index', [
             'portal' => $this->crmPortal(),
@@ -313,7 +449,8 @@ class Index extends Component
             'pipelines' => $pipelines,
             'currentPipeline' => $currentPipeline,
             'stages' => $stages,
-            'summary' => $overview->summarize($organizationId, $actor, $pipelineId),
+            'summary' => $summary,
+            'stageOpenCounts' => $stageOpenCounts,
             'pipelineOpenCounts' => $query->openCountsByPipeline($organizationId, $actor),
             'deals' => $showKanban
                 ? null
@@ -349,6 +486,50 @@ class Index extends Component
             ->orderBy('position')
             ->first();
         $this->stageId = $stage ? (string) $stage->id : '';
+    }
+
+    private function syncStageNames(): void
+    {
+        if (! ctype_digit($this->pipelineId)) {
+            $this->stageNames = [];
+
+            return;
+        }
+
+        $this->stageNames = CrmPipelineStage::query()
+            ->where('organization_id', $this->crmOrganizationId())
+            ->where('crm_pipeline_id', (int) $this->pipelineId)
+            ->orderBy('position')
+            ->get(['id', 'name'])
+            ->mapWithKeys(fn (CrmPipelineStage $stage) => [(string) $stage->id => (string) $stage->name])
+            ->all();
+    }
+
+    private function pipeline(): CrmPipeline
+    {
+        $pipeline = CrmPipeline::query()
+            ->where('organization_id', $this->crmOrganizationId())
+            ->find((int) $this->pipelineId);
+
+        if (! $pipeline instanceof CrmPipeline) {
+            abort(404);
+        }
+
+        return $pipeline;
+    }
+
+    private function stage(int $stageId): CrmPipelineStage
+    {
+        $stage = CrmPipelineStage::query()
+            ->where('organization_id', $this->crmOrganizationId())
+            ->where('crm_pipeline_id', (int) $this->pipelineId)
+            ->find($stageId);
+
+        if (! $stage instanceof CrmPipelineStage) {
+            abort(404);
+        }
+
+        return $stage;
     }
 
     private function suggestion(int $suggestionId): CrmDealAiSuggestion
