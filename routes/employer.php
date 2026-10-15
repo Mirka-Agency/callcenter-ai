@@ -8,6 +8,7 @@ use App\Livewire\Crm\Overview as CrmOverview;
 use App\Livewire\Crm\Pipelines\Index as CrmPipelinesIndex;
 use App\Livewire\Crm\Pipelines\Show as CrmPipelinesShow;
 use App\Livewire\Crm\Settings as CrmSettings;
+use App\Livewire\Crm\Reminders\Index as CrmRemindersIndex;
 use App\Livewire\Crm\Tasks\Index as CrmTasksIndex;
 use App\Livewire\Crm\Tasks\Show as CrmTasksShow;
 use App\Livewire\Employer\Crm\Connections\Create;
@@ -100,6 +101,7 @@ Route::middleware(['auth', 'employer'])->group(function () {
             Route::get('/', CrmTasksIndex::class)->name('index');
             Route::get('/{task}', CrmTasksShow::class)->name('show')->whereNumber('task');
         });
+        Route::get('/crm/reminders', CrmRemindersIndex::class)->name('crm.reminders.index');
     });
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', CustomersIndex::class)->name('index');

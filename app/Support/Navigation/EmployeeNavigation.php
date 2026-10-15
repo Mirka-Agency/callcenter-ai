@@ -55,10 +55,10 @@ class EmployeeNavigation
                 'matches' => ['employee.crm.deals.*'],
             ],
             [
-                'label' => 'وظایف و پیگیری‌ها',
-                'route' => 'employee.crm.tasks.index',
-                'icon' => 'activity',
-                'matches' => ['employee.crm.tasks.*'],
+                'label' => 'یادآوری‌ها',
+                'route' => 'employee.crm.reminders.index',
+                'icon' => 'calendar',
+                'matches' => ['employee.crm.reminders.*'],
             ],
         ];
     }

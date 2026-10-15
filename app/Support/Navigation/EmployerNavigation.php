@@ -74,10 +74,10 @@ class EmployerNavigation
                 'matches' => ['employer.crm.deals.*'],
             ],
             [
-                'label' => 'وظایف و پیگیری‌ها',
-                'route' => 'employer.crm.tasks.index',
-                'icon' => 'activity',
-                'matches' => ['employer.crm.tasks.*'],
+                'label' => 'یادآوری‌ها',
+                'route' => 'employer.crm.reminders.index',
+                'icon' => 'calendar',
+                'matches' => ['employer.crm.reminders.*'],
             ],
             [
                 'label' => 'مدیریت مراحل',

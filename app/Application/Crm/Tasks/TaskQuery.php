@@ -78,6 +78,14 @@ class TaskQuery
             $query->where('crm_tasks.crm_deal_id', (int) $filters['crm_deal_id']);
         }
 
+        if (($filters['has_deal'] ?? null) === true || ($filters['has_deal'] ?? null) === '1') {
+            $query->whereNotNull('crm_tasks.crm_deal_id');
+        }
+
+        if (! empty($filters['source'])) {
+            $query->where('crm_tasks.source', (string) $filters['source']);
+        }
+
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') {
             $term = '%'.addcslashes($search, '%_\\').'%';
