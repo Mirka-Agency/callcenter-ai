@@ -39,13 +39,17 @@ class UnifiedAuthLoginTest extends TestCase
             ->assertSee('درخواست مشاوره');
     }
 
-    public function test_authenticated_user_is_redirected_from_home_to_portal(): void
+    public function test_authenticated_user_sees_landing_with_portal_link(): void
     {
         $employer = User::factory()->create(['role' => UserRole::Employer]);
 
         $this->actingAs($employer)
-            ->get('/')
-            ->assertRedirect(route('employer.dashboard'));
+            ->get('http://avayar.org/')
+            ->assertOk()
+            ->assertSee('آوایار')
+            ->assertSee('پنل کاربری')
+            ->assertSee(route('employer.dashboard'), false)
+            ->assertDontSee('ورود به پنل');
     }
 
     public function test_login_page_is_accessible(): void

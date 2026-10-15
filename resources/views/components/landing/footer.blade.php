@@ -42,12 +42,21 @@
                             </button>
                         </li>
                         <li>
-                            <a href="{{ route('login') }}">
-                                <span class="site-footer__icon" aria-hidden="true">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8.5" r="2.6" /><path d="M7.2 17.4c.7-2.2 2.5-3.3 4.8-3.3s4.1 1.1 4.8 3.3" /></svg>
-                                </span>
-                                <span>ورود به پنل<small>فضای مدیر و کارشناس</small></span>
-                            </a>
+                            @auth
+                                <a href="{{ auth()->user()->portalRoute() }}">
+                                    <span class="site-footer__icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8.5" r="2.6" /><path d="M7.2 17.4c.7-2.2 2.5-3.3 4.8-3.3s4.1 1.1 4.8 3.3" /></svg>
+                                    </span>
+                                    <span>پنل کاربری<small>ورود به فضای کاری شما</small></span>
+                                </a>
+                            @else
+                                <a href="{{ route('login') }}">
+                                    <span class="site-footer__icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8.5" r="2.6" /><path d="M7.2 17.4c.7-2.2 2.5-3.3 4.8-3.3s4.1 1.1 4.8 3.3" /></svg>
+                                    </span>
+                                    <span>ورود به پنل<small>فضای مدیر و کارشناس</small></span>
+                                </a>
+                            @endauth
                         </li>
                         <li>
                             <a href="#faq">
