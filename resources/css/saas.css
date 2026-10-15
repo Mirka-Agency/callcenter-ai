@@ -433,6 +433,295 @@
         @apply border-indigo-200/60 from-indigo-50/80 via-white to-white dark:border-indigo-900/40 dark:from-indigo-950/30 dark:via-zinc-900 dark:to-zinc-900;
     }
 
+    .saas-hero--welcome {
+        --hero-purple: #7C25FD;
+        --hero-indigo: #3B1A78;
+        --hero-text: #2A1B55;
+        --hero-muted: #6B6285;
+        position: relative;
+        padding: 0;
+        border-color: rgba(124, 37, 253, 0.12);
+        background:
+            radial-gradient(ellipse 80% 60% at 15% 100%, rgba(124, 37, 253, 0.08), transparent 55%),
+            radial-gradient(ellipse 50% 40% at 40% 110%, rgba(99, 102, 241, 0.07), transparent 50%),
+            linear-gradient(135deg, #faf8ff 0%, #f5f3ff 45%, #f8f7fc 100%);
+        border-radius: 1.25rem;
+    }
+
+    .dark .saas-hero--welcome {
+        border-color: rgba(124, 37, 253, 0.25);
+        background:
+            radial-gradient(ellipse 80% 60% at 15% 100%, rgba(124, 37, 253, 0.18), transparent 55%),
+            linear-gradient(135deg, #1a1528 0%, #1e1830 50%, #18181b 100%);
+    }
+
+    .saas-hero-welcome {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: stretch;
+        min-height: 0;
+    }
+
+    .saas-hero-welcome__brand {
+        position: relative;
+        order: -1;
+        overflow: hidden;
+        min-height: 10.5rem;
+        border-radius: 1.25rem 1.25rem 0 0;
+    }
+
+    .saas-hero-welcome__brand img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+    }
+
+    .saas-hero-welcome__stats,
+    .saas-hero-welcome__copy {
+        padding: 1.25rem 1.25rem 0;
+    }
+
+    .saas-hero-welcome__copy {
+        padding-bottom: 1.5rem;
+    }
+
+    .saas-hero-welcome__visual {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding-inline: 0.5rem;
+    }
+
+    .saas-hero-welcome__greet {
+        margin: 0;
+        font-size: 0.9375rem;
+        font-weight: 500;
+        color: var(--hero-muted);
+    }
+
+    .dark .saas-hero-welcome__greet {
+        color: #a1a1aa;
+    }
+
+    .saas-hero-welcome__title {
+        margin: 0.35rem 0 0;
+        font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+        font-weight: 800;
+        line-height: 1.35;
+        letter-spacing: -0.02em;
+        color: var(--hero-indigo);
+    }
+
+    .dark .saas-hero-welcome__title {
+        color: #f4f0ff;
+    }
+
+    .saas-hero-welcome__subtitle {
+        margin: 0.65rem 0 0;
+        max-width: 28rem;
+        font-size: 0.875rem;
+        line-height: 1.7;
+        color: var(--hero-muted);
+    }
+
+    .dark .saas-hero-welcome__subtitle {
+        color: #a1a1aa;
+    }
+
+    .saas-hero-welcome__org {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin: 0;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--hero-purple);
+    }
+
+    .saas-hero-welcome__org-icon {
+        color: var(--hero-purple);
+    }
+
+    .saas-hero-welcome__metric-label {
+        margin: 0.55rem 0 0;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        color: var(--hero-text);
+    }
+
+    .dark .saas-hero-welcome__metric-label {
+        color: #e4e4e7;
+    }
+
+    .saas-hero-welcome__metric-value {
+        margin: 0.15rem 0 0;
+        font-size: clamp(2.25rem, 5vw, 3.25rem);
+        font-weight: 800;
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+        color: var(--hero-purple);
+    }
+
+    .saas-hero-welcome__meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 0.75rem;
+        margin-top: 0.75rem;
+        font-size: 0.75rem;
+        color: var(--hero-muted);
+    }
+
+    .dark .saas-hero-welcome__meta {
+        color: #a1a1aa;
+    }
+
+    .saas-hero-welcome__live,
+    .saas-hero-welcome__today {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .saas-hero-welcome__live-dot {
+        width: 0.45rem;
+        height: 0.45rem;
+        border-radius: 9999px;
+        background: #059669;
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.18);
+    }
+
+    .saas-hero-welcome__meta-sep {
+        width: 1px;
+        height: 0.85rem;
+        background: #d4d0e0;
+    }
+
+    .dark .saas-hero-welcome__meta-sep {
+        background: #3f3f46;
+    }
+
+    .saas-hero-welcome__orbit {
+        position: relative;
+        width: 6.5rem;
+        height: 6.5rem;
+    }
+
+    .saas-hero-welcome__ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 9999px;
+        border: 1.5px dashed rgba(124, 37, 253, 0.28);
+        pointer-events: none;
+    }
+
+    .saas-hero-welcome__ring--mid {
+        inset: 0.7rem;
+        border-style: solid;
+        border-color: rgba(124, 37, 253, 0.12);
+    }
+
+    .saas-hero-welcome__orb {
+        position: absolute;
+        inset: 1.55rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9999px;
+        background: linear-gradient(145deg, #8b3dff 0%, #7c25fd 55%, #6366f1 100%);
+        box-shadow: 0 8px 24px rgba(124, 37, 253, 0.28);
+    }
+
+    .saas-hero-welcome__dot {
+        position: absolute;
+        width: 0.4rem;
+        height: 0.4rem;
+        border-radius: 9999px;
+        background: #7c25fd;
+        opacity: 0.55;
+    }
+
+    .saas-hero-welcome__dot--a { top: 0.35rem; inset-inline-start: 55%; }
+    .saas-hero-welcome__dot--b { bottom: 1.1rem; inset-inline-end: 0.15rem; width: 0.3rem; height: 0.3rem; opacity: 0.4; }
+    .saas-hero-welcome__dot--c { top: 42%; inset-inline-start: 0.05rem; width: 0.28rem; height: 0.28rem; opacity: 0.35; }
+
+    @media (min-width: 640px) {
+        .saas-hero-welcome__stats,
+        .saas-hero-welcome__copy {
+            padding-inline: 1.5rem;
+        }
+
+        .saas-hero-welcome__brand {
+            min-height: 12rem;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        /* In RTL: col1 is on the right → brand | stats | phone | greeting (left) */
+        .saas-hero-welcome {
+            grid-template-columns: minmax(13rem, 0.95fr) minmax(11rem, 0.85fr) auto minmax(0, 1.15fr);
+            align-items: center;
+            min-height: 11.5rem;
+            padding-block: 0.25rem;
+        }
+
+        .saas-hero-welcome__brand {
+            order: 0;
+            grid-column: 1;
+            grid-row: 1;
+            align-self: stretch;
+            min-height: 100%;
+            min-width: 13rem;
+            border-radius: 0;
+            /* Outer corners follow hero; large radius on the content-facing (inline-end) edge */
+            border-start-start-radius: 1.25rem;
+            border-end-start-radius: 1.25rem;
+            border-start-end-radius: 3.5rem;
+            border-end-end-radius: 3.5rem;
+        }
+
+        .saas-hero-welcome__brand img {
+            object-position: 70% center;
+        }
+
+        .saas-hero-welcome__stats {
+            grid-column: 2;
+            padding: 1.5rem 1rem;
+        }
+
+        .saas-hero-welcome__visual {
+            display: flex;
+            grid-column: 3;
+        }
+
+        .saas-hero-welcome__copy {
+            grid-column: 4;
+            padding: 1.5rem 1rem 1.5rem 1.75rem;
+        }
+
+        .saas-hero-welcome__orbit {
+            width: 7.25rem;
+            height: 7.25rem;
+        }
+    }
+
+    @media (min-width: 1280px) {
+        .saas-hero-welcome {
+            grid-template-columns: minmax(15rem, 1fr) minmax(12rem, 0.9fr) auto minmax(0, 1.2fr);
+            min-height: 12.5rem;
+        }
+
+        .saas-hero-welcome__brand {
+            min-width: 15rem;
+        }
+
+        .saas-hero-welcome__title {
+            font-size: 1.85rem;
+        }
+    }
+
     .saas-inline-stat {
         @apply min-w-0 rounded-md border border-zinc-200/80 bg-white/80 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900/80;
     }
