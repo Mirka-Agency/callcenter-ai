@@ -29,6 +29,7 @@ use App\Models\CrmDealAiSuggestion;
 use App\Models\CrmDealBarrier;
 use App\Models\CrmDealCloseReason;
 use App\Models\CrmPipelineStage;
+use App\Models\CrmTask;
 use App\Models\Customer;
 use App\Models\OrganizationUser;
 use Livewire\Attributes\Title;
@@ -351,11 +352,20 @@ class Show extends Component
                     ->limit(8)
                     ->get()
                 : collect(),
+            'dealTasks' => CrmTask::query()
+                ->where('organization_id', $deal->organization_id)
+                ->where('crm_deal_id', $deal->id)
+                ->with('assignee')
+                ->orderByRaw('due_at is null')
+                ->orderBy('due_at')
+                ->limit(20)
+                ->get(),
             'canUpdate' => $auth->canUpdate($actor, $deal),
             'canAssignOwner' => $auth->canAssignOwner($actor, $deal),
             'canReopen' => $auth->canReopen($actor, $deal),
             'isManager' => $actor->role === UserRole::Employer,
             'backUrl' => route($this->crmPortal().'.crm.deals.index'),
+            'tasksIndexUrl' => route($this->crmPortal().'.crm.tasks.index', ['deal' => $deal->id]),
         ])->layout($this->crmLayout());
     }
 

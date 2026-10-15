@@ -347,6 +347,25 @@
                 @endforelse
             </ul>
         </section>
+
+        <section class="saas-card p-4">
+            <div class="flex items-center justify-between gap-3">
+                <h2 class="text-lg font-semibold">وظایف این شخص</h2>
+                @if (! empty($tasksIndexRoute))
+                    <a href="{{ $tasksIndexRoute }}" class="text-sm font-medium text-indigo-600" wire:navigate>همه وظایف</a>
+                @endif
+            </div>
+            <ul class="mt-4 space-y-2 text-sm">
+                @forelse ($relatedTasks ?? [] as $task)
+                    <li class="flex items-center justify-between gap-3" wire:key="customer-task-{{ $task->id }}">
+                        <a href="{{ route($taskShowRouteName, $task) }}" class="font-medium text-indigo-700" wire:navigate>{{ $task->title }}</a>
+                        <span class="text-zinc-500">{{ $task->status->label() }}@if($task->isOverdue()) · عقب‌افتاده@endif</span>
+                    </li>
+                @empty
+                    <li class="text-zinc-500">وظیفه‌ای برای این شخص ثبت نشده است.</li>
+                @endforelse
+            </ul>
+        </section>
     @endisset
 
     <div class="saas-card" data-tour="customer-timeline">

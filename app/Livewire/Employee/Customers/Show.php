@@ -56,6 +56,19 @@ class Show extends Component
                 : collect(),
             'dealShowRouteName' => $internalCrm ? 'employee.crm.deals.show' : null,
             'dealsIndexRoute' => $internalCrm ? route('employee.crm.deals.index', ['customer' => $this->customer->id]) : null,
+            'relatedTasks' => $internalCrm
+                ? \App\Models\CrmTask::query()
+                    ->where('organization_id', $membership->organization_id)
+                    ->where('customer_id', $this->customer->id)
+                    ->where('assignee_organization_user_id', $membershipId)
+                    ->with('assignee')
+                    ->orderByRaw('due_at is null')
+                    ->orderBy('due_at')
+                    ->limit(15)
+                    ->get()
+                : collect(),
+            'taskShowRouteName' => $internalCrm ? 'employee.crm.tasks.show' : null,
+            'tasksIndexRoute' => $internalCrm ? route('employee.crm.tasks.index', ['customer' => $this->customer->id]) : null,
         ]);
     }
 }

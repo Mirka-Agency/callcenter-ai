@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Application\Crm\CrmManager;
 use App\Application\Crm\Deals\Listeners\SuggestDealFromAnalysisListener;
+use App\Application\Crm\Tasks\Listeners\SuggestTasksFromAnalysisListener;
 use App\Application\Crm\Services\CrmConnectionResolver;
 use App\Domain\Crm\Contracts\CrmConnectionRepositoryInterface;
 use App\Domain\Crm\Contracts\CrmLogRepositoryInterface;
@@ -34,5 +35,6 @@ class CrmServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::listen(CustomerSyncedFromAnalysis::class, SuggestDealFromAnalysisListener::class);
+        Event::listen(CustomerSyncedFromAnalysis::class, SuggestTasksFromAnalysisListener::class);
     }
 }

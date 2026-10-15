@@ -308,6 +308,7 @@ class CrmDealsAndPipelinesTest extends TestCase
             'employee.crm.overview',
             'employee.customers.index',
             'employee.crm.deals.index',
+            'employee.crm.tasks.index',
         ], $routes);
         $this->assertFalse(collect(EmployeeNavigation::items())->contains(fn (array $item) => ($item['route'] ?? null) === 'employee.customers.index'));
     }

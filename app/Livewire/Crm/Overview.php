@@ -3,6 +3,7 @@
 namespace App\Livewire\Crm;
 
 use App\Application\Crm\Deals\DealOverview;
+use App\Application\Crm\Tasks\TaskOverview;
 use App\Livewire\Crm\Concerns\ResolvesCrmContext;
 use App\Models\CrmPipeline;
 use Livewire\Attributes\Title;
@@ -17,7 +18,7 @@ class Overview extends Component
     #[Url(except: '')]
     public string $pipelineId = '';
 
-    public function render(DealOverview $overview)
+    public function render(DealOverview $overview, TaskOverview $taskOverview)
     {
         $organizationId = $this->crmOrganizationId();
         $pipelines = CrmPipeline::query()
@@ -35,6 +36,7 @@ class Overview extends Component
 
         return view('livewire.crm.overview', [
             'summary' => $overview->summarize($organizationId, $this->crmUser(), $selected),
+            'taskSummary' => $taskOverview->summarize($organizationId, $this->crmUser()),
             'pipelines' => $pipelines,
             'portal' => $this->crmPortal(),
             'isManager' => $this->crmUser()->role->value === 'employer',

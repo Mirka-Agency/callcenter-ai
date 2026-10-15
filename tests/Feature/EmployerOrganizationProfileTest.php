@@ -37,6 +37,7 @@ class EmployerOrganizationProfileTest extends TestCase
                 'employer.crm.overview',
                 'employer.customers.index',
                 'employer.crm.deals.index',
+                'employer.crm.tasks.index',
                 'employer.crm.pipelines.index',
                 'employer.crm.settings',
             ],

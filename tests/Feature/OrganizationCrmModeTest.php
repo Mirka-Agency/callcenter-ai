@@ -68,6 +68,7 @@ class OrganizationCrmModeTest extends TestCase
             'employer.crm.overview',
             'employer.customers.index',
             'employer.crm.deals.index',
+            'employer.crm.tasks.index',
             'employer.crm.pipelines.index',
             'employer.crm.settings',
         ], $this->crmRoutes(EmployerNavigation::items()));
@@ -75,6 +76,7 @@ class OrganizationCrmModeTest extends TestCase
         $this->get(route('employer.crm.overview'))->assertOk();
         $this->get(route('employer.crm.index'))->assertNotFound();
         $this->get(route('employer.customers.index'))->assertOk();
+        $this->get(route('employer.crm.tasks.index'))->assertOk();
 
         $this->actingAs($employee);
 
@@ -82,6 +84,7 @@ class OrganizationCrmModeTest extends TestCase
             'employee.crm.overview',
             'employee.customers.index',
             'employee.crm.deals.index',
+            'employee.crm.tasks.index',
         ], $this->crmRoutes(EmployeeNavigation::items()));
 
         $this->get(route('employee.crm.deals.index'))->assertOk();

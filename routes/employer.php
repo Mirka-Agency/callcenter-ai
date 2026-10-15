@@ -8,6 +8,8 @@ use App\Livewire\Crm\Overview as CrmOverview;
 use App\Livewire\Crm\Pipelines\Index as CrmPipelinesIndex;
 use App\Livewire\Crm\Pipelines\Show as CrmPipelinesShow;
 use App\Livewire\Crm\Settings as CrmSettings;
+use App\Livewire\Crm\Tasks\Index as CrmTasksIndex;
+use App\Livewire\Crm\Tasks\Show as CrmTasksShow;
 use App\Livewire\Employer\Crm\Connections\Create;
 use App\Livewire\Employer\Crm\Connections\Edit;
 use App\Livewire\Employer\Crm\Index as CrmIndex;
@@ -93,6 +95,10 @@ Route::middleware(['auth', 'employer'])->group(function () {
         Route::prefix('crm/pipelines')->name('crm.pipelines.')->group(function () {
             Route::get('/', CrmPipelinesIndex::class)->name('index');
             Route::get('/{pipeline}', CrmPipelinesShow::class)->name('show')->whereNumber('pipeline');
+        });
+        Route::prefix('crm/tasks')->name('crm.tasks.')->group(function () {
+            Route::get('/', CrmTasksIndex::class)->name('index');
+            Route::get('/{task}', CrmTasksShow::class)->name('show')->whereNumber('task');
         });
     });
     Route::prefix('customers')->name('customers.')->group(function () {

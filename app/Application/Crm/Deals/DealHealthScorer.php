@@ -133,11 +133,44 @@ class DealHealthScorer
             $factors[] = ['code' => 'confirmed_barriers', 'label' => $barriers.' مانع فروش تأییدشده.', 'impact' => $impact];
         }
 
-        $factors[] = [
-            'code' => 'tasks_module',
-            'label' => 'مؤلفه وظایف هنوز فعال نیست و در امتیاز لحاظ نشده است.',
-            'impact' => 0,
-        ];
+        $overdueTasks = \App\Models\CrmTask::query()
+            ->where('crm_deal_id', $deal->id)
+            ->whereIn('status', [
+                \App\Domain\Crm\Tasks\TaskStatus::Pending->value,
+                \App\Domain\Crm\Tasks\TaskStatus::InProgress->value,
+            ])
+            ->whereNotNull('due_at')
+            ->where('due_at', '<', now())
+            ->count();
+        $openTasks = \App\Models\CrmTask::query()
+            ->where('crm_deal_id', $deal->id)
+            ->whereIn('status', [
+                \App\Domain\Crm\Tasks\TaskStatus::Pending->value,
+                \App\Domain\Crm\Tasks\TaskStatus::InProgress->value,
+            ])
+            ->count();
+        $signals++;
+        if ($overdueTasks > 0) {
+            $impact = -min(20, $overdueTasks * 10);
+            $score += $impact;
+            $factors[] = [
+                'code' => 'tasks_module',
+                'label' => $overdueTasks.' وظیفه عقب‌افتاده روی معامله.',
+                'impact' => $impact,
+            ];
+        } elseif ($openTasks > 0) {
+            $factors[] = [
+                'code' => 'tasks_module',
+                'label' => $openTasks.' وظیفه باز روی معامله (بدون تأخیر).',
+                'impact' => 0,
+            ];
+        } else {
+            $factors[] = [
+                'code' => 'tasks_module',
+                'label' => 'وظیفه بازی برای معامله ثبت نشده است.',
+                'impact' => 0,
+            ];
+        }
 
         if ($signals < 2) {
             return [

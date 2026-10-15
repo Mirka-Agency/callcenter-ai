@@ -271,6 +271,35 @@
     </section>
 
     <section class="saas-card space-y-3 p-4">
+        <div class="flex items-center justify-between gap-3">
+            <h2 class="text-lg font-semibold">وظایف معامله</h2>
+            <a href="{{ $tasksIndexUrl }}" class="saas-btn-secondary text-sm" wire:navigate>مدیریت وظایف</a>
+        </div>
+        @php
+            $openDealTasks = $dealTasks->filter(fn ($task) => $task->status->isOpen());
+            $overdueDealTasks = $openDealTasks->filter(fn ($task) => $task->isOverdue());
+            $nextTask = $openDealTasks->sortBy(fn ($task) => $task->due_at?->timestamp ?? PHP_INT_MAX)->first();
+        @endphp
+        <p class="text-sm text-zinc-600">باز: {{ $openDealTasks->count() }} · عقب‌افتاده: {{ $overdueDealTasks->count() }}</p>
+        @if ($nextTask)
+            <p class="text-sm">اقدام بعدی: <a href="{{ route($portal.'.crm.tasks.show', $nextTask) }}" class="text-indigo-700" wire:navigate>{{ $nextTask->title }}</a>
+                @if ($nextTask->due_at) · {{ shamsi($nextTask->due_at) }} @endif
+                · {{ $nextTask->assignee?->full_name ?: 'بدون مسئول' }}
+            </p>
+        @endif
+        <ul class="space-y-2 text-sm">
+            @forelse ($dealTasks as $task)
+                <li wire:key="deal-task-{{ $task->id }}">
+                    <a href="{{ route($portal.'.crm.tasks.show', $task) }}" class="text-indigo-700" wire:navigate>{{ $task->title }}</a>
+                    <span class="text-zinc-500">· {{ $task->status->label() }}@if($task->isOverdue()) · عقب‌افتاده@endif</span>
+                </li>
+            @empty
+                <li class="text-zinc-500">وظیفه‌ای برای این معامله ثبت نشده است.</li>
+            @endforelse
+        </ul>
+    </section>
+
+    <section class="saas-card space-y-3 p-4">
         <h2 class="text-lg font-semibold">موانع فروش</h2>
         <p class="text-sm text-zinc-500">فقط از دغدغه‌های استخراج‌شده از تحلیل تماس‌های متصل ساخته می‌شود؛ نقل‌قول ساختگی ندارد.</p>
         @forelse ($deal->barriers->sortByDesc('last_seen_at') as $barrier)

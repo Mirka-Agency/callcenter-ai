@@ -37,6 +37,19 @@
             <x-saas.stat-card label="بدون فعالیت اخیر" :value="PersianNumber::format($summary['stale_count'])" :hint="$summary['stale_inactivity_hint'] ?? 'باز و بدون فعالیت در ۱۴ روز اخیر، یا عبور از آستانه توقف مرحله'" />
         </div>
 
+        <section class="saas-card space-y-4 p-4">
+            <div class="flex items-center justify-between gap-3">
+                <h2 class="text-lg font-semibold">پیگیری‌ها</h2>
+                <a href="{{ route($portal.'.crm.tasks.index') }}" class="saas-btn-secondary text-sm" wire:navigate>همه وظایف</a>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <x-saas.stat-card label="وظایف باز" :value="PersianNumber::format($taskSummary['open_count'])" />
+                <x-saas.stat-card label="موعد امروز" :value="PersianNumber::format($taskSummary['today_count'])" />
+                <x-saas.stat-card label="عقب‌افتاده" :value="PersianNumber::format($taskSummary['overdue_count'])" tone="bad" />
+                <x-saas.stat-card label="نرخ تکمیل ۳۰ روز" :value="$taskSummary['completion_rate_30d'] === null ? '—' : PersianNumber::format($taskSummary['completion_rate_30d'], 1).'٪'" />
+            </div>
+        </section>
+
         <section class="saas-card p-4">
             <h2 class="text-lg font-semibold">ارزش باز به تفکیک مرحله</h2>
             <p class="mt-1 text-sm text-zinc-500">{{ $summary['pipeline']?->name }}</p>

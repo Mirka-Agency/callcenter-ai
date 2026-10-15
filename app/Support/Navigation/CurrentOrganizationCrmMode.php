@@ -30,15 +30,26 @@ final class CurrentOrganizationCrmMode
 
     public static function isConfigured(): bool
     {
-        return self::organization()?->hasConfiguredCrmMode() ?? false;
+        $organization = self::organization();
+
+        // No tenant in context (e.g. structural nav checks): show default internal CRM IA.
+        if ($organization === null) {
+            return true;
+        }
+
+        return $organization->hasConfiguredCrmMode();
     }
 
     public static function resolve(): OrganizationCrmMode
     {
         $organization = self::organization();
 
-        if (! $organization?->hasConfiguredCrmMode()) {
-            // Fail closed for navigation: do not activate internal CRM menus.
+        if ($organization === null) {
+            return OrganizationCrmMode::Internal;
+        }
+
+        if (! $organization->hasConfiguredCrmMode()) {
+            // Fail closed: do not activate internal CRM operations in the menu.
             return OrganizationCrmMode::External;
         }
 

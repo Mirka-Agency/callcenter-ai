@@ -4,6 +4,8 @@ use App\Http\Controllers\CustomerListExportController;
 use App\Livewire\Crm\Deals\Index as CrmDealsIndex;
 use App\Livewire\Crm\Deals\Show as CrmDealsShow;
 use App\Livewire\Crm\Overview as CrmOverview;
+use App\Livewire\Crm\Tasks\Index as CrmTasksIndex;
+use App\Livewire\Crm\Tasks\Show as CrmTasksShow;
 use App\Livewire\Employee\Activity\Index as ActivityIndex;
 use App\Livewire\Employee\Calls\Index as CallsIndex;
 use App\Livewire\Employee\Calls\Show as CallsShow;
@@ -45,6 +47,10 @@ Route::middleware(['auth', 'employee'])->group(function () {
         Route::prefix('crm/deals')->name('crm.deals.')->group(function () {
             Route::get('/', CrmDealsIndex::class)->name('index');
             Route::get('/{deal}', CrmDealsShow::class)->name('show')->whereNumber('deal');
+        });
+        Route::prefix('crm/tasks')->name('crm.tasks.')->group(function () {
+            Route::get('/', CrmTasksIndex::class)->name('index');
+            Route::get('/{task}', CrmTasksShow::class)->name('show')->whereNumber('task');
         });
     });
     Route::prefix('customers')->name('customers.')->group(function () {

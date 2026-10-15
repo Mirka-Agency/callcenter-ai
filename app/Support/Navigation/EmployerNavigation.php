@@ -74,6 +74,12 @@ class EmployerNavigation
                 'matches' => ['employer.crm.deals.*'],
             ],
             [
+                'label' => 'وظایف و پیگیری‌ها',
+                'route' => 'employer.crm.tasks.index',
+                'icon' => 'activity',
+                'matches' => ['employer.crm.tasks.*'],
+            ],
+            [
                 'label' => 'پایپ‌لاین‌های فروش',
                 'route' => 'employer.crm.pipelines.index',
                 'icon' => 'analytics',
