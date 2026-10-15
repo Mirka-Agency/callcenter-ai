@@ -168,6 +168,7 @@ class Index extends Component
         return match ($task->source) {
             TaskSource::Analysis => 'پس از تماس',
             TaskSource::System => 'سامانه',
+            TaskSource::SalesFollowUp => 'پیگیری فروش',
             default => 'دستی',
         };
     }

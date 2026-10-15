@@ -335,8 +335,19 @@ class CrmDealsAndPipelinesTest extends TestCase
             ->call('archiveDeal', $other->id)
             ->assertDontSee('معامله همکار');
 
-        $this->get(route('employer.crm.overview'))->assertOk()->assertSee('نمای کلی فروش');
-        $this->get(route('employer.crm.settings'))->assertOk()->assertSee('ساخت خودکار خاموش');
+        $this->get(route('employer.crm.overview'))
+            ->assertOk()
+            ->assertSee('آمار و تحلیل CRM')
+            ->assertSee('فرصت‌های باز')
+            ->assertSee('روند ۷ روزه فرصت‌ها')
+            ->assertSee('اقلام پرفروش فاکتور')
+            ->assertSee('بینش تماس‌های متصل به CRM');
+        $this->get(route('employer.crm.settings'))
+            ->assertOk()
+            ->assertSee('ساخت خودکار خاموش')
+            ->assertSee('تنظیمات مشتریان و پیگیری')
+            ->assertSee('کاریز ثبت خلاصه تماس')
+            ->assertSee('هویت شرکت');
         $this->get(route('employer.crm.index'))->assertNotFound();
         $this->get(route('employer.crm.products.index'))->assertOk()->assertSee('محصولات و خدمات');
         $this->get(route('employer.crm.invoices.index'))->assertOk()->assertSee('فاکتور و پیش فاکتور');

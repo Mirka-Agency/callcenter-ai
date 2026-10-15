@@ -42,7 +42,7 @@ class EmployeeNavigation
 
         return [
             [
-                'label' => 'نمای کلی',
+                'label' => 'آمار',
                 'route' => 'employee.crm.overview',
                 'icon' => 'chart',
                 'matches' => ['employee.crm.overview'],

@@ -61,7 +61,7 @@ class EmployerNavigation
 
         return [
             [
-                'label' => 'نمای کلی',
+                'label' => 'آمار',
                 'route' => 'employer.crm.overview',
                 'icon' => 'chart',
                 'matches' => ['employer.crm.overview'],

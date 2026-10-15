@@ -3,6 +3,7 @@
 namespace App\Application\Crm\Invoices\Actions;
 
 use App\Application\Crm\Invoices\InvoiceAuthorization;
+use App\Application\Crm\Settings\OrganizationCrmPreferencesService;
 use App\Domain\Crm\Invoices\InvoiceDocumentType;
 use App\Domain\Crm\Invoices\InvoiceStatus;
 use App\Models\CrmInvoice;
@@ -13,7 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 class CreateInvoice
 {
-    public function __construct(private InvoiceAuthorization $auth) {}
+    public function __construct(
+        private InvoiceAuthorization $auth,
+        private OrganizationCrmPreferencesService $preferences,
+    ) {}
 
     /** @param  array<string, mixed>  $input */
     public function handle(int $organizationId, User $actor, array $input): CrmInvoice
@@ -22,13 +26,14 @@ class CreateInvoice
         $this->auth->authorize($this->auth->canManage($actor, $organizationId));
 
         $payload = $this->validated($organizationId, $input);
+        $taxPercent = $this->preferences->forOrganization($organizationId)->defaultTaxPercent;
 
-        return DB::transaction(function () use ($organizationId, $actor, $payload): CrmInvoice {
+        return DB::transaction(function () use ($organizationId, $actor, $payload, $taxPercent): CrmInvoice {
             return CrmInvoice::query()->create([
                 ...$payload,
                 'organization_id' => $organizationId,
                 'status' => InvoiceStatus::Draft,
-                'tax_percent' => 10,
+                'tax_percent' => $taxPercent,
                 'subtotal_rials' => 0,
                 'tax_rials' => 0,
                 'total_rials' => 0,

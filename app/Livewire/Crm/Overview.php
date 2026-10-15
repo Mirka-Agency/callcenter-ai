@@ -2,15 +2,14 @@
 
 namespace App\Livewire\Crm;
 
-use App\Application\Crm\Deals\DealOverview;
-use App\Application\Crm\Tasks\TaskOverview;
+use App\Application\Crm\Analytics\CrmStatsOverview;
 use App\Livewire\Crm\Concerns\ResolvesCrmContext;
 use App\Models\CrmPipeline;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
-#[Title('نمای کلی فروش')]
+#[Title('آمار و تحلیل CRM')]
 class Overview extends Component
 {
     use ResolvesCrmContext;
@@ -18,7 +17,7 @@ class Overview extends Component
     #[Url(except: '')]
     public string $pipelineId = '';
 
-    public function render(DealOverview $overview, TaskOverview $taskOverview)
+    public function render(CrmStatsOverview $stats)
     {
         $organizationId = $this->crmOrganizationId();
         $pipelines = CrmPipeline::query()
@@ -35,11 +34,8 @@ class Overview extends Component
         $selected = ctype_digit($this->pipelineId) ? (int) $this->pipelineId : null;
 
         return view('livewire.crm.overview', [
-            'summary' => $overview->summarize($organizationId, $this->crmUser(), $selected),
-            'taskSummary' => $taskOverview->summarize($organizationId, $this->crmUser()),
-            'pipelines' => $pipelines,
+            'stats' => $stats->summarize($organizationId, $this->crmUser(), $selected),
             'portal' => $this->crmPortal(),
-            'isManager' => $this->crmUser()->role->value === 'employer',
         ])->layout($this->crmLayout());
     }
 }

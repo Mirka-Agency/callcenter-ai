@@ -56,7 +56,7 @@ class EmployerOrganizationProfileTest extends TestCase
             ->get(route('employer.organization.profile'))
             ->assertOk()
             ->assertSee('>CRM<', false)
-            ->assertSee('>نمای کلی<', false)
+            ->assertSee('>آمار<', false)
             ->assertSee('>اشخاص و شرکت‌ها<', false)
             ->assertSee('>کاریز<', false)
             ->assertDontSee('>اتصالات خارجی<', false)
@@ -67,7 +67,7 @@ class EmployerOrganizationProfileTest extends TestCase
             ->getContent();
 
         $crmPosition = strpos($sidebar, '>CRM<');
-        $overviewPosition = strpos($sidebar, '>نمای کلی<');
+        $overviewPosition = strpos($sidebar, '>آمار<');
         $customersPosition = strpos($sidebar, '>اشخاص و شرکت‌ها<');
 
         $this->assertLessThan($overviewPosition, $crmPosition);

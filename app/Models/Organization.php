@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['title', 'business_context', 'holiday_weekdays', 'call_intake_filters', 'disabled', 'employer_can_manage_integrations', 'crm_mode', 'user_id', 'is_demo', 'assign_customer_owner_from_call'])]
+#[Fillable(['title', 'business_context', 'holiday_weekdays', 'call_intake_filters', 'crm_settings', 'disabled', 'employer_can_manage_integrations', 'crm_mode', 'user_id', 'is_demo', 'assign_customer_owner_from_call'])]
 class Organization extends Model
 {
     /** @use HasFactory<OrganizationFactory> */
@@ -37,6 +37,7 @@ class Organization extends Model
             'assign_customer_owner_from_call' => 'boolean',
             'holiday_weekdays' => 'array',
             'call_intake_filters' => 'array',
+            'crm_settings' => 'array',
         ];
     }
 
