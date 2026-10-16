@@ -67,7 +67,7 @@ class EmployeeNavigation
                 'matches' => ['employee.crm.products.*'],
             ],
             [
-                'label' => 'فاکتور و پیش فاکتور',
+                'label' => 'اسناد',
                 'route' => 'employee.crm.invoices.index',
                 'icon' => 'document',
                 'matches' => ['employee.crm.invoices.*'],

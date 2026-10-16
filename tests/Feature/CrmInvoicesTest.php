@@ -50,7 +50,7 @@ class CrmInvoicesTest extends TestCase
         $this->actingAs($manager)
             ->get(route('employer.crm.invoices.index'))
             ->assertOk()
-            ->assertSee('فاکتور و پیش فاکتور', false)
+            ->assertSee('اسناد فروش', false)
             ->assertSee('علی رضایی', false)
             ->assertSee('پیش‌فاکتور', false);
     }
@@ -131,12 +131,16 @@ class CrmInvoicesTest extends TestCase
 
         Livewire::actingAs($manager)
             ->test(InvoicesIndex::class)
-            ->call('setType', 'proforma')
+            ->set('type', 'proforma')
             ->assertSee('پیش‌فاکتور آلفا', false)
             ->assertDontSee('فاکتور بتا', false)
-            ->call('setType', 'invoice')
+            ->set('type', 'invoice')
             ->assertSee('فاکتور بتا', false)
-            ->assertDontSee('پیش‌فاکتور آلفا', false);
+            ->assertDontSee('پیش‌فاکتور آلفا', false)
+            ->set('type', 'all')
+            ->call('setTab', 'drafts')
+            ->assertSee('پیش‌فاکتور آلفا', false)
+            ->assertSee('فاکتور بتا', false);
     }
 
     public function test_can_add_catalog_line_issue_and_delete(): void

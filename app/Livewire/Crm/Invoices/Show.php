@@ -18,12 +18,16 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Title('ویرایش سند')]
+#[Title('سند فروش')]
 class Show extends Component
 {
     use ResolvesCrmContext;
 
     public int $invoiceId;
+
+    public string $activeTab = 'document';
+
+    public bool $editing = false;
 
     public string $customerId = '';
 
@@ -53,7 +57,29 @@ class Show extends Component
     public function mount(int $invoice, InvoiceQuery $query): void
     {
         $this->invoiceId = $invoice;
-        $this->syncForm($query->findVisible($this->crmOrganizationId(), $this->crmUser(), $invoice));
+        $invoiceModel = $query->findVisible($this->crmOrganizationId(), $this->crmUser(), $invoice);
+        $this->syncForm($invoiceModel);
+        $this->editing = $invoiceModel->isDraft();
+    }
+
+    public function setTab(string $tab): void
+    {
+        $this->activeTab = in_array($tab, ['document', 'preview', 'history'], true) ? $tab : 'document';
+    }
+
+    public function startEditing(): void
+    {
+        if (! $this->canEditCurrent()) {
+            return;
+        }
+
+        $this->editing = true;
+        $this->activeTab = 'document';
+    }
+
+    public function stopEditing(): void
+    {
+        $this->editing = false;
     }
 
     public function updatedCustomerId(): void
@@ -131,6 +157,7 @@ class Show extends Component
         $invoice = $query->findVisible($this->crmOrganizationId(), $this->crmUser(), $this->invoiceId);
         $updated = $action->handle($invoice, $this->crmUser(), $this->payload());
         $this->syncForm($updated);
+        $this->editing = $updated->isDraft();
         $this->toast('تغییرات ذخیره شد.');
     }
 
@@ -144,6 +171,7 @@ class Show extends Component
 
         $issued = $issue->handle($invoice, $this->crmUser(), $this->notifySms);
         $this->syncForm($issued);
+        $this->editing = false;
         $this->toast('سند صادر شد.');
     }
 
@@ -178,9 +206,10 @@ class Show extends Component
 
         $customers = Customer::query()
             ->where('organization_id', $organizationId)
+            ->with('company')
             ->orderBy('name')
             ->limit(300)
-            ->get(['id', 'name', 'phone_number', 'company_name']);
+            ->get(['id', 'name', 'phone_number', 'company_name', 'email', 'job_title', 'customer_company_id']);
 
         $products = CrmProduct::query()
             ->where('organization_id', $organizationId)
@@ -189,15 +218,90 @@ class Show extends Component
             ->limit(300)
             ->get(['id', 'name', 'code', 'price_tomans', 'unit_label']);
 
+        $canManage = $auth->canManage($actor, $organizationId);
+        $editable = $canManage && $invoice->isDraft() && $this->editing;
+
         return view('livewire.crm.invoices.show', [
             'invoice' => $invoice,
             'customers' => $customers,
             'products' => $products,
             'totals' => $this->computedTotals,
-            'canManage' => $auth->canManage($actor, $organizationId),
+            'canManage' => $canManage,
+            'editable' => $editable,
             'portal' => $this->crmPortal(),
             'sellerName' => (string) ($invoice->organization?->title ?? ''),
-        ])->layout($this->crmLayout());
+            'creatorName' => (string) ($invoice->createdBy?->name ?: '—'),
+            'linkedCustomer' => $invoice->customer,
+            'history' => $this->historyEntries($invoice),
+            'lifecycleSteps' => $this->lifecycleSteps($invoice),
+        ])->layout($this->crmLayout())->title($invoice->displayTitle());
+    }
+
+    private function canEditCurrent(): bool
+    {
+        $invoice = CrmInvoice::query()
+            ->where('organization_id', $this->crmOrganizationId())
+            ->find($this->invoiceId);
+
+        return $invoice instanceof CrmInvoice && $invoice->isDraft();
+    }
+
+    /** @return list<array{key: string, label: string, state: string}> */
+    private function lifecycleSteps(CrmInvoice $invoice): array
+    {
+        $hasLines = $invoice->lines->isNotEmpty()
+            && $invoice->lines->contains(fn ($line) => trim((string) $line->description) !== '' && (int) $line->amount_rials > 0);
+
+        if ($invoice->isIssued()) {
+            return [
+                ['key' => 'draft', 'label' => 'پیش‌نویس', 'state' => 'done'],
+                ['key' => 'ready', 'label' => 'آماده صدور', 'state' => 'done'],
+                ['key' => 'issued', 'label' => 'صادر شده', 'state' => 'current'],
+            ];
+        }
+
+        return [
+            ['key' => 'draft', 'label' => 'پیش‌نویس', 'state' => $hasLines ? 'done' : 'current'],
+            ['key' => 'ready', 'label' => 'آماده صدور', 'state' => $hasLines ? 'current' : 'upcoming'],
+            ['key' => 'issued', 'label' => 'صادر شده', 'state' => 'upcoming'],
+        ];
+    }
+
+    /** @return list<array{type: string, label: string, body: string, at: \Carbon\CarbonInterface|null}> */
+    private function historyEntries(CrmInvoice $invoice): array
+    {
+        $entries = [
+            [
+                'type' => 'created',
+                'label' => 'ایجاد سند',
+                'body' => $invoice->document_type->label().' به‌صورت پیش‌نویس ثبت شد.',
+                'at' => $invoice->created_at,
+            ],
+        ];
+
+        if ($invoice->updated_at && $invoice->created_at && $invoice->updated_at->gt($invoice->created_at)) {
+            $entries[] = [
+                'type' => 'updated',
+                'label' => 'آخرین ویرایش',
+                'body' => 'اطلاعات یا ردیف‌های سند به‌روزرسانی شد.',
+                'at' => $invoice->updated_at,
+            ];
+        }
+
+        if ($invoice->isIssued() && $invoice->issued_at) {
+            $entries[] = [
+                'type' => 'issued',
+                'label' => 'صدور سند',
+                'body' => 'سند با شماره '.$invoice->displayNumber().' صادر شد.',
+                'at' => $invoice->issued_at,
+            ];
+        }
+
+        usort($entries, static function (array $a, array $b): int {
+            return ($b['at']?->getTimestamp() ?? 0) <=> ($a['at']?->getTimestamp() ?? 0);
+        });
+
+        return $entries;
     }
 
     private function syncForm(CrmInvoice $invoice): void

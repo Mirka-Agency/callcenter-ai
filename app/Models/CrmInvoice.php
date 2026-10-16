@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 #[Fillable([
     'organization_id',
@@ -112,5 +113,30 @@ class CrmInvoice extends Model
     public function displayNumber(): string
     {
         return filled($this->number) ? (string) $this->number : '—';
+    }
+
+    public function subjectDisplay(): string
+    {
+        $notes = trim((string) ($this->notes ?? ''));
+        if ($notes !== '') {
+            return Str::limit($notes, 48);
+        }
+
+        return '—';
+    }
+
+    public function displayTitle(): string
+    {
+        $notes = trim((string) ($this->notes ?? ''));
+        if ($notes !== '') {
+            return Str::limit($notes, 80);
+        }
+
+        $number = $this->displayNumber();
+        if ($number !== '—') {
+            return $this->document_type->label().' '.$number;
+        }
+
+        return $this->document_type->label().' #'.$this->id;
     }
 }
