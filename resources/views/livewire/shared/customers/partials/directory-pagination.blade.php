@@ -1,0 +1,85 @@
+@php
+    use App\Support\JalaliDate;
+
+    $perPageOptions = [20, 50, 100];
+    $scrollIntoViewJsSnippet = '($el.closest("body") || document.querySelector("body")).scrollIntoView()';
+    $pageItems = \App\Support\CompactPaginationWindow::pages(
+        $paginator->currentPage(),
+        $paginator->lastPage(),
+    );
+    $totalLabel = JalaliDate::persianDigits(number_format($paginator->total()));
+@endphp
+
+<div class="crm-directory-footer" data-tour="customers-directory-pagination">
+    <div class="flex flex-wrap items-center gap-2 text-sm text-zinc-500">
+        <span>نمایش</span>
+        <select wire:model.live="perPage" class="saas-input w-auto min-w-24 py-1.5 text-sm" aria-label="تعداد در هر صفحه">
+            @foreach ($perPageOptions as $option)
+                <option value="{{ $option }}">{{ JalaliDate::persianDigits($option) }} مورد</option>
+            @endforeach
+        </select>
+        <span class="hidden sm:inline">از {{ $totalLabel }}</span>
+    </div>
+
+    @if ($paginator->hasPages())
+        <nav role="navigation" aria-label="Pagination Navigation" class="flex items-center">
+            <div class="flex justify-between gap-2 sm:hidden">
+                @if ($paginator->onFirstPage())
+                    <span class="saas-btn-secondary cursor-not-allowed px-3 py-1.5 text-sm opacity-50">{{ __('pagination.previous') }}</span>
+                @else
+                    <button type="button" wire:click="previousPage('{{ $paginator->getPageName() }}')" class="saas-btn-secondary px-3 py-1.5 text-sm">{{ __('pagination.previous') }}</button>
+                @endif
+
+                @if ($paginator->hasMorePages())
+                    <button type="button" wire:click="nextPage('{{ $paginator->getPageName() }}')" class="saas-btn-secondary px-3 py-1.5 text-sm">{{ __('pagination.next') }}</button>
+                @else
+                    <span class="saas-btn-secondary cursor-not-allowed px-3 py-1.5 text-sm opacity-50">{{ __('pagination.next') }}</span>
+                @endif
+            </div>
+
+            <span class="relative z-0 hidden overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700 sm:inline-flex rtl:flex-row-reverse">
+                @if ($paginator->onFirstPage())
+                    <span class="inline-flex items-center px-2 py-2 text-zinc-400 dark:text-zinc-500" aria-hidden="true">
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                    </span>
+                @else
+                    <button type="button" wire:click="previousPage('{{ $paginator->getPageName() }}')" x-on:click="{{ $scrollIntoViewJsSnippet }}" class="inline-flex items-center px-2 py-2 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800" aria-label="{{ __('pagination.previous') }}">
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                @endif
+
+                @foreach ($pageItems as $item)
+                    @if ($item === '...')
+                        <span class="inline-flex items-center border-s border-zinc-200 px-3 py-2 text-sm text-zinc-400 dark:border-zinc-700">...</span>
+                    @else
+                        <span wire:key="paginator-{{ $paginator->getPageName() }}-page{{ $item }}">
+                            @if ($item == $paginator->currentPage())
+                                <span aria-current="page" class="crm-directory-page is-active inline-flex items-center border-s border-zinc-200 px-3 py-2 text-sm font-medium dark:border-zinc-700">{{ JalaliDate::persianDigits($item) }}</span>
+                            @else
+                                <button type="button" wire:click="gotoPage({{ $item }}, '{{ $paginator->getPageName() }}')" x-on:click="{{ $scrollIntoViewJsSnippet }}" class="inline-flex items-center border-s border-zinc-200 px-3 py-2 text-sm text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800" aria-label="{{ __('Go to page :page', ['page' => $item]) }}">{{ JalaliDate::persianDigits($item) }}</button>
+                            @endif
+                        </span>
+                    @endif
+                @endforeach
+
+                @if ($paginator->hasMorePages())
+                    <button type="button" wire:click="nextPage('{{ $paginator->getPageName() }}')" x-on:click="{{ $scrollIntoViewJsSnippet }}" class="inline-flex items-center border-s border-zinc-200 px-2 py-2 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-800 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800" aria-label="{{ __('pagination.next') }}">
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                @else
+                    <span class="inline-flex items-center border-s border-zinc-200 px-2 py-2 text-zinc-400 dark:border-zinc-700 dark:text-zinc-500" aria-hidden="true">
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                        </svg>
+                    </span>
+                @endif
+            </span>
+        </nav>
+    @endif
+</div>

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Domain\Crm\OrganizationCrmMode;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -17,6 +18,7 @@ class OrganizationFactory extends Factory
             'title' => fake()->company(),
             'disabled' => false,
             'employer_can_manage_integrations' => false,
+            'crm_mode' => OrganizationCrmMode::Internal,
             'user_id' => User::factory()->employer(),
         ];
     }

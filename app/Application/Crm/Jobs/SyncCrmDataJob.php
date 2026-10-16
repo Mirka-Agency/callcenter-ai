@@ -4,6 +4,7 @@ namespace App\Application\Crm\Jobs;
 
 use App\Application\Crm\CrmManager;
 use App\Domain\Crm\DTOs\SyncData;
+use App\Models\Organization;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -42,6 +43,12 @@ class SyncCrmDataJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(CrmManager $crmManager): void
     {
+        $organization = Organization::query()->find($this->organizationId);
+
+        if (! $organization?->usesExternalCrm()) {
+            return;
+        }
+
         $manager = CrmManager::forOrganization($this->organizationId);
 
         if ($this->connectionId) {

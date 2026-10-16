@@ -4,6 +4,8 @@
         ['href' => '#journey', 'label' => 'نحوه کار'],
         ['href' => '#faq', 'label' => 'سوالات متداول'],
     ];
+    $authActionHref = auth()->check() ? auth()->user()->portalRoute() : route('login');
+    $authActionLabel = auth()->check() ? 'پنل کاربری' : 'ورود';
 @endphp
 
 <header class="sticky top-0 z-40 border-b border-line bg-white dark:border-zinc-800 dark:bg-zinc-950">
@@ -20,7 +22,7 @@
         </nav>
 
         <div class="flex items-center justify-self-end gap-2">
-            <a href="{{ route('login') }}" class="hidden h-10 items-center justify-center rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink transition hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800">ورود</a>
+            <a href="{{ $authActionHref }}" class="hidden h-10 items-center justify-center rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink transition hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 sm:inline-flex dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800">{{ $authActionLabel }}</a>
             <button type="button" class="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border-0 bg-brand px-3.5 text-sm font-medium text-white transition hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 sm:px-4" data-consult-open>درخواست مشاوره</button>
 
             <details class="relative lg:hidden">
@@ -34,7 +36,7 @@
                         <a href="{{ $link['href'] }}" class="block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas dark:text-zinc-100 dark:hover:bg-zinc-800" onclick="this.closest('details').open=false">{{ $link['label'] }}</a>
                     @endforeach
                     <button type="button" class="block w-full rounded-lg border-0 bg-transparent px-3 py-2 text-start text-sm font-medium text-ink hover:bg-canvas dark:text-zinc-100 dark:hover:bg-zinc-800" data-consult-open>درخواست مشاوره</button>
-                    <a href="{{ route('login') }}" class="mt-1 block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas sm:hidden dark:text-zinc-100 dark:hover:bg-zinc-800">ورود</a>
+                    <a href="{{ $authActionHref }}" class="mt-1 block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas sm:hidden dark:text-zinc-100 dark:hover:bg-zinc-800">{{ $authActionLabel }}</a>
                 </div>
             </details>
         </div>

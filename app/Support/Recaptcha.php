@@ -10,6 +10,8 @@ class Recaptcha
 {
     public const ACTION = 'login';
 
+    public const CONSULTATION_ACTION = 'consultation';
+
     public static function enabled(): bool
     {
         if (OnPrem::enabled()) {

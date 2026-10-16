@@ -2,9 +2,9 @@
 
 namespace App\Livewire\Employee\Customers;
 
+use App\Application\Customer\Actions\UpdateCustomer;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
-use App\Services\CustomerProfileUpdateService;
 use App\Services\EmployeeContext;
 use App\Support\CustomerTenantGuard;
 use Illuminate\Validation\ValidationException;
@@ -46,10 +46,10 @@ class Edit extends Component
         $this->job_title = $customer->job_title ?? '';
     }
 
-    public function save(CustomerProfileUpdateService $updater): void
+    public function save(UpdateCustomer $updater): void
     {
         try {
-            $this->customer = $updater->update($this->customer, [
+            $this->customer = $updater->handle($this->customer, [
                 'name' => $this->name,
                 'customer_company_id' => $this->customer_company_id,
                 'company_name' => $this->company_name,

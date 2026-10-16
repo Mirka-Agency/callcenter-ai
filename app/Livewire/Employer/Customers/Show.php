@@ -2,9 +2,13 @@
 
 namespace App\Livewire\Employer\Customers;
 
+use App\Application\Crm\Deals\DealQuery;
+use App\Application\Customer\Actions\AssignCustomerOwner;
+use App\Application\Customer\Actions\ChangeCustomerLifecycle;
 use App\Models\Customer;
 use App\Services\CustomerIntelligenceService;
 use App\Services\EmployerContext;
+use App\Support\CustomerListQuery;
 use App\Support\CustomerTenantGuard;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -16,15 +20,78 @@ class Show extends Component
 {
     public Customer $customer;
 
+    public string $ownerOrganizationUserId = '';
+
+    public string $expectedOwnerOrganizationUserId = '';
+
+    public string $lifecycleStage = '';
+
+    public string $expectedLifecycleStage = '';
+
+    public bool $confirmCustomerStage = false;
+
     public function mount(Customer $customer): void
     {
         CustomerTenantGuard::assertCustomerInOrganization($customer, EmployerContext::organizationId());
-        $this->customer = $customer->load('company');
+        $this->customer = $customer->load(['company', 'owner']);
+        $this->syncOwnerFields();
+        $this->syncLifecycleFields();
+    }
+
+    public function saveOwner(AssignCustomerOwner $owners): void
+    {
+        CustomerTenantGuard::assertCustomerInOrganization($this->customer, EmployerContext::organizationId());
+
+        $expected = $this->expectedOwnerOrganizationUserId === ''
+            ? null
+            : (int) $this->expectedOwnerOrganizationUserId;
+        $newOwner = $this->ownerOrganizationUserId === ''
+            ? null
+            : (int) $this->ownerOrganizationUserId;
+
+        $updated = $owners->assign(
+            customer: $this->customer,
+            newOwnerOrganizationUserId: $newOwner,
+            actorUserId: auth()->id(),
+            source: 'manual',
+            reason: 'profile',
+            expectedOwnerOrganizationUserId: $expected,
+            checkExpected: true,
+        );
+
+        $this->customer = $updated->load(['company', 'owner']);
+        $this->syncOwnerFields();
+
+        $this->js("window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'مسئول مشتری ثبت شد.' } }))");
+    }
+
+    public function saveLifecycle(ChangeCustomerLifecycle $lifecycle): void
+    {
+        CustomerTenantGuard::assertCustomerInOrganization($this->customer, EmployerContext::organizationId());
+
+        $updated = $lifecycle->change(
+            customer: $this->customer,
+            toStage: $this->lifecycleStage === '' ? null : $this->lifecycleStage,
+            actorUserId: auth()->id(),
+            source: 'manual',
+            reason: 'profile',
+            expectedStage: $this->expectedLifecycleStage === '' ? null : $this->expectedLifecycleStage,
+            checkExpected: true,
+            confirmed: $this->confirmCustomerStage,
+        );
+
+        $this->customer = $updated->load(['company', 'owner']);
+        $this->syncLifecycleFields();
+        $this->confirmCustomerStage = false;
+
+        $this->js("window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'مرحله چرخه عمر ثبت شد.' } }))");
     }
 
     public function render()
     {
         $service = app(CustomerIntelligenceService::class);
+        $organization = EmployerContext::organization();
+        $internalCrm = $organization->usesInternalCrm();
 
         return view('livewire.employer.customers.show', [
             'analytics' => $service->profileAnalytics($this->customer),
@@ -41,6 +108,41 @@ class Show extends Component
             'customersIndexRoute' => route('employer.customers.contacts.index'),
             'customersHubRoute' => route('employer.customers.index'),
             'companiesListRoute' => route('employer.customers.companies.index'),
+            'canAssignOwner' => true,
+            'ownerChoices' => CustomerListQuery::ownerChoices(EmployerContext::organizationId()),
+            'canChangeLifecycle' => true,
+            'lifecycleEvents' => $this->customer->lifecycleEvents()->latest('id')->limit(8)->get(),
+            'relatedDeals' => $internalCrm
+                ? app(DealQuery::class)->forCustomer($organization->id, auth()->user(), $this->customer)
+                : collect(),
+            'dealShowRouteName' => $internalCrm ? 'employer.crm.deals.show' : null,
+            'dealsIndexRoute' => $internalCrm ? route('employer.crm.deals.index', ['customer' => $this->customer->id]) : null,
+            'relatedTasks' => $internalCrm
+                ? \App\Models\CrmTask::query()
+                    ->where('organization_id', $organization->id)
+                    ->where('customer_id', $this->customer->id)
+                    ->with('assignee')
+                    ->orderByRaw('due_at is null')
+                    ->orderBy('due_at')
+                    ->limit(15)
+                    ->get()
+                : collect(),
+            'taskShowRouteName' => $internalCrm ? 'employer.crm.tasks.show' : null,
+            'tasksIndexRoute' => $internalCrm ? route('employer.crm.tasks.index', ['customer' => $this->customer->id]) : null,
         ]);
+    }
+
+    private function syncOwnerFields(): void
+    {
+        $ownerId = $this->customer->owner_organization_user_id;
+        $this->ownerOrganizationUserId = $ownerId ? (string) $ownerId : '';
+        $this->expectedOwnerOrganizationUserId = $this->ownerOrganizationUserId;
+    }
+
+    private function syncLifecycleFields(): void
+    {
+        $stage = $this->customer->lifecycle_stage?->value;
+        $this->lifecycleStage = $stage ?? '';
+        $this->expectedLifecycleStage = $this->lifecycleStage;
     }
 }

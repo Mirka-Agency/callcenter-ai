@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Application\Customer\CustomerContactMethodMirror;
+use App\Domain\Customer\CustomerLifecycleStage;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
+use App\Support\CustomerFieldProvenance;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -13,6 +16,7 @@ class CustomerProfileUpdateService
         private CustomerPhoneResolver $phoneResolver,
         private CustomerCompanyResolver $companyResolver,
         private CustomerCompanyService $companyService,
+        private CustomerContactMethodMirror $contactMethods,
     ) {}
 
     /**
@@ -24,12 +28,16 @@ class CustomerProfileUpdateService
         $normalized = $this->normalizedUniquePhone($organizationId, $validated['phone_number']);
         [$companyId, $companyName] = $this->resolveCompanyAssignment($organizationId, $validated);
 
+        $attributes = $this->contactAttributes($validated, $normalized, $companyId, $companyName);
+
         $customer = Customer::query()->create([
             'organization_id' => $organizationId,
-            ...$this->contactAttributes($validated, $normalized, $companyId, $companyName),
+            ...$attributes,
+            'lifecycle_stage' => CustomerLifecycleStage::NewLead,
+            'identity_field_sources' => CustomerFieldProvenance::lockProvided([], $attributes),
         ]);
 
-        app(CustomerIntelligenceService::class)->relinkCallsByPhone($customer);
+        $this->contactMethods->mirrorFromCustomer($customer);
 
         if ($customer->customer_company_id) {
             $this->refreshCompanyAggregates($customer->customer_company_id);
@@ -50,7 +58,6 @@ class CustomerProfileUpdateService
             $customer->id,
         );
 
-        $phoneChanged = $customer->normalized_phone !== $normalized;
         $previousCompanyId = $customer->customer_company_id;
 
         [$companyId, $companyName] = $this->resolveCompanyAssignment(
@@ -58,11 +65,28 @@ class CustomerProfileUpdateService
             $validated,
         );
 
-        $customer->update($this->contactAttributes($validated, $normalized, $companyId, $companyName));
+        $attributes = $this->contactAttributes($validated, $normalized, $companyId, $companyName);
+        $phoneChanging = $customer->normalized_phone !== $normalized;
+        $emailChanging = (string) $customer->email !== (string) ($attributes['email'] ?? '');
 
-        if ($phoneChanged) {
-            app(CustomerIntelligenceService::class)->relinkCallsByPhone($customer->fresh());
+        if ($phoneChanging) {
+            $this->contactMethods->mirrorPhone($customer);
         }
+
+        if ($emailChanging && filled($customer->email)) {
+            $this->contactMethods->mirrorEmail($customer);
+        }
+
+        $customer->update([
+            ...$attributes,
+            'identity_field_sources' => CustomerFieldProvenance::lockChanged(
+                $customer->identity_field_sources ?? [],
+                $customer->only(CustomerFieldProvenance::LOCKABLE),
+                $attributes,
+            ),
+        ]);
+
+        $this->contactMethods->mirrorFromCustomer($customer->fresh());
 
         $customer = $customer->fresh();
 
@@ -121,10 +145,11 @@ class CustomerProfileUpdateService
 
     private function normalizedUniquePhone(int $organizationId, string $phoneNumber, ?int $exceptCustomerId = null): string
     {
-        $normalized = $this->phoneResolver->normalize($phoneNumber);
+        $inspection = $this->phoneResolver->inspect($phoneNumber);
+        $normalized = $inspection->normalized;
         $keys = $this->phoneResolver->equivalentKeys($phoneNumber);
 
-        if (! $normalized || $keys === []) {
+        if (! $inspection->isValid || ! $normalized || $keys === []) {
             throw ValidationException::withMessages([
                 'phone_number' => 'شماره تماس معتبر نیست.',
             ]);

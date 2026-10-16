@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Crm\OrganizationCrmMode;
 use App\Services\CallIntake\CallIntakeSettings;
 use App\Services\WalletService;
 use App\Support\CompanyWorkCalendar;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['title', 'business_context', 'holiday_weekdays', 'call_intake_filters', 'disabled', 'employer_can_manage_integrations', 'user_id', 'is_demo'])]
+#[Fillable(['title', 'business_context', 'holiday_weekdays', 'call_intake_filters', 'crm_settings', 'disabled', 'employer_can_manage_integrations', 'crm_mode', 'user_id', 'is_demo', 'assign_customer_owner_from_call'])]
 class Organization extends Model
 {
     /** @use HasFactory<OrganizationFactory> */
@@ -31,9 +32,12 @@ class Organization extends Model
         return [
             'disabled' => 'boolean',
             'employer_can_manage_integrations' => 'boolean',
+            'crm_mode' => OrganizationCrmMode::class,
             'is_demo' => 'boolean',
+            'assign_customer_owner_from_call' => 'boolean',
             'holiday_weekdays' => 'array',
             'call_intake_filters' => 'array',
+            'crm_settings' => 'array',
         ];
     }
 
@@ -55,6 +59,32 @@ class Organization extends Model
     public function employerCanManageIntegrations(): bool
     {
         return (bool) $this->employer_can_manage_integrations;
+    }
+
+    public function hasConfiguredCrmMode(): bool
+    {
+        return $this->crm_mode instanceof OrganizationCrmMode;
+    }
+
+    /**
+     * Display helper. Operational gates must use usesInternalCrm/usesExternalCrm
+     * which fail closed when mode is missing.
+     */
+    public function crmMode(): OrganizationCrmMode
+    {
+        return $this->crm_mode instanceof OrganizationCrmMode
+            ? $this->crm_mode
+            : OrganizationCrmMode::Internal;
+    }
+
+    public function usesInternalCrm(): bool
+    {
+        return $this->hasConfiguredCrmMode() && $this->crm_mode === OrganizationCrmMode::Internal;
+    }
+
+    public function usesExternalCrm(): bool
+    {
+        return $this->hasConfiguredCrmMode() && $this->crm_mode === OrganizationCrmMode::External;
     }
 
     /** @param Builder<static> $query */

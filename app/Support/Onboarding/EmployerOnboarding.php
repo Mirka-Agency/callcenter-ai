@@ -13,8 +13,12 @@ class EmployerOnboarding
         $urls = [];
 
         foreach (EmployerNavigation::items() as $item) {
-            if (! empty($item['route']) && Route::has($item['route'])) {
-                $urls[$item['route']] = route($item['route']);
+            $entries = array_merge([$item], $item['children'] ?? []);
+
+            foreach ($entries as $entry) {
+                if (! empty($entry['route']) && Route::has($entry['route'])) {
+                    $urls[$entry['route']] = route($entry['route']);
+                }
             }
         }
 

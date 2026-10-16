@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
+use App\Support\PhoneInspection;
 
 class CustomerPhoneResolver
 {
@@ -13,9 +14,46 @@ class CustomerPhoneResolver
             return null;
         }
 
-        $digits = preg_replace('/\D+/', '', $phone);
+        $folded = strtr($phone, [
+            '۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4',
+            '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9',
+            '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
+            '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
+        ]);
+        $digits = preg_replace('/\D+/', '', $folded);
 
         return $digits !== '' ? $digits : null;
+    }
+
+    public function inspect(?string $phone): PhoneInspection
+    {
+        $normalized = $this->normalize($phone);
+
+        if ($normalized === null) {
+            return new PhoneInspection($phone, null, null, false, 'empty');
+        }
+
+        if (strlen($normalized) <= 6) {
+            return new PhoneInspection($phone, $normalized, null, false, 'extension');
+        }
+
+        $national = $this->iranNationalNumber($normalized);
+
+        if ($national !== null) {
+            $kind = str_starts_with($national, '9') ? 'mobile' : 'landline';
+
+            return new PhoneInspection($phone, $normalized, 'IR', true, $kind);
+        }
+
+        if (str_starts_with($normalized, '98') || str_starts_with($normalized, '0098')) {
+            return new PhoneInspection($phone, $normalized, null, false, 'incomplete_iran');
+        }
+
+        if (strlen($normalized) >= 8 && strlen($normalized) <= 15) {
+            return new PhoneInspection($phone, $normalized, null, true, 'international');
+        }
+
+        return new PhoneInspection($phone, $normalized, null, false, 'ambiguous');
     }
 
     /**

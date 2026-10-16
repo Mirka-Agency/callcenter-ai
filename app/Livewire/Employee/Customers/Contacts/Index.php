@@ -21,22 +21,59 @@ class Index extends Component
 
     public string $search = '';
 
+    public string $ownerFilter = 'all';
+
+    public string $specificOwnerId = '';
+
+    public string $stageFilter = 'all';
+
     public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedOwnerFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSpecificOwnerId(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedStageFilter(): void
     {
         $this->resetPage();
     }
 
     public function render()
     {
+        $organizationId = EmployeeContext::organizationId();
+        $specificOwnerId = ctype_digit($this->specificOwnerId) ? (int) $this->specificOwnerId : null;
+        $membershipId = EmployeeContext::membership()->id;
         $contacts = CustomerListQuery::contacts(
-            EmployeeContext::organizationId(),
+            $organizationId,
             $this->search,
             $this->sort,
+            $this->ownerFilter,
+            $membershipId,
+            $specificOwnerId,
+            $this->stageFilter,
         )->paginate($this->currentPerPage());
 
         return view('livewire.shared.customers.contacts.index', [
             'contacts' => $contacts,
             'portal' => 'employee',
+            'stats' => CustomerListQuery::directoryStats($organizationId, EmployeeContext::organization()),
+            'ownerChoices' => CustomerListQuery::ownerChoices($organizationId),
+            'lifecycleCounts' => CustomerListQuery::lifecycleCounts(
+                $organizationId,
+                $this->search,
+                $this->ownerFilter,
+                $membershipId,
+                $specificOwnerId,
+            ),
         ]);
     }
 }

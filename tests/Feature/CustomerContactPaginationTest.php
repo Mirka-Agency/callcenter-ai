@@ -17,7 +17,7 @@ class CustomerContactPaginationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_contacts_always_show_fifty_per_page_without_range_input(): void
+    public function test_contacts_default_to_twenty_per_page_with_selector(): void
     {
         $this->actingAsEmployer();
         $this->createContacts(55);
@@ -25,18 +25,18 @@ class CustomerContactPaginationTest extends TestCase
         $component = Livewire::test(EmployerContactsIndex::class)
             ->assertDontSee('1 تا')
             ->assertDontSee('Showing')
-            ->assertDontSeeHtml('wire:model.blur="perPage"');
+            ->assertSeeHtml('wire:model.live="perPage"');
 
-        $this->assertCount(50, $component->viewData('contacts'));
+        $this->assertCount(20, $component->viewData('contacts'));
         $this->assertSame(55, $component->viewData('contacts')->total());
         $this->assertTrue($component->viewData('contacts')->hasPages());
-        $this->assertSame(2, $component->viewData('contacts')->lastPage());
+        $this->assertSame(3, $component->viewData('contacts')->lastPage());
     }
 
     public function test_page_numbers_use_first_pages_ellipsis_and_last_pages(): void
     {
         $this->actingAsEmployer();
-        $this->createContacts(50 * 12);
+        $this->createContacts(20 * 12);
 
         $component = Livewire::test(EmployerContactsIndex::class);
 
@@ -55,10 +55,10 @@ class CustomerContactPaginationTest extends TestCase
         $component->assertSeeHtml('gotoPage(12,');
         $component->assertDontSeeHtml('gotoPage(6,');
         $this->assertSame(6, $component->viewData('contacts')->currentPage());
-        $this->assertCount(50, $component->viewData('contacts'));
+        $this->assertCount(20, $component->viewData('contacts'));
     }
 
-    public function test_employee_contacts_use_the_same_fixed_page_size(): void
+    public function test_employee_contacts_use_the_same_default_page_size(): void
     {
         $this->actingAsEmployee();
         $this->createContacts(53);
@@ -66,8 +66,20 @@ class CustomerContactPaginationTest extends TestCase
         $component = Livewire::test(EmployeeContactsIndex::class)
             ->assertDontSee('1 تا');
 
-        $this->assertCount(50, $component->viewData('contacts'));
+        $this->assertCount(20, $component->viewData('contacts'));
         $this->assertTrue($component->viewData('contacts')->hasPages());
+    }
+
+    public function test_changing_per_page_updates_page_size(): void
+    {
+        $this->actingAsEmployer();
+        $this->createContacts(55);
+
+        $component = Livewire::test(EmployerContactsIndex::class)
+            ->set('perPage', 50);
+
+        $this->assertCount(50, $component->viewData('contacts'));
+        $this->assertSame(2, $component->viewData('contacts')->lastPage());
     }
 
     private function actingAsEmployer(): Organization

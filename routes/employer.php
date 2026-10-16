@@ -2,6 +2,19 @@
 
 use App\Http\Controllers\CustomerListExportController;
 use App\Http\Controllers\Employer\ReportExportController;
+use App\Livewire\Crm\Deals\Index as CrmDealsIndex;
+use App\Livewire\Crm\Deals\OpportunityList as CrmDealsOpportunityList;
+use App\Livewire\Crm\Deals\Show as CrmDealsShow;
+use App\Livewire\Crm\Overview as CrmOverview;
+use App\Livewire\Crm\Invoices\Index as CrmInvoicesIndex;
+use App\Livewire\Crm\Invoices\Show as CrmInvoicesShow;
+use App\Livewire\Crm\Pipelines\Form as CrmPipelinesForm;
+use App\Livewire\Crm\Pipelines\Index as CrmPipelinesIndex;
+use App\Livewire\Crm\Products\Index as CrmProductsIndex;
+use App\Livewire\Crm\Settings as CrmSettings;
+use App\Livewire\Crm\Reminders\Index as CrmRemindersIndex;
+use App\Livewire\Crm\Tasks\Index as CrmTasksIndex;
+use App\Livewire\Crm\Tasks\Show as CrmTasksShow;
 use App\Livewire\Employer\Crm\Connections\Create;
 use App\Livewire\Employer\Crm\Connections\Edit;
 use App\Livewire\Employer\Crm\Index as CrmIndex;
@@ -13,17 +26,18 @@ use App\Livewire\Employer\Customers\Contacts\Create as CustomerContactsCreate;
 use App\Livewire\Employer\Customers\Contacts\Index as CustomerContactsIndex;
 use App\Livewire\Employer\Customers\Edit as CustomersEdit;
 use App\Livewire\Employer\Customers\Index as CustomersIndex;
+use App\Livewire\Employer\Customers\Reviews\Index as CustomerReviewsIndex;
 use App\Livewire\Employer\Customers\Show as CustomersShow;
 use App\Livewire\Employer\Dashboard\Overview as EmployerDashboard;
 use App\Livewire\Employer\Employees\Create as EmployeeCreate;
 use App\Livewire\Employer\Employees\Edit as EmployeeEdit;
-use App\Livewire\Employer\Organization\Profile as OrganizationProfile;
 use App\Livewire\Employer\Intelligence\Index as IntelligenceIndex;
 use App\Livewire\Employer\Intelligence\Performance as IntelligencePerformance;
 use App\Livewire\Employer\Intelligence\PerformanceShow as IntelligencePerformanceShow;
 use App\Livewire\Employer\Intelligence\Show as IntelligenceShow;
 use App\Livewire\Employer\ManualAnalyses\Index as ManualAnalysesIndex;
 use App\Livewire\Employer\ManualAnalyses\Show as ManualAnalysesShow;
+use App\Livewire\Employer\Organization\Profile as OrganizationProfile;
 use App\Livewire\Employer\ProcessingQueue\Index;
 use App\Livewire\Employer\ProcessingQueue\Show;
 use App\Livewire\Employer\Profile\Edit as ProfileEdit;
@@ -68,11 +82,37 @@ Route::middleware(['auth', 'employer'])->group(function () {
         Route::get('/{job}', Show::class)->name('show');
     });
 
-    Route::get('/crm', CrmIndex::class)->name('crm.index');
-    Route::prefix('crm/connections')->name('crm.connections.')->group(function () {
-        Route::get('/', App\Livewire\Employer\Crm\Connections\Index::class)->name('index');
-        Route::get('/create', Create::class)->name('create');
-        Route::get('/{connection}/edit', Edit::class)->name('edit');
+    Route::middleware('organization-crm:external')->group(function () {
+        Route::get('/crm', CrmIndex::class)->name('crm.index');
+        Route::prefix('crm/connections')->name('crm.connections.')->group(function () {
+            Route::get('/', App\Livewire\Employer\Crm\Connections\Index::class)->name('index');
+            Route::get('/create', Create::class)->name('create');
+            Route::get('/{connection}/edit', Edit::class)->name('edit');
+        });
+    });
+    Route::middleware('organization-crm:internal')->group(function () {
+        Route::get('/crm/overview', CrmOverview::class)->name('crm.overview');
+        Route::get('/crm/settings', CrmSettings::class)->name('crm.settings');
+        Route::prefix('crm/deals')->name('crm.deals.')->group(function () {
+            Route::get('/', CrmDealsIndex::class)->name('index');
+            Route::get('/list', CrmDealsOpportunityList::class)->name('list');
+            Route::get('/{deal}', CrmDealsShow::class)->name('show')->whereNumber('deal');
+        });
+        Route::prefix('crm/pipelines')->name('crm.pipelines.')->group(function () {
+            Route::get('/', CrmPipelinesIndex::class)->name('index');
+            Route::get('/create', CrmPipelinesForm::class)->name('create');
+            Route::get('/{pipeline}/edit', CrmPipelinesForm::class)->name('edit')->whereNumber('pipeline');
+        });
+        Route::prefix('crm/tasks')->name('crm.tasks.')->group(function () {
+            Route::get('/', CrmTasksIndex::class)->name('index');
+            Route::get('/{task}', CrmTasksShow::class)->name('show')->whereNumber('task');
+        });
+        Route::get('/crm/reminders', CrmRemindersIndex::class)->name('crm.reminders.index');
+        Route::get('/crm/products', CrmProductsIndex::class)->name('crm.products.index');
+        Route::prefix('crm/invoices')->name('crm.invoices.')->group(function () {
+            Route::get('/', CrmInvoicesIndex::class)->name('index');
+            Route::get('/{invoice}', CrmInvoicesShow::class)->name('show')->whereNumber('invoice');
+        });
     });
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', CustomersIndex::class)->name('index');
@@ -85,6 +125,7 @@ Route::middleware(['auth', 'employer'])->group(function () {
             ->name('contacts.export')
             ->whereIn('format', ['xlsx', 'pdf']);
         Route::get('/contacts/create', CustomerContactsCreate::class)->name('contacts.create');
+        Route::get('/reviews', CustomerReviewsIndex::class)->name('reviews.index');
         Route::get('/companies/create', CustomerCompaniesCreate::class)->name('companies.create');
         Route::get('/companies/{customerCompany}/edit', CustomerCompaniesEdit::class)->name('companies.edit');
         Route::get('/companies/{customerCompany}', CustomerCompaniesShow::class)->name('companies.show');

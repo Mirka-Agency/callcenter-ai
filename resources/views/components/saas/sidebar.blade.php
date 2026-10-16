@@ -49,23 +49,105 @@
     <nav class="flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 py-3 lg:p-4" aria-label="منوی اصلی">
         @foreach ($navItems as $item)
             @php
-                $isActive = request()->routeIs($item['route'].'*') || request()->routeIs($item['route']);
+                $navIsCurrent = function (array $entry): bool {
+                    $patterns = $entry['matches'] ?? array_filter([
+                        ($entry['route'] ?? null) ? $entry['route'].'*' : null,
+                        $entry['route'] ?? null,
+                    ]);
+
+                    foreach ($patterns as $pattern) {
+                        if (request()->routeIs($pattern)) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                };
+                $isActive = $navIsCurrent($item);
+                $childActive = collect($item['children'] ?? [])->contains($navIsCurrent);
             @endphp
-            <a
-                href="{{ route($item['route']) }}"
-                data-tour-nav="{{ $item['route'] }}"
-                wire:navigate
-                @class([
-                    'saas-nav-item',
-                    'saas-nav-item-active' => $isActive,
-                ])
-                @click="$store.layout.closeSidebar()"
-            >
-                <span class="saas-nav-item-icon">
-                    <x-saas.icon :name="$item['icon']" class="h-4 w-4" />
-                </span>
-                <span class="truncate">{{ $item['label'] }}</span>
-            </a>
+            @if (! empty($item['children']))
+                <div
+                    class="space-y-1"
+                    x-data="{
+                        open: false,
+                        forceOpen: @js($isActive || $childActive),
+                        storageKey: @js('avayar-nav-'.($item['key'] ?? $item['route'] ?? $item['label'])),
+                        init() {
+                            if (this.forceOpen) {
+                                this.open = true;
+                                return;
+                            }
+                            const stored = localStorage.getItem(this.storageKey);
+                            this.open = stored === null ? true : stored === '1';
+                        },
+                        toggle() {
+                            this.open = ! this.open;
+                            localStorage.setItem(this.storageKey, this.open ? '1' : '0');
+                        },
+                    }"
+                >
+                    <button
+                        type="button"
+                        class="saas-nav-item w-full"
+                        @click="toggle()"
+                        :aria-expanded="open"
+                        aria-controls="nav-group-{{ $item['key'] ?? $item['route'] }}"
+                        aria-label="باز و بسته کردن {{ $item['label'] }}"
+                    >
+                        <span class="saas-nav-item-icon">
+                            <x-saas.icon :name="$item['icon']" class="h-4 w-4" />
+                        </span>
+                        <span class="truncate">{{ $item['label'] }}</span>
+                        <svg class="ms-auto h-4 w-4 shrink-0 transition" :class="open ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </button>
+                    <div
+                        id="nav-group-{{ $item['key'] ?? $item['route'] }}"
+                        x-show="open"
+                        x-cloak
+                        class="ms-5 space-y-1 border-s border-zinc-200 ps-2 dark:border-zinc-800"
+                    >
+                        @foreach ($item['children'] as $child)
+                            @php
+                                $isChildActive = $navIsCurrent($child);
+                            @endphp
+                            <a
+                                href="{{ route($child['route']) }}"
+                                data-tour-nav="{{ $child['route'] }}"
+                                wire:navigate
+                                @class([
+                                    'saas-nav-item',
+                                    'saas-nav-item-active' => $isChildActive,
+                                ])
+                                @click="$store.layout.closeSidebar()"
+                            >
+                                <span class="saas-nav-item-icon">
+                                    <x-saas.icon :name="$child['icon']" class="h-4 w-4" />
+                                </span>
+                                <span class="truncate">{{ $child['label'] }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @else
+                <a
+                    href="{{ route($item['route']) }}"
+                    data-tour-nav="{{ $item['route'] }}"
+                    wire:navigate
+                    @class([
+                        'saas-nav-item',
+                        'saas-nav-item-active' => $isActive,
+                    ])
+                    @click="$store.layout.closeSidebar()"
+                >
+                    <span class="saas-nav-item-icon">
+                        <x-saas.icon :name="$item['icon']" class="h-4 w-4" />
+                    </span>
+                    <span class="truncate">{{ $item['label'] }}</span>
+                </a>
+            @endif
         @endforeach
     </nav>
 

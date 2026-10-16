@@ -1,6 +1,20 @@
 @php
     $activeItem = collect($navItems ?? [])
-        ->first(fn (array $item) => request()->routeIs($item['route'].'*') || request()->routeIs($item['route']));
+        ->flatMap(fn (array $item) => array_merge(! empty($item['route']) ? [$item] : [], $item['children'] ?? []))
+        ->first(function (array $item): bool {
+            $patterns = $item['matches'] ?? array_filter([
+                ($item['route'] ?? null) ? $item['route'].'*' : null,
+                $item['route'] ?? null,
+            ]);
+
+            foreach ($patterns as $pattern) {
+                if (request()->routeIs($pattern)) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
     $activeNavLabel = $activeItem['label'] ?? null;
 @endphp
 

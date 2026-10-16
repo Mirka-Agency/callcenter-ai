@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Application\Crm\Services\CrmConnectionLifecycleService;
 use App\Application\Voip\Services\VoipConnectionLifecycleService;
+use App\Domain\Crm\OrganizationCrmMode;
 use App\Domain\Voip\Enums\VoipProviderCode;
 use App\Enums\UserRole;
 use App\Infrastructure\Voip\Adapters\SimotelVoipAdapter;
@@ -224,7 +225,10 @@ class EmployerIntegrationAuthorizationTest extends TestCase
             $factory = $factory->withIntegrationSelfService();
         }
 
-        $factory->create(['user_id' => $employer->id]);
+        $factory->create([
+            'user_id' => $employer->id,
+            'crm_mode' => OrganizationCrmMode::External,
+        ]);
 
         return $employer;
     }

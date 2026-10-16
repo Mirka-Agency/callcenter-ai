@@ -36,10 +36,10 @@ return [
     ],
 
     /*
-    | Google reCAPTCHA v3 on the public and admin login pages.
+    | Google reCAPTCHA v3 on the public and admin login pages and the landing consultation form.
     | RECAPTCHA_ENABLED defaults to on. On-prem is always off (see Recaptcha::enabled).
     | Verification stays off until both keys are set.
-    | min_score is the lowest v3 score (0–1) accepted for the login action.
+    | min_score is the lowest v3 score (0–1) accepted for each action.
     */
     'recaptcha' => [
         'site_key' => env('RECAPTCHA_SITE_KEY'),

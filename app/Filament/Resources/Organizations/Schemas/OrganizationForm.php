@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Organizations\Schemas;
 
+use App\Domain\Crm\OrganizationCrmMode;
 use App\Enums\UserRole;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -31,6 +32,13 @@ class OrganizationForm
                     ->label(__('filament.fields.employer_can_manage_integrations'))
                     ->helperText(__('filament.misc.employer_can_manage_integrations_helper'))
                     ->default(false),
+                Select::make('crm_mode')
+                    ->label(__('filament.fields.crm_mode'))
+                    ->options(OrganizationCrmMode::options())
+                    ->default(OrganizationCrmMode::Internal->value)
+                    ->required()
+                    ->native(false)
+                    ->helperText(__('filament.misc.crm_mode_helper')),
                 Select::make('user_id')
                     ->label(__('filament.fields.employer'))
                     ->relationship(

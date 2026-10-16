@@ -2,52 +2,106 @@
 
 namespace App\Livewire\Employer\Customers;
 
-use App\Models\Call;
-use App\Models\Customer;
-use App\Models\CustomerCompany;
+use App\Livewire\Concerns\HasCustomerListPerPage;
+use App\Livewire\Concerns\HasCustomerListSort;
+use App\Models\OrganizationUser;
 use App\Services\EmployerContext;
-use App\Services\Reports\DefinedExtensionCallConstraint;
+use App\Support\CustomerListQuery;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.employer')]
-#[Title('مشتریان')]
+#[Title('اشخاص و شرکت‌ها')]
 class Index extends Component
 {
+    use HasCustomerListPerPage;
+    use HasCustomerListSort;
+    use WithPagination;
+
+    public string $search = '';
+
+    public string $ownerFilter = 'all';
+
+    public string $specificOwnerId = '';
+
+    public string $stageFilter = 'all';
+
+    public bool $assignFromCall = false;
+
+    public function mount(): void
+    {
+        $this->assignFromCall = (bool) EmployerContext::organization()->assign_customer_owner_from_call;
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedOwnerFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSpecificOwnerId(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedStageFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function saveOwnerPolicy(): void
+    {
+        EmployerContext::organization()->update([
+            'assign_customer_owner_from_call' => $this->assignFromCall,
+        ]);
+
+        $this->js("window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'سیاست مسئول مشتری ذخیره شد.' } }))");
+    }
+
     public function render()
     {
-        $organization = EmployerContext::organization();
-        $organizationId = $organization->id;
-
-        $stats = [
-            'companies' => CustomerCompany::query()->forOrganization($organizationId)->excludingOwnOrganization($organization)->count(),
-            'contacts' => Customer::query()->forOrganization($organizationId)->count(),
-            'calls' => app(DefinedExtensionCallConstraint::class)->apply(
-                Call::query()->where('organization_id', $organizationId)->whereNotNull('customer_id'),
-                $organizationId,
-            )->count(),
-        ];
-
-        $recentCompanies = CustomerCompany::query()
-            ->forOrganization($organizationId)
-            ->excludingOwnOrganization($organization)
-            ->orderByDesc('last_contact_at')
-            ->limit(4)
-            ->get();
-
-        $recentContacts = Customer::query()
-            ->forOrganization($organizationId)
-            ->with('company')
-            ->orderByDesc('last_contact_at')
-            ->limit(6)
-            ->get();
+        $organizationId = EmployerContext::organizationId();
+        $specificOwnerId = ctype_digit($this->specificOwnerId) ? (int) $this->specificOwnerId : null;
+        $membershipId = $this->viewerMembershipId();
+        $contacts = CustomerListQuery::contacts(
+            $organizationId,
+            $this->search,
+            $this->sort,
+            $this->ownerFilter,
+            $membershipId,
+            $specificOwnerId,
+            $this->stageFilter,
+        )->paginate($this->currentPerPage());
 
         return view('livewire.shared.customers.hub', [
-            'stats' => $stats,
-            'recentCompanies' => $recentCompanies,
-            'recentContacts' => $recentContacts,
+            'contacts' => $contacts,
             'portal' => 'employer',
+            'stats' => CustomerListQuery::directoryStats($organizationId, EmployerContext::organization()),
+            'ownerChoices' => CustomerListQuery::ownerChoices($organizationId),
+            'lifecycleCounts' => CustomerListQuery::lifecycleCounts(
+                $organizationId,
+                $this->search,
+                $this->ownerFilter,
+                $membershipId,
+                $specificOwnerId,
+            ),
         ]);
+    }
+
+    private function viewerMembershipId(): ?int
+    {
+        $id = OrganizationUser::query()
+            ->where('organization_id', EmployerContext::organizationId())
+            ->where('user_id', auth()->id())
+            ->where('is_active', true)
+            ->value('id');
+
+        return $id ? (int) $id : null;
     }
 }

@@ -1,0 +1,33 @@
+#!/bin/sh
+# Role-aware container healthcheck. CONTAINER_ROLE selects the probe.
+set -e
+
+role="${CONTAINER_ROLE:-web}"
+
+cmdline() {
+    if [ -r /proc/1/cmdline ]; then
+        tr '\0' ' ' < /proc/1/cmdline
+    fi
+}
+
+case "$role" in
+    web)
+        wget -q -O /dev/null --timeout=3 "http://127.0.0.1:${APP_PORT:-8000}/up"
+        ;;
+    reverb)
+        php -r '$p=(int) (getenv("REVERB_SERVER_PORT") ?: 8090); $fp=@fsockopen("127.0.0.1", $p, $errno, $err, 2); if ($fp) { fclose($fp); exit(0); } exit(1);'
+        ;;
+    ami)
+        cmdline | grep -q 'voip:ami-listen'
+        ;;
+    queue)
+        cmdline | grep -q 'queue:work'
+        ;;
+    scheduler)
+        cmdline | grep -q 'schedule:work'
+        ;;
+    *)
+        echo "unknown CONTAINER_ROLE: $role" >&2
+        exit 1
+        ;;
+esac

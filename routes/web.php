@@ -2,16 +2,11 @@
 
 use App\Http\Controllers\ConsultationRequestController;
 use App\Livewire\Auth\Login;
-use App\Models\User;
 use App\Support\LandingHost;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    if (auth()->check()) {
-        return redirect(auth()->user()->portalRoute());
-    }
-
     if (! LandingHost::matches(request())) {
         return redirect()->route('login');
     }

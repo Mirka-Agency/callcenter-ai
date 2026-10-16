@@ -13,7 +13,12 @@ class CrmIntelligenceSyncService
     public function syncAnalysis(ConversationAnalysis $analysis): int
     {
         $organization = Organization::query()->find($analysis->organization_id);
-        $connection = $organization?->crmConnections()->where('is_active', true)->orderByDesc('is_default')->first();
+
+        if (! $organization?->usesExternalCrm()) {
+            return 0;
+        }
+
+        $connection = $organization->crmConnections()->where('is_active', true)->orderByDesc('is_default')->first();
 
         if (! $connection) {
             return 0;

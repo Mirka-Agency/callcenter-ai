@@ -2,6 +2,7 @@
 
 namespace App\Support\Navigation;
 
+use App\Domain\Crm\OrganizationCrmMode;
 use App\Support\OnPrem;
 
 class EmployerNavigation
@@ -13,10 +14,14 @@ class EmployerNavigation
             ['label' => 'عملکرد کارشناسان', 'route' => 'employer.intelligence.performance', 'icon' => 'chart'],
             ['label' => 'تحلیل تماس‌ها', 'route' => 'employer.intelligence.index', 'icon' => 'sparkles'],
             ['label' => 'داخلی‌ها', 'route' => 'employer.extensions.index', 'icon' => 'phone'],
-            ['label' => 'مشتریان', 'route' => 'employer.customers.index', 'icon' => 'users'],
             ['label' => 'آپلود دستی تماس', 'route' => 'employer.manual-analyses.index', 'icon' => 'upload'],
             ['label' => 'صف تحلیل تماس', 'route' => 'employer.processing-queue.index', 'icon' => 'cloud'],
-            ['label' => 'CRM', 'route' => 'employer.crm.index', 'icon' => 'cloud'],
+            [
+                'label' => 'CRM',
+                'key' => 'crm',
+                'icon' => 'users',
+                'children' => self::crmChildren(),
+            ],
             ['label' => 'خطوط تلفنی', 'route' => 'employer.voip.index', 'icon' => 'phone'],
             ['label' => 'پروفایل سازمان', 'route' => 'employer.organization.profile', 'icon' => 'building'],
         ];
@@ -26,5 +31,72 @@ class EmployerNavigation
         }
 
         return $items;
+    }
+
+    /** @return list<array<string, mixed>> */
+    private static function crmChildren(): array
+    {
+        $customers = [
+            'label' => 'اشخاص و شرکت‌ها',
+            'route' => 'employer.customers.index',
+            'icon' => 'users',
+            'matches' => ['employer.customers.*'],
+        ];
+
+        if (! CurrentOrganizationCrmMode::isConfigured()) {
+            return [$customers];
+        }
+
+        if (CurrentOrganizationCrmMode::resolve() === OrganizationCrmMode::External) {
+            return [
+                $customers,
+                [
+                    'label' => 'اتصالات خارجی',
+                    'route' => 'employer.crm.index',
+                    'icon' => 'cloud',
+                    'matches' => ['employer.crm.index', 'employer.crm.connections.*'],
+                ],
+            ];
+        }
+
+        return [
+            [
+                'label' => 'آمار',
+                'route' => 'employer.crm.overview',
+                'icon' => 'chart',
+                'matches' => ['employer.crm.overview'],
+            ],
+            $customers,
+            [
+                'label' => 'معاملات',
+                'route' => 'employer.crm.deals.index',
+                'icon' => 'analytics',
+                'matches' => ['employer.crm.deals.index', 'employer.crm.deals.show', 'employer.crm.deals.list', 'employer.crm.pipelines.*'],
+            ],
+            [
+                'label' => 'یادآوری‌ها',
+                'route' => 'employer.crm.reminders.index',
+                'icon' => 'calendar',
+                'matches' => ['employer.crm.reminders.*'],
+            ],
+            [
+                'label' => 'محصولات و خدمات',
+                'route' => 'employer.crm.products.index',
+                'icon' => 'document',
+                'matches' => ['employer.crm.products.*'],
+            ],
+            [
+                'label' => 'اسناد',
+                'route' => 'employer.crm.invoices.index',
+                'icon' => 'document',
+                'matches' => ['employer.crm.invoices.*'],
+            ],
+            [
+                'label' => 'تنظیمات CRM',
+                'route' => 'employer.crm.settings',
+                'icon' => 'document',
+                'matches' => ['employer.crm.settings'],
+            ],
+        ];
     }
 }

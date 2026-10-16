@@ -3,19 +3,26 @@
 namespace App\Filament\Resources\Organizations\RelationManagers;
 
 use App\Filament\Resources\OrganizationCrmConnections\OrganizationCrmConnectionResource;
+use App\Models\Organization;
 use Filament\Actions\CreateAction;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class CrmConnectionsRelationManager extends RelationManager
 {
     protected static string $relationship = 'crmConnections';
 
-    public static function getTitle(\Illuminate\Database\Eloquent\Model $ownerRecord, string $pageClass): string
+    public static function getTitle(Model $ownerRecord, string $pageClass): string
     {
         return __('filament.relation_managers.crm_connections');
+    }
+
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+    {
+        return $ownerRecord instanceof Organization && $ownerRecord->usesExternalCrm();
     }
 
     public function table(Table $table): Table
@@ -33,7 +40,7 @@ class CrmConnectionsRelationManager extends RelationManager
                     ->label(__('filament.fields.default'))
                     ->boolean(),
                 IconColumn::make('is_active')
-                    ->label(__('filament.fields.crm_enabled_for_org'))
+                    ->label(__('filament.fields.active'))
                     ->boolean(),
             ])
             ->headerActions([

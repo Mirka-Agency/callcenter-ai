@@ -2978,35 +2978,6 @@
     line-height: 1.9;
 }
 
-.site-footer__pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.site-footer__pills li {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    height: 2.15rem;
-    padding-inline: 0.8rem;
-    border: 1px solid var(--landing-line-muted);
-    border-radius: 999px;
-    background: var(--color-white);
-    color: var(--landing-ink-soft);
-    font-size: 0.78rem;
-    font-weight: 500;
-}
-
-.site-footer__pills svg {
-    width: 0.95rem;
-    height: 0.95rem;
-    color: var(--color-brand);
-}
-
 .site-footer__col h2 {
     margin: 0 0 1rem;
     color: var(--color-ink);
@@ -3014,9 +2985,18 @@
     font-weight: 700;
 }
 
-.site-footer__links,
-.site-footer__contacts,
-.site-footer__integrations {
+.site-footer__links {
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+    justify-content: start;
+    column-gap: 1.75rem;
+    row-gap: 0.7rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.site-footer__contacts {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -3088,33 +3068,6 @@
     line-height: 1.4;
 }
 
-.site-footer__integrations a {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55rem;
-    min-width: 11.5rem;
-    height: 2.7rem;
-    padding-inline: 0.9rem;
-    border: 1px solid var(--landing-line-muted);
-    border-radius: 0.9rem;
-    background: var(--color-white);
-    color: var(--landing-zinc-800);
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: border-color 0.15s ease, color 0.15s ease;
-}
-
-.site-footer__integrations a:hover {
-    border-color: var(--landing-violet-200);
-    color: var(--color-brand);
-}
-
-.site-footer__integrations svg {
-    width: 1rem;
-    height: 1rem;
-    color: var(--color-ai);
-}
-
 .site-footer__bar {
     display: flex;
     flex-direction: column;
@@ -3123,30 +3076,6 @@
     margin-top: 2.5rem;
     padding-top: 1.25rem;
     border-top: 1px solid #f0f0f5;
-}
-
-.site-footer__notes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.site-footer__notes a {
-    display: inline-flex;
-    align-items: center;
-    height: 2rem;
-    padding-inline: 0.75rem;
-    border-radius: 999px;
-    background: var(--color-canvas);
-    color: var(--color-muted);
-    font-size: 0.75rem;
-}
-
-.site-footer__notes a:hover {
-    color: var(--color-brand);
 }
 
 .site-footer__wave {
@@ -3176,7 +3105,7 @@
 
 @media (min-width: 900px) {
     .site-footer__grid {
-        grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 0.95fr);
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.2fr) minmax(0, 1fr);
     }
 
     .site-footer__bar {
@@ -3203,7 +3132,6 @@
 
 .dark .site-footer__logo,
 .dark .site-footer__col h2,
-.dark .site-footer__integrations a,
 .dark .site-footer__contacts a,
 .dark .site-footer__contacts button {
     color: var(--color-canvas);
@@ -3213,17 +3141,8 @@
 .dark .site-footer__links a,
 .dark .site-footer__copy,
 .dark .site-footer__credit,
-.dark .site-footer__notes a,
 .dark .site-footer__contacts small {
     color: var(--landing-zinc-400);
-}
-
-.dark .site-footer__pills li,
-.dark .site-footer__integrations a,
-.dark .site-footer__notes a {
-    border-color: var(--landing-zinc-800);
-    background: var(--color-ink);
-    color: var(--color-border);
 }
 
 .dark .site-footer__icon {
@@ -3416,6 +3335,28 @@
     clip: rect(0 0 0 0);
 }
 
+.consult-recaptcha {
+    margin: 0.15rem 0 0;
+    padding: 0.9rem 1.1rem;
+    border-radius: 1rem;
+    background: var(--landing-zinc-100);
+    color: var(--color-muted);
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.95;
+    text-align: center;
+}
+
+.consult-recaptcha a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.grecaptcha-badge {
+    visibility: hidden;
+}
+
 .dark .consult-dialog {
     border-color: var(--landing-zinc-800);
     background: var(--color-ink);
@@ -3437,4 +3378,9 @@
 
 .dark .consult-success {
     background: rgba(124, 37, 253, 0.16);
+}
+
+.dark .consult-recaptcha {
+    background: var(--color-foreground);
+    color: var(--landing-zinc-400);
 }

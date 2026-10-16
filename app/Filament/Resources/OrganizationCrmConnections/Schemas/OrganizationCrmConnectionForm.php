@@ -52,7 +52,7 @@ class OrganizationCrmConnectionForm
                         Toggle::make('is_default')
                             ->label(__('filament.fields.default_connection')),
                         Toggle::make('is_active')
-                            ->label(__('filament.fields.crm_enabled_for_org'))
+                            ->label(__('filament.fields.active'))
                             ->helperText(__('filament.misc.crm_enable_admin_only_helper'))
                             ->default(true),
                     ])

@@ -9,13 +9,16 @@ use App\Models\CallRecording;
 use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
+use App\Models\CustomerIdentityReview;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\User;
 use App\Services\CustomerCompanyIntelligenceService;
 use App\Services\CustomerIntelligenceService;
 use App\Services\CustomerPhoneResolver;
+use App\Services\CustomerProfileUpdateService;
 use App\Support\CustomerAnalysisVisibility;
+use App\Support\CustomerFieldProvenance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -83,11 +86,17 @@ class CustomerIntelligenceTest extends TestCase
         $customer = app(CustomerIntelligenceService::class)->syncFromAnalysis($analysis);
 
         $this->assertInstanceOf(Customer::class, $customer);
-        $this->assertSame('علی رضایی', $customer->name);
+        $this->assertNull($customer->name);
         $this->assertSame('09121234567', $customer->phone_number);
         $this->assertSame('09121234567', $customer->normalized_phone);
-        $this->assertNotNull($customer->customer_company_id);
-        $this->assertSame('آلفا', $customer->company?->name);
+        $this->assertNull($customer->customer_company_id);
+        $this->assertSame(0, CustomerCompany::query()->where('organization_id', $organization->id)->count());
+        $this->assertDatabaseHas('customer_identity_reviews', [
+            'organization_id' => $organization->id,
+            'kind' => 'field_suggestion',
+            'field' => 'name',
+            'status' => 'pending',
+        ]);
         $this->assertSame(1, $customer->total_calls);
         $this->assertSame($customer->id, $call->fresh()->customer_id);
     }
@@ -154,9 +163,14 @@ class CustomerIntelligenceTest extends TestCase
 
         $customer = app(CustomerIntelligenceService::class)->syncFromAnalysis($analysis);
 
-        $this->assertSame($older->id, $customer->id);
-        $this->assertSame(1, Customer::query()->where('organization_id', $organization->id)->count());
-        $this->assertSame($older->id, $analysis->call->fresh()->customer_id);
+        $this->assertNull($customer);
+        $this->assertSame(2, Customer::query()->where('organization_id', $organization->id)->count());
+        $this->assertNull($analysis->call->fresh()->customer_id);
+        $this->assertDatabaseHas('customer_identity_reviews', [
+            'organization_id' => $organization->id,
+            'kind' => 'duplicate_phone',
+            'status' => 'pending',
+        ]);
     }
 
     public function test_sync_creates_a_new_person_when_the_number_is_new_even_if_the_name_matches(): void
@@ -270,15 +284,13 @@ class CustomerIntelligenceTest extends TestCase
         $maryam = $service->syncFromAnalysis($second);
 
         $this->assertNotSame($ali->id, $maryam->id);
-        $this->assertSame($ali->customer_company_id, $maryam->customer_company_id);
-        $this->assertSame(1, CustomerCompany::query()->where('organization_id', $organization->id)->count());
-
-        $company = CustomerCompany::query()->find($ali->customer_company_id);
-        $this->assertSame(2, $company->contacts()->count());
-        $this->assertEqualsCanonicalizing(
-            [$ali->id, $maryam->id],
-            $company->contacts()->pluck('id')->all(),
-        );
+        $this->assertNull($ali->customer_company_id);
+        $this->assertNull($maryam->customer_company_id);
+        $this->assertSame(0, CustomerCompany::query()->where('organization_id', $organization->id)->count());
+        $this->assertSame(2, CustomerIdentityReview::query()
+            ->where('organization_id', $organization->id)
+            ->where('kind', 'company_candidate')
+            ->count());
     }
 
     public function test_repeat_call_from_the_same_number_is_added_to_the_existing_person(): void
@@ -337,7 +349,7 @@ class CustomerIntelligenceTest extends TestCase
         ], callerNumber: '09121234567');
 
         $customer = app(CustomerIntelligenceService::class)->syncFromAnalysis($first);
-        $this->assertSame('شرکت آلفا', $customer->company?->name);
+        $this->assertNull($customer->customer_company_id);
 
         $second = $this->makeIdentityAnalysis($organization, [
             'company_name' => 'آلفا',
@@ -347,8 +359,62 @@ class CustomerIntelligenceTest extends TestCase
 
         $customer = app(CustomerIntelligenceService::class)->syncFromAnalysis($second);
 
-        $this->assertSame('آلفا', $customer->fresh()->company?->name);
-        $this->assertSame(1, CustomerCompany::query()->where('organization_id', $organization->id)->count());
+        $this->assertNull($customer->fresh()->customer_company_id);
+        $this->assertSame(0, CustomerCompany::query()->where('organization_id', $organization->id)->count());
+        $this->assertSame(1, Customer::query()->where('organization_id', $organization->id)->count());
+    }
+
+    public function test_personal_call_does_not_create_a_customer(): void
+    {
+        $organization = Organization::factory()->create();
+        $analysis = $this->makeIdentityAnalysis($organization, [
+            'person_name' => 'علی رضایی',
+            'company_name' => 'آلفا',
+            'confidence' => 0.95,
+        ]);
+        $analysis->update(['is_personal' => true]);
+
+        $customer = app(CustomerIntelligenceService::class)->syncFromAnalysis($analysis->fresh());
+
+        $this->assertNull($customer);
+        $this->assertSame(0, Customer::query()->where('organization_id', $organization->id)->count());
+        $this->assertNull($analysis->call->fresh()->customer_id);
+    }
+
+    public function test_human_verified_identity_is_not_overwritten_by_a_newer_ai_suggestion(): void
+    {
+        $organization = Organization::factory()->create();
+        $customer = app(CustomerProfileUpdateService::class)->create($organization->id, [
+            'name' => 'نام دستی',
+            'email' => 'manual@example.com',
+            'job_title' => 'مدیر خرید',
+            'company_name' => 'شرکت بتا',
+            'phone_number' => '09121234567',
+        ]);
+
+        $analysis = $this->makeIdentityAnalysis($organization, [
+            'person_name' => 'نام هوش مصنوعی',
+            'company_name' => 'شرکت آلفا',
+            'email' => 'ai@example.com',
+            'confidence' => 0.99,
+        ], callerNumber: '09121234567', externalCallId: 'human-lock-call');
+        $analysis->update([
+            'customer_identity_json' => [
+                ...$analysis->customer_identity_json,
+                'job_title' => 'کارشناس فروش',
+            ],
+        ]);
+
+        $enriched = app(CustomerIntelligenceService::class)->syncFromAnalysis($analysis->fresh());
+
+        $this->assertSame($customer->id, $enriched->id);
+        $this->assertSame('نام دستی', $enriched->name);
+        $this->assertSame('manual@example.com', $enriched->email);
+        $this->assertSame('مدیر خرید', $enriched->job_title);
+        $this->assertSame('شرکت بتا', $enriched->company_name);
+        $this->assertTrue(CustomerFieldProvenance::isHumanLocked($enriched->identity_field_sources, 'name'));
+        $this->assertSame($customer->customer_company_id, $enriched->customer_company_id);
+        $this->assertSame($enriched->id, $analysis->call->fresh()->customer_id);
     }
 
     public function test_employee_cannot_view_other_employee_performance(): void

@@ -24,10 +24,27 @@ class EmployerOrganizationProfileTest extends TestCase
 
     public function test_sidebar_lists_organization_profile_and_drops_company_holidays(): void
     {
-        $routes = collect(EmployerNavigation::items())->pluck('route');
+        $items = collect(EmployerNavigation::items());
+        $routes = $items->pluck('route');
+        $crm = $items->firstWhere('label', 'CRM');
 
         $this->assertTrue($routes->contains('employer.organization.profile'));
         $this->assertFalse($routes->contains('employer.holidays.index'));
+        $this->assertFalse($routes->contains('employer.customers.index'));
+        $this->assertFalse($routes->contains('employer.crm.index'));
+        $this->assertSame(
+            [
+                'employer.crm.overview',
+                'employer.customers.index',
+                'employer.crm.deals.index',
+                'employer.crm.reminders.index',
+                'employer.crm.products.index',
+                'employer.crm.invoices.index',
+                'employer.crm.settings',
+            ],
+            array_column($crm['children'] ?? [], 'route'),
+        );
+        $this->assertSame('معاملات', collect($crm['children'] ?? [])->firstWhere('route', 'employer.crm.deals.index')['label'] ?? null);
 
         $employer = User::factory()->create(['role' => UserRole::Employer]);
         Organization::factory()->create([
@@ -35,13 +52,26 @@ class EmployerOrganizationProfileTest extends TestCase
             'title' => 'شرکت نمونه',
         ]);
 
-        $this->actingAs($employer)
+        $sidebar = $this->actingAs($employer)
             ->get(route('employer.organization.profile'))
             ->assertOk()
+            ->assertSee('>CRM<', false)
+            ->assertSee('>آمار<', false)
+            ->assertSee('>اشخاص و شرکت‌ها<', false)
+            ->assertSee('>معاملات<', false)
+            ->assertDontSee('>اتصالات خارجی<', false)
             ->assertSee('پروفایل سازمان')
             ->assertSee('شرکت نمونه')
             ->assertSee('تعطیلات شرکت')
-            ->assertDontSee(route('employer.holidays.index'), false);
+            ->assertDontSee(route('employer.holidays.index'), false)
+            ->getContent();
+
+        $crmPosition = strpos($sidebar, '>CRM<');
+        $overviewPosition = strpos($sidebar, '>آمار<');
+        $customersPosition = strpos($sidebar, '>اشخاص و شرکت‌ها<');
+
+        $this->assertLessThan($overviewPosition, $crmPosition);
+        $this->assertLessThan($customersPosition, $overviewPosition);
     }
 
     public function test_old_holidays_address_opens_the_organization_profile(): void

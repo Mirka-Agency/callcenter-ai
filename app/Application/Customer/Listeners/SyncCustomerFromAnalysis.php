@@ -2,9 +2,10 @@
 
 namespace App\Application\Customer\Listeners;
 
+use App\Application\Customer\Actions\EnrichCustomerFromAnalysis;
+use App\Domain\Customer\Events\CustomerSyncedFromAnalysis;
 use App\Domain\Llm\Events\ConversationAnalyzed;
 use App\Models\ConversationAnalysis;
-use App\Services\CustomerIntelligenceService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
 class SyncCustomerFromAnalysis implements ShouldQueue
@@ -14,7 +15,7 @@ class SyncCustomerFromAnalysis implements ShouldQueue
     public int $timeout = 120;
 
     public function __construct(
-        private CustomerIntelligenceService $customers,
+        private EnrichCustomerFromAnalysis $enrich,
     ) {}
 
     public function viaQueue(): string
@@ -30,6 +31,14 @@ class SyncCustomerFromAnalysis implements ShouldQueue
             return;
         }
 
-        $this->customers->syncFromAnalysis($analysis);
+        $customer = $this->enrich->handle($analysis);
+
+        if ($customer) {
+            event(new CustomerSyncedFromAnalysis(
+                organizationId: (int) $analysis->organization_id,
+                analysisId: (int) $analysis->id,
+                customerId: (int) $customer->id,
+            ));
+        }
     }
 }

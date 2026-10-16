@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Employee\Customers\Contacts;
 
+use App\Application\Customer\Actions\CreateCustomer;
 use App\Models\CustomerCompany;
-use App\Services\CustomerProfileUpdateService;
 use App\Services\EmployeeContext;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -26,10 +26,10 @@ class Create extends Component
 
     public string $job_title = '';
 
-    public function save(CustomerProfileUpdateService $updater): void
+    public function save(CreateCustomer $creator): void
     {
         try {
-            $customer = $updater->create(EmployeeContext::membership()->organization_id, [
+            $customer = $creator->handle(EmployeeContext::membership()->organization_id, [
                 'name' => $this->name,
                 'customer_company_id' => $this->customer_company_id,
                 'company_name' => $this->company_name,
