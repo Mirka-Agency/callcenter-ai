@@ -82,6 +82,7 @@ class Index extends Component
         return view('livewire.shared.customers.contacts.index', [
             'contacts' => $contacts,
             'portal' => 'employer',
+            'stats' => CustomerListQuery::directoryStats($organizationId, EmployerContext::organization()),
             'ownerChoices' => CustomerListQuery::ownerChoices($organizationId),
             'lifecycleCounts' => CustomerListQuery::lifecycleCounts(
                 $organizationId,

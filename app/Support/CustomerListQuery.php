@@ -3,15 +3,42 @@
 namespace App\Support;
 
 use App\Domain\Customer\CustomerLifecycleStage;
+use App\Models\Call;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
+use App\Services\Reports\DefinedExtensionCallConstraint;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class CustomerListQuery
 {
+    /**
+     * Totals for the CRM directory summary cards.
+     *
+     * @return array{companies: int, contacts: int, calls: int}
+     */
+    public static function directoryStats(int $organizationId, ?Organization $organization = null): array
+    {
+        $organization ??= Organization::query()->find($organizationId);
+        $contacts = Customer::query()->forOrganization($organizationId)->count();
+        $companies = CustomerCompany::query()
+            ->forOrganization($organizationId)
+            ->excludingOwnOrganization($organization)
+            ->count();
+        $calls = app(DefinedExtensionCallConstraint::class)->apply(
+            Call::query()->where('organization_id', $organizationId)->whereNotNull('customer_id'),
+            $organizationId,
+        )->count();
+
+        return [
+            'companies' => $companies,
+            'contacts' => $contacts,
+            'calls' => $calls,
+        ];
+    }
+
     /**
      * @return Builder<Customer>
      */

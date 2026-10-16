@@ -76,6 +76,43 @@ class CustomerPresenter
             ->all();
     }
 
+    /**
+     * Compact tags for the CRM directory table (lead level + top concerns).
+     *
+     * @return list<array{label: string, class: string}>
+     */
+    public static function directoryTags(Customer $customer, int $limit = 3): array
+    {
+        $tags = [];
+
+        if ($customer->latest_lead_level) {
+            $tags[] = [
+                'label' => 'لید '.AnalysisInsightPresenter::leadLevelLabel($customer->latest_lead_level),
+                'class' => self::leadBadgeClass($customer->latest_lead_level),
+            ];
+        }
+
+        foreach (self::topConcerns($customer, max(0, $limit - count($tags))) as $concern) {
+            $tags[] = [
+                'label' => $concern['label'],
+                'class' => self::concernTagClass($concern['type']),
+            ];
+        }
+
+        return $tags;
+    }
+
+    public static function concernTagClass(string $type): string
+    {
+        return match ($type) {
+            'price' => 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
+            'trust' => 'bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300',
+            'timing' => 'bg-violet-50 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300',
+            'technical' => 'bg-indigo-50 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300',
+            default => 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
+        };
+    }
+
     public static function listSubtitle(Customer $customer): string
     {
         return collect([

@@ -2,52 +2,78 @@
 
 namespace App\Livewire\Employee\Customers;
 
-use App\Models\Call;
-use App\Models\Customer;
-use App\Models\CustomerCompany;
+use App\Livewire\Concerns\HasCustomerListPerPage;
+use App\Livewire\Concerns\HasCustomerListSort;
 use App\Services\EmployeeContext;
-use App\Services\Reports\DefinedExtensionCallConstraint;
+use App\Support\CustomerListQuery;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.employee')]
-#[Title('مشتریان')]
+#[Title('اشخاص و شرکت‌ها')]
 class Index extends Component
 {
+    use HasCustomerListPerPage;
+    use HasCustomerListSort;
+    use WithPagination;
+
+    public string $search = '';
+
+    public string $ownerFilter = 'all';
+
+    public string $specificOwnerId = '';
+
+    public string $stageFilter = 'all';
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedOwnerFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSpecificOwnerId(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedStageFilter(): void
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
-        $organization = EmployeeContext::organization();
-        $organizationId = $organization->id;
-
-        $stats = [
-            'companies' => CustomerCompany::query()->forOrganization($organizationId)->excludingOwnOrganization($organization)->count(),
-            'contacts' => Customer::query()->forOrganization($organizationId)->count(),
-            'calls' => app(DefinedExtensionCallConstraint::class)->apply(
-                Call::query()->where('organization_id', $organizationId)->whereNotNull('customer_id'),
-                $organizationId,
-            )->count(),
-        ];
-
-        $recentCompanies = CustomerCompany::query()
-            ->forOrganization($organizationId)
-            ->excludingOwnOrganization($organization)
-            ->orderByDesc('last_contact_at')
-            ->limit(4)
-            ->get();
-
-        $recentContacts = Customer::query()
-            ->forOrganization($organizationId)
-            ->with('company')
-            ->orderByDesc('last_contact_at')
-            ->limit(6)
-            ->get();
+        $organizationId = EmployeeContext::organizationId();
+        $specificOwnerId = ctype_digit($this->specificOwnerId) ? (int) $this->specificOwnerId : null;
+        $membershipId = EmployeeContext::membership()->id;
+        $contacts = CustomerListQuery::contacts(
+            $organizationId,
+            $this->search,
+            $this->sort,
+            $this->ownerFilter,
+            $membershipId,
+            $specificOwnerId,
+            $this->stageFilter,
+        )->paginate($this->currentPerPage());
 
         return view('livewire.shared.customers.hub', [
-            'stats' => $stats,
-            'recentCompanies' => $recentCompanies,
-            'recentContacts' => $recentContacts,
+            'contacts' => $contacts,
             'portal' => 'employee',
+            'stats' => CustomerListQuery::directoryStats($organizationId, EmployeeContext::organization()),
+            'ownerChoices' => CustomerListQuery::ownerChoices($organizationId),
+            'lifecycleCounts' => CustomerListQuery::lifecycleCounts(
+                $organizationId,
+                $this->search,
+                $this->ownerFilter,
+                $membershipId,
+                $specificOwnerId,
+            ),
         ]);
     }
 }

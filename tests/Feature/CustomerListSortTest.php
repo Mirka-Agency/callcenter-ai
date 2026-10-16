@@ -161,7 +161,7 @@ class CustomerListSortTest extends TestCase
     {
         $organization = $this->actingAsEmployer();
 
-        for ($i = 1; $i <= 13; $i++) {
+        for ($i = 1; $i <= 25; $i++) {
             $this->createCompany($organization, sprintf('سازمان صفحه %02d', $i), now()->subDays($i));
         }
 
@@ -177,7 +177,7 @@ class CustomerListSortTest extends TestCase
     {
         $organization = $this->actingAsEmployer();
 
-        for ($i = 1; $i <= 16; $i++) {
+        for ($i = 1; $i <= 25; $i++) {
             $this->createContact($organization, sprintf('مخاطب صفحه %02d', $i), sprintf('0912115%04d', $i), now()->subDays($i));
         }
 
@@ -206,7 +206,7 @@ class CustomerListSortTest extends TestCase
             ->assertSet('sort', 'dissatisfaction');
     }
 
-    public function test_customers_hub_omits_unassigned_stat(): void
+    public function test_customers_hub_renders_directory_table_without_stat_cards(): void
     {
         $organization = $this->actingAsEmployer();
         $this->createCompany($organization, 'سازمان تست', now());
@@ -214,31 +214,23 @@ class CustomerListSortTest extends TestCase
 
         $component = Livewire::test(CustomersHub::class);
         $html = $component->html();
-        $statsStart = strpos($html, 'data-tour="customers-hub-stats"');
-        $statsEnd = strpos($html, 'data-tour="customers-hub-cards"');
 
-        $this->assertSame(['companies', 'contacts', 'calls'], array_keys($component->viewData('stats')));
-        $this->assertNotFalse($statsStart);
-        $this->assertNotFalse($statsEnd);
-        $this->assertStringNotContainsString('بدون سازمان', substr($html, $statsStart, $statsEnd - $statsStart));
-        $this->assertStringNotContainsString('customers-section-nav', $html);
+        $this->assertStringContainsString('data-tour="customers-directory"', $html);
+        $this->assertStringContainsString('data-tour="customers-directory-tabs"', $html);
+        $this->assertStringContainsString('data-tour="customers-contacts-table"', $html);
+        $this->assertStringNotContainsString('data-tour="customers-hub-stats"', $html);
+        $this->assertStringNotContainsString('data-tour="customers-hub-cards"', $html);
+        $this->assertStringNotContainsString('data-tour="customers-hub-hero"', $html);
         $this->assertStringNotContainsString('نمای کلی', $html);
-        $this->assertStringNotContainsString('مشاهده همه اشخاص', $html);
-        $heroStart = strpos($html, 'data-tour="customers-hub-hero"');
-        $this->assertNotFalse($heroStart);
-        $actions = substr($html, 0, $heroStart);
-        $this->assertStringContainsString('شرکت جدید', $actions);
-        $this->assertStringContainsString('شخص جدید', $actions);
-        $this->assertStringContainsString('saas-btn-primary', $actions);
-        $this->assertStringContainsString('border-zinc-900', $actions);
-        $cards = substr($html, (int) strpos($html, 'data-tour="customers-hub-cards"'));
-        $this->assertStringNotContainsString('شرکت جدید', $cards);
-        $this->assertStringNotContainsString('شخص جدید', $cards);
-        $this->assertStringContainsString('bg-indigo-600', $cards);
-        $this->assertStringContainsString('bg-violet-600', $cards);
-        $this->assertStringContainsString('M3.75 21h16.5M4.5 3h15', $cards);
-        $this->assertStringContainsString('M15.75 6a3.75 3.75 0 11-7.5 0', $cards);
-        $component->assertSee('شرکت')->assertSee('شخص')->assertSee('تماس');
+        $component
+            ->assertSee('اشخاص و شرکت‌ها')
+            ->assertSee('همه')
+            ->assertSee('اشخاص')
+            ->assertSee('شرکت‌ها')
+            ->assertSee('مخاطب بدون شرکت')
+            ->assertSee('شرکت جدید')
+            ->assertSee('شخص جدید');
+        $this->assertStringContainsString('data-row-href', $html);
     }
 
     public function test_employer_cannot_see_other_organization_customers_when_sorting(): void
@@ -269,30 +261,22 @@ class CustomerListSortTest extends TestCase
 
         $component = Livewire::test(CompaniesIndex::class);
         $this->assertSame(['آلفا'], $this->listedNames($component, 'companies'));
-        $component->assertSee('آلفا');
-
-        $hub = Livewire::test(CustomersHub::class);
-        $this->assertSame(1, $hub->viewData('stats')['companies']);
-        $this->assertSame(['آلفا'], $hub->viewData('recentCompanies')->pluck('name')->all());
+        $component->assertSee('آلفا')->assertDontSee('شرکت میرکو');
     }
 
-    public function test_company_cards_show_up_to_three_contact_names_without_avatars(): void
+    public function test_company_directory_rows_link_to_company_detail(): void
     {
         $organization = $this->actingAsEmployer();
         $company = $this->createCompany($organization, 'شرکت همراه', now());
+        $company->update(['contacts_count' => 4]);
         $this->createContact($organization, 'علی رضایی', '09121180001', now(), $company);
-        $this->createContact($organization, 'سارا محمدی', '09121180002', now()->subHour(), $company);
-        $this->createContact($organization, 'مهدی احمدی', '09121180003', now()->subHours(2), $company);
-        $this->createContact($organization, 'نفر چهارم', '09121180004', now()->subHours(3), $company);
 
         $html = Livewire::test(CompaniesIndex::class)->html();
 
-        $this->assertStringContainsString('علی رضایی', $html);
-        $this->assertStringContainsString('سارا محمدی', $html);
-        $this->assertStringContainsString('مهدی احمدی', $html);
-        $this->assertStringNotContainsString('نفر چهارم', $html);
-        $this->assertStringNotContainsString('saas-avatar', $html);
-        $this->assertStringNotContainsString('مشاهده اشخاص', $html);
+        $this->assertStringContainsString('شرکت همراه', $html);
+        $this->assertStringContainsString('data-tour="customers-companies-table"', $html);
+        $this->assertStringContainsString('data-row-href="'.route('employer.customers.companies.show', $company).'"', $html);
+        $this->assertStringContainsString('saas-avatar', $html);
     }
 
     private function listedNames(Testable $component, string $key): array

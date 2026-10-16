@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Employee\Customers\Companies;
 
+use App\Livewire\Concerns\HasCustomerListPerPage;
 use App\Livewire\Concerns\HasCustomerListSort;
 use App\Services\EmployeeContext;
 use App\Support\CustomerListQuery;
@@ -14,6 +15,7 @@ use Livewire\WithPagination;
 #[Title('شرکت‌ها')]
 class Index extends Component
 {
+    use HasCustomerListPerPage;
     use HasCustomerListSort;
     use WithPagination;
 
@@ -26,16 +28,18 @@ class Index extends Component
 
     public function render()
     {
+        $organization = EmployeeContext::organization();
+        $organizationId = $organization->id;
         $companies = CustomerListQuery::companies(
-            EmployeeContext::organizationId(),
+            $organizationId,
             $this->search,
             $this->sort,
-            withContactPreview: true,
-        )->paginate(12);
+        )->paginate($this->currentPerPage());
 
         return view('livewire.shared.customers.companies.index', [
             'companies' => $companies,
             'portal' => 'employee',
+            'stats' => CustomerListQuery::directoryStats($organizationId, $organization),
         ]);
     }
 }
