@@ -12,18 +12,19 @@ class ProductQuery
 {
     public function __construct(private ProductAuthorization $auth) {}
 
-    /** @param  array{type?: string, search?: string, status?: string}  $filters */
+    /** @param  array{type?: string, search?: string, status?: string, category_id?: int|string|null}  $filters */
     public function paginate(int $organizationId, User $actor, array $filters = [], int $perPage = 20): LengthAwarePaginator
     {
         $this->auth->authorize($this->auth->canView($actor, $organizationId));
 
         return $this->base($organizationId, $filters)
+            ->with('category')
             ->orderBy('name')
             ->paginate($perPage)
             ->withQueryString();
     }
 
-    /** @param  array{type?: string, search?: string, status?: string}  $filters */
+    /** @param  array{type?: string, search?: string, status?: string, category_id?: int|string|null}  $filters */
     public function counts(int $organizationId, User $actor, array $filters = []): array
     {
         $this->auth->authorize($this->auth->canView($actor, $organizationId));
@@ -31,6 +32,7 @@ class ProductQuery
         $base = $this->base($organizationId, [
             'search' => $filters['search'] ?? '',
             'status' => $filters['status'] ?? 'all',
+            'category_id' => $filters['category_id'] ?? null,
         ]);
 
         return [
@@ -55,7 +57,7 @@ class ProductQuery
         return $product;
     }
 
-    /** @param  array{type?: string, search?: string, status?: string}  $filters */
+    /** @param  array{type?: string, search?: string, status?: string, category_id?: int|string|null}  $filters */
     private function base(int $organizationId, array $filters): Builder
     {
         $query = CrmProduct::query()->where('organization_id', $organizationId);
@@ -63,6 +65,11 @@ class ProductQuery
         $type = (string) ($filters['type'] ?? 'all');
         if ($type !== 'all' && ProductType::tryFrom($type)) {
             $query->where('type', $type);
+        }
+
+        $categoryId = $filters['category_id'] ?? null;
+        if ($categoryId !== null && $categoryId !== '' && $categoryId !== 'all') {
+            $query->where('category_id', (int) $categoryId);
         }
 
         $status = (string) ($filters['status'] ?? 'all');
@@ -78,7 +85,10 @@ class ProductQuery
             $query->where(function (Builder $inner) use ($term): void {
                 $inner->where('name', 'like', $term)
                     ->orWhere('code', 'like', $term)
-                    ->orWhere('description', 'like', $term);
+                    ->orWhere('description', 'like', $term)
+                    ->orWhereHas('category', function (Builder $category) use ($term): void {
+                        $category->where('name', 'like', $term);
+                    });
             });
         }
 

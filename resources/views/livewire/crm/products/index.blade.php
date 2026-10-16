@@ -1,14 +1,39 @@
 @php
     use App\Support\PersianNumber;
+
+    $categoryIcons = [
+        'monitor' => '<path stroke-linecap="round" stroke-linejoin="round" d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9A1.5 1.5 0 0 1 18.5 16H5.5A1.5 1.5 0 0 1 4 14.5v-9ZM8 20h8M12 16v4" />',
+        'chip' => '<rect x="7" y="7" width="10" height="10" rx="1.5" /><path stroke-linecap="round" d="M10 4v3M14 4v3M10 17v3M14 17v3M4 10h3M4 14h3M17 10h3M17 14h3" />',
+        'gear' => '<circle cx="12" cy="12" r="3" /><path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />',
+        'layers' => '<path stroke-linecap="round" stroke-linejoin="round" d="m12 3 8 4.5-8 4.5L4 7.5 12 3Zm-8 9 8 4.5 8-4.5M4 16.5 12 21l8-4.5" />',
+        'graduation' => '<path stroke-linecap="round" stroke-linejoin="round" d="M22 10 12 5 2 10l10 5 10-5Zm-10 5v5m-6-2.5v-4.2l6 3 6-3v4.2A12.3 12.3 0 0 1 12 21a12.3 12.3 0 0 1-6-1.7Z" />',
+        'users' => '<path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />',
+        'grid' => '<rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />',
+        'box' => '<path stroke-linecap="round" stroke-linejoin="round" d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M3.3 7 12 12l8.7-5M12 22V12" />',
+    ];
 @endphp
 
-<div class="saas-page space-y-5">
-    <x-saas.page-header
-        title="محصولات و خدمات"
-        :description="'کاتالوگ فروش سازمان برای فرصت‌ها و پیگیری‌های CRM — '.PersianNumber::format($counts['product']).' محصول | '.PersianNumber::format($counts['service']).' خدمت'"
-    >
-        <x-slot:actions>
-            @if ($canManage)
+<div class="saas-page crm-products-page space-y-5">
+    <header class="crm-products-header">
+        <div class="crm-products-header__title">
+            <div class="crm-products-header__heading">
+                <span class="crm-products-header__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.3 7 12 12l8.7-5M12 22V12" />
+                    </svg>
+                </span>
+                <h1>محصولات و خدمات</h1>
+            </div>
+            <p>
+                کاتالوگ فروش سازمان برای فرصت‌ها و پیگیری‌های CRM —
+                {{ PersianNumber::format($counts['product']) }} محصول |
+                {{ PersianNumber::format($counts['service']) }} خدمت
+            </p>
+        </div>
+
+        @if ($canManage)
+            <div class="crm-products-header__actions">
                 <button type="button" class="saas-btn-secondary text-sm" wire:click="downloadTemplate">
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v10m0 0 3.5-3.5M12 14l-3.5-3.5M5 18h14" />
@@ -21,74 +46,166 @@
                     </svg>
                     ایمپورت
                 </button>
-                <button type="button" class="saas-btn-primary text-sm" wire:click="openCreate">
+                <button type="button" class="saas-btn-brand text-sm" wire:click="openCreate">
+                    مورد جدید
                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
                     </svg>
-                    مورد جدید
                 </button>
-            @endif
-        </x-slot:actions>
-    </x-saas.page-header>
+            </div>
+        @endif
+    </header>
 
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex flex-wrap items-center gap-2" role="toolbar" aria-label="فیلتر نوع">
+    <div class="crm-products-toolbar">
+        <div class="crm-products-type-tabs" role="toolbar" aria-label="فیلتر نوع">
             @foreach (['all' => 'همه', 'product' => 'محصول', 'service' => 'خدمت'] as $value => $label)
                 <button
                     type="button"
                     wire:click="setType('{{ $value }}')"
-                    @class([
-                        'inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm transition',
-                        'border-indigo-200 bg-indigo-50 font-semibold text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200' => $type === $value,
-                        'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300' => $type !== $value,
-                    ])
+                    @class(['crm-products-type-tab', 'is-active' => $type === $value])
                 >{{ $label }}</button>
             @endforeach
         </div>
 
-        <form wire:submit="applySearch" class="flex w-full gap-2 sm:max-w-md">
-            <label class="relative min-w-0 flex-1">
-                <span class="sr-only">جستجو</span>
-                <input
-                    wire:model="searchInput"
-                    type="search"
-                    class="saas-input"
-                    placeholder="جستجو نام یا کد..."
-                >
-            </label>
-            <button type="submit" class="saas-btn-secondary shrink-0 text-sm">جستجو</button>
-        </form>
+        <label class="crm-products-search">
+            <span class="sr-only">جستجو</span>
+            <span class="crm-products-search__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <circle cx="11" cy="11" r="7" />
+                    <path stroke-linecap="round" d="m20 20-3.5-3.5" />
+                </svg>
+            </span>
+            <input
+                wire:model.live.debounce.300ms="searchInput"
+                type="search"
+                class="saas-input"
+                placeholder="جستجو نام یا کد محصول، خدمت، دسته‌بندی..."
+            >
+        </label>
     </div>
 
-    @if ($products->isEmpty())
-        <x-saas.empty-state
-            title="هنوز موردی ثبت نشده"
-            description="محصولات و خدمات سازمان را اینجا وارد کنید تا در فروش و پیگیری CRM در دسترس باشند."
-        >
-            @if ($canManage)
-                <button type="button" class="saas-btn-primary mt-6 text-sm" wire:click="openCreate">مورد جدید</button>
+    <section class="crm-products-categories" aria-label="دسته‌بندی محصولات">
+        <div class="crm-products-categories__intro">
+            <div class="crm-products-categories__intro-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m12 3 8 4.5-8 4.5L4 7.5 12 3Zm-8 9 8 4.5 8-4.5M4 16.5 12 21l8-4.5" />
+                </svg>
+            </div>
+            <div>
+                <h2>دسته‌بندی محصولات</h2>
+                <p>بر اساس دسته‌بندی، موارد را فیلتر کنید</p>
+            </div>
+        </div>
+
+        <div class="crm-products-categories__track">
+            @if ($categories->isNotEmpty())
+                <button
+                    type="button"
+                    wire:click="setCategory('all')"
+                    @class(['crm-products-category-card', 'is-active' => $category === 'all'])
+                >
+                    <span class="crm-products-category-card__icon tone-violet" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">{!! $categoryIcons['grid'] !!}</svg>
+                    </span>
+                    <span class="crm-products-category-card__label">همه</span>
+                </button>
+
+                @foreach ($categories as $item)
+                    <button
+                        type="button"
+                        wire:key="category-{{ $item->id }}"
+                        wire:click="setCategory('{{ $item->id }}')"
+                        @class(['crm-products-category-card', 'is-active' => $category === (string) $item->id])
+                    >
+                        <span class="crm-products-category-card__icon tone-{{ $item->tone }}" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                {!! $categoryIcons[$item->icon] ?? $categoryIcons['layers'] !!}
+                            </svg>
+                        </span>
+                        <span class="crm-products-category-card__label">{{ $item->name }}</span>
+                    </button>
+                @endforeach
             @endif
-        </x-saas.empty-state>
+
+            @if ($canManage)
+                <button
+                    type="button"
+                    class="crm-products-category-card crm-products-category-card--add"
+                    wire:click="openCategoryForm"
+                >
+                    <span class="crm-products-category-card__icon tone-muted" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                        </svg>
+                    </span>
+                    <span class="crm-products-category-card__label">افزودن دسته‌بندی</span>
+                </button>
+            @endif
+        </div>
+    </section>
+
+    @if ($products->isEmpty())
+        <section class="crm-products-empty">
+            <div class="crm-products-empty__art" aria-hidden="true">
+                <div class="crm-products-empty__blob crm-products-empty__blob--a"></div>
+                <div class="crm-products-empty__blob crm-products-empty__blob--b"></div>
+                <div class="crm-products-empty__spark crm-products-empty__spark--1"></div>
+                <div class="crm-products-empty__spark crm-products-empty__spark--2"></div>
+                <div class="crm-products-empty__spark crm-products-empty__spark--3"></div>
+                <div class="crm-products-empty__box">
+                    <svg viewBox="0 0 120 100" fill="none">
+                        <path d="M20 38 60 18l40 20v36c0 6-18 14-40 14S20 80 20 74V38Z" fill="#EDE9FE"/>
+                        <path d="M20 38 60 58l40-20" stroke="#7C25FD" stroke-width="2.5" stroke-linejoin="round"/>
+                        <path d="M60 58v30" stroke="#7C25FD" stroke-width="2.5"/>
+                        <path d="M20 38 60 18l40 20" stroke="#7C25FD" stroke-width="2.5" stroke-linejoin="round"/>
+                        <rect x="44" y="8" width="32" height="40" rx="4" fill="#fff" stroke="#C4B5FD" stroke-width="2"/>
+                        <path d="M52 20h16M52 28h12M52 36h14" stroke="#A78BFA" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+            </div>
+            <h2>هنوز موردی ثبت نشده</h2>
+            <p>محصولات و خدمات سازمان را اینجا وارد کنید تا در فروش و پیگیری CRM در دسترس باشند.</p>
+            @if ($canManage)
+                <button type="button" class="saas-btn-brand mt-6 text-sm" wire:click="openCreate">
+                    مورد جدید
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                    </svg>
+                </button>
+            @endif
+        </section>
     @else
-        <section class="saas-card overflow-hidden">
+        <section class="saas-card overflow-hidden !p-0">
             <div class="overflow-x-auto">
-                <table class="saas-table min-w-full">
+                <table class="saas-table crm-products-table">
+                    <colgroup>
+                        <col class="crm-products-col-name">
+                        <col class="crm-products-col-type">
+                        <col class="crm-products-col-category">
+                        <col class="crm-products-col-code">
+                        <col class="crm-products-col-price">
+                        <col class="crm-products-col-status">
+                        @if ($canManage)
+                            <col class="crm-products-col-actions">
+                        @endif
+                    </colgroup>
                     <thead>
                         <tr>
-                            <th>نام</th>
-                            <th>نوع</th>
-                            <th>کد</th>
-                            <th>قیمت</th>
-                            <th>وضعیت</th>
+                            <th scope="col">نام</th>
+                            <th scope="col">نوع</th>
+                            <th scope="col">دسته‌بندی</th>
+                            <th scope="col">کد</th>
+                            <th scope="col">قیمت</th>
+                            <th scope="col">وضعیت</th>
                             @if ($canManage)
-                                <th class="text-end">عملیات</th>
+                                <th scope="col">عملیات</th>
                             @endif
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($products as $product)
                             <tr wire:key="product-{{ $product->id }}">
-                                <td class="max-w-md">
+                                <td>
                                     <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $product->name }}</div>
                                     @if (filled($product->description))
                                         <p class="mt-1 line-clamp-2 text-sm leading-6 text-zinc-500">{{ $product->description }}</p>
@@ -98,8 +215,8 @@
                                     <span class="inline-flex items-center gap-1.5 text-sm text-zinc-700 dark:text-zinc-300">
                                         <span
                                             @class([
-                                                'h-2 w-2 rounded-full',
-                                                'bg-indigo-600' => $product->type->value === 'product',
+                                                'h-2 w-2 shrink-0 rounded-full',
+                                                'bg-brand' => $product->type->value === 'product',
                                                 'bg-sky-400' => $product->type->value === 'service',
                                             ])
                                             aria-hidden="true"
@@ -107,21 +224,22 @@
                                         {{ $product->type->label() }}
                                     </span>
                                 </td>
-                                <td class="text-sm text-zinc-600 dark:text-zinc-300">{{ $product->code ?: '—' }}</td>
-                                <td class="whitespace-nowrap text-sm text-zinc-700 dark:text-zinc-200">{{ $product->formattedPrice() }}</td>
+                                <td>{{ $product->category?->name ?: '—' }}</td>
+                                <td>{{ $product->code ?: '—' }}</td>
+                                <td>{{ $product->formattedPrice() }}</td>
                                 <td>
                                     @if ($product->is_active)
-                                        <span class="text-sm font-medium text-emerald-600">فعال</span>
+                                        <span class="font-medium text-emerald-600">فعال</span>
                                     @else
-                                        <span class="text-sm font-medium text-zinc-500">غیرفعال</span>
+                                        <span class="font-medium text-zinc-500">غیرفعال</span>
                                     @endif
                                 </td>
                                 @if ($canManage)
                                     <td>
-                                        <div class="flex items-center justify-end gap-2">
+                                        <div class="crm-products-actions">
                                             <button
                                                 type="button"
-                                                class="text-sm font-medium text-indigo-700 hover:underline dark:text-indigo-300"
+                                                class="text-sm font-medium text-brand hover:underline"
                                                 wire:click="openEdit({{ $product->id }})"
                                             >ویرایش</button>
                                             <button
@@ -175,11 +293,22 @@
                         @error('type') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                     </label>
                     <label class="block text-sm">
-                        <span class="mb-1 block text-zinc-600">کد</span>
-                        <input wire:model="code" class="saas-input" maxlength="64" placeholder="اختیاری">
-                        @error('code') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                        <span class="mb-1 block text-zinc-600">دسته‌بندی</span>
+                        <select wire:model="categoryInput" class="saas-input">
+                            <option value="">بدون دسته‌بندی</option>
+                            @foreach ($categories as $item)
+                                <option value="{{ $item->id }}">{{ $item->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('category_id') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                     </label>
                 </div>
+
+                <label class="block text-sm">
+                    <span class="mb-1 block text-zinc-600">کد</span>
+                    <input wire:model="code" class="saas-input" maxlength="64" placeholder="اختیاری">
+                    @error('code') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                </label>
 
                 <div class="grid gap-3 sm:grid-cols-3">
                     <label class="block text-sm sm:col-span-1">
@@ -200,13 +329,13 @@
                 </div>
 
                 <label class="inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                    <input type="checkbox" wire:model="isActive" class="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500">
+                    <input type="checkbox" wire:model="isActive" class="rounded border-zinc-300 text-brand focus:ring-brand/40">
                     فعال
                 </label>
 
                 <div class="flex justify-end gap-2">
                     <button type="button" class="saas-btn-secondary text-sm" wire:click="closeForm">انصراف</button>
-                    <button type="submit" class="saas-btn-primary text-sm" wire:loading.attr="disabled">
+                    <button type="submit" class="saas-btn-brand text-sm" wire:loading.attr="disabled">
                         {{ $editingId ? 'ذخیره' : 'ثبت' }}
                     </button>
                 </div>
@@ -229,7 +358,24 @@
                 </label>
                 <div class="flex justify-end gap-2">
                     <button type="button" class="saas-btn-secondary text-sm" wire:click="closeImport">انصراف</button>
-                    <button type="submit" class="saas-btn-primary text-sm" wire:loading.attr="disabled">ایمپورت</button>
+                    <button type="submit" class="saas-btn-brand text-sm" wire:loading.attr="disabled">ایمپورت</button>
+                </div>
+            </form>
+        </div>
+    @endif
+
+    @if ($showCategoryForm)
+        <div class="fixed inset-0 z-40 flex items-end justify-center bg-zinc-950/40 p-4 sm:items-center" wire:click.self="closeCategoryForm">
+            <form wire:submit="saveCategory" class="saas-card w-full max-w-md space-y-3 p-4">
+                <h2 class="text-lg font-semibold">افزودن دسته‌بندی</h2>
+                <label class="block text-sm">
+                    <span class="mb-1 block text-zinc-600">نام دسته‌بندی</span>
+                    <input wire:model="categoryName" class="saas-input" required maxlength="80" placeholder="مثلاً تجهیزات شبکه">
+                    @error('category_name') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                </label>
+                <div class="flex justify-end gap-2">
+                    <button type="button" class="saas-btn-secondary text-sm" wire:click="closeCategoryForm">انصراف</button>
+                    <button type="submit" class="saas-btn-brand text-sm" wire:loading.attr="disabled">ثبت</button>
                 </div>
             </form>
         </div>

@@ -115,6 +115,52 @@ class CrmProductsTest extends TestCase
             ->assertDontSee('محصول آلفا', false);
     }
 
+    public function test_starts_without_categories_and_can_add_and_filter(): void
+    {
+        [$organization, $manager] = $this->organization();
+
+        Livewire::actingAs($manager)
+            ->test(ProductsIndex::class)
+            ->assertSee('دسته‌بندی محصولات', false)
+            ->assertSee('افزودن دسته‌بندی', false)
+            ->assertDontSee('نرم‌افزار', false)
+            ->assertDontSee('سخت‌افزار', false)
+            ->call('openCategoryForm')
+            ->set('categoryName', 'نرم‌افزار')
+            ->call('saveCategory')
+            ->assertHasNoErrors()
+            ->assertSee('نرم‌افزار', false);
+
+        $software = \App\Models\CrmProductCategory::query()
+            ->where('organization_id', $organization->id)
+            ->where('name', 'نرم‌افزار')
+            ->firstOrFail();
+
+        app(CreateProduct::class)->handle($organization->id, $manager, [
+            'name' => 'لایسنس CRM',
+            'type' => ProductType::Product->value,
+            'code' => 'SW-1',
+            'category_id' => $software->id,
+        ]);
+        app(CreateProduct::class)->handle($organization->id, $manager, [
+            'name' => 'مشاوره فروش',
+            'type' => ProductType::Service->value,
+            'code' => 'CN-1',
+        ]);
+
+        Livewire::actingAs($manager)
+            ->test(ProductsIndex::class)
+            ->call('setCategory', (string) $software->id)
+            ->assertSee('لایسنس CRM', false)
+            ->assertDontSee('مشاوره فروش', false);
+
+        $this->assertDatabaseHas('crm_product_categories', [
+            'organization_id' => $organization->id,
+            'name' => 'نرم‌افزار',
+            'is_system' => false,
+        ]);
+    }
+
     public function test_import_csv_creates_products(): void
     {
         [$organization, $manager] = $this->organization();

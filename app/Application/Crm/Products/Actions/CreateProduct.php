@@ -5,6 +5,7 @@ namespace App\Application\Crm\Products\Actions;
 use App\Application\Crm\Products\ProductAuthorization;
 use App\Domain\Crm\Products\ProductType;
 use App\Models\CrmProduct;
+use App\Models\CrmProductCategory;
 use App\Models\User;
 use App\Support\PersianNumber;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +33,7 @@ class CreateProduct
     }
 
     /** @param  array<string, mixed>  $input
-     *  @return array{name: string, description: ?string, type: ProductType, code: ?string, price_tomans: ?int, unit_quantity: ?float, unit_label: ?string, is_active: bool}
+     *  @return array{name: string, description: ?string, type: ProductType, category_id: ?int, code: ?string, price_tomans: ?int, unit_quantity: ?float, unit_label: ?string, is_active: bool}
      */
     private function validated(int $organizationId, array $input): array
     {
@@ -75,12 +76,34 @@ class CreateProduct
             'name' => $name,
             'description' => $description !== '' ? $description : null,
             'type' => $type,
+            'category_id' => $this->categoryId($organizationId, $input['category_id'] ?? null),
             'code' => $code,
             'price_tomans' => $this->price($input['price_tomans'] ?? null),
             'unit_quantity' => $this->quantity($input['unit_quantity'] ?? null),
             'unit_label' => $this->unitLabel($input['unit_label'] ?? null),
             'is_active' => filter_var($input['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN),
         ];
+    }
+
+    private function categoryId(int $organizationId, mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $categoryId = (int) $value;
+        $exists = CrmProductCategory::query()
+            ->where('organization_id', $organizationId)
+            ->where('id', $categoryId)
+            ->exists();
+
+        if (! $exists) {
+            throw ValidationException::withMessages([
+                'category_id' => 'دسته‌بندی معتبر نیست.',
+            ]);
+        }
+
+        return $categoryId;
     }
 
     private function price(mixed $value): ?int

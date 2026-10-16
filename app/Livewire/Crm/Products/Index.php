@@ -3,7 +3,9 @@
 namespace App\Livewire\Crm\Products;
 
 use App\Application\Crm\Products\Actions\CreateProduct;
+use App\Application\Crm\Products\Actions\CreateProductCategory;
 use App\Application\Crm\Products\Actions\DeleteProduct;
+use App\Application\Crm\Products\Actions\EnsureProductCategories;
 use App\Application\Crm\Products\Actions\ImportProducts;
 use App\Application\Crm\Products\Actions\UpdateProduct;
 use App\Application\Crm\Products\ProductAuthorization;
@@ -28,6 +30,9 @@ class Index extends Component
     #[Url(except: 'all')]
     public string $type = 'all';
 
+    #[Url(except: 'all')]
+    public string $category = 'all';
+
     #[Url(except: '')]
     public string $search = '';
 
@@ -37,6 +42,8 @@ class Index extends Component
 
     public bool $showImport = false;
 
+    public bool $showCategoryForm = false;
+
     public ?int $editingId = null;
 
     public string $name = '';
@@ -44,6 +51,8 @@ class Index extends Component
     public string $description = '';
 
     public string $typeInput = 'service';
+
+    public string $categoryInput = '';
 
     public string $code = '';
 
@@ -55,14 +64,22 @@ class Index extends Component
 
     public bool $isActive = true;
 
+    public string $categoryName = '';
+
     public $importFile = null;
 
-    public function mount(): void
+    public function mount(EnsureProductCategories $ensureCategories): void
     {
         $this->searchInput = $this->search;
+        $ensureCategories->handle($this->crmOrganizationId());
     }
 
     public function updatedType(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedCategory(): void
     {
         $this->resetPage();
     }
@@ -73,7 +90,19 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public function setCategory(string $category): void
+    {
+        $this->category = $category === '' ? 'all' : $category;
+        $this->resetPage();
+    }
+
     public function applySearch(): void
+    {
+        $this->search = trim($this->searchInput);
+        $this->resetPage();
+    }
+
+    public function updatedSearchInput(): void
     {
         $this->search = trim($this->searchInput);
         $this->resetPage();
@@ -93,6 +122,7 @@ class Index extends Component
         $this->name = (string) $product->name;
         $this->description = (string) ($product->description ?? '');
         $this->typeInput = $product->type->value;
+        $this->categoryInput = $product->category_id ? (string) $product->category_id : '';
         $this->code = (string) ($product->code ?? '');
         $this->priceTomans = $product->price_tomans !== null ? (string) $product->price_tomans : '';
         $this->unitQuantity = $product->unit_quantity !== null
@@ -123,12 +153,38 @@ class Index extends Component
         $this->reset('importFile');
     }
 
+    public function openCategoryForm(): void
+    {
+        $this->categoryName = '';
+        $this->showCategoryForm = true;
+    }
+
+    public function closeCategoryForm(): void
+    {
+        $this->showCategoryForm = false;
+        $this->categoryName = '';
+    }
+
+    public function saveCategory(CreateProductCategory $action): void
+    {
+        $category = $action->handle(
+            $this->crmOrganizationId(),
+            $this->crmUser(),
+            $this->categoryName,
+        );
+
+        $this->closeCategoryForm();
+        $this->category = (string) $category->id;
+        $this->toast('دسته‌بندی جدید اضافه شد.');
+    }
+
     public function save(CreateProduct $create, UpdateProduct $update, ProductQuery $query): void
     {
         $payload = [
             'name' => $this->name,
             'description' => $this->description,
             'type' => $this->typeInput,
+            'category_id' => $this->categoryInput !== '' ? $this->categoryInput : null,
             'code' => $this->code,
             'price_tomans' => $this->priceTomans,
             'unit_quantity' => $this->unitQuantity,
@@ -189,18 +245,21 @@ class Index extends Component
         ]);
     }
 
-    public function render(ProductQuery $query, ProductAuthorization $auth)
+    public function render(ProductQuery $query, ProductAuthorization $auth, EnsureProductCategories $ensureCategories)
     {
         $organizationId = $this->crmOrganizationId();
         $actor = $this->crmUser();
+        $categories = $ensureCategories->handle($organizationId);
         $filters = [
             'type' => $this->type,
             'search' => $this->search,
+            'category_id' => $this->category,
         ];
 
         return view('livewire.crm.products.index', [
             'products' => $query->paginate($organizationId, $actor, $filters),
             'counts' => $query->counts($organizationId, $actor, $filters),
+            'categories' => $categories,
             'types' => ProductType::cases(),
             'canManage' => $auth->canManage($actor, $organizationId),
             'portal' => $this->crmPortal(),
@@ -217,8 +276,12 @@ class Index extends Component
             'priceTomans',
             'unitQuantity',
             'unitLabel',
+            'categoryInput',
         ]);
         $this->typeInput = 'service';
         $this->isActive = true;
+        if ($this->category !== 'all') {
+            $this->categoryInput = $this->category;
+        }
     }
 }

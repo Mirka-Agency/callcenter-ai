@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'name',
     'description',
     'type',
+    'category_id',
     'code',
     'price_tomans',
     'unit_quantity',
@@ -47,6 +48,11 @@ class CrmProduct extends Model
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(CrmProductCategory::class, 'category_id');
     }
 
     public function createdBy(): BelongsTo
