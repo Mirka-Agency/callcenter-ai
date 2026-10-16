@@ -19,59 +19,20 @@
 @endphp
 
 <div class="saas-page">
-    <section class="saas-hero saas-hero--welcome" data-tour="dashboard-hero">
-        <div class="saas-hero-welcome">
-            <div class="saas-hero-welcome__brand">
-                <img
-                    src="{{ asset('images/dashboard/hero-brand.jpg') }}"
-                    alt="آوایار — شنیدن، درک کردن، فرصت ساختن"
-                    width="1024"
-                    height="768"
-                    decoding="async"
-                >
+    <section class="saas-hero" data-tour="dashboard-hero">
+        <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div class="min-w-0">
+                <p class="text-sm font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-400">داشبورد مدیر</p>
+                <h1 class="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl">{{ $organization->title }}</h1>
+                <p class="mt-2 max-w-2xl text-zinc-500">
+                    نمای کلی عملکرد کارشناسان در ۳۰ روز اخیر
+                </p>
             </div>
-
-            <div class="saas-hero-welcome__stats">
-                <p class="saas-hero-welcome__org">
-                    <x-saas.icon name="building" class="saas-hero-welcome__org-icon h-4 w-4 shrink-0" />
-                    <span>سازمان: {{ $organization->title }}</span>
-                </p>
-                <p class="saas-hero-welcome__metric-label">تعداد تماس‌های امروز</p>
-                <p class="saas-hero-welcome__metric-value tabular-nums">
-                    {{ \App\Support\PersianNumber::format($cockpit['calls_today'], 0) ?? '۰' }}
-                </p>
-                <div class="saas-hero-welcome__meta">
-                    <span class="saas-hero-welcome__live">
-                        <span class="saas-hero-welcome__live-dot" aria-hidden="true"></span>
-                        به‌روزرسانی لحظه‌ای
-                    </span>
-                    <span class="saas-hero-welcome__meta-sep" aria-hidden="true"></span>
-                    <span class="saas-hero-welcome__today">
-                        <x-saas.icon name="calendar" class="h-3.5 w-3.5 shrink-0" />
-                        امروز
-                    </span>
+            <div class="flex w-full shrink-0 items-center justify-between gap-4 rounded-md bg-gradient-to-l from-indigo-600 to-violet-600 px-5 py-3 text-white shadow-sm sm:w-auto">
+                <div>
+                    <p class="text-xs font-medium opacity-80">تماس‌های امروز</p>
+                    <p class="text-2xl font-bold tabular-nums sm:text-3xl">{{ $cockpit['calls_today'] }}</p>
                 </div>
-            </div>
-
-            <div class="saas-hero-welcome__visual" aria-hidden="true">
-                <div class="saas-hero-welcome__orbit">
-                    <span class="saas-hero-welcome__ring saas-hero-welcome__ring--outer"></span>
-                    <span class="saas-hero-welcome__ring saas-hero-welcome__ring--mid"></span>
-                    <span class="saas-hero-welcome__orb">
-                        <x-saas.icon name="phone" class="h-7 w-7 text-white sm:h-8 sm:w-8" />
-                    </span>
-                    <span class="saas-hero-welcome__dot saas-hero-welcome__dot--a"></span>
-                    <span class="saas-hero-welcome__dot saas-hero-welcome__dot--b"></span>
-                    <span class="saas-hero-welcome__dot saas-hero-welcome__dot--c"></span>
-                </div>
-            </div>
-
-            <div class="saas-hero-welcome__copy">
-                <p class="saas-hero-welcome__greet">سلام 👋</p>
-                <h1 class="saas-hero-welcome__title">به داشبورد آوایار خوش آمدید</h1>
-                <p class="saas-hero-welcome__subtitle">
-                    امروز هم یک قدم به ارتباطات بهتر و مشتریان رضایت‌مندتر نزدیک‌تر هستیم.
-                </p>
             </div>
         </div>
     </section>
