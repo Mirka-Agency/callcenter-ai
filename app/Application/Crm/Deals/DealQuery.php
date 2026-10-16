@@ -45,7 +45,7 @@ class DealQuery
     }
 
     /**
-     * @param  array{search?: string, status?: string, pipeline_id?: int|null, owner?: string, customer_id?: int|null, date_from?: string|null, date_to?: string|null, sort?: string, direction?: string}  $filters
+     * @param  array{search?: string, status?: string, pipeline_id?: int|null, owner?: string, customer_id?: int|null, date_from?: string|null, date_to?: string|null, date_preset?: string|null, sort?: string, direction?: string}  $filters
      * @return Builder<CrmDeal>
      */
     public function filtered(int $organizationId, User $actor, array $filters): Builder
@@ -75,6 +75,20 @@ class DealQuery
         if (! empty($filters['customer_id'])) {
             $customerId = (int) $filters['customer_id'];
             $query->whereHas('contacts', fn (Builder $contacts) => $contacts->where('customer_id', $customerId));
+        }
+
+        $datePreset = (string) ($filters['date_preset'] ?? '');
+        $today = now()->toDateString();
+
+        if ($datePreset === 'today_and_past') {
+            $query->where(function (Builder $inner) use ($today): void {
+                $inner->whereNull('crm_deals.expected_close_on')
+                    ->orWhereDate('crm_deals.expected_close_on', '<=', $today);
+            });
+        } elseif ($datePreset === 'today') {
+            $query->whereDate('crm_deals.expected_close_on', $today);
+        } elseif ($datePreset === 'upcoming') {
+            $query->whereDate('crm_deals.expected_close_on', '>', $today);
         }
 
         if (! empty($filters['date_from'])) {

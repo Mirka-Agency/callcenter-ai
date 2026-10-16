@@ -7,6 +7,8 @@ use App\Livewire\Crm\Deals\Show as CrmDealsShow;
 use App\Livewire\Crm\Overview as CrmOverview;
 use App\Livewire\Crm\Invoices\Index as CrmInvoicesIndex;
 use App\Livewire\Crm\Invoices\Show as CrmInvoicesShow;
+use App\Livewire\Crm\Pipelines\Form as CrmPipelinesForm;
+use App\Livewire\Crm\Pipelines\Index as CrmPipelinesIndex;
 use App\Livewire\Crm\Products\Index as CrmProductsIndex;
 use App\Livewire\Crm\Reminders\Index as CrmRemindersIndex;
 use App\Livewire\Crm\Tasks\Index as CrmTasksIndex;
@@ -53,6 +55,11 @@ Route::middleware(['auth', 'employee'])->group(function () {
             Route::get('/', CrmDealsIndex::class)->name('index');
             Route::get('/list', CrmDealsOpportunityList::class)->name('list');
             Route::get('/{deal}', CrmDealsShow::class)->name('show')->whereNumber('deal');
+        });
+        Route::prefix('crm/pipelines')->name('crm.pipelines.')->group(function () {
+            Route::get('/', CrmPipelinesIndex::class)->name('index');
+            Route::get('/create', CrmPipelinesForm::class)->name('create');
+            Route::get('/{pipeline}/edit', CrmPipelinesForm::class)->name('edit')->whereNumber('pipeline');
         });
         Route::prefix('crm/tasks')->name('crm.tasks.')->group(function () {
             Route::get('/', CrmTasksIndex::class)->name('index');

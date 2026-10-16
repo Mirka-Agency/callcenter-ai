@@ -304,27 +304,29 @@ class CrmDealsAndPipelinesTest extends TestCase
         $this->get(route('employee.crm.deals.index'))
             ->assertOk()
             ->assertSee('dir="rtl"', false)
-            ->assertSee('کاریز');
+            ->assertSee('افزودن معامله')
+            ->assertSee('لیست');
 
         Livewire::test(DealsOpportunityList::class)
-            ->assertSee('فهرست فرصت‌ها')
+            ->assertSee('افزودن معامله')
             ->assertSee('معامله من')
             ->assertDontSee('معامله همکار')
-            ->assertSee('رفتن به کاریز');
+            ->assertSee('کاریز');
 
         $this->get(route('employee.crm.deals.list'))
             ->assertOk()
             ->assertSee('dir="rtl"', false)
-            ->assertSee('فهرست فرصت‌ها');
+            ->assertSee('افزودن معامله');
 
-        $this->get('/workspace/crm/pipelines')->assertNotFound();
+        $this->get('/workspace/crm/pipelines')->assertForbidden();
 
         $this->actingAs($manager);
 
         $this->get(route('employer.crm.deals.index'))
             ->assertOk()
             ->assertSee('dir="rtl"', false)
-            ->assertSee('معامله همکار');
+            ->assertSee('معامله همکار')
+            ->assertSee('همه کاریزها');
 
         Livewire::test(DealsOpportunityList::class)
             ->assertSee('معامله من')
@@ -350,19 +352,41 @@ class CrmDealsAndPipelinesTest extends TestCase
             ->assertSee('هویت شرکت');
         $this->get(route('employer.crm.index'))->assertNotFound();
         $this->get(route('employer.crm.products.index'))->assertOk()->assertSee('محصولات و خدمات');
-        $this->get(route('employer.crm.invoices.index'))->assertOk()->assertSee('فاکتور و پیش فاکتور');
-        $this->get('/app/crm/pipelines')->assertNotFound();
+        $this->get(route('employer.crm.invoices.index'))->assertOk()->assertSee('اسناد فروش');
+        $this->get(route('employer.crm.pipelines.index'))
+            ->assertOk()
+            ->assertSee('همه کاریزها')
+            ->assertSee('کاریز جدید')
+            ->assertSee('ویرایش');
 
-        $routes = array_column(collect(EmployeeNavigation::items())->firstWhere('label', 'CRM')['children'], 'route');
+        $this->get(route('employer.crm.pipelines.create'))
+            ->assertOk()
+            ->assertSee('ایجاد کاریز جدید')
+            ->assertSee('اطلاعات کلی')
+            ->assertSee('افزودن مرحله جدید')
+            ->assertSee('احتمال موفقیت معامله');
+
+        $defaultPipeline = \App\Models\CrmPipeline::query()
+            ->where('organization_id', $organization->id)
+            ->where('is_default', true)
+            ->firstOrFail();
+
+        $this->get(route('employer.crm.pipelines.edit', $defaultPipeline))
+            ->assertOk()
+            ->assertSee('ویرایش کاریز')
+            ->assertSee($defaultPipeline->name);
+
+        $crmChildren = collect(EmployeeNavigation::items())->firstWhere('label', 'CRM')['children'];
+        $routes = array_column($crmChildren, 'route');
         $this->assertSame([
             'employee.crm.overview',
             'employee.customers.index',
             'employee.crm.deals.index',
-            'employee.crm.deals.list',
             'employee.crm.reminders.index',
             'employee.crm.products.index',
             'employee.crm.invoices.index',
         ], $routes);
+        $this->assertSame('معاملات', collect($crmChildren)->firstWhere('route', 'employee.crm.deals.index')['label']);
         $this->assertFalse(collect(EmployeeNavigation::items())->contains(fn (array $item) => ($item['route'] ?? null) === 'employee.customers.index'));
     }
 

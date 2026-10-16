@@ -51,6 +51,14 @@ final class PipelineStagePalette
         ]);
     }
 
+    public static function colorForPosition(int $position): string
+    {
+        $palette = self::ALLOWED;
+        $index = max(0, $position - 1);
+
+        return $palette[$index % count($palette)];
+    }
+
     public static function normalizeKind(?string $kind): string
     {
         return $kind === self::KIND_SUPPORT ? self::KIND_SUPPORT : self::KIND_SALES;

@@ -4,47 +4,20 @@
 @endphp
 
 <div class="saas-page space-y-5">
-    <x-saas.page-header
-        title="کاریز"
-        description="مراحل کاریز را مدیریت کنید؛ فرصت‌های موفق و ناموفق در لیست جداگانه دیده می‌شوند."
-    >
-        <x-slot:actions>
-            <div class="flex flex-wrap items-center justify-end gap-2">
-                @if ($canManagePipelines && $currentPipeline)
-                    <button
-                        type="button"
-                        class="saas-btn-secondary text-sm"
-                        wire:click="deleteCurrentPipeline"
-                        wire:confirm="این کاریز حذف شود؟ فقط وقتی فرصت نداشته باشد قابل حذف است."
-                    >
-                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12m-9 0V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7h12Z" />
-                        </svg>
-                        حذف کاریز
-                    </button>
-                    <button type="button" class="saas-btn-secondary text-sm" wire:click="openCreatePipelineModal">
-                        + کاریز جدید
-                    </button>
-                    <button type="button" class="saas-btn-secondary text-sm" wire:click="openStagesModal">
-                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h10M4 18h7" />
-                        </svg>
-                        مدیریت مراحل
-                    </button>
-                @elseif ($canManagePipelines)
-                    <button type="button" class="saas-btn-secondary text-sm" wire:click="openCreatePipelineModal">
-                        + کاریز جدید
-                    </button>
-                @endif
-
-                @if ($canCreate && $pipelines->isNotEmpty())
-                    <button type="button" class="saas-btn-primary text-sm" wire:click="openCreateDealModal">
-                        + فرصت جدید
-                    </button>
-                @endif
-            </div>
-        </x-slot:actions>
-    </x-saas.page-header>
+    @include('livewire.crm.deals.partials.toolbar', [
+        'activeView' => $activeView,
+        'kanbanUrl' => $kanbanUrl,
+        'listUrl' => $listUrl,
+        'pipelinesUrl' => $pipelinesUrl,
+        'pipelines' => $pipelines,
+        'currentPipeline' => $currentPipeline,
+        'canCreate' => $canCreate,
+        'canManagePipelines' => $canManagePipelines,
+        'showOwnerFilter' => true,
+        'isManager' => $isManager,
+        'showFilters' => $showFilters,
+        'datePreset' => $datePreset,
+    ])
 
     @if ($pipelines->isEmpty())
         <x-saas.empty-state
@@ -52,55 +25,13 @@
             description="مدیر سازمان می‌تواند اولین کاریز فروش را با مراحل نمونه بسازد."
         >
             @if ($canManagePipelines)
-                <button type="button" class="saas-btn-primary mt-6 text-sm" wire:click="openCreatePipelineModal">ساخت کاریز</button>
+                <a href="{{ $pipelinesUrl }}" class="saas-btn-primary mt-6 text-sm" wire:navigate>مدیریت کاریزها</a>
             @endif
         </x-saas.empty-state>
     @else
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div class="flex flex-wrap items-center gap-2" role="tablist" aria-label="کاریزها">
-                @foreach ($pipelines as $pipeline)
-                    @php $openCount = (int) ($pipelineOpenCounts[$pipeline->id] ?? 0); @endphp
-                    <button
-                        type="button"
-                        role="tab"
-                        aria-selected="{{ (string) $pipeline->id === $pipelineId ? 'true' : 'false' }}"
-                        wire:click="selectPipeline('{{ $pipeline->id }}')"
-                        @class([
-                            'inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm transition',
-                            'border-indigo-200 bg-indigo-50 font-semibold text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200' => (string) $pipeline->id === $pipelineId,
-                            'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300' => (string) $pipeline->id !== $pipelineId,
-                        ])
-                    >
-                        <span>{{ $pipeline->name }}</span>
-                        <span @class([
-                            'rounded-full px-1.5 py-0.5 text-xs',
-                            'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-200' => (string) $pipeline->id === $pipelineId,
-                            'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300' => (string) $pipeline->id !== $pipelineId,
-                        ])>{{ PersianNumber::format($openCount) }}</span>
-                    </button>
-                @endforeach
-            </div>
-
-            <label class="relative block w-full max-w-sm lg:ms-auto">
-                <span class="sr-only">جستجو</span>
-                <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-zinc-400">
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                        <circle cx="11" cy="11" r="7" />
-                        <path stroke-linecap="round" d="m20 20-3.5-3.5" />
-                    </svg>
-                </span>
-                <input
-                    wire:model.live.debounce.300ms="search"
-                    type="search"
-                    class="saas-input ps-10"
-                    placeholder="جستجو عنوان، مخاطب…"
-                >
-            </label>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2" role="tablist" aria-label="وضعیت فرصت‌ها">
+        <div class="flex flex-wrap items-center gap-2" role="tablist" aria-label="وضعیت معاملات">
             @foreach ([
-                'open' => ['label' => 'کاریز', 'count' => $summary['open_count'], 'icon' => null],
+                'open' => ['label' => 'باز', 'count' => $summary['open_count'], 'icon' => null],
                 'won' => ['label' => 'موفق', 'count' => $summary['won_count'], 'icon' => 'won'],
                 'lost' => ['label' => 'ناموفق', 'count' => $summary['lost_count'], 'icon' => 'lost'],
             ] as $statusKey => $tab)
@@ -132,30 +63,11 @@
                     ])>{{ PersianNumber::format($tab['count']) }}</span>
                 </button>
             @endforeach
-
-            @if ($isManager)
-                <label class="ms-auto inline-flex items-center gap-2 text-sm text-zinc-500">
-                    <span class="sr-only">مسئول</span>
-                    <select wire:model.live="owner" class="saas-input py-1.5 text-sm">
-                        <option value="all">همه مسئولان</option>
-                        <option value="mine">فرصت‌های من</option>
-                        <option value="unassigned">بدون مسئول</option>
-                    </select>
-                </label>
-            @else
-                <label class="ms-auto inline-flex items-center gap-2 text-sm text-zinc-500">
-                    <span class="sr-only">مسئول</span>
-                    <select wire:model.live="owner" class="saas-input py-1.5 text-sm">
-                        <option value="all">فرصت‌های من</option>
-                        <option value="mine">فقط من</option>
-                    </select>
-                </label>
-            @endif
         </div>
 
         <div class="grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/80 px-4 py-3 text-sm dark:border-zinc-800 dark:bg-zinc-900/40 sm:grid-cols-2 xl:grid-cols-4">
             <div class="flex items-center justify-between gap-3 sm:block">
-                <p class="text-zinc-500">فرصت باز</p>
+                <p class="text-zinc-500">معامله باز</p>
                 <p class="mt-0.5 text-base font-semibold text-zinc-900 dark:text-white">{{ PersianNumber::format($summary['open_count']) }}</p>
             </div>
             <div class="flex items-center justify-between gap-3 sm:block">
@@ -206,7 +118,7 @@
         @endif
 
         @if ($status === 'open')
-            <div class="flex gap-4 overflow-x-auto pb-2" aria-label="برد مراحل کاریز">
+            <div class="flex gap-4 overflow-x-auto pb-2" aria-label="برد مراحل معاملات">
                 @foreach ($stages as $stage)
                     @php
                         $columnDeals = $board->get((int) $stage->id, collect());
@@ -249,7 +161,7 @@
                                     class="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-sm text-zinc-500 transition hover:bg-white hover:text-zinc-800 dark:hover:bg-zinc-950 dark:hover:text-zinc-200"
                                 >
                                     <span class="text-base leading-none" aria-hidden="true">+</span>
-                                    <span>فرصت در این مرحله</span>
+                                    <span>افزودن معامله جدید</span>
                                 </button>
                             </footer>
                         @endif

@@ -68,16 +68,10 @@ class EmployerNavigation
             ],
             $customers,
             [
-                'label' => 'کاریز',
+                'label' => 'معاملات',
                 'route' => 'employer.crm.deals.index',
                 'icon' => 'analytics',
-                'matches' => ['employer.crm.deals.index', 'employer.crm.deals.show'],
-            ],
-            [
-                'label' => 'فهرست فرصت‌ها',
-                'route' => 'employer.crm.deals.list',
-                'icon' => 'activity',
-                'matches' => ['employer.crm.deals.list'],
+                'matches' => ['employer.crm.deals.index', 'employer.crm.deals.show', 'employer.crm.deals.list', 'employer.crm.pipelines.*'],
             ],
             [
                 'label' => 'یادآوری‌ها',

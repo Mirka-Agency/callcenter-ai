@@ -12,13 +12,19 @@ class UpdatePipeline
 {
     public function __construct(private DealAuthorization $auth) {}
 
-    public function handle(CrmPipeline $pipeline, User $actor, string $name, ?string $description, bool $isActive): CrmPipeline
-    {
+    public function handle(
+        CrmPipeline $pipeline,
+        User $actor,
+        string $name,
+        ?string $description,
+        bool $isActive,
+        ?bool $showWinProbability = null,
+    ): CrmPipeline {
         $this->auth->authorize($this->auth->canManagePipelines($actor, (int) $pipeline->organization_id));
         $name = CrmPipeline::assertName($name);
         $description = CrmPipeline::assertDescription($description);
 
-        return DB::transaction(function () use ($pipeline, $name, $description, $isActive): CrmPipeline {
+        return DB::transaction(function () use ($pipeline, $name, $description, $isActive, $showWinProbability): CrmPipeline {
             $locked = CrmPipeline::query()->whereKey($pipeline->id)->lockForUpdate()->first();
 
             if (! $locked instanceof CrmPipeline) {
@@ -31,11 +37,17 @@ class UpdatePipeline
                 ]);
             }
 
-            $locked->update([
+            $payload = [
                 'name' => $name,
                 'description' => $description,
                 'is_active' => $isActive,
-            ]);
+            ];
+
+            if ($showWinProbability !== null) {
+                $payload['show_win_probability'] = $showWinProbability;
+            }
+
+            $locked->update($payload);
 
             return $locked->fresh('stages') ?? $locked;
         });

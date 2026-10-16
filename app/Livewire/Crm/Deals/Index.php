@@ -29,7 +29,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-#[Title('کاریز')]
+#[Title('معاملات')]
 class Index extends Component
 {
     use ResolvesCrmContext;
@@ -50,6 +50,9 @@ class Index extends Component
     #[Url(except: 'all')]
     public string $owner = 'all';
 
+    #[Url(except: 'today_and_past')]
+    public string $datePreset = 'today_and_past';
+
     #[Url(except: 'activity')]
     public string $sort = 'activity';
 
@@ -58,6 +61,11 @@ class Index extends Component
 
     #[Url(as: 'customer', except: '')]
     public string $customerFilter = '';
+
+    #[Url(as: 'create', except: false)]
+    public bool $openCreate = false;
+
+    public bool $showFilters = false;
 
     public bool $showCreate = false;
 
@@ -107,6 +115,11 @@ class Index extends Component
 
         $this->syncViewModeForStatus();
         $this->syncDefaultStage();
+
+        if ($this->openCreate) {
+            $this->openCreate = false;
+            $this->openCreateDealModal();
+        }
     }
 
     public function updatedSearch(): void
@@ -131,6 +144,15 @@ class Index extends Component
         $this->resetPage();
     }
 
+    public function updatedDatePreset(): void
+    {
+        if (! in_array($this->datePreset, ['all', 'today_and_past', 'today', 'upcoming'], true)) {
+            $this->datePreset = 'today_and_past';
+        }
+
+        $this->resetPage();
+    }
+
     public function selectPipeline(string $pipelineId): void
     {
         $this->pipelineId = $pipelineId;
@@ -146,6 +168,16 @@ class Index extends Component
 
         $this->status = $status;
         $this->syncViewModeForStatus();
+        $this->resetPage();
+    }
+
+    public function toggleFilters(): void
+    {
+        $this->showFilters = ! $this->showFilters;
+    }
+
+    public function refreshBoard(): void
+    {
         $this->resetPage();
     }
 
@@ -415,6 +447,7 @@ class Index extends Component
             'pipeline_id' => ctype_digit($this->pipelineId) ? (int) $this->pipelineId : null,
             'owner' => $this->owner,
             'customer_id' => ctype_digit($this->customerFilter) ? (int) $this->customerFilter : null,
+            'date_preset' => $this->datePreset,
             'sort' => $this->sort,
             'direction' => $this->direction,
         ];
@@ -464,6 +497,10 @@ class Index extends Component
             'customerChoices' => $customerChoices,
             'canCreate' => $auth->canCreate($actor, $organizationId),
             'canManagePipelines' => $auth->canManagePipelines($actor, $organizationId),
+            'listUrl' => route($this->crmPortal().'.crm.deals.list'),
+            'kanbanUrl' => route($this->crmPortal().'.crm.deals.index'),
+            'pipelinesUrl' => route($this->crmPortal().'.crm.pipelines.index'),
+            'activeView' => 'kanban',
         ])->layout($this->crmLayout());
     }
 

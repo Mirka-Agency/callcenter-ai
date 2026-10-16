@@ -11,9 +11,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'organization_id',
     'crm_pipeline_id',
     'name',
+    'description',
     'color',
+    'win_probability',
     'position',
     'is_active',
+    'is_won_stage',
+    'is_lost_stage',
     'stale_after_days',
 ])]
 class CrmPipelineStage extends Model
@@ -31,7 +35,10 @@ class CrmPipelineStage extends Model
     {
         return [
             'position' => 'integer',
+            'win_probability' => 'integer',
             'is_active' => 'boolean',
+            'is_won_stage' => 'boolean',
+            'is_lost_stage' => 'boolean',
             'stale_after_days' => 'integer',
         ];
     }

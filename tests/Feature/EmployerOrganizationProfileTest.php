@@ -37,7 +37,6 @@ class EmployerOrganizationProfileTest extends TestCase
                 'employer.crm.overview',
                 'employer.customers.index',
                 'employer.crm.deals.index',
-                'employer.crm.deals.list',
                 'employer.crm.reminders.index',
                 'employer.crm.products.index',
                 'employer.crm.invoices.index',
@@ -45,6 +44,7 @@ class EmployerOrganizationProfileTest extends TestCase
             ],
             array_column($crm['children'] ?? [], 'route'),
         );
+        $this->assertSame('معاملات', collect($crm['children'] ?? [])->firstWhere('route', 'employer.crm.deals.index')['label'] ?? null);
 
         $employer = User::factory()->create(['role' => UserRole::Employer]);
         Organization::factory()->create([
@@ -58,7 +58,7 @@ class EmployerOrganizationProfileTest extends TestCase
             ->assertSee('>CRM<', false)
             ->assertSee('>آمار<', false)
             ->assertSee('>اشخاص و شرکت‌ها<', false)
-            ->assertSee('>کاریز<', false)
+            ->assertSee('>معاملات<', false)
             ->assertDontSee('>اتصالات خارجی<', false)
             ->assertSee('پروفایل سازمان')
             ->assertSee('شرکت نمونه')

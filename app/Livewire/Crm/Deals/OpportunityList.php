@@ -3,6 +3,7 @@
 namespace App\Livewire\Crm\Deals;
 
 use App\Application\Crm\Deals\Actions\ArchiveDeal;
+use App\Application\Crm\Deals\DealAuthorization;
 use App\Application\Crm\Deals\DealQuery;
 use App\Domain\Crm\Deals\DealStatus;
 use App\Livewire\Crm\Concerns\ResolvesCrmContext;
@@ -12,7 +13,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-#[Title('فهرست فرصت‌ها')]
+#[Title('معاملات')]
 class OpportunityList extends Component
 {
     use ResolvesCrmContext;
@@ -27,11 +28,16 @@ class OpportunityList extends Component
     #[Url(except: '')]
     public string $pipelineId = '';
 
+    #[Url(except: 'today_and_past')]
+    public string $datePreset = 'today_and_past';
+
     #[Url(except: '')]
     public string $dateFrom = '';
 
     #[Url(except: '')]
     public string $dateTo = '';
+
+    public bool $showFilters = false;
 
     public function updatedSearch(): void
     {
@@ -48,12 +54,31 @@ class OpportunityList extends Component
         $this->resetPage();
     }
 
+    public function updatedDatePreset(): void
+    {
+        if (! in_array($this->datePreset, ['all', 'today_and_past', 'today', 'upcoming'], true)) {
+            $this->datePreset = 'today_and_past';
+        }
+
+        $this->resetPage();
+    }
+
     public function updatedDateFrom(): void
     {
         $this->resetPage();
     }
 
     public function updatedDateTo(): void
+    {
+        $this->resetPage();
+    }
+
+    public function toggleFilters(): void
+    {
+        $this->showFilters = ! $this->showFilters;
+    }
+
+    public function refreshBoard(): void
     {
         $this->resetPage();
     }
@@ -70,7 +95,7 @@ class OpportunityList extends Component
         $this->toast('فرصت حذف شد.');
     }
 
-    public function render(DealQuery $query)
+    public function render(DealQuery $query, DealAuthorization $auth)
     {
         $organizationId = $this->crmOrganizationId();
         $actor = $this->crmUser();
@@ -79,22 +104,34 @@ class OpportunityList extends Component
             'search' => $this->search,
             'status' => $this->normalizedStatus(),
             'pipeline_id' => ctype_digit($this->pipelineId) ? (int) $this->pipelineId : null,
+            'date_preset' => $this->datePreset,
             'date_from' => $this->normalizedDate($this->dateFrom),
             'date_to' => $this->normalizedDate($this->dateTo),
             'sort' => 'activity',
             'direction' => 'desc',
         ];
 
+        $pipelines = CrmPipeline::query()
+            ->where('organization_id', $organizationId)
+            ->orderByDesc('is_default')
+            ->orderBy('name')
+            ->get();
+
         return view('livewire.crm.deals.opportunity-list', [
             'portal' => $this->crmPortal(),
-            'pipelines' => CrmPipeline::query()
-                ->where('organization_id', $organizationId)
-                ->orderByDesc('is_default')
-                ->orderBy('name')
-                ->get(),
+            'pipelines' => $pipelines,
+            'currentPipeline' => $pipelines->firstWhere('id', ctype_digit($this->pipelineId) ? (int) $this->pipelineId : null),
             'statuses' => DealStatus::cases(),
             'deals' => $query->paginate($organizationId, $actor, $filters),
             'kanbanUrl' => route($this->crmPortal().'.crm.deals.index'),
+            'listUrl' => route($this->crmPortal().'.crm.deals.list'),
+            'pipelinesUrl' => route($this->crmPortal().'.crm.pipelines.index'),
+            'canCreate' => $auth->canCreate($actor, $organizationId),
+            'canManagePipelines' => $auth->canManagePipelines($actor, $organizationId),
+            'showOwnerFilter' => false,
+            'activeView' => 'list',
+            'showFilters' => $this->showFilters,
+            'datePreset' => $this->datePreset,
         ])->layout($this->crmLayout());
     }
 

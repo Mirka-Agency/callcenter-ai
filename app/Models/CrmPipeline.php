@@ -15,6 +15,7 @@ use Illuminate\Validation\ValidationException;
     'description',
     'is_default',
     'is_active',
+    'show_win_probability',
 ])]
 class CrmPipeline extends Model
 {
@@ -32,6 +33,7 @@ class CrmPipeline extends Model
         return [
             'is_default' => 'boolean',
             'is_active' => 'boolean',
+            'show_win_probability' => 'boolean',
         ];
     }
 

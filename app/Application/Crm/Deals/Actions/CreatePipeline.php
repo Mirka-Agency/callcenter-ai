@@ -37,6 +37,7 @@ class CreatePipeline
                 'description' => $description,
                 'is_default' => ! $hasAny,
                 'is_active' => true,
+                'show_win_probability' => true,
             ]);
 
             if ($withDefaultStages) {

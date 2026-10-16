@@ -48,7 +48,7 @@
         </x-slot:actions>
     </x-saas.page-header>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <x-saas.stat-card
             label="فرصت‌های باز"
             :value="PersianNumber::format($stats['open_count'])"
@@ -226,7 +226,7 @@
 
             <div class="mt-auto pt-2">
                 <a href="{{ route($portal.'.crm.deals.index') }}" class="crm-overview-link" wire:navigate>
-                    مشاهده کاریز
+                    مشاهده معاملات
                     <x-saas.icon name="arrow-left" class="h-3.5 w-3.5" />
                 </a>
             </div>

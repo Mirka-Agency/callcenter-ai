@@ -295,8 +295,28 @@
         @apply bg-yellow-50 text-yellow-600 dark:bg-yellow-950/40 dark:text-yellow-300;
     }
 
+    .saas-stat--with-icon {
+        @apply gap-1.5 p-3.5 sm:gap-1.5 sm:p-3.5;
+    }
+
     .saas-stat--with-icon .saas-stat-label {
-        @apply min-h-0;
+        @apply min-h-0 text-[0.8125rem] leading-5;
+    }
+
+    .saas-stat--with-icon .saas-stat-value {
+        @apply text-lg sm:text-xl lg:text-2xl;
+    }
+
+    .saas-stat--with-icon .saas-stat-meta {
+        @apply mt-0 min-h-0 text-xs leading-4;
+    }
+
+    .saas-stat--with-icon .saas-stat-meta:not(:has(*)) {
+        @apply hidden;
+    }
+
+    .saas-stat--with-icon .saas-stat-icon {
+        @apply h-8 w-8 rounded-lg;
     }
 
     .saas-stat-label {
@@ -879,6 +899,599 @@
         @apply transition;
     }
 
+    .crm-directory-header h1 {
+        color: var(--color-brand);
+    }
+
+    .crm-directory-header-actions {
+        @apply flex flex-col items-end gap-3;
+    }
+
+    .crm-directory-stats {
+        @apply flex flex-wrap justify-end gap-2;
+    }
+
+    .crm-directory-stat {
+        @apply flex h-[4.5rem] w-[4.5rem] flex-col items-center justify-center gap-0.5 rounded-xl border-0 bg-white p-2 text-center shadow-[0_6px_16px_rgba(15,23,42,0.08)] dark:bg-zinc-900 dark:shadow-[0_6px_16px_rgba(0,0,0,0.35)];
+    }
+
+    .crm-directory-stat__label {
+        @apply text-[11px] font-medium text-zinc-500 dark:text-zinc-400;
+    }
+
+    .crm-directory-stat__value {
+        @apply text-lg font-bold tabular-nums tracking-tight leading-none;
+    }
+
+    .crm-directory-stat--indigo .crm-directory-stat__value {
+        @apply text-indigo-600 dark:text-indigo-400;
+    }
+
+    .crm-directory-stat--violet .crm-directory-stat__value {
+        @apply text-violet-600 dark:text-violet-400;
+    }
+
+    .crm-directory-stat--sky .crm-directory-stat__value {
+        @apply text-sky-500 dark:text-sky-400;
+    }
+
+    .crm-directory-tabs {
+        @apply flex flex-wrap items-center gap-1 border-b border-zinc-200 dark:border-zinc-800;
+    }
+
+    .crm-directory-tab {
+        @apply -mb-px border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-zinc-500 transition hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200;
+    }
+
+    .crm-directory-tab.is-active {
+        border-color: var(--color-brand);
+        color: var(--color-brand);
+        @apply font-semibold;
+    }
+
+    .crm-directory-toolbar {
+        @apply flex flex-col gap-3 lg:flex-row lg:items-center;
+    }
+
+    .crm-directory-count {
+        @apply shrink-0 text-sm font-semibold text-zinc-800 dark:text-zinc-100;
+    }
+
+    .crm-directory-filters {
+        @apply flex flex-wrap items-center gap-2;
+    }
+
+    .crm-directory-table th {
+        @apply bg-transparent font-medium normal-case tracking-normal text-zinc-500;
+    }
+
+    .crm-directory-row {
+        @apply cursor-pointer hover:bg-violet-50/70 dark:hover:bg-violet-950/20;
+    }
+
+    .crm-directory-row:focus-visible {
+        @apply bg-violet-50/80 outline-none dark:bg-violet-950/30;
+    }
+
+    .crm-directory-status {
+        @apply inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap;
+    }
+
+    .crm-directory-tag {
+        @apply inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium whitespace-nowrap;
+    }
+
+    .crm-directory-menu-btn {
+        @apply inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200;
+    }
+
+    .crm-directory-menu {
+        @apply absolute end-0 top-full z-20 mt-1 min-w-32 overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900;
+    }
+
+    .crm-directory-menu-item {
+        @apply block px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800;
+    }
+
+    .crm-directory-footer {
+        @apply flex flex-col gap-3 border-t border-zinc-100 pt-4 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800;
+    }
+
+    .crm-directory-page.is-active {
+        background: var(--color-brand);
+        @apply text-white;
+    }
+
+    .crm-deals-toolbar {
+        @apply flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 lg:flex-row lg:items-center lg:justify-between;
+    }
+
+    .crm-deals-toolbar__start {
+        @apply inline-flex shrink-0 items-center rounded-xl border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-700 dark:bg-zinc-900;
+    }
+
+    .crm-deals-toolbar__middle {
+        @apply flex min-w-0 flex-1 flex-wrap items-center justify-center gap-2;
+    }
+
+    .crm-deals-toolbar__end {
+        @apply flex flex-wrap items-center justify-end gap-2;
+    }
+
+    .crm-deals-view-btn {
+        @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-white hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white;
+    }
+
+    .crm-deals-view-btn.is-active {
+        background: var(--color-brand);
+        @apply text-white shadow-sm hover:bg-[var(--color-brand-hover)] hover:text-white dark:hover:bg-[var(--color-brand-hover)];
+    }
+
+    .crm-deals-select {
+        @apply relative inline-flex min-w-[12rem] max-w-full items-center;
+    }
+
+    .crm-deals-select__icon {
+        @apply pointer-events-none absolute start-3 h-4 w-4 text-zinc-400;
+    }
+
+    .crm-deals-select__chevron {
+        @apply pointer-events-none absolute end-3 h-4 w-4 text-zinc-400;
+    }
+
+    .crm-deals-select__control {
+        @apply w-full appearance-none rounded-xl border border-zinc-200 bg-white py-2.5 pe-9 ps-10 text-sm text-zinc-800 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/20 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100;
+    }
+
+    .crm-deals-icon-btn {
+        @apply inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800;
+    }
+
+    .crm-deals-filter-btn {
+        @apply inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800;
+    }
+
+    .crm-deals-filter-btn.is-active {
+        border-color: color-mix(in oklab, var(--color-brand) 35%, white);
+        background: color-mix(in oklab, var(--color-brand) 8%, white);
+        color: var(--color-brand);
+    }
+
+    .crm-deals-add-btn {
+        @apply inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition focus:outline-none focus:ring-2 focus:ring-emerald-500/40;
+        background: var(--color-success);
+    }
+
+    .crm-deals-add-btn:hover {
+        filter: brightness(0.95);
+    }
+
+    .crm-deals-filters {
+        @apply flex flex-col gap-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/40 sm:flex-row sm:flex-wrap sm:items-center;
+    }
+
+    .crm-deals-pipelines-btn {
+        @apply inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800;
+    }
+
+    .crm-pipeline-builder {
+        @apply space-y-5;
+    }
+
+    .crm-pipeline-builder__header {
+        @apply flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 sm:flex-row sm:items-center sm:justify-between;
+    }
+
+    .crm-pipeline-builder__crumbs {
+        @apply flex flex-wrap items-center gap-1.5 text-xs text-zinc-500;
+    }
+
+    .crm-pipeline-builder__crumbs a {
+        @apply text-zinc-500 transition hover:text-zinc-800 dark:hover:text-zinc-200;
+    }
+
+    .crm-pipeline-builder__title-icon {
+        @apply inline-flex h-8 w-8 items-center justify-center rounded-lg text-white;
+        background: var(--color-brand);
+    }
+
+    .crm-pipeline-builder__layout {
+        @apply grid gap-4 xl:grid-cols-[20rem_minmax(0,1fr)];
+    }
+
+    .crm-pipeline-builder__sidebar {
+        @apply rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950;
+    }
+
+    .crm-pipeline-builder__stages {
+        @apply flex gap-3 overflow-x-auto pb-2;
+    }
+
+    .crm-pipeline-stage-card {
+        @apply flex w-[17.5rem] shrink-0 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950;
+    }
+
+    .crm-pipeline-stage-card__header {
+        @apply mx-3 mt-3 flex cursor-grab items-center justify-center px-4 py-2.5 text-sm font-medium text-white active:cursor-grabbing;
+        background: var(--stage-color, #6366f1);
+        clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%);
+    }
+
+    .crm-pipeline-stage-card__body {
+        @apply flex flex-col gap-4 p-4;
+    }
+
+    .crm-pipeline-stage-field {
+        @apply space-y-2;
+    }
+
+    .crm-pipeline-stage-field__label {
+        @apply flex items-center justify-start gap-1.5 text-start text-sm font-medium text-zinc-700 dark:text-zinc-200;
+    }
+
+    .crm-pipeline-stage-field__icon {
+        @apply h-4 w-4 shrink-0 text-zinc-500;
+    }
+
+    .crm-pipeline-stage-field__input,
+    .crm-pipeline-stage-field__textarea {
+        @apply w-full rounded-md border border-zinc-200 bg-white px-3 py-2.5 text-start text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/15 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white;
+    }
+
+    .crm-pipeline-help-btn {
+        @apply relative inline-flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center text-zinc-400 transition hover:text-zinc-700 dark:hover:text-zinc-200;
+    }
+
+    .crm-pipeline-help-btn svg {
+        @apply h-3.5 w-3.5;
+    }
+
+    .crm-pipeline-help-btn::after {
+        content: attr(data-tip);
+        position: absolute;
+        bottom: calc(100% + 0.4rem);
+        left: 50%;
+        z-index: 20;
+        transform: translateX(-50%);
+        pointer-events: none;
+        white-space: nowrap;
+        border-radius: 0.375rem;
+        background: #18181b;
+        padding: 0.375rem 0.625rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #fff;
+        opacity: 0;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+        transition: opacity 0.15s ease;
+    }
+
+    .crm-pipeline-help-btn:hover::after,
+    .crm-pipeline-help-btn:focus-visible::after {
+        opacity: 1;
+    }
+
+    .crm-pipeline-stage-field__textarea {
+        @apply min-h-24 resize-y;
+    }
+
+    .crm-pipeline-stage-switch-row {
+        @apply flex items-center justify-between gap-3;
+    }
+
+    .crm-pipeline-stage-switch {
+        --crm-stage-switch-on: #ff4d2d;
+        @apply relative h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-zinc-300 transition dark:bg-zinc-700;
+    }
+
+    .crm-pipeline-stage-switch:checked {
+        background: var(--crm-stage-switch-on);
+    }
+
+    .crm-pipeline-stage-switch::after {
+        content: '';
+        @apply absolute start-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition;
+    }
+
+    .crm-pipeline-stage-switch:checked::after {
+        inset-inline-start: calc(100% - 1.35rem);
+    }
+
+    .crm-pipeline-stage-card__delete {
+        @apply inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-100 bg-rose-50/70 px-3 py-2 text-sm font-medium text-rose-600 transition hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300;
+    }
+
+    .crm-pipeline-stage-add {
+        @apply flex w-[17.5rem] shrink-0 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-violet-300 bg-violet-50/40 px-4 py-10 text-center transition hover:border-violet-400 hover:bg-violet-50 dark:border-violet-800 dark:bg-violet-950/20;
+    }
+
+    .crm-pipeline-stage-add__icon {
+        @apply flex h-12 w-12 items-center justify-center rounded-full text-2xl font-light text-white;
+        background: var(--color-brand);
+    }
+
+    .crm-pipeline-toggle {
+        @apply flex items-start justify-between gap-3 rounded-xl border border-zinc-100 bg-zinc-50/70 px-3 py-3 text-sm dark:border-zinc-800 dark:bg-zinc-900/50;
+    }
+
+    .crm-pipeline-switch {
+        @apply relative h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-zinc-300 transition checked:bg-[var(--color-brand)] dark:bg-zinc-700;
+    }
+
+    .crm-pipeline-switch::after {
+        content: '';
+        @apply absolute start-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition;
+    }
+
+    .crm-pipeline-switch:checked::after {
+        inset-inline-start: calc(100% - 1.35rem);
+    }
+
+    .crm-products-page {
+        @apply space-y-5;
+    }
+
+    .crm-products-header {
+        @apply flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between;
+    }
+
+    .crm-products-header__title {
+        @apply min-w-0;
+    }
+
+    .crm-products-header__heading {
+        @apply flex items-center gap-2.5;
+    }
+
+    .crm-products-header__icon {
+        @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-lavender text-brand;
+    }
+
+    .crm-products-header__icon svg {
+        @apply h-5 w-5;
+    }
+
+    .crm-products-header__heading h1 {
+        @apply text-2xl font-bold tracking-tight text-ink sm:text-3xl;
+    }
+
+    .crm-products-header__title > p {
+        @apply mt-2 max-w-2xl text-sm leading-6 text-muted;
+    }
+
+    .crm-products-header__actions {
+        @apply flex flex-wrap items-center gap-2;
+    }
+
+    .crm-products-toolbar {
+        @apply flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between;
+    }
+
+    .crm-products-type-tabs {
+        @apply flex flex-wrap items-center gap-2;
+    }
+
+    .crm-products-type-tab {
+        @apply inline-flex items-center rounded-full border border-line bg-white px-4 py-2 text-sm font-medium text-zinc-600 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300;
+    }
+
+    .crm-products-type-tab.is-active {
+        @apply border-brand/30 bg-lavender font-semibold text-brand;
+    }
+
+    .crm-products-search {
+        @apply relative w-full lg:max-w-xl lg:flex-1;
+    }
+
+    .crm-products-search__icon {
+        @apply pointer-events-none absolute inset-y-0 start-3 flex items-center text-zinc-400;
+    }
+
+    .crm-products-search__icon svg {
+        @apply h-4 w-4;
+    }
+
+    .crm-products-search .saas-input {
+        @apply rounded-xl border-line bg-white ps-10 shadow-sm shadow-zinc-950/5;
+    }
+
+    .crm-products-categories {
+        @apply flex flex-col gap-3 rounded-2xl border border-line bg-white p-3.5 shadow-sm shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:gap-4 sm:p-4;
+    }
+
+    .crm-products-categories__intro {
+        @apply flex shrink-0 items-center gap-2.5;
+    }
+
+    .crm-products-categories__intro-icon {
+        @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-lavender text-brand;
+    }
+
+    .crm-products-categories__intro-icon svg {
+        @apply h-4.5 w-4.5;
+    }
+
+    .crm-products-categories__intro h2 {
+        @apply text-sm font-semibold text-ink dark:text-white;
+    }
+
+    .crm-products-categories__intro p {
+        @apply mt-0.5 text-xs text-muted;
+    }
+
+    .crm-products-categories__track {
+        @apply flex min-w-0 flex-1 gap-2 overflow-x-auto pb-0.5;
+        scrollbar-width: thin;
+    }
+
+    .crm-products-category-card {
+        @apply inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-line bg-white px-2.5 text-start transition hover:border-brand/25 hover:bg-lavender/40 dark:border-zinc-700 dark:bg-zinc-900;
+    }
+
+    .crm-products-category-card.is-active {
+        @apply border-brand/40 bg-lavender shadow-sm shadow-brand/10;
+    }
+
+    .crm-products-category-card--add {
+        @apply border-dashed border-brand/35 bg-transparent text-brand hover:bg-lavender/40 dark:border-brand/40;
+    }
+
+    .crm-products-category-card__icon {
+        @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg;
+    }
+
+    .crm-products-category-card__icon svg {
+        @apply h-3.5 w-3.5;
+    }
+
+    .crm-products-category-card__icon.tone-sky {
+        @apply bg-sky-50 text-sky-600;
+    }
+
+    .crm-products-category-card__icon.tone-emerald {
+        @apply bg-emerald-50 text-emerald-600;
+    }
+
+    .crm-products-category-card__icon.tone-violet {
+        @apply bg-violet-50 text-violet-600;
+    }
+
+    .crm-products-category-card__icon.tone-amber {
+        @apply bg-amber-50 text-amber-600;
+    }
+
+    .crm-products-category-card__icon.tone-rose {
+        @apply bg-rose-50 text-rose-600;
+    }
+
+    .crm-products-category-card__icon.tone-indigo {
+        @apply bg-indigo-50 text-indigo-600;
+    }
+
+    .crm-products-category-card__icon.tone-muted {
+        @apply bg-transparent text-brand;
+    }
+
+    .crm-products-category-card__label {
+        @apply whitespace-nowrap text-xs font-semibold text-zinc-700 dark:text-zinc-200;
+    }
+
+    .crm-products-category-card.is-active .crm-products-category-card__label {
+        @apply text-brand;
+    }
+
+    .crm-products-table {
+        table-layout: fixed;
+        width: 100%;
+        min-width: 720px;
+        border-collapse: collapse;
+    }
+
+    .crm-products-col-name {
+        width: 26%;
+    }
+
+    .crm-products-col-type {
+        width: 12%;
+    }
+
+    .crm-products-col-category {
+        width: 14%;
+    }
+
+    .crm-products-col-code {
+        width: 12%;
+    }
+
+    .crm-products-col-price {
+        width: 14%;
+    }
+
+    .crm-products-col-status {
+        width: 10%;
+    }
+
+    .crm-products-col-actions {
+        width: 12%;
+    }
+
+    .crm-products-table th,
+    .crm-products-table td {
+        text-align: start;
+        vertical-align: middle;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .crm-products-table th {
+        @apply normal-case tracking-normal;
+    }
+
+    .crm-products-table td:first-child {
+        white-space: normal;
+    }
+
+    .crm-products-table td {
+        @apply text-sm text-zinc-600 dark:text-zinc-300;
+    }
+
+    .crm-products-actions {
+        @apply flex items-center justify-start gap-2;
+    }
+
+    .crm-products-empty {
+        @apply flex flex-col items-center justify-center rounded-2xl border border-line bg-white px-6 py-16 text-center shadow-sm shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900;
+    }
+
+    .crm-products-empty__art {
+        @apply relative mb-6 flex h-36 w-44 items-center justify-center;
+    }
+
+    .crm-products-empty__blob {
+        @apply absolute rounded-full opacity-70 blur-2xl;
+    }
+
+    .crm-products-empty__blob--a {
+        @apply -start-2 top-4 h-24 w-24 bg-sky-100;
+    }
+
+    .crm-products-empty__blob--b {
+        @apply -end-1 bottom-2 h-20 w-20 bg-violet-100;
+    }
+
+    .crm-products-empty__box {
+        @apply relative z-10 h-28 w-36;
+    }
+
+    .crm-products-empty__box svg {
+        @apply h-full w-full;
+    }
+
+    .crm-products-empty__spark {
+        @apply absolute z-20 h-2 w-2 rotate-45 rounded-sm bg-brand/70;
+    }
+
+    .crm-products-empty__spark--1 {
+        @apply start-4 top-6;
+    }
+
+    .crm-products-empty__spark--2 {
+        @apply end-6 top-10 h-1.5 w-1.5 bg-ai/70;
+    }
+
+    .crm-products-empty__spark--3 {
+        @apply bottom-8 start-10 h-1.5 w-1.5 bg-violet-400/80;
+    }
+
+    .crm-products-empty h2 {
+        @apply text-lg font-bold text-ink dark:text-white;
+    }
+
+    .crm-products-empty > p {
+        @apply mt-2 max-w-md text-sm leading-7 text-muted;
+    }
+
     .saas-analysis-list-grid {
         display: grid;
         grid-template-columns: 7.75rem 7.75rem 10.5rem minmax(12rem, 1fr) 4.5rem 5.5rem 4.5rem 5.5rem;
@@ -1429,4 +2042,409 @@ canvas[data-report-chart] {
     to {
         transform: rotate(360deg);
     }
+}
+
+.crm-documents-page {
+    @apply space-y-5;
+}
+
+.crm-documents-header {
+    @apply flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between;
+}
+
+.crm-documents-header__title {
+    @apply min-w-0;
+}
+
+.crm-documents-header__heading {
+    @apply flex items-start gap-3;
+}
+
+.crm-documents-header__icon {
+    @apply mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-lavender text-brand;
+}
+
+.crm-documents-header__icon svg {
+    @apply h-5 w-5;
+}
+
+.crm-documents-header__heading h1 {
+    @apply text-2xl font-bold tracking-tight text-ink sm:text-3xl;
+}
+
+.crm-documents-header__heading p {
+    @apply mt-1 text-sm leading-6 text-muted;
+}
+
+.crm-documents-header__actions {
+    @apply flex flex-wrap items-center gap-2;
+}
+
+.crm-documents-create-menu {
+    @apply absolute end-0 top-full z-30 mt-2 min-w-48 overflow-hidden rounded-xl border border-line bg-white py-1 shadow-lg shadow-zinc-950/10 dark:border-zinc-700 dark:bg-zinc-900;
+}
+
+.crm-documents-create-menu__item {
+    @apply flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-lavender/50 hover:text-brand dark:text-zinc-200 dark:hover:bg-zinc-800;
+}
+
+.crm-documents-create-menu__icon {
+    @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-lavender text-brand;
+}
+
+.crm-documents-create-menu__icon svg {
+    @apply h-4 w-4;
+}
+
+.crm-documents-tabs {
+    @apply flex flex-wrap items-center gap-1 border-b border-zinc-200 dark:border-zinc-800;
+}
+
+.crm-documents-tab {
+    @apply -mb-px inline-flex items-center gap-2 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-zinc-500 transition hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200;
+}
+
+.crm-documents-tab.is-active {
+    border-color: var(--color-brand);
+    color: var(--color-brand);
+    @apply font-semibold;
+}
+
+.crm-documents-tab__count {
+    @apply rounded-md bg-zinc-100 px-1.5 py-0.5 text-xs font-medium tabular-nums text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400;
+}
+
+.crm-documents-tab.is-active .crm-documents-tab__count {
+    @apply bg-lavender text-brand;
+}
+
+.crm-documents-toolbar {
+    @apply flex flex-col gap-3 rounded-xl border border-line bg-white p-3 shadow-sm shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-950 lg:flex-row lg:flex-wrap lg:items-center;
+}
+
+.crm-documents-search {
+    @apply relative min-w-0 flex-1 lg:min-w-[18rem];
+}
+
+.crm-documents-search__icon {
+    @apply pointer-events-none absolute inset-y-0 start-3 flex items-center text-zinc-400;
+}
+
+.crm-documents-search__icon svg {
+    @apply h-4 w-4;
+}
+
+.crm-documents-search .saas-input {
+    @apply rounded-xl border-line bg-white ps-10 shadow-none;
+}
+
+.crm-documents-select {
+    @apply block min-w-[9.5rem];
+}
+
+.crm-documents-select .saas-input,
+.crm-documents-date .saas-input {
+    @apply rounded-xl border-line bg-white py-2.5 text-sm shadow-none;
+}
+
+.crm-documents-date {
+    @apply relative block min-w-[10rem];
+}
+
+.crm-documents-date__icon {
+    @apply pointer-events-none absolute inset-y-0 start-3 flex items-center text-zinc-400;
+}
+
+.crm-documents-date__icon svg {
+    @apply h-4 w-4;
+}
+
+.crm-documents-date .saas-input {
+    @apply ps-10;
+}
+
+.crm-documents-filter-btn {
+    @apply inline-flex shrink-0 items-center gap-2 rounded-xl border border-line bg-white px-3.5 py-2.5 text-sm font-medium text-zinc-600 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300;
+}
+
+.crm-documents-filter-btn.is-active {
+    @apply border-brand/30 bg-lavender text-brand;
+}
+
+.crm-documents-table th {
+    @apply normal-case tracking-normal;
+}
+
+.crm-documents-row {
+    @apply transition hover:bg-zinc-50/80 dark:hover:bg-zinc-900/50;
+}
+
+.crm-documents-number {
+    @apply font-semibold text-brand hover:underline;
+}
+
+.crm-documents-type {
+    @apply text-sm font-medium;
+}
+
+.crm-documents-type.is-invoice {
+    @apply text-emerald-600 dark:text-emerald-400;
+}
+
+.crm-documents-type.is-proforma {
+    @apply text-indigo-600 dark:text-indigo-400;
+}
+
+.crm-documents-contact {
+    @apply flex min-w-0 items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300;
+}
+
+.crm-documents-contact__icon {
+    @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400;
+}
+
+.crm-documents-contact__icon svg {
+    @apply h-3.5 w-3.5;
+}
+
+.crm-documents-status {
+    @apply inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap;
+}
+
+.crm-documents-status.is-draft {
+    @apply bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300;
+}
+
+.crm-documents-status.is-issued {
+    @apply bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300;
+}
+
+.crm-document-show__breadcrumbs {
+    @apply flex flex-wrap items-center gap-2 text-sm text-zinc-500;
+}
+
+.crm-document-show__breadcrumbs a {
+    @apply transition hover:text-brand;
+}
+
+.crm-document-show__header {
+    @apply flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between;
+}
+
+.crm-document-show__heading {
+    @apply flex min-w-0 items-start gap-3;
+}
+
+.crm-document-show__icon {
+    @apply mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-lavender text-brand;
+}
+
+.crm-document-show__icon svg {
+    @apply h-5 w-5;
+}
+
+.crm-document-show__heading h1 {
+    @apply text-2xl font-bold tracking-tight text-ink dark:text-white;
+}
+
+.crm-document-show__heading p {
+    @apply mt-1 text-sm leading-6 text-muted;
+}
+
+.crm-document-show__id {
+    @apply inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300;
+}
+
+.crm-document-show__actions {
+    @apply flex flex-wrap items-center gap-2;
+}
+
+.crm-document-show__status-btn {
+    @apply inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm;
+}
+
+.crm-document-show__status-btn.is-draft {
+    @apply bg-zinc-500 hover:bg-zinc-600;
+}
+
+.crm-document-show__status-btn.is-issued {
+    @apply bg-emerald-600 hover:bg-emerald-700;
+}
+
+.crm-document-show__menu {
+    @apply absolute end-0 top-full z-30 mt-2 min-w-40 overflow-hidden rounded-xl border border-line bg-white py-1 shadow-lg shadow-zinc-950/10 dark:border-zinc-700 dark:bg-zinc-900;
+}
+
+.crm-document-show__menu-item {
+    @apply block w-full px-3.5 py-2.5 text-start text-sm text-zinc-700 transition hover:bg-lavender/50 hover:text-brand dark:text-zinc-200 dark:hover:bg-zinc-800;
+}
+
+.crm-document-show__menu-item.is-danger {
+    @apply text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30;
+}
+
+.crm-document-show__menu-item.is-muted {
+    @apply cursor-default text-zinc-400 hover:bg-transparent hover:text-zinc-400;
+}
+
+.crm-document-stepper {
+    @apply flex overflow-x-auto rounded-xl bg-zinc-100/80 p-1 dark:bg-zinc-900/60;
+}
+
+.crm-document-step {
+    @apply relative flex min-w-[7.5rem] flex-1 items-center justify-center px-4 py-2.5 text-center text-xs font-semibold text-zinc-500 sm:text-sm;
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%, 14px 50%);
+    margin-inline-end: -10px;
+}
+
+.crm-document-step:first-child {
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
+}
+
+.crm-document-step:last-child {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 14px 50%);
+    margin-inline-end: 0;
+}
+
+.crm-document-step.is-done {
+    @apply bg-violet-200 text-violet-800 dark:bg-violet-950/50 dark:text-violet-200;
+}
+
+.crm-document-step.is-current {
+    background: var(--color-brand);
+    @apply text-white shadow-sm;
+}
+
+.crm-document-step.is-upcoming {
+    @apply bg-white text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500;
+}
+
+.crm-document-show__layout {
+    @apply grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start;
+}
+
+.crm-document-empty-card {
+    @apply flex flex-col items-start gap-4 rounded-2xl border border-line bg-white p-5 shadow-sm shadow-zinc-950/5 sm:flex-row sm:items-center dark:border-zinc-800 dark:bg-zinc-950;
+}
+
+.crm-document-empty-card__visual {
+    @apply inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-lavender text-brand;
+}
+
+.crm-document-empty-card__visual svg {
+    @apply h-7 w-7;
+}
+
+.crm-document-empty-card h2 {
+    @apply text-base font-semibold text-ink dark:text-white;
+}
+
+.crm-document-empty-card p {
+    @apply mt-1 text-sm leading-6 text-muted;
+}
+
+.crm-document-empty-card--ready .crm-document-empty-card__visual {
+    @apply bg-emerald-50 text-emerald-600;
+}
+
+.crm-document-tabs {
+    @apply flex flex-wrap items-center gap-1 border-b border-zinc-200 px-2 dark:border-zinc-800 sm:px-3;
+}
+
+.crm-document-tab {
+    @apply -mb-px border-b-2 border-transparent px-3 py-3 text-sm font-medium text-zinc-500 transition hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200;
+}
+
+.crm-document-tab.is-active {
+    border-color: var(--color-brand);
+    color: var(--color-brand);
+    @apply font-semibold;
+}
+
+.crm-document-timeline {
+    @apply space-y-3;
+}
+
+.crm-document-timeline__item {
+    @apply rounded-xl border px-4 py-3;
+}
+
+.crm-document-timeline__item.tone-created {
+    @apply border-sky-100 bg-sky-50/70 dark:border-sky-900/40 dark:bg-sky-950/20;
+}
+
+.crm-document-timeline__item.tone-updated {
+    @apply border-amber-100 bg-amber-50/70 dark:border-amber-900/40 dark:bg-amber-950/20;
+}
+
+.crm-document-timeline__item.tone-issued {
+    @apply border-emerald-100 bg-emerald-50/70 dark:border-emerald-900/40 dark:bg-emerald-950/20;
+}
+
+.crm-document-timeline__meta {
+    @apply mb-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500;
+}
+
+.crm-document-timeline__label {
+    @apply font-semibold text-zinc-700 dark:text-zinc-200;
+}
+
+.crm-document-timeline__item p {
+    @apply text-sm leading-6 text-zinc-700 dark:text-zinc-300;
+}
+
+.crm-document-side-card {
+    @apply rounded-2xl border border-line bg-white p-4 shadow-sm shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-950;
+}
+
+.crm-document-side-card > header {
+    @apply mb-3 flex items-center gap-2;
+}
+
+.crm-document-side-card > header span {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400;
+}
+
+.crm-document-side-card > header span svg {
+    @apply h-4 w-4;
+}
+
+.crm-document-side-card > header h2 {
+    @apply text-sm font-semibold text-ink dark:text-white;
+}
+
+.crm-document-side-card dl {
+    @apply space-y-3;
+}
+
+.crm-document-side-card dl > div {
+    @apply flex items-start justify-between gap-3;
+}
+
+.crm-document-side-card dt {
+    @apply shrink-0 text-xs text-zinc-500;
+}
+
+.crm-document-side-card dd {
+    @apply text-end text-sm font-medium text-zinc-800 dark:text-zinc-200;
+}
+
+.crm-document-side-card__amount {
+    @apply text-base font-bold text-brand;
+}
+
+.crm-document-side-card__person {
+    @apply flex items-center gap-3;
+}
+
+.crm-document-side-card__contacts {
+    @apply mt-3 flex flex-wrap gap-2;
+}
+
+.crm-document-contact-chip {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-zinc-50 text-zinc-600 transition hover:border-brand/30 hover:bg-lavender hover:text-brand dark:border-zinc-700 dark:bg-zinc-900;
+}
+
+.crm-document-contact-chip svg {
+    @apply h-4 w-4;
 }
