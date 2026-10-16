@@ -1,4 +1,4 @@
-@props(['label', 'value', 'hint' => null, 'trend' => null, 'tone' => null, 'comparison' => null, 'comparisonUnit' => null, 'tooltip' => null])
+@props(['label', 'value', 'hint' => null, 'trend' => null, 'tone' => null, 'comparison' => null, 'comparisonUnit' => null, 'tooltip' => null, 'iconTone' => 'violet'])
 
 @php
     $comparisonAmount = $comparison === null ? null : abs((float) $comparison);
@@ -7,6 +7,7 @@
         : (fmod($comparisonAmount, 1.0) === 0.0
             ? (string) (int) $comparisonAmount
             : rtrim(rtrim(number_format($comparisonAmount, 1, '.', ''), '0'), '.'));
+    $hasIcon = isset($icon);
 @endphp
 
 <div {{ $attributes->class([
@@ -14,8 +15,16 @@
     'saas-stat--good' => $tone === 'good',
     'saas-stat--medium' => $tone === 'medium',
     'saas-stat--bad' => $tone === 'bad',
+    'saas-stat--with-icon' => $hasIcon,
 ]) }} @if ($tooltip) tabindex="0" @endif>
-    <p class="saas-stat-label">{{ $label }}</p>
+    @if ($hasIcon)
+        <div class="saas-stat-head">
+            <p class="saas-stat-label">{{ $label }}</p>
+            <span class="saas-stat-icon saas-stat-icon--{{ $iconTone }}" aria-hidden="true">{{ $icon }}</span>
+        </div>
+    @else
+        <p class="saas-stat-label">{{ $label }}</p>
+    @endif
     <p class="saas-stat-value">{{ $value }}</p>
     <div class="saas-stat-meta">
         @if ($hint)

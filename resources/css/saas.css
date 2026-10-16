@@ -221,7 +221,7 @@
     }
 
     .saas-stat {
-        @apply relative flex h-full min-w-0 max-w-full flex-col gap-2 rounded-lg border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 sm:gap-3 sm:p-5;
+        @apply relative flex h-full min-w-0 max-w-full flex-col gap-2 rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-950/5 transition duration-150 dark:border-zinc-800 dark:bg-zinc-900 sm:gap-3 sm:p-5;
     }
 
     .saas-stat:has(> .saas-stat-tooltip) {
@@ -231,15 +231,72 @@
     .saas-stat:hover,
     .saas-stat:focus-visible {
         z-index: 30;
+        @apply border-zinc-300/90 shadow-md shadow-zinc-950/5 dark:border-zinc-700;
     }
 
     .saas-stat-tooltip {
-        @apply pointer-events-none absolute inset-x-0 top-full z-40 mt-1.5 hidden rounded-md bg-zinc-900 px-2.5 py-1.5 text-center text-xs font-medium leading-5 text-white shadow-lg dark:bg-zinc-700;
+        @apply pointer-events-none absolute inset-x-2 top-full z-40 mt-1.5 hidden rounded-lg bg-zinc-900 px-2.5 py-1.5 text-center text-xs font-medium leading-5 text-white shadow-lg dark:bg-zinc-700;
     }
 
     .saas-stat:hover > .saas-stat-tooltip,
     .saas-stat:focus-visible > .saas-stat-tooltip {
         display: block;
+    }
+
+    .saas-stat-head {
+        @apply flex items-start justify-between gap-3;
+    }
+
+    .saas-stat-head .saas-stat-label {
+        @apply min-h-0 flex-1;
+    }
+
+    .saas-stat-icon {
+        @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl;
+    }
+
+    .saas-stat-icon svg {
+        @apply h-4 w-4;
+    }
+
+    .saas-stat-icon--amber {
+        @apply bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300;
+    }
+
+    .saas-stat-icon--orange {
+        @apply bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-300;
+    }
+
+    .saas-stat-icon--green {
+        @apply bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300;
+    }
+
+    .saas-stat-icon--violet {
+        @apply bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300;
+    }
+
+    .saas-stat-icon--indigo {
+        @apply bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300;
+    }
+
+    .saas-stat-icon--sky {
+        @apply bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-300;
+    }
+
+    .saas-stat-icon--blue {
+        @apply bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300;
+    }
+
+    .saas-stat-icon--rose {
+        @apply bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300;
+    }
+
+    .saas-stat-icon--gold {
+        @apply bg-yellow-50 text-yellow-600 dark:bg-yellow-950/40 dark:text-yellow-300;
+    }
+
+    .saas-stat--with-icon .saas-stat-label {
+        @apply min-h-0;
     }
 
     .saas-stat-label {
@@ -252,6 +309,30 @@
 
     .saas-stat-meta {
         @apply mt-auto min-h-5 text-sm leading-5 text-zinc-500;
+    }
+
+    .crm-overview-meter {
+        @apply h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800;
+    }
+
+    .crm-overview-meter > span {
+        @apply block h-full rounded-full transition-all;
+    }
+
+    .crm-overview-meter--brand > span {
+        @apply bg-brand;
+    }
+
+    .crm-overview-item-icon {
+        @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl;
+    }
+
+    .crm-overview-item-icon svg {
+        @apply h-4 w-4;
+    }
+
+    .crm-overview-link {
+        @apply inline-flex items-center gap-1.5 text-sm font-medium text-brand transition hover:text-brand-hover;
     }
 
     .saas-stat-meta p {
@@ -766,8 +847,16 @@
         @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-zinc-400/50 disabled:opacity-50 bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100;
     }
 
+    .saas-btn-brand {
+        @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:opacity-50 bg-brand text-white hover:bg-brand-hover;
+    }
+
     .saas-btn-secondary {
         @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-zinc-400/50 disabled:opacity-50 border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800;
+    }
+
+    .saas-btn-secondary--soft {
+        @apply border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/40;
     }
 
     .saas-input {
