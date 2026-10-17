@@ -49,23 +49,23 @@ class Index extends Component
 
     public function render()
     {
-        $organizationId = EmployeeContext::organizationId();
+        $organization = EmployeeContext::organization();
+        $organizationId = $organization->id;
         $specificOwnerId = ctype_digit($this->specificOwnerId) ? (int) $this->specificOwnerId : null;
         $membershipId = EmployeeContext::membership()->id;
-        $contacts = CustomerListQuery::contacts(
-            $organizationId,
-            $this->search,
-            $this->sort,
-            $this->ownerFilter,
-            $membershipId,
-            $specificOwnerId,
-            $this->stageFilter,
-        )->paginate($this->currentPerPage());
 
         return view('livewire.shared.customers.hub', [
-            'contacts' => $contacts,
+            'contacts' => CustomerListQuery::contacts(
+                $organizationId,
+                $this->search,
+                $this->sort,
+                $this->ownerFilter,
+                $membershipId,
+                $specificOwnerId,
+                $this->stageFilter,
+            )->paginate($this->currentPerPage()),
             'portal' => 'employee',
-            'stats' => CustomerListQuery::directoryStats($organizationId, EmployeeContext::organization()),
+            'stats' => CustomerListQuery::directoryStats($organizationId, $organization),
             'ownerChoices' => CustomerListQuery::ownerChoices($organizationId),
             'lifecycleCounts' => CustomerListQuery::lifecycleCounts(
                 $organizationId,

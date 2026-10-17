@@ -995,7 +995,7 @@
     }
 
     .crm-directory-stat {
-        @apply flex h-[4.5rem] w-[4.5rem] flex-col items-center justify-center gap-0.5 rounded-xl border-0 bg-white p-2 text-center shadow-[0_6px_16px_rgba(15,23,42,0.08)] dark:bg-zinc-900 dark:shadow-[0_6px_16px_rgba(0,0,0,0.35)];
+        @apply flex h-[4.5rem] w-[4.5rem] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl border-0 bg-white p-2 text-center text-inherit no-underline shadow-[0_6px_16px_rgba(15,23,42,0.08)] outline-none focus:outline-none focus-visible:outline-none dark:bg-zinc-900 dark:shadow-[0_6px_16px_rgba(0,0,0,0.35)];
     }
 
     .crm-directory-stat__label {
@@ -1003,19 +1003,7 @@
     }
 
     .crm-directory-stat__value {
-        @apply text-lg font-bold tabular-nums tracking-tight leading-none;
-    }
-
-    .crm-directory-stat--indigo .crm-directory-stat__value {
-        @apply text-indigo-600 dark:text-indigo-400;
-    }
-
-    .crm-directory-stat--violet .crm-directory-stat__value {
-        @apply text-violet-600 dark:text-violet-400;
-    }
-
-    .crm-directory-stat--sky .crm-directory-stat__value {
-        @apply text-sky-500 dark:text-sky-400;
+        @apply text-lg font-bold tabular-nums tracking-tight leading-none text-brand;
     }
 
     .crm-directory-tabs {
