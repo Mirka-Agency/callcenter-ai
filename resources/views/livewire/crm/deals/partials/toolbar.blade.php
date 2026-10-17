@@ -7,8 +7,32 @@
     $pipelinesUrl = $pipelinesUrl ?? null;
     $showOwnerFilter = $showOwnerFilter ?? false;
     $isManager = $isManager ?? false;
+    $statuses = $statuses ?? [];
     $currentPipeline = $currentPipeline ?? null;
     $pipelines = $pipelines ?? collect();
+    $searchValue = trim((string) ($search ?? ''));
+    $ownerValue = (string) ($owner ?? 'all');
+    $statusValue = (string) ($status ?? 'all');
+    $dateFromValue = trim((string) ($dateFrom ?? ''));
+    $dateToValue = trim((string) ($dateTo ?? ''));
+    $ownerOptions = $isManager
+        ? ['all' => 'همه مسئولان', 'mine' => 'فرصت‌های من', 'unassigned' => 'بدون مسئول']
+        : ['all' => 'فرصت‌های من', 'mine' => 'فقط من'];
+    $statusOptions = ['all' => 'همه'];
+    foreach ($statuses as $dealStatus) {
+        $statusOptions[$dealStatus->value] = $dealStatus->label();
+    }
+    $kanbanStatuses = [
+        'open' => ['label' => 'باز', 'icon' => null, 'count' => isset($summary) ? ($summary['open_count'] ?? null) : null],
+        'won' => ['label' => 'موفق', 'icon' => 'won', 'count' => isset($summary) ? ($summary['won_count'] ?? null) : null],
+        'lost' => ['label' => 'ناموفق', 'icon' => 'lost', 'count' => isset($summary) ? ($summary['lost_count'] ?? null) : null],
+    ];
+    $activeFilterCount = ($searchValue !== '' ? 1 : 0)
+        + ($showOwnerFilter && $ownerValue !== 'all' ? 1 : 0)
+        + ($activeView === 'list' && $statusValue !== 'all' ? 1 : 0)
+        + ($activeView !== 'list' && $statusValue !== 'open' ? 1 : 0)
+        + ($activeView === 'list' && $dateFromValue !== '' ? 1 : 0)
+        + ($activeView === 'list' && $dateToValue !== '' ? 1 : 0);
     $datePresetLabels = [
         'today_and_past' => 'امروز و تاریخ گذشته',
         'today' => 'فقط امروز',
@@ -99,26 +123,37 @@
             </svg>
         </button>
 
+        @if ($canManagePipelines && ! empty($pipelinesUrl))
+            <a
+                href="{{ $pipelinesUrl }}"
+                wire:navigate
+                class="crm-deals-icon-btn"
+                title="همه کاریزها"
+                aria-label="همه کاریزها"
+            >
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+                </svg>
+            </a>
+        @endif
+
         <button
             type="button"
-            @class(['crm-deals-filter-btn', 'is-active' => $showFilters])
+            @class(['crm-deals-filter-btn', 'is-active' => $showFilters || $activeFilterCount > 0])
             wire:click="toggleFilters"
+            aria-haspopup="dialog"
             aria-expanded="{{ $showFilters ? 'true' : 'false' }}"
+            aria-controls="crm-deals-filters-dialog"
         >
             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M7 12h10M10 18h4" />
             </svg>
             <span>فیلترها</span>
+            @if ($activeFilterCount > 0)
+                <span class="crm-deals-filter-btn__count">{{ \App\Support\PersianNumber::format($activeFilterCount) }}</span>
+            @endif
         </button>
-
-        @if ($canManagePipelines && ! empty($pipelinesUrl))
-            <a href="{{ $pipelinesUrl }}" wire:navigate class="crm-deals-pipelines-btn" title="مدیریت همه کاریزها">
-                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h10" />
-                </svg>
-                <span>همه کاریزها</span>
-            </a>
-        @endif
 
         @if ($canCreate && $pipelines->isNotEmpty())
             @if ($activeView === 'list')
@@ -141,43 +176,154 @@
 </div>
 
 @if ($showFilters)
-    <div class="crm-deals-filters" data-testid="crm-deals-filters">
-        <label class="relative block min-w-[14rem] flex-1">
-            <span class="sr-only">جستجو</span>
-            <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-zinc-400">
-                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                    <circle cx="11" cy="11" r="7" />
-                    <path stroke-linecap="round" d="m20 20-3.5-3.5" />
-                </svg>
-            </span>
-            <input
-                wire:model.live.debounce.300ms="search"
-                type="search"
-                class="saas-input ps-10"
-                placeholder="جستجو عنوان، مخاطب…"
-            >
-        </label>
+    <div
+        id="crm-deals-filters-dialog"
+        class="crm-deals-filter-dialog"
+        wire:click.self="closeFilters"
+        wire:keydown.escape.window="closeFilters"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="crm-deals-filters-title"
+        aria-describedby="crm-deals-filters-hint"
+        data-testid="crm-deals-filters"
+    >
+        <div class="crm-deals-filter-dialog__panel">
+            <div class="crm-deals-filter-dialog__header">
+                <div class="crm-deals-filter-dialog__heading">
+                    <span class="crm-deals-filter-dialog__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M7 12h10M10 18h4" />
+                        </svg>
+                    </span>
+                    <div>
+                        <h2 id="crm-deals-filters-title">فیلتر معاملات</h2>
+                        <p id="crm-deals-filters-hint">فهرست با هر تغییر، همان لحظه به‌روز می‌شود.</p>
+                    </div>
+                </div>
+                <button type="button" class="crm-deals-filter-dialog__close" wire:click="closeFilters" aria-label="بستن">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6 6 18" />
+                    </svg>
+                </button>
+            </div>
 
-        @if ($showOwnerFilter)
-            <label class="block min-w-[10rem] text-sm">
-                <span class="sr-only">مسئول</span>
-                <select wire:model.live="owner" class="saas-input py-2.5 text-sm">
-                    @if ($isManager)
-                        <option value="all">همه مسئولان</option>
-                        <option value="mine">فرصت‌های من</option>
-                        <option value="unassigned">بدون مسئول</option>
-                    @else
-                        <option value="all">فرصت‌های من</option>
-                        <option value="mine">فقط من</option>
-                    @endif
-                </select>
-            </label>
-        @endif
+            <div class="crm-deals-filter-dialog__body">
+                @if ($activeView === 'list')
+                    <fieldset class="crm-deals-filter-group">
+                        <legend class="crm-deals-filter-label">وضعیت</legend>
+                        <div class="crm-deals-filter-segments is-{{ count($statusOptions) }}" role="radiogroup" aria-label="وضعیت">
+                            @foreach ($statusOptions as $value => $label)
+                                <button
+                                    type="button"
+                                    role="radio"
+                                    aria-checked="{{ $statusValue === $value ? 'true' : 'false' }}"
+                                    wire:click="$set('status', '{{ $value }}')"
+                                    @class(['crm-deals-filter-segment', 'is-active' => $statusValue === $value])
+                                >{{ $label }}</button>
+                            @endforeach
+                        </div>
+                    </fieldset>
+                @else
+                    <fieldset class="crm-deals-filter-group">
+                        <legend class="crm-deals-filter-label">وضعیت</legend>
+                        <div class="crm-deals-filter-segments is-3" role="radiogroup" aria-label="وضعیت معاملات">
+                            @foreach ($kanbanStatuses as $value => $tab)
+                                <button
+                                    type="button"
+                                    role="radio"
+                                    aria-checked="{{ $statusValue === $value ? 'true' : 'false' }}"
+                                    wire:click="selectStatus('{{ $value }}')"
+                                    @class(['crm-deals-filter-segment', 'has-meta', 'is-active' => $statusValue === $value])
+                                >
+                                    @if ($tab['icon'] === 'won')
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7" />
+                                        </svg>
+                                    @elseif ($tab['icon'] === 'lost')
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6 6 18" />
+                                        </svg>
+                                    @endif
+                                    <span>{{ $tab['label'] }}</span>
+                                    @if ($tab['count'] !== null)
+                                        <span class="crm-deals-filter-segment__count">{{ \App\Support\PersianNumber::format($tab['count']) }}</span>
+                                    @endif
+                                </button>
+                            @endforeach
+                        </div>
+                    </fieldset>
+                @endif
 
-        @if ($canManagePipelines && ! empty($pipelinesUrl))
-            <a href="{{ $pipelinesUrl }}" wire:navigate class="saas-btn-secondary ms-auto text-sm">
-                مدیریت کاریزها
-            </a>
-        @endif
+                <label class="crm-deals-filter-search">
+                    <span class="crm-deals-filter-label">جستجو</span>
+                    <span class="crm-deals-filter-search__control">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <circle cx="11" cy="11" r="7" />
+                            <path stroke-linecap="round" d="m20 20-3.5-3.5" />
+                        </svg>
+                        <input
+                            wire:model.live.debounce.300ms="search"
+                            type="search"
+                            placeholder="عنوان یا نام مخاطب"
+                            autofocus
+                        >
+                        @if ($searchValue !== '')
+                            <button type="button" wire:click="$set('search', '')" aria-label="پاک کردن جستجو">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6 6 18" />
+                                </svg>
+                            </button>
+                        @endif
+                    </span>
+                </label>
+
+                @if ($showOwnerFilter)
+                    <fieldset class="crm-deals-filter-group">
+                        <legend class="crm-deals-filter-label">مسئول</legend>
+                        <div class="crm-deals-filter-segments is-{{ count($ownerOptions) }}" role="radiogroup" aria-label="مسئول">
+                            @foreach ($ownerOptions as $value => $label)
+                                <button
+                                    type="button"
+                                    role="radio"
+                                    aria-checked="{{ $ownerValue === $value ? 'true' : 'false' }}"
+                                    wire:click="$set('owner', '{{ $value }}')"
+                                    @class(['crm-deals-filter-segment', 'is-active' => $ownerValue === $value])
+                                >{{ $label }}</button>
+                            @endforeach
+                        </div>
+                    </fieldset>
+                @endif
+
+                @if ($activeView === 'list')
+                    <fieldset class="crm-deals-filter-group">
+                        <legend class="crm-deals-filter-label">تاریخ ایجاد</legend>
+                        <div class="crm-deals-filter-dates">
+                            <label class="crm-deals-filter-date">
+                                <span>از</span>
+                                <input wire:model.live="dateFrom" type="date" aria-label="انتخاب تاریخ شروع">
+                            </label>
+                            <label class="crm-deals-filter-date">
+                                <span>تا</span>
+                                <input wire:model.live="dateTo" type="date" aria-label="انتخاب تاریخ پایان">
+                            </label>
+                        </div>
+                    </fieldset>
+                @endif
+            </div>
+
+            <div class="crm-deals-filter-dialog__footer">
+                <button
+                    type="button"
+                    class="crm-deals-filter-clear"
+                    wire:click="clearFilters"
+                    @disabled($activeFilterCount === 0)
+                >
+                    پاک کردن
+                </button>
+                <button type="button" class="crm-deals-filter-apply" wire:click="closeFilters">
+                    نمایش نتایج
+                </button>
+            </div>
+        </div>
     </div>
 @endif
