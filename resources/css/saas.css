@@ -931,7 +931,7 @@
     }
 
     .saas-nav-item-active {
-        @apply bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 max-lg:bg-gradient-to-l max-lg:from-indigo-600 max-lg:to-violet-600 max-lg:text-white max-lg:shadow-sm max-lg:shadow-indigo-500/20 dark:max-lg:from-indigo-500 dark:max-lg:to-violet-500 dark:max-lg:text-white;
+        @apply bg-brand text-white hover:bg-brand-hover hover:text-white dark:bg-brand dark:text-white dark:hover:bg-brand-hover dark:hover:text-white;
     }
 
     .saas-nav-item-icon {
@@ -939,7 +939,7 @@
     }
 
     .saas-nav-item-active .saas-nav-item-icon {
-        @apply bg-white/20 text-white max-lg:bg-white/15;
+        @apply bg-white/20 text-white dark:bg-white/20 dark:text-white;
     }
 
     .saas-btn {
