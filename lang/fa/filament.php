@@ -160,6 +160,7 @@ return [
         'amount' => 'مبلغ',
         'description' => 'توضیحات',
         'created_at' => 'تاریخ ایجاد',
+        'archived_at' => 'زمان آرشیو',
         'updated_at' => 'تاریخ به‌روزرسانی',
         'joined_at' => 'تاریخ عضویت',
         'start_time' => 'زمان شروع',
@@ -392,6 +393,10 @@ return [
         'retry_all_failed_jobs' => 'تلاش مجدد همه',
         'flush_failed_jobs' => 'پاک‌سازی ناموفق‌ها',
         'flush_pending_jobs' => 'پاک‌سازی در انتظار‌ها',
+        'archive' => 'آرشیو',
+        'archives' => 'آرشیوها',
+        'unarchive' => 'بازگردانی از آرشیو',
+        'active_requests' => 'درخواست‌های جاری',
     ],
 
     'demo_users' => [
@@ -479,6 +484,8 @@ return [
         'all_failed_jobs_retried' => 'همه کارهای ناموفق دوباره به صف اضافه شدند.',
         'failed_jobs_flushed' => 'کارهای ناموفق پاک‌سازی شدند.',
         'pending_jobs_flushed' => 'همه کارهای در انتظار صف پاک‌سازی شدند.',
+        'request_archived' => 'درخواست آرشیو شد.',
+        'request_restored' => 'درخواست به فهرست جاری برگشت.',
     ],
 
     'widgets' => [
@@ -551,6 +558,7 @@ return [
         'platform_billing_settings' => 'تنظیمات صورتحساب پلتفرم',
         'cost_estimator' => 'برآورد هزینه',
         'queue_monitor' => 'نظارت صف',
+        'archived_requests' => 'آرشیو :label',
     ],
 
     'impersonation' => [
@@ -685,6 +693,7 @@ return [
         'unknown_job' => 'Job ناشناخته',
         'flush_failed_jobs_description' => 'همه رکوردهای failed_jobs حذف می‌شوند. برای تلاش مجدد از «تلاش مجدد همه» استفاده کنید.',
         'flush_pending_jobs_description' => 'همه کارهای جدول jobs (در انتظار و در حال پردازش) حذف می‌شوند و دیگر اجرا نمی‌شوند.',
+        'archive_request_description' => 'این درخواست از فهرست جاری خارج می‌شود و فقط در آرشیو دیده می‌شود.',
     ],
 
     'failed_job_reasons' => [

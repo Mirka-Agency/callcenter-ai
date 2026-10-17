@@ -48,7 +48,7 @@ class DemoRequestResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = DemoRequest::query()->count();
+        $count = DemoRequest::query()->active()->count();
 
         return $count > 0 ? (string) $count : null;
     }

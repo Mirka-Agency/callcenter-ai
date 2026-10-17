@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\DemoRequests\Pages;
 
 use App\Filament\Resources\DemoRequests\DemoRequestResource;
+use App\Filament\Support\RequestArchiveActions;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
@@ -11,6 +12,11 @@ use Filament\Schemas\Schema;
 class ViewDemoRequest extends ViewRecord
 {
     protected static string $resource = DemoRequestResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return RequestArchiveActions::recordActions();
+    }
 
     public function infolist(Schema $schema): Schema
     {
@@ -31,6 +37,10 @@ class ViewDemoRequest extends ViewRecord
                         TextEntry::make('created_at')
                             ->label(__('filament.fields.created_at'))
                             ->jalaliDateTime(),
+                        TextEntry::make('archived_at')
+                            ->label(__('filament.fields.archived_at'))
+                            ->jalaliDateTime()
+                            ->visible(fn ($record): bool => $record?->archived_at !== null),
                     ]),
             ]);
     }

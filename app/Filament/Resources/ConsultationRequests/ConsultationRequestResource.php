@@ -48,7 +48,7 @@ class ConsultationRequestResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = ConsultationRequest::query()->count();
+        $count = ConsultationRequest::query()->active()->count();
 
         return $count > 0 ? (string) $count : null;
     }
