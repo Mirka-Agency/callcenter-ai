@@ -3230,6 +3230,12 @@
     font-weight: 600;
 }
 
+.consult-optional {
+    color: var(--color-muted);
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
 .consult-field input,
 .consult-field textarea {
     width: 100%;
