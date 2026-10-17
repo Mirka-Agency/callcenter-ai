@@ -35,5 +35,6 @@
     </div>
 
     <x-landing.consult-dialog />
+    <x-landing.demo-dialog />
 </body>
 </html>

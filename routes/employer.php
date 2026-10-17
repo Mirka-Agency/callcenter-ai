@@ -18,6 +18,7 @@ use App\Livewire\Crm\Tasks\Show as CrmTasksShow;
 use App\Livewire\Employer\Crm\Connections\Create;
 use App\Livewire\Employer\Crm\Connections\Edit;
 use App\Livewire\Employer\Crm\Index as CrmIndex;
+use App\Livewire\Employer\Customers\Calls\Index as CustomerCallsIndex;
 use App\Livewire\Employer\Customers\Companies\Create as CustomerCompaniesCreate;
 use App\Livewire\Employer\Customers\Companies\Edit as CustomerCompaniesEdit;
 use App\Livewire\Employer\Customers\Companies\Index as CustomerCompaniesIndex;
@@ -121,6 +122,7 @@ Route::middleware(['auth', 'employer'])->group(function () {
             ->name('companies.export')
             ->whereIn('format', ['xlsx', 'pdf']);
         Route::get('/contacts', CustomerContactsIndex::class)->name('contacts.index');
+        Route::get('/calls', CustomerCallsIndex::class)->name('calls.index');
         Route::get('/contacts/export/{format}', [CustomerListExportController::class, 'contacts'])
             ->name('contacts.export')
             ->whereIn('format', ['xlsx', 'pdf']);

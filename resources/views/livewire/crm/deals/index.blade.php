@@ -29,42 +29,6 @@
             @endif
         </x-saas.empty-state>
     @else
-        <div class="flex flex-wrap items-center gap-2" role="tablist" aria-label="وضعیت معاملات">
-            @foreach ([
-                'open' => ['label' => 'باز', 'count' => $summary['open_count'], 'icon' => null],
-                'won' => ['label' => 'موفق', 'count' => $summary['won_count'], 'icon' => 'won'],
-                'lost' => ['label' => 'ناموفق', 'count' => $summary['lost_count'], 'icon' => 'lost'],
-            ] as $statusKey => $tab)
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected="{{ $status === $statusKey ? 'true' : 'false' }}"
-                    wire:click="selectStatus('{{ $statusKey }}')"
-                    @class([
-                        'inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition',
-                        'border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900' => $status === $statusKey,
-                        'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300' => $status !== $statusKey,
-                    ])
-                >
-                    @if ($tab['icon'] === 'won')
-                        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m5 13 4 4L19 7" />
-                        </svg>
-                    @elseif ($tab['icon'] === 'lost')
-                        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6 6 18" />
-                        </svg>
-                    @endif
-                    <span>{{ $tab['label'] }}</span>
-                    <span @class([
-                        'rounded-full px-1.5 py-0.5 text-xs',
-                        'bg-white/20 text-white dark:bg-zinc-900/10 dark:text-zinc-900' => $status === $statusKey,
-                        'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300' => $status !== $statusKey,
-                    ])>{{ PersianNumber::format($tab['count']) }}</span>
-                </button>
-            @endforeach
-        </div>
-
         <div class="grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/80 px-4 py-3 text-sm dark:border-zinc-800 dark:bg-zinc-900/40 sm:grid-cols-2 xl:grid-cols-4">
             <div class="flex items-center justify-between gap-3 sm:block">
                 <p class="text-zinc-500">معامله باز</p>

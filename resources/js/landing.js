@@ -153,14 +153,14 @@
                     reduce.addEventListener('change', request);
                 })();
 
-(function () {
-            const dialog = document.getElementById('consult-dialog');
-            const form = document.getElementById('consult-form');
-            const success = document.getElementById('consult-success');
-            const submit = document.getElementById('consult-submit');
-            const formError = dialog.querySelector('[data-form-error]');
+function bindLeadDialog(config) {
+            const dialog = document.getElementById(config.dialogId);
+            const form = document.getElementById(config.formId);
+            const success = document.getElementById(config.successId);
+            const submit = document.getElementById(config.submitId);
+            const formError = dialog ? dialog.querySelector('[data-form-error]') : null;
 
-            if (!dialog || !form || !success || !submit) {
+            if (!dialog || !form || !success || !submit || !formError) {
                 return;
             }
 
@@ -195,7 +195,7 @@
                 form.querySelector('input[name="full_name"]')?.focus();
             }
 
-            document.querySelectorAll('[data-consult-open]').forEach((button) => {
+            document.querySelectorAll(config.openSelector).forEach((button) => {
                 button.addEventListener('click', () => {
                     const menu = button.closest('details');
                     if (menu) {
@@ -205,7 +205,7 @@
                 });
             });
 
-            dialog.querySelectorAll('[data-consult-close]').forEach((button) => {
+            dialog.querySelectorAll(config.closeSelector).forEach((button) => {
                 button.addEventListener('click', () => dialog.close());
             });
 
@@ -226,7 +226,7 @@
 
             function captchaToken() {
                 const siteKey = form.dataset.recaptchaSiteKey;
-                const action = form.dataset.recaptchaAction || 'consultation';
+                const action = form.dataset.recaptchaAction || config.defaultAction;
 
                 if (!siteKey) {
                     return Promise.resolve('');
@@ -320,4 +320,82 @@
                     submit.textContent = 'ثبت درخواست';
                 }
             });
-        })();
+        }
+
+        bindLeadDialog({
+            dialogId: 'consult-dialog',
+            formId: 'consult-form',
+            successId: 'consult-success',
+            submitId: 'consult-submit',
+            openSelector: '[data-consult-open]',
+            closeSelector: '[data-consult-close]',
+            defaultAction: 'consultation',
+        });
+
+        bindLeadDialog({
+            dialogId: 'demo-dialog',
+            formId: 'demo-form',
+            successId: 'demo-success',
+            submitId: 'demo-submit',
+            openSelector: '[data-demo-open]',
+            closeSelector: '[data-demo-close]',
+            defaultAction: 'demo',
+        });
+
+        var faqItems = document.querySelectorAll('.faq__item');
+        var faqReduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+        function faqLock(panel, height) {
+            panel.style.height = height;
+        }
+
+        faqItems.forEach(function (item) {
+            var summary = item.querySelector('summary');
+            var panel = item.querySelector('.faq__panel');
+            if (!summary || !panel) return;
+
+            var animation = null;
+
+            summary.addEventListener('click', function (event) {
+                event.preventDefault();
+
+                var from = panel.getBoundingClientRect().height;
+                var opening = !item.open;
+
+                faqLock(panel, from + 'px');
+                if (animation) animation.cancel();
+
+                if (faqReduce.matches) {
+                    item.open = opening;
+                    panel.style.height = '';
+                    return;
+                }
+
+                item.open = opening;
+                var target = opening ? panel.scrollHeight : 0;
+                if (Math.abs(target - from) < 1) {
+                    panel.style.height = opening ? target + 'px' : '';
+                    return;
+                }
+
+                animation = panel.animate(
+                    [{ height: from + 'px' }, { height: target + 'px' }],
+                    { duration: 180, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'forwards' }
+                );
+                animation.onfinish = function () {
+                    panel.style.height = opening ? target + 'px' : '';
+                    animation.cancel();
+                    animation = null;
+                };
+            });
+        });
+
+        window.addEventListener('resize', function () {
+            faqItems.forEach(function (item) {
+                if (!item.open) return;
+                var panel = item.querySelector('.faq__panel');
+                if (!panel || panel.getAnimations().length) return;
+                panel.style.height = 'auto';
+                panel.style.height = panel.scrollHeight + 'px';
+            });
+        });

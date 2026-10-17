@@ -195,6 +195,44 @@ class CustomerListQuery
         return $query;
     }
 
+    /**
+     * Customer-linked calls for the CRM directory. Same scope as the تماس summary card.
+     *
+     * @return Builder<Call>
+     */
+    public static function calls(int $organizationId, string $search = '', string $direction = 'all'): Builder
+    {
+        $direction = in_array($direction, ['inbound', 'outbound'], true) ? $direction : 'all';
+
+        $query = Call::query()
+            ->where('calls.organization_id', $organizationId)
+            ->whereNotNull('calls.customer_id')
+            ->with(['customer.company', 'conversationAnalysis']);
+
+        $query = app(DefinedExtensionCallConstraint::class)->apply($query, $organizationId);
+
+        return $query
+            ->when($direction !== 'all', fn (Builder $inner) => $inner->where('calls.direction', $direction))
+            ->when($search !== '', function (Builder $inner) use ($search): void {
+                $term = '%'.$search.'%';
+                $inner->where(function (Builder $matches) use ($term): void {
+                    $matches->where('calls.customer_name', 'like', $term)
+                        ->orWhere('calls.customer_phone', 'like', $term)
+                        ->orWhere('calls.caller_number', 'like', $term)
+                        ->orWhere('calls.receiver_number', 'like', $term)
+                        ->orWhere('calls.title', 'like', $term)
+                        ->orWhereHas('customer', function (Builder $customer) use ($term): void {
+                            $customer->where('name', 'like', $term)
+                                ->orWhere('phone_number', 'like', $term)
+                                ->orWhereHas('company', fn (Builder $company) => $company->where('name', 'like', $term));
+                        });
+                });
+            })
+            ->orderByRaw('COALESCE(calls.conversation_date, calls.started_at, calls.created_at) DESC')
+            ->orderByDesc('calls.id');
+    }
+
+
     private static function normalizeStageFilter(string $stage): string
     {
         if ($stage === 'all' || $stage === 'unknown') {

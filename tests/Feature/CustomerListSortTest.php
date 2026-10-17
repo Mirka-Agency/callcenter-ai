@@ -224,9 +224,9 @@ class CustomerListSortTest extends TestCase
         $this->assertStringNotContainsString('نمای کلی', $html);
         $component
             ->assertSee('اشخاص و شرکت‌ها')
-            ->assertSee('همه')
             ->assertSee('اشخاص')
             ->assertSee('شرکت‌ها')
+            ->assertSee('تماس‌ها')
             ->assertSee('مخاطب بدون شرکت')
             ->assertSee('شرکت جدید')
             ->assertSee('شخص جدید');

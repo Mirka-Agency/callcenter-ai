@@ -15,33 +15,10 @@
         'showOwnerFilter' => $showOwnerFilter,
         'showFilters' => $showFilters,
         'datePreset' => $datePreset,
+        'statuses' => $statuses,
     ])
 
     <section class="saas-card space-y-4 p-4">
-        @if ($showFilters)
-            <div class="grid gap-3 lg:grid-cols-12 lg:items-end">
-                <label class="block text-sm lg:col-span-4">
-                    <span class="mb-1 block text-zinc-500">وضعیت</span>
-                    <select wire:model.live="status" class="saas-input">
-                        <option value="all">همه وضعیت‌ها</option>
-                        @foreach ($statuses as $dealStatus)
-                            <option value="{{ $dealStatus->value }}">{{ $dealStatus->label() }}</option>
-                        @endforeach
-                    </select>
-                </label>
-
-                <label class="block text-sm lg:col-span-4">
-                    <span class="mb-1 block text-zinc-500">از تاریخ ایجاد</span>
-                    <input wire:model.live="dateFrom" type="date" class="saas-input" aria-label="انتخاب تاریخ شروع">
-                </label>
-
-                <label class="block text-sm lg:col-span-4">
-                    <span class="mb-1 block text-zinc-500">تا تاریخ ایجاد</span>
-                    <input wire:model.live="dateTo" type="date" class="saas-input" aria-label="انتخاب تاریخ پایان">
-                </label>
-            </div>
-        @endif
-
         @if ($deals->isEmpty())
             <x-saas.empty-state
                 title="معامله‌ای پیدا نشد"

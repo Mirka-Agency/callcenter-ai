@@ -13,6 +13,8 @@
             <div class="crm-directory-header-actions">
                 @include('livewire.shared.customers.partials.directory-stats', [
                     'stats' => $stats,
+                    'portal' => $portal,
+                    'active' => 'companies',
                 ])
                 <div class="flex flex-wrap items-center justify-end gap-2">
                     <a href="{{ route($companyCreateRoute) }}" class="saas-btn-primary text-sm" wire:navigate>شرکت جدید</a>
