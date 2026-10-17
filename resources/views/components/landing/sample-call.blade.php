@@ -31,7 +31,7 @@
                         </svg>
                         تحلیل هوشمند تماس‌ها
                     </p>
-                    <h2 id="sample-call-title" class="sample-call__title">پشت هر <span>مکالمه</span>، اطلاعاتی ارزشمند پنهان است</h2>
+                    <h2 id="sample-call-title" class="sample-call__title">هر <span>مکالمه</span>، اطلاعاتی ارزشمند</h2>
                     <p class="sample-call__lead">یک نمونه تحلیل تماس با خلاصه مکالمه، امتیاز کارشناس، احساس مشتری، کیفیت سرنخ و پیشنهاد بهبود نمایش بده</p>
                     <ul class="sample-call__points">
                         <li class="sample-call__point">

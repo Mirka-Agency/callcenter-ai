@@ -632,32 +632,26 @@
 
     .landing-hero__stage { padding: 0; }
 
-    .landing-hero__chips {
-        position: static;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        max-width: 100%;
-        margin-bottom: 0.9rem;
-    }
-
-    .landing-hero__chip,
-    .landing-hero__chip--call,
-    .landing-hero__chip--ai,
-    .landing-hero__chip--opp,
-    .landing-hero__chip--voice {
-        position: static;
-    }
-
-    .landing-hero__chip::after { display: none; }
+    .landing-hero__chips { display: none; }
 
     .landing-hero__tilt { animation-name: landing-hero-float-flat; }
 }
 
 @media (max-width: 720px) {
     .landing-hero__copy h1 { font-size: clamp(1.35rem, 6.4vw, 1.7rem); }
-    .landing-hero__actions { display: grid; grid-template-columns: 1fr; }
-    .landing-hero__btn { width: 100%; }
+    .landing-hero__actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+    .landing-hero__btn {
+        width: 100%;
+        min-width: 0;
+        gap: 0.35rem;
+        padding-inline: 0.55rem;
+        font-size: 0.82rem;
+        white-space: nowrap;
+    }
     .landing-side { width: 52px; padding-inline: 8px; }
     .landing-side__brand strong,
     .landing-side__link span { display: none; }
@@ -1588,6 +1582,10 @@
 }
 
 .challenges__card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 0.85rem;
     min-width: 0;
     padding: 1.4rem 1.35rem 1.5rem;
     border: 1px solid var(--landing-line-soft);
@@ -1626,7 +1624,7 @@
 }
 
 .challenges__card h3 {
-    margin: 1.05rem 0 0;
+    margin: 0;
     color: var(--color-ink);
     font-size: 1.02rem;
     font-weight: 700;
@@ -1634,7 +1632,8 @@
 }
 
 .challenges__card p {
-    margin: 0.4rem 0 0;
+    grid-column: 1 / -1;
+    margin: 0.95rem 0 0;
     color: var(--color-muted);
     font-size: 0.92rem;
     line-height: 1.95;
@@ -2262,18 +2261,53 @@
 }
 
 @media (max-width: 640px) {
-    .sample-call__split,
-    .sample-call__mid,
-    .sample-call__trio,
-    .sample-call__banners,
-    .sample-call__head {
-        grid-template-columns: 1fr;
+    .sample-call__preview { padding: 0.5rem; }
+
+    .sample-call__board {
+        gap: 0.4rem;
+        padding: 0.45rem;
+        line-height: 1.45;
     }
 
     .sample-call__head {
-        display: grid;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.5rem;
     }
 
+    .sample-call__name { font-size: 0.86rem; }
+
+    .sample-call__chips { margin-top: 0.28rem; }
+
+    .sample-call__score {
+        min-width: 3.2rem;
+        padding: 0.18rem 0.28rem 0.22rem;
+    }
+
+    .sample-call__score strong { font-size: 1.02rem; }
+
+    .sample-call__split { grid-template-columns: 1fr; }
+
+    .sample-call__panel p {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+    }
+
+    .sample-call__dims {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.35rem 0.7rem;
+    }
+
+    .sample-call__panel,
+    .sample-call__banner { padding: 0.42rem 0.5rem; }
+
+    .sample-call__mid { gap: 0.35rem; }
+
+    .sample-call__strengths li:nth-child(n + 3) { display: none; }
+
+    .sample-call__banners { display: none; }
 }
 
 .dark .sample-call {
@@ -2713,7 +2747,7 @@
     display: inline-flex;
     flex: none;
     color: var(--landing-zinc-400);
-    transition: transform 0.2s ease;
+    transition: transform 0.22s ease;
 }
 
 .faq__chevron svg {
@@ -2723,6 +2757,27 @@
 
 .faq__item[open] .faq__chevron {
     transform: rotate(180deg);
+}
+
+.faq__list,
+.faq__item,
+.faq__panel {
+    overflow-anchor: none;
+}
+
+.faq__item:not([open])::details-content,
+.faq__item[open]::details-content {
+    content-visibility: visible;
+}
+
+.faq__item > .faq__panel {
+    display: block;
+    height: 0;
+    overflow: hidden;
+}
+
+.faq__item[open] > .faq__panel {
+    height: auto;
 }
 
 .faq__icon {
@@ -2747,6 +2802,10 @@
     color: var(--color-muted);
     font-size: 0.9rem;
     line-height: 1.95;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .faq__chevron { transition: none; }
 }
 
 .faq__card {
@@ -2875,6 +2934,46 @@
     }
 }
 
+@media (max-width: 720px) {
+    .faq__item summary {
+        gap: 0.45rem;
+        padding: 0.8rem 0.7rem;
+    }
+
+    .faq__qwrap {
+        flex: 1;
+        gap: 0.35rem;
+        min-width: 0;
+    }
+
+    .faq__q {
+        font-size: 0.92rem;
+        line-height: 1.6;
+        white-space: normal;
+    }
+
+    .faq__icon {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    .faq__icon svg {
+        width: 1.05rem;
+        height: 1.05rem;
+    }
+
+    .faq__answer {
+        padding-inline: 0.7rem 1rem;
+    }
+
+    .journey { padding-block: 1.75rem 1.5rem; }
+
+    .challenges,
+    .sample-call,
+    .coaching,
+    .faq { padding-block: 1.5rem; }
+}
+
 .dark .faq {
     background:
         radial-gradient(520px 220px at 12% 18%, rgba(124, 37, 253, 0.12), transparent 70%),
@@ -2936,6 +3035,10 @@
     width: min(72rem, calc(100% - 2rem));
     margin-inline: auto;
     padding-block: 3.25rem 1.5rem;
+}
+
+@media (max-width: 720px) {
+    .site-footer__inner { padding-block: 1.75rem 1.25rem; }
 }
 
 .site-footer__grid {
@@ -3097,10 +3200,84 @@
 .site-footer__credit {
     color: var(--color-muted);
     font-weight: 600;
+    font-size: 0.8rem;
 }
 
 .site-footer__credit:hover {
     color: var(--color-brand);
+}
+
+@media (max-width: 899px) {
+    .site-footer__grid { gap: 1.75rem; }
+
+    .site-footer__brand {
+        align-items: center;
+        text-align: center;
+    }
+
+    .site-footer__lead {
+        max-width: 22rem;
+        text-align: center;
+    }
+
+    .site-footer__links {
+        grid-template-columns: 1fr 1fr;
+        justify-content: stretch;
+        justify-items: center;
+        width: 100%;
+        column-gap: 1.25rem;
+        row-gap: 0.85rem;
+    }
+
+    .site-footer__contacts {
+        align-items: stretch;
+        width: 100%;
+        gap: 0.65rem;
+    }
+
+    .site-footer__contacts li { width: 100%; }
+
+    .site-footer__contacts a,
+    .site-footer__contacts button {
+        display: flex;
+        width: 100%;
+        padding: 0.85rem 0.95rem;
+        border: 1px solid var(--color-line);
+        border-radius: 1rem;
+        background: var(--color-white);
+    }
+
+    .site-footer__contacts a > span:last-child,
+    .site-footer__contacts button > span:last-child {
+        font-weight: 700;
+        line-height: 1.45;
+    }
+
+    .site-footer__contacts small { font-weight: 500; }
+
+    .site-footer__bar {
+        align-items: center;
+        gap: 0.55rem;
+        margin-top: 1.75rem;
+        padding-top: 0.35rem;
+        border-top: 0;
+        text-align: center;
+    }
+
+    .site-footer__wave { order: 1; }
+
+    .site-footer__credit { order: 2; }
+
+    .site-footer__copy {
+        order: 3;
+        justify-content: center;
+    }
+
+    .dark .site-footer__contacts a,
+    .dark .site-footer__contacts button {
+        border-color: var(--landing-zinc-800);
+        background: var(--color-ink);
+    }
 }
 
 @media (min-width: 900px) {
