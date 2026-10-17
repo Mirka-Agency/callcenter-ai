@@ -343,6 +343,89 @@
         @apply bg-brand;
     }
 
+    .crm-trend-dot {
+        @apply inline-block h-2.5 w-2.5 shrink-0 rounded-full;
+    }
+
+    .crm-trend-dot--new {
+        background: var(--color-brand);
+    }
+
+    .crm-trend-dot--won {
+        background: var(--color-success);
+    }
+
+    .crm-trend-meter {
+        @apply flex h-2.5 items-stretch rounded-full bg-zinc-100 dark:bg-zinc-800;
+    }
+
+    .crm-trend-seg {
+        @apply relative block h-full min-w-2 cursor-default outline-none;
+    }
+
+    .crm-trend-meter > .crm-trend-seg:first-child {
+        border-start-start-radius: 9999px;
+        border-end-start-radius: 9999px;
+    }
+
+    .crm-trend-seg:not(:has(+ .crm-trend-seg)) {
+        border-start-end-radius: 9999px;
+        border-end-end-radius: 9999px;
+    }
+
+    .crm-trend-seg--new {
+        background: var(--color-brand);
+    }
+
+    .crm-trend-seg--new:hover,
+    .crm-trend-seg--new:focus-visible {
+        background: var(--color-brand-hover);
+    }
+
+    .crm-trend-seg--won {
+        background: var(--color-success);
+    }
+
+    .crm-trend-seg--won:hover,
+    .crm-trend-seg--won:focus-visible {
+        background: #047857;
+    }
+
+    .crm-trend-seg::before {
+        content: "";
+        position: absolute;
+        inset-block: -0.55rem;
+        inset-inline: 0;
+    }
+
+    .crm-trend-seg:focus-visible {
+        @apply ring-2 ring-brand/40 ring-offset-1;
+    }
+
+    .crm-trend-tip {
+        @apply pointer-events-none absolute bottom-[calc(100%+0.45rem)] left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-sm transition-opacity dark:bg-white dark:text-zinc-900;
+    }
+
+    .crm-trend-tip::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        border: 4px solid transparent;
+        border-top-color: #18181b;
+        transform: translateX(-50%);
+    }
+
+    .dark .crm-trend-tip::after {
+        border-top-color: #fff;
+    }
+
+    .crm-trend-seg:hover .crm-trend-tip,
+    .crm-trend-seg:focus .crm-trend-tip,
+    .crm-trend-seg:focus-visible .crm-trend-tip {
+        @apply opacity-100;
+    }
+
     .crm-overview-item-icon {
         @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl;
     }
