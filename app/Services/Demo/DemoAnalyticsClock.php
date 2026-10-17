@@ -3,6 +3,7 @@
 namespace App\Services\Demo;
 
 use App\Models\Call;
+use App\Support\Seeding\AvayarShowcase;
 use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
@@ -66,6 +67,7 @@ class DemoAnalyticsClock
         }
 
         $days = $this->calendarDaysUntilToday(Carbon::parse($latest));
+        app(AvayarShowcase::class)->refreshKpiWindows($organization);
 
         if ($days === 0) {
             return 0;

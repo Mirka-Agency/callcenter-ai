@@ -54,6 +54,7 @@ ROLE="${CONTAINER_ROLE:-web}"
 if [ "$ROLE" = "web" ] && [ "${RUN_MIGRATIONS:-true}" != "false" ]; then
     php artisan migrate --force --no-interaction
     php artisan integrations:sync-meta-definitions --no-interaction
+    php artisan avayar:seed-showcase --no-interaction || echo "Avayar showcase seed did not finish"
 fi
 
 case "$ROLE" in
