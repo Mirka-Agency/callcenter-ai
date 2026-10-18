@@ -1153,6 +1153,192 @@
         @apply flex flex-col items-end gap-3;
     }
 
+    .crm-directory-header-bar {
+        @apply flex flex-wrap items-center justify-end gap-2;
+    }
+
+    .crm-directory-actions {
+        @apply flex flex-wrap items-center gap-2;
+    }
+
+    .crm-directory-action {
+        @apply inline-flex h-11 items-center justify-center rounded-xl px-4 text-sm font-semibold no-underline transition focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2;
+        outline-color: var(--color-brand);
+    }
+
+    .crm-directory-action svg {
+        @apply h-4 w-4 shrink-0;
+    }
+
+    .crm-directory-action--add {
+        background: var(--color-brand);
+        color: #fff;
+        box-shadow: 0 8px 18px rgba(124, 37, 253, 0.28);
+    }
+
+    .crm-directory-action--add:hover {
+        background: var(--color-brand-hover);
+    }
+
+    .crm-directory-export .saas-btn-secondary {
+        height: 2.75rem;
+        border-radius: 0.75rem;
+        border-color: color-mix(in oklab, var(--color-ai) 30%, white);
+        background: color-mix(in oklab, var(--color-ai) 10%, white);
+        color: var(--color-ai);
+        font-weight: 600;
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.16);
+    }
+
+    .crm-directory-export .saas-btn-secondary:hover {
+        background: color-mix(in oklab, var(--color-ai) 16%, white);
+        color: var(--color-ai);
+    }
+
+    .dark .crm-directory-export .saas-btn-secondary {
+        border-color: rgba(99, 102, 241, 0.45);
+        background: rgba(99, 102, 241, 0.16);
+        color: #c7d2fe;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    .dark .crm-directory-export .saas-btn-secondary:hover {
+        background: rgba(99, 102, 241, 0.26);
+        color: #e0e7ff;
+    }
+
+    .crm-create-dialog {
+        @apply fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/45 p-3 sm:items-center sm:p-6;
+    }
+
+    .crm-create-dialog__panel {
+        @apply flex max-h-[min(92vh,52rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-950;
+    }
+
+    .crm-create-dialog__header {
+        @apply flex items-center justify-between gap-3 border-b border-zinc-100 px-4 py-4 sm:px-6 dark:border-zinc-800;
+    }
+
+    .crm-create-dialog__switch {
+        @apply inline-flex min-w-0 items-center gap-1 rounded-2xl bg-zinc-100 p-1 dark:bg-zinc-900;
+    }
+
+    .crm-create-dialog__tab {
+        @apply inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-zinc-500 transition sm:px-4;
+    }
+
+    .crm-create-dialog__tab svg {
+        @apply h-4 w-4 shrink-0;
+    }
+
+    .crm-create-dialog__tab.is-active {
+        border: 1.5px solid var(--color-brand);
+        background: #fff;
+        color: var(--color-brand);
+        box-shadow: 0 4px 14px rgba(124, 37, 253, 0.12);
+    }
+
+    .dark .crm-create-dialog__tab.is-active {
+        background: rgb(24 24 27);
+        color: #ddd6fe;
+    }
+
+    .crm-create-dialog__close {
+        @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-800 dark:border-zinc-700 dark:hover:bg-zinc-900 dark:hover:text-zinc-100;
+    }
+
+    .crm-create-dialog__close svg {
+        @apply h-5 w-5;
+    }
+
+    .crm-create-dialog__body {
+        @apply space-y-5 overflow-y-auto px-4 py-5 sm:px-6;
+    }
+
+    .crm-create-dialog__grid {
+        @apply grid gap-4 sm:grid-cols-2;
+    }
+
+    .crm-create-dialog__field {
+        @apply block min-w-0 text-sm font-medium text-zinc-800 dark:text-zinc-100;
+    }
+
+    .crm-create-dialog__field--full {
+        @apply sm:col-span-2;
+    }
+
+    .crm-create-dialog__field > span {
+        @apply mb-2 block;
+    }
+
+    .crm-create-dialog__required {
+        color: var(--color-brand);
+    }
+
+    .crm-create-dialog__input {
+        @apply w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-normal text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none focus:ring-2 focus:ring-violet-200 disabled:bg-zinc-50 disabled:text-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:disabled:bg-zinc-900;
+    }
+
+    .crm-create-dialog__error {
+        @apply mt-1 text-xs font-normal text-rose-600;
+    }
+
+    .crm-create-dialog__company {
+        @apply space-y-4 rounded-2xl p-4 sm:p-5;
+        background: var(--color-lavender);
+    }
+
+    .crm-create-dialog__company h3 {
+        @apply text-sm font-semibold;
+        color: var(--color-brand);
+    }
+
+    .crm-create-dialog__company > p {
+        @apply text-xs leading-6 text-zinc-500;
+    }
+
+    .dark .crm-create-dialog__company {
+        background: rgba(124, 37, 253, 0.12);
+    }
+
+    .dark .crm-create-dialog__company h3 {
+        color: #ddd6fe;
+    }
+
+    .crm-create-dialog__note {
+        @apply flex items-start gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-xs leading-6 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/70;
+    }
+
+    .crm-create-dialog__note svg {
+        @apply mt-0.5 h-4 w-4 shrink-0 text-zinc-400;
+    }
+
+    .crm-create-dialog__footer {
+        @apply flex flex-col gap-3 border-t border-zinc-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 dark:border-zinc-800;
+    }
+
+    .crm-create-dialog__footer > p {
+        @apply text-xs text-zinc-400;
+    }
+
+    .crm-create-dialog__footer-actions {
+        @apply flex items-center justify-end gap-2;
+    }
+
+    .crm-create-dialog__cancel {
+        @apply inline-flex h-11 items-center justify-center rounded-xl border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200;
+    }
+
+    .crm-create-dialog__submit {
+        @apply inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold text-white transition disabled:opacity-60;
+        background: var(--color-brand);
+        box-shadow: 0 8px 18px rgba(124, 37, 253, 0.24);
+    }
+
+    .crm-create-dialog__submit:hover {
+        background: var(--color-brand-hover);
+    }
+
     .crm-directory-stats {
         @apply flex flex-wrap justify-end gap-2;
     }

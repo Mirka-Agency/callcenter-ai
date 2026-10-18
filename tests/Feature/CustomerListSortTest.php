@@ -228,8 +228,10 @@ class CustomerListSortTest extends TestCase
             ->assertSee('شرکت‌ها')
             ->assertSee('تماس‌ها')
             ->assertSee('مخاطب بدون شرکت')
-            ->assertSee('شرکت جدید')
-            ->assertSee('شخص جدید');
+            ->assertSee('افزودن')
+            ->assertDontSee('شرکت جدید')
+            ->assertDontSee('شخص جدید')
+            ->assertDontSee('نیازمند بررسی');
         $this->assertStringContainsString('data-row-href', $html);
     }
 

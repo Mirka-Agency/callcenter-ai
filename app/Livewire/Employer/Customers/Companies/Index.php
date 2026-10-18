@@ -4,6 +4,7 @@ namespace App\Livewire\Employer\Customers\Companies;
 
 use App\Livewire\Concerns\HasCustomerListPerPage;
 use App\Livewire\Concerns\HasCustomerListSort;
+use App\Livewire\Concerns\ManagesCustomerCreateDialog;
 use App\Services\EmployerContext;
 use App\Support\CustomerListQuery;
 use Livewire\Attributes\Layout;
@@ -17,6 +18,7 @@ class Index extends Component
 {
     use HasCustomerListPerPage;
     use HasCustomerListSort;
+    use ManagesCustomerCreateDialog;
     use WithPagination;
 
     public string $search = '';
