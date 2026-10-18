@@ -12,6 +12,10 @@
             this.dragKey = key;
             event.dataTransfer.effectAllowed = 'move';
             event.dataTransfer.setData('text/plain', key);
+            const card = event.currentTarget.closest('article');
+            if (card) {
+                event.dataTransfer.setDragImage(card, Math.min(48, card.offsetWidth / 2), 28);
+            }
         },
         onDrop(targetKey) {
             if (! this.dragKey || this.dragKey === targetKey) return;
@@ -127,6 +131,8 @@
                         class="crm-pipeline-stage-card__header"
                         style="--stage-color: {{ \App\Domain\Crm\Deals\PipelineStagePalette::colorForPosition($index + 1) }}"
                         title="برای جابه‌جایی بکشید"
+                        draggable="true"
+                        x-on:dragstart.stop="onDragStart(@js($stage['key']), $event)"
                     >
                         <span class="truncate">{{ $stage['name'] ?: 'مرحله '.PersianNumber::format($index + 1) }}</span>
                     </header>
