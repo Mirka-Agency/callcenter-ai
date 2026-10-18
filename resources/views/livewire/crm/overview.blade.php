@@ -162,25 +162,56 @@
     <div class="grid gap-4 lg:grid-cols-2">
         <section class="saas-card space-y-4 p-5">
             <div>
-                <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">روند ۷ روزه فرصت‌ها</h2>
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <h2 class="text-lg font-semibold text-zinc-900 dark:text-white">روند ۷ روزه فرصت‌ها</h2>
+                    <ul class="flex items-center gap-3 text-sm text-zinc-600 dark:text-zinc-300" aria-label="راهنمای رنگ نمودار">
+                        <li class="inline-flex items-center gap-1.5">
+                            <span class="crm-trend-dot crm-trend-dot--new" aria-hidden="true"></span>
+                            جدید
+                        </li>
+                        <li class="inline-flex items-center gap-1.5">
+                            <span class="crm-trend-dot crm-trend-dot--won" aria-hidden="true"></span>
+                            برد
+                        </li>
+                    </ul>
+                </div>
                 <p class="mt-1 text-sm text-zinc-500">فرصت جدید و برد در هر روز</p>
             </div>
             <ul class="space-y-3">
                 @forelse ($trend as $day)
                     @php
-                        $activity = $day['new_count'] + $day['won_count'];
-                        $width = $trendMax > 0
-                            ? max($activity > 0 ? 8 : 0, (int) round(($activity / $trendMax) * 100))
-                            : 0;
+                        $remain = max(0, $trendMax - $day['new_count'] - $day['won_count']);
                     @endphp
                     <li class="flex items-center gap-3" wire:key="trend-{{ $day['date'] }}">
                         <span class="w-[5.75rem] shrink-0 tabular-nums text-sm text-zinc-600 dark:text-zinc-300">{{ $day['date'] }}</span>
-                        <div class="crm-overview-meter crm-overview-meter--brand min-w-0 flex-1">
-                            <span style="width: {{ $width }}%"></span>
+                        <div class="crm-trend-meter min-w-0 flex-1" role="group" aria-label="روند {{ $day['date'] }}">
+                            @if ($day['new_count'] > 0)
+                                <span
+                                    class="crm-trend-seg crm-trend-seg--new"
+                                    style="flex: {{ $day['new_count'] }} 1 0.5rem"
+                                    tabindex="0"
+                                    role="img"
+                                    aria-label="{{ PersianNumber::format($day['new_count']) }} جدید"
+                                >
+                                    <span class="crm-trend-tip">{{ PersianNumber::format($day['new_count']) }}</span>
+                                </span>
+                            @endif
+                            @if ($day['won_count'] > 0)
+                                <span
+                                    class="crm-trend-seg crm-trend-seg--won"
+                                    style="flex: {{ $day['won_count'] }} 1 0.5rem"
+                                    tabindex="0"
+                                    role="img"
+                                    aria-label="{{ PersianNumber::format($day['won_count']) }} برد"
+                                >
+                                    <span class="crm-trend-tip">{{ PersianNumber::format($day['won_count']) }}</span>
+                                </span>
+                            @endif
+                            @if ($remain > 0)
+                                <span class="min-w-0" style="flex: {{ $remain }} 1 0" aria-hidden="true"></span>
+                            @endif
                         </div>
-                        <span class="min-w-0 shrink-0 text-end text-sm text-zinc-500 sm:min-w-[11rem]">
-                            {{ PersianNumber::format($day['new_count']) }} جدید ·
-                            {{ PersianNumber::format($day['won_count']) }} برد ·
+                        <span class="shrink-0 text-end text-sm tabular-nums text-zinc-500">
                             {{ DealMoney::formatRials($day['invoice_amount_rials']) }}
                         </span>
                     </li>

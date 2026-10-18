@@ -176,6 +176,25 @@ class Index extends Component
         $this->showFilters = ! $this->showFilters;
     }
 
+    public function closeFilters(): void
+    {
+        $this->showFilters = false;
+    }
+
+    public function clearFilters(): void
+    {
+        $this->search = '';
+        $this->owner = 'all';
+
+        if ($this->status !== 'open') {
+            $this->selectStatus('open');
+
+            return;
+        }
+
+        $this->resetPage();
+    }
+
     public function refreshBoard(): void
     {
         $this->resetPage();

@@ -17,7 +17,6 @@ class ConsultationRequestTest extends TestCase
         $this->get('http://avayar.org/')
             ->assertOk()
             ->assertSee('درخواست مشاوره')
-            ->assertDontSee('درخواست دمو')
             ->assertSee('نام و نام خانوادگی')
             ->assertSee('شماره تماس')
             ->assertSee('نام شرکت')

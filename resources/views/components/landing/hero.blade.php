@@ -31,13 +31,13 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 12H5M5 12l6-6M5 12l6 6" />
                             </svg>
                         </button>
-                        <a class="landing-hero__btn landing-hero__btn--ghost" href="#sample-call">
-                            <span>مشاهده داشبورد</span>
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" />
-                                <path d="M10.2 8.6v6.8l5.6-3.4-5.6-3.4z" fill="currentColor" />
+                        <button type="button" class="landing-hero__btn landing-hero__btn--ghost" data-demo-open>
+                            <span>درخواست دمو</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                <circle cx="12" cy="12" r="8.25" />
+                                <path d="M10.35 8.9v6.2l5.15-3.1-5.15-3.1z" fill="currentColor" stroke="none" />
                             </svg>
-                        </a>
+                        </button>
                     </div>
                 </div>
 

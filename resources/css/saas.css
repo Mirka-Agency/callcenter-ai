@@ -343,6 +343,89 @@
         @apply bg-brand;
     }
 
+    .crm-trend-dot {
+        @apply inline-block h-2.5 w-2.5 shrink-0 rounded-full;
+    }
+
+    .crm-trend-dot--new {
+        background: var(--color-brand);
+    }
+
+    .crm-trend-dot--won {
+        background: var(--color-success);
+    }
+
+    .crm-trend-meter {
+        @apply flex h-2.5 items-stretch rounded-full bg-zinc-100 dark:bg-zinc-800;
+    }
+
+    .crm-trend-seg {
+        @apply relative block h-full min-w-2 cursor-default outline-none;
+    }
+
+    .crm-trend-meter > .crm-trend-seg:first-child {
+        border-start-start-radius: 9999px;
+        border-end-start-radius: 9999px;
+    }
+
+    .crm-trend-seg:not(:has(+ .crm-trend-seg)) {
+        border-start-end-radius: 9999px;
+        border-end-end-radius: 9999px;
+    }
+
+    .crm-trend-seg--new {
+        background: var(--color-brand);
+    }
+
+    .crm-trend-seg--new:hover,
+    .crm-trend-seg--new:focus-visible {
+        background: var(--color-brand-hover);
+    }
+
+    .crm-trend-seg--won {
+        background: var(--color-success);
+    }
+
+    .crm-trend-seg--won:hover,
+    .crm-trend-seg--won:focus-visible {
+        background: #047857;
+    }
+
+    .crm-trend-seg::before {
+        content: "";
+        position: absolute;
+        inset-block: -0.55rem;
+        inset-inline: 0;
+    }
+
+    .crm-trend-seg:focus-visible {
+        @apply ring-2 ring-brand/40 ring-offset-1;
+    }
+
+    .crm-trend-tip {
+        @apply pointer-events-none absolute bottom-[calc(100%+0.45rem)] left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-sm transition-opacity dark:bg-white dark:text-zinc-900;
+    }
+
+    .crm-trend-tip::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        border: 4px solid transparent;
+        border-top-color: #18181b;
+        transform: translateX(-50%);
+    }
+
+    .dark .crm-trend-tip::after {
+        border-top-color: #fff;
+    }
+
+    .crm-trend-seg:hover .crm-trend-tip,
+    .crm-trend-seg:focus .crm-trend-tip,
+    .crm-trend-seg:focus-visible .crm-trend-tip {
+        @apply opacity-100;
+    }
+
     .crm-overview-item-icon {
         @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl;
     }
@@ -848,7 +931,7 @@
     }
 
     .saas-nav-item-active {
-        @apply bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 max-lg:bg-gradient-to-l max-lg:from-indigo-600 max-lg:to-violet-600 max-lg:text-white max-lg:shadow-sm max-lg:shadow-indigo-500/20 dark:max-lg:from-indigo-500 dark:max-lg:to-violet-500 dark:max-lg:text-white;
+        @apply bg-brand text-white hover:bg-brand-hover hover:text-white dark:bg-brand dark:text-white dark:hover:bg-brand-hover dark:hover:text-white;
     }
 
     .saas-nav-item-icon {
@@ -856,7 +939,7 @@
     }
 
     .saas-nav-item-active .saas-nav-item-icon {
-        @apply bg-white/20 text-white max-lg:bg-white/15;
+        @apply bg-white/20 text-white dark:bg-white/20 dark:text-white;
     }
 
     .saas-btn {
@@ -912,7 +995,7 @@
     }
 
     .crm-directory-stat {
-        @apply flex h-[4.5rem] w-[4.5rem] flex-col items-center justify-center gap-0.5 rounded-xl border-0 bg-white p-2 text-center shadow-[0_6px_16px_rgba(15,23,42,0.08)] dark:bg-zinc-900 dark:shadow-[0_6px_16px_rgba(0,0,0,0.35)];
+        @apply flex h-[4.5rem] w-[4.5rem] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl border-0 bg-white p-2 text-center text-inherit no-underline shadow-[0_6px_16px_rgba(15,23,42,0.08)] outline-none focus:outline-none focus-visible:outline-none dark:bg-zinc-900 dark:shadow-[0_6px_16px_rgba(0,0,0,0.35)];
     }
 
     .crm-directory-stat__label {
@@ -920,19 +1003,7 @@
     }
 
     .crm-directory-stat__value {
-        @apply text-lg font-bold tabular-nums tracking-tight leading-none;
-    }
-
-    .crm-directory-stat--indigo .crm-directory-stat__value {
-        @apply text-indigo-600 dark:text-indigo-400;
-    }
-
-    .crm-directory-stat--violet .crm-directory-stat__value {
-        @apply text-violet-600 dark:text-violet-400;
-    }
-
-    .crm-directory-stat--sky .crm-directory-stat__value {
-        @apply text-sky-500 dark:text-sky-400;
+        @apply text-lg font-bold tabular-nums tracking-tight leading-none text-brand;
     }
 
     .crm-directory-tabs {
@@ -1057,6 +1128,202 @@
         color: var(--color-brand);
     }
 
+    .crm-deals-filter-btn__count {
+        @apply inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold leading-none text-white;
+        background: var(--color-brand);
+    }
+
+    .crm-deals-filter-dialog {
+        @apply fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/45 p-3 sm:items-center sm:p-4;
+    }
+
+    .crm-deals-filter-dialog__panel {
+        @apply flex max-h-[min(90vh,40rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-950;
+        animation: crm-deals-filter-in 160ms ease-out;
+    }
+
+    .crm-deals-filter-dialog__header {
+        @apply flex items-start justify-between gap-3 border-b border-zinc-100 px-4 py-4 dark:border-zinc-800;
+    }
+
+    .crm-deals-filter-dialog__heading {
+        @apply flex min-w-0 items-center gap-3;
+    }
+
+    .crm-deals-filter-dialog__heading h2 {
+        @apply text-base font-bold text-zinc-900 dark:text-white;
+    }
+
+    .crm-deals-filter-dialog__heading p {
+        @apply mt-0.5 text-xs leading-5 text-zinc-500;
+    }
+
+    .crm-deals-filter-dialog__icon {
+        @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl;
+        background: var(--color-lavender);
+        color: var(--color-brand);
+    }
+
+    .crm-deals-filter-dialog__icon svg,
+    .crm-deals-filter-dialog__close svg {
+        @apply h-4 w-4;
+    }
+
+    .crm-deals-filter-dialog__close {
+        @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 dark:hover:bg-zinc-800 dark:hover:text-zinc-200;
+    }
+
+    .crm-deals-filter-dialog__body {
+        @apply space-y-5 overflow-y-auto px-4 py-4;
+    }
+
+    .crm-deals-filter-label {
+        @apply mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-200;
+    }
+
+    .crm-deals-filter-search__control {
+        @apply relative block;
+    }
+
+    .crm-deals-filter-search__control > svg {
+        @apply pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400;
+    }
+
+    .crm-deals-filter-search__control input {
+        @apply w-full rounded-xl border border-zinc-200 bg-white py-2.5 pe-10 ps-10 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white;
+    }
+
+    .crm-deals-filter-search__control input::-webkit-search-cancel-button {
+        appearance: none;
+    }
+
+    .crm-deals-filter-search__control button {
+        @apply absolute end-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200;
+    }
+
+    .crm-deals-filter-search__control button svg {
+        @apply h-3.5 w-3.5;
+    }
+
+    .crm-deals-filter-group {
+        @apply min-w-0 border-0 p-0;
+    }
+
+    .crm-deals-filter-segments {
+        @apply grid gap-1 rounded-xl border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-700 dark:bg-zinc-900;
+    }
+
+    .crm-deals-filter-segments.is-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .crm-deals-filter-segments.is-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .crm-deals-filter-segments.is-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .crm-deals-filter-segment {
+        @apply rounded-lg px-2 py-2 text-center text-xs font-medium text-zinc-600 transition hover:bg-white hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white;
+    }
+
+    .crm-deals-filter-segment.has-meta {
+        @apply inline-flex w-full items-center justify-center gap-1.5;
+    }
+
+    .crm-deals-filter-segment.has-meta svg {
+        @apply h-3.5 w-3.5 shrink-0;
+    }
+
+    .crm-deals-filter-segment__count {
+        @apply text-[11px] font-semibold leading-none;
+        color: var(--color-brand);
+    }
+
+    .crm-deals-filter-segment.is-active .crm-deals-filter-segment__count {
+        color: #fff;
+    }
+
+    .crm-deals-filter-segment.is-active {
+        background: var(--color-brand);
+        @apply text-white shadow-sm hover:text-white dark:hover:text-white;
+    }
+
+    .crm-deals-filter-segment.is-active:hover {
+        background: var(--color-brand-hover);
+    }
+
+    .crm-deals-filter-dates {
+        @apply grid grid-cols-2 gap-3;
+    }
+
+    .crm-deals-filter-date {
+        @apply flex min-w-0 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 dark:border-zinc-700 dark:bg-zinc-900;
+    }
+
+    .crm-deals-filter-date span {
+        @apply shrink-0 text-xs font-medium text-zinc-500;
+    }
+
+    .crm-deals-filter-date input {
+        @apply min-w-0 flex-1 border-0 bg-transparent py-2.5 text-sm text-zinc-800 focus:outline-none dark:text-zinc-100;
+        color-scheme: light;
+    }
+
+    .dark .crm-deals-filter-date input {
+        color-scheme: dark;
+    }
+
+    .crm-deals-filter-dialog__footer {
+        @apply flex items-center justify-between gap-3 border-t border-zinc-100 px-4 py-3 dark:border-zinc-800;
+    }
+
+    .crm-deals-filter-clear {
+        @apply rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 disabled:cursor-not-allowed disabled:text-zinc-300 disabled:hover:bg-transparent dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white dark:disabled:text-zinc-600;
+    }
+
+    .crm-deals-filter-apply {
+        @apply inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40;
+        background: var(--color-brand);
+    }
+
+    .crm-deals-filter-apply:hover {
+        background: var(--color-brand-hover);
+    }
+
+    @media (max-width: 420px) {
+        .crm-deals-filter-segments.is-3,
+        .crm-deals-filter-dates {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    @media (min-width: 480px) {
+        .crm-deals-filter-segments.is-4 {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+
+    @keyframes crm-deals-filter-in {
+        from {
+            opacity: 0;
+            transform: translateY(0.5rem);
+        }
+
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .crm-deals-filter-dialog__panel {
+            animation: none;
+        }
+    }
+
     .crm-deals-add-btn {
         @apply inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition focus:outline-none focus:ring-2 focus:ring-emerald-500/40;
         background: var(--color-success);
@@ -1064,14 +1331,6 @@
 
     .crm-deals-add-btn:hover {
         filter: brightness(0.95);
-    }
-
-    .crm-deals-filters {
-        @apply flex flex-col gap-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/40 sm:flex-row sm:flex-wrap sm:items-center;
-    }
-
-    .crm-deals-pipelines-btn {
-        @apply inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800;
     }
 
     .crm-pipeline-builder {

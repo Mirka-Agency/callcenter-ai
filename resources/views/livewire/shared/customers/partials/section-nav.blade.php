@@ -1,14 +1,10 @@
 @props([
     'portal',
-    'active' => 'all',
+    'active' => 'contacts',
 ])
 
 @php
     $tabs = [
-        'all' => [
-            'label' => 'همه',
-            'route' => $portal === 'employee' ? 'employee.customers.index' : 'employer.customers.index',
-        ],
         'contacts' => [
             'label' => 'اشخاص',
             'route' => $portal === 'employee' ? 'employee.customers.contacts.index' : 'employer.customers.contacts.index',
@@ -17,14 +13,18 @@
             'label' => 'شرکت‌ها',
             'route' => $portal === 'employee' ? 'employee.customers.companies.index' : 'employer.customers.companies.index',
         ],
+        'calls' => [
+            'label' => 'تماس‌ها',
+            'route' => $portal === 'employee' ? 'employee.customers.calls.index' : 'employer.customers.calls.index',
+        ],
         'reviews' => [
             'label' => 'نیازمند بررسی',
             'route' => $portal === 'employee' ? 'employee.customers.reviews.index' : 'employer.customers.reviews.index',
         ],
     ];
 
-    if ($active === 'hub') {
-        $active = 'all';
+    if ($active === 'hub' || $active === 'all') {
+        $active = 'contacts';
     }
 @endphp
 

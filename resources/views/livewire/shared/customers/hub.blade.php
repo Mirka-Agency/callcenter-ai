@@ -15,6 +15,8 @@
             <div class="crm-directory-header-actions">
                 @include('livewire.shared.customers.partials.directory-stats', [
                     'stats' => $stats,
+                    'portal' => $portal,
+                    'active' => 'contacts',
                 ])
                 <div class="flex flex-wrap items-center justify-end gap-2">
                     <a href="{{ route($companyCreateRoute) }}" class="saas-btn border border-zinc-200 bg-white text-sm text-zinc-700 hover:bg-zinc-50" wire:navigate>شرکت جدید</a>
@@ -26,7 +28,7 @@
         </x-slot:actions>
     </x-saas.page-header>
 
-    @include('livewire.shared.customers.partials.directory-tabs', ['portal' => $portal, 'active' => 'all'])
+    @include('livewire.shared.customers.partials.directory-tabs', ['portal' => $portal, 'active' => 'contacts'])
 
     @include('livewire.shared.customers.partials.contacts-filters', [
         'portal' => $portal,

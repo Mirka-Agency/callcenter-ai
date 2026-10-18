@@ -78,6 +78,20 @@ class OpportunityList extends Component
         $this->showFilters = ! $this->showFilters;
     }
 
+    public function closeFilters(): void
+    {
+        $this->showFilters = false;
+    }
+
+    public function clearFilters(): void
+    {
+        $this->search = '';
+        $this->status = 'all';
+        $this->dateFrom = '';
+        $this->dateTo = '';
+        $this->resetPage();
+    }
+
     public function refreshBoard(): void
     {
         $this->resetPage();

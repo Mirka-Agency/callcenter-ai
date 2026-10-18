@@ -17,6 +17,7 @@ use App\Livewire\Employee\Activity\Index as ActivityIndex;
 use App\Livewire\Employee\Calls\Index as CallsIndex;
 use App\Livewire\Employee\Calls\Show as CallsShow;
 use App\Livewire\Employee\Coaching\Index as CoachingIndex;
+use App\Livewire\Employee\Customers\Calls\Index as CustomerCallsIndex;
 use App\Livewire\Employee\Customers\Companies\Create as CustomerCompaniesCreate;
 use App\Livewire\Employee\Customers\Companies\Edit as CustomerCompaniesEdit;
 use App\Livewire\Employee\Customers\Companies\Index as CustomerCompaniesIndex;
@@ -79,6 +80,7 @@ Route::middleware(['auth', 'employee'])->group(function () {
             ->name('companies.export')
             ->whereIn('format', ['xlsx', 'pdf']);
         Route::get('/contacts', CustomerContactsIndex::class)->name('contacts.index');
+        Route::get('/calls', CustomerCallsIndex::class)->name('calls.index');
         Route::get('/contacts/export/{format}', [CustomerListExportController::class, 'contacts'])
             ->name('contacts.export')
             ->whereIn('format', ['xlsx', 'pdf']);

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ConsultationRequests\Tables;
 
+use App\Filament\Support\RequestArchiveActions;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -35,9 +36,11 @@ class ConsultationRequestsTable
                     ->label(__('filament.fields.created_at'))
                     ->jalaliDateTime()
                     ->sortable(),
+                RequestArchiveActions::archivedAtColumn(),
             ])
             ->recordActions([
                 ViewAction::make(),
+                ...RequestArchiveActions::recordActions(),
             ])
             ->defaultSort('created_at', 'desc')
             ->paginated([25, 50, 100]);
