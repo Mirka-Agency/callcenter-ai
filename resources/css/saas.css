@@ -150,11 +150,11 @@
     }
 
     .saas-content {
-        @apply mx-auto min-w-0 max-w-7xl px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8 lg:pb-8;
+        @apply mx-auto min-w-0 w-full px-3 py-4 pb-16 sm:px-4 sm:py-4 lg:px-5 lg:pb-5;
     }
 
     .saas-page {
-        @apply min-w-0 max-w-full space-y-8;
+        @apply min-w-0 max-w-full space-y-5;
     }
 
     .saas-page > .grid {
