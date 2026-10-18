@@ -52,14 +52,16 @@
 
     @include('components.saas.impersonation-banner')
 
-    @include('components.saas.sidebar', ['portal' => $portal ?? 'employer', 'navItems' => $navItems ?? []])
+    <div class="saas-frame">
+        @include('components.saas.sidebar', ['portal' => $portal ?? 'employer', 'navItems' => $navItems ?? []])
 
-    <div class="saas-main">
-    @include('components.saas.topbar', ['portal' => $portal ?? 'employer', 'navItems' => $navItems ?? []])
+        <div class="saas-main">
+            @include('components.saas.topbar', ['portal' => $portal ?? 'employer', 'navItems' => $navItems ?? []])
 
-        <main class="saas-content">
-            {{ $slot }}
-        </main>
+            <main class="saas-content">
+                {{ $slot }}
+            </main>
+        </div>
     </div>
 
     @if (($portal ?? '') === 'employee' && auth()->check())

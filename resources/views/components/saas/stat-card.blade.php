@@ -42,7 +42,7 @@
         @endif
         @if ($comparisonText !== null)
             <p @class([
-                'saas-stat-comparison inline-flex items-center gap-1 font-medium',
+                'saas-stat-comparison flex w-full min-w-0 items-center gap-1 font-medium',
                 'text-emerald-600 dark:text-emerald-400' => (float) $comparison > 0,
                 'text-red-600 dark:text-red-400' => (float) $comparison < 0,
                 'text-zinc-500' => (float) $comparison == 0,
