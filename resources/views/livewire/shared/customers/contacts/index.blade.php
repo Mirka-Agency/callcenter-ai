@@ -30,7 +30,6 @@
         'portal' => $portal,
         'ownerChoices' => $ownerChoices,
         'lifecycleCounts' => $lifecycleCounts,
-        'showOwnerPolicy' => $portal === 'employer',
     ])
 
     <section class="saas-card space-y-4 p-4 sm:p-5" data-tour="customers-directory-panel">

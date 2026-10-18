@@ -665,7 +665,8 @@
     }
 
     .saas-stat--compact .saas-stat-value {
-        @apply text-xl sm:text-2xl;
+        @apply text-2xl sm:text-3xl;
+        line-height: 1.15;
     }
 
     .saas-stat--compact .saas-stat-meta p.saas-stat-comparison {

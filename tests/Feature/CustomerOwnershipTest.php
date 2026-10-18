@@ -6,6 +6,7 @@ use App\Application\Customer\Actions\AssignCustomerOwner;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Enums\UserRole;
+use App\Livewire\Crm\Settings as CrmSettings;
 use App\Livewire\Employee\Customers\Contacts\Index as EmployeeContactsIndex;
 use App\Livewire\Employee\Customers\Show as EmployeeCustomerShow;
 use App\Livewire\Employer\Customers\Contacts\Index as EmployerContactsIndex;
@@ -182,13 +183,20 @@ class CustomerOwnershipTest extends TestCase
         $this->actingAs($employer);
 
         Livewire::test(EmployerContactsIndex::class)
+            ->assertDontSee('او مسئول پیش‌فرض شود');
+
+        Livewire::test(CrmSettings::class)
+            ->assertSee('مسئول پیش‌فرض شخص')
             ->set('assignFromCall', true)
-            ->call('saveOwnerPolicy')
+            ->call('saveSettings')
+            ->assertHasNoErrors();
+
+        $this->assertTrue($organization->fresh()->assign_customer_owner_from_call);
+
+        Livewire::test(EmployerContactsIndex::class)
             ->set('ownerFilter', 'unassigned')
             ->assertSee('09120000011')
             ->assertSee('09120000012');
-
-        $this->assertTrue($organization->fresh()->assign_customer_owner_from_call);
 
         Livewire::test(EmployerCustomerShow::class, ['customer' => $customer])
             ->set('ownerOrganizationUserId', (string) $agent->id)
