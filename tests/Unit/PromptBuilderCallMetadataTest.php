@@ -112,7 +112,9 @@ PROMPT,
             "متن مکالمه:\nکارشناس: سلام، چطور می‌تونم کمکتون کنم؟\nمشتری: می‌خواستم وضعیت سفارشم را بپرسم.",
             $prompt,
         );
+        $this->assertStringContainsString('فقط متن مکالمه بالا را تحلیل کنید.', $prompt);
         $this->assertStringNotContainsString('فایل صوتی پیوست شده است و متن جداگانه‌ای در دست نیست.', $prompt);
+        $this->assertStringNotContainsString('به فایل صوتی پیوست‌شده گوش دهید', $prompt);
     }
 
     public function test_context_prompt_avoids_english_instruction_labels(): void

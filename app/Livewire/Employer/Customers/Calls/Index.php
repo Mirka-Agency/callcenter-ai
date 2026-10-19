@@ -3,6 +3,7 @@
 namespace App\Livewire\Employer\Customers\Calls;
 
 use App\Livewire\Concerns\HasCustomerListPerPage;
+use App\Livewire\Concerns\ManagesCustomerCreateDialog;
 use App\Services\EmployerContext;
 use App\Support\CustomerListQuery;
 use Livewire\Attributes\Layout;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 class Index extends Component
 {
     use HasCustomerListPerPage;
+    use ManagesCustomerCreateDialog;
     use WithPagination;
 
     public string $search = '';

@@ -43,16 +43,26 @@
     <div class="relative space-y-6">
         <x-saas.filter-loading-overlay scoped :target="$filterActionTargets" />
 
-    <section class="saas-hero saas-hero--accent" data-tour="performance-summary">
-        <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">جمع‌بندی مدیریتی</p>
-        <p class="mt-3 text-base leading-8 text-zinc-700 dark:text-zinc-200">{{ $dashboard['executive_summary'] }}</p>
-    </section>
+    <div class="grid items-stretch gap-4 md:grid-cols-2">
+        <section class="saas-hero saas-hero--accent h-full" data-tour="performance-summary">
+            <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">جمع‌بندی مدیریتی</p>
+            <p class="mt-3 text-base leading-8 text-zinc-700 dark:text-zinc-200">{{ $dashboard['executive_summary'] }}</p>
+        </section>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <x-saas.stat-card label="کارشناسان فعال" :value="$kpis['active_employees']" />
-        <x-saas.stat-card label="تماس‌های تحلیل‌شده" :value="$kpis['total_analyzed']" :trend="$deltas['total_analyzed']" />
-        <x-saas.stat-card label="میانگین امتیاز مکالمه" :value="$kpis['average_quality_score'] ?: '—'" :trend="$deltas['average_quality_score']" />
-        <x-saas.stat-card label="میانگین رضایت مشتری" :value="$kpis['average_sentiment'] ? $kpis['average_sentiment'].'%' : '—'" :trend="$deltas['average_sentiment']" />
+        <div class="grid h-full grid-cols-2 grid-rows-2 gap-4">
+            <x-saas.stat-card label="کارشناسان فعال" :value="$kpis['active_employees']" icon-tone="violet">
+                <x-slot:icon><x-saas.icon name="users" /></x-slot:icon>
+            </x-saas.stat-card>
+            <x-saas.stat-card label="تماس‌های تحلیل‌شده" :value="$kpis['total_analyzed']" :trend="$deltas['total_analyzed']" icon-tone="sky">
+                <x-slot:icon><x-saas.icon name="phone" /></x-slot:icon>
+            </x-saas.stat-card>
+            <x-saas.stat-card label="میانگین امتیاز مکالمه" :value="$kpis['average_quality_score'] ?: '—'" :trend="$deltas['average_quality_score']" icon-tone="green">
+                <x-slot:icon><x-saas.icon name="chart" /></x-slot:icon>
+            </x-saas.stat-card>
+            <x-saas.stat-card label="میانگین رضایت مشتری" :value="$kpis['average_sentiment'] ? $kpis['average_sentiment'].'%' : '—'" :trend="$deltas['average_sentiment']" icon-tone="amber">
+                <x-slot:icon><x-saas.icon name="sparkles" /></x-slot:icon>
+            </x-saas.stat-card>
+        </div>
     </div>
 
     @include('livewire.employer.partials.attention-agents', [

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Application\Llm\Services\PromptBuilder;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Models\LlmPromptVersion;
 use App\Models\LlmProvider;
@@ -63,7 +64,7 @@ class LlmProviderSeeder extends Seeder
             ['version' => 'v1'],
             [
                 'name' => 'تحلیل پیش‌فرض کیفیت تماس',
-                'system_prompt' => app(\App\Application\Llm\Services\PromptBuilder::class)->defaultSystemPrompt(),
+                'system_prompt' => app(PromptBuilder::class)->defaultSystemPrompt(),
                 'is_active' => true,
             ],
         );

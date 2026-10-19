@@ -24,6 +24,7 @@
             <div class="insight" data-insight>
                 <div class="insight__main">
                     <x-landing.challenges />
+                    <x-landing.cost-calculator />
                     <x-landing.sample-call />
                 </div>
                 <x-landing.coaching />

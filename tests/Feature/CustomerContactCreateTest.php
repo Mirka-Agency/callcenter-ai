@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Livewire\Employer\Customers\Contacts\Create as ContactCreate;
+use App\Livewire\Employer\Customers\Index as CustomersHub;
 use App\Models\Customer;
 use App\Models\CustomerCompany;
 use App\Models\Organization;
@@ -83,6 +84,59 @@ class CustomerContactCreateTest extends TestCase
             ->assertHasErrors(['phone_number']);
 
         $this->assertSame(1, Customer::query()->where('organization_id', $organization->id)->count());
+    }
+
+    public function test_hub_add_dialog_creates_a_contact_and_a_company(): void
+    {
+        $organization = $this->actingAsEmployer();
+        $company = CustomerCompany::query()->create([
+            'organization_id' => $organization->id,
+            'name' => 'شرکت همراه',
+            'normalized_name' => 'شرکت همراه',
+        ]);
+
+        Livewire::test(CustomersHub::class)
+            ->assertSee('افزودن')
+            ->call('openCreateDialog')
+            ->assertSet('showCreateDialog', true)
+            ->assertSet('createMode', 'contact')
+            ->assertSee('ایجاد شخص')
+            ->set('contactName', 'علی رضایی')
+            ->set('jobTitle', 'مدیر خرید')
+            ->set('customerCompanyId', (string) $company->id)
+            ->set('phoneNumber', '09123334455')
+            ->set('contactEmail', 'ali@example.com')
+            ->call('saveCreateDialog')
+            ->assertHasNoErrors()
+            ->assertSet('showCreateDialog', false);
+
+        $this->assertDatabaseHas('customers', [
+            'organization_id' => $organization->id,
+            'name' => 'علی رضایی',
+            'phone_number' => '09123334455',
+            'job_title' => 'مدیر خرید',
+            'customer_company_id' => $company->id,
+        ]);
+
+        Livewire::test(CustomersHub::class)
+            ->call('openCreateDialog', 'company')
+            ->assertSet('createMode', 'company')
+            ->assertSee('ایجاد شرکت')
+            ->set('companyName', 'آوا تجارت')
+            ->set('industry', 'فناوری')
+            ->set('website', 'example.com')
+            ->set('companyPhone', '02100000000')
+            ->set('companyEmail', 'info@example.com')
+            ->call('saveCreateDialog')
+            ->assertHasNoErrors()
+            ->assertSet('showCreateDialog', false);
+
+        $this->assertDatabaseHas('customer_companies', [
+            'organization_id' => $organization->id,
+            'name' => 'آوا تجارت',
+            'industry' => 'فناوری',
+            'email' => 'info@example.com',
+        ]);
     }
 
     private function actingAsEmployer(): Organization

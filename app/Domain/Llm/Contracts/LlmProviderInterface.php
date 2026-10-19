@@ -4,6 +4,7 @@ namespace App\Domain\Llm\Contracts;
 
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\DTOs\LlmConnectionConfig;
+use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
 
@@ -19,4 +20,6 @@ interface LlmProviderInterface
     public function supportedModels(): array;
 
     public function analyzeAudio(AudioAnalysisRequestData $request): LlmOperationResult;
+
+    public function transcribe(TranscriptionRequestData $request): LlmOperationResult;
 }

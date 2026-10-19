@@ -11,6 +11,8 @@ use Illuminate\Support\Number;
 #[Fillable([
     'default_llm_provider_id',
     'default_llm_model_id',
+    'default_transcription_provider_id',
+    'default_transcription_model_id',
     'allow_negative_balance',
     'currency',
     'billing_unit_currency',
@@ -99,5 +101,15 @@ class PlatformAiSettings extends Model
     public function defaultModel(): BelongsTo
     {
         return $this->belongsTo(LlmModel::class, 'default_llm_model_id');
+    }
+
+    public function transcriptionProvider(): BelongsTo
+    {
+        return $this->belongsTo(LlmProvider::class, 'default_transcription_provider_id');
+    }
+
+    public function transcriptionModel(): BelongsTo
+    {
+        return $this->belongsTo(LlmModel::class, 'default_transcription_model_id');
     }
 }

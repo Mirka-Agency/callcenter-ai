@@ -9,14 +9,43 @@
 @endphp
 
 <article
-    class="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 {{ ($aging['is_stale'] ?? false) ? 'ring-1 ring-amber-300' : '' }}"
+    class="crm-deal-card rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 {{ ($aging['is_stale'] ?? false) ? 'ring-1 ring-amber-300' : '' }}"
     draggable="true"
     wire:key="deal-card-{{ $deal->id }}"
-    x-on:dragstart="event.dataTransfer.setData('text/plain', '{{ $deal->id }}'); event.dataTransfer.effectAllowed = 'move'"
+    x-data="{ suppressNavigate: false }"
+    x-on:pointerdown="
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const link = event.target.closest('a');
+        if (! link || ! $el.contains(link) || ! link.hasAttribute('href')) return;
+        link.dataset.dealHref = link.getAttribute('href');
+        link.removeAttribute('href');
+    "
+    x-on:dragstart="
+        suppressNavigate = true;
+        event.dataTransfer.clearData();
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', '{{ $deal->id }}');
+        event.dataTransfer.setDragImage($el, Math.min(48, $el.offsetWidth / 2), 24);
+    "
+    x-on:dragend="
+        const link = $el.querySelector('a[data-deal-href]');
+        if (link && link.dataset.dealHref) link.setAttribute('href', link.dataset.dealHref);
+        setTimeout(() => { suppressNavigate = false }, 120);
+    "
+    x-on:pointerup.window="
+        const link = $el.querySelector('a[data-deal-href]');
+        if (link && link.dataset.dealHref) link.setAttribute('href', link.dataset.dealHref);
+    "
+    x-on:click.capture="
+        if (! suppressNavigate) return;
+        event.preventDefault();
+        event.stopPropagation();
+    "
 >
     <a
         href="{{ route($portal.'.crm.deals.show', $deal) }}"
-        class="block text-sm font-semibold leading-6 text-zinc-900 hover:text-indigo-700 dark:text-white"
+        class="crm-deal-card__title block text-sm font-semibold leading-6 text-zinc-900 hover:text-indigo-700 dark:text-white"
+        draggable="true"
         wire:navigate
     >{{ $deal->title }}</a>
 

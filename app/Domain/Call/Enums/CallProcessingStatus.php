@@ -6,6 +6,7 @@ enum CallProcessingStatus: string
 {
     case Pending = 'pending';
     case Downloading = 'downloading';
+    case Transcribing = 'transcribing';
     case Analyzing = 'analyzing';
     case Analyzed = 'analyzed';
     case Failed = 'failed';
@@ -16,6 +17,7 @@ enum CallProcessingStatus: string
         return match ($this) {
             self::Pending => 'در انتظار',
             self::Downloading => 'در حال دانلود',
+            self::Transcribing => 'در حال تبدیل به متن',
             self::Analyzing => 'در حال تحلیل',
             self::Analyzed => 'تحلیل شد',
             self::Failed => 'ناموفق',

@@ -42,6 +42,7 @@
 @layer base {
     html {
         @apply antialiased;
+        overflow-x: clip;
     }
 
     [x-cloak] {
@@ -55,15 +56,92 @@
     body {
         @apply bg-zinc-50 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100;
     }
+
+    html,
+    .overflow-y-auto,
+    .overflow-x-auto,
+    .overflow-auto {
+        scrollbar-width: thin;
+        scrollbar-color: rgb(124 37 253 / 0.45) transparent;
+    }
+
+    .dark html,
+    .dark .overflow-y-auto,
+    .dark .overflow-x-auto,
+    .dark .overflow-auto {
+        scrollbar-color: rgb(196 181 253 / 0.55) transparent;
+    }
+
+    html::-webkit-scrollbar,
+    .overflow-y-auto::-webkit-scrollbar,
+    .overflow-x-auto::-webkit-scrollbar,
+    .overflow-auto::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    html::-webkit-scrollbar-track,
+    .overflow-y-auto::-webkit-scrollbar-track,
+    .overflow-x-auto::-webkit-scrollbar-track,
+    .overflow-auto::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    html::-webkit-scrollbar-thumb,
+    .overflow-y-auto::-webkit-scrollbar-thumb,
+    .overflow-x-auto::-webkit-scrollbar-thumb,
+    .overflow-auto::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: rgb(124 37 253 / 0.4);
+    }
+
+    html::-webkit-scrollbar-thumb:hover,
+    .overflow-y-auto::-webkit-scrollbar-thumb:hover,
+    .overflow-x-auto::-webkit-scrollbar-thumb:hover,
+    .overflow-auto::-webkit-scrollbar-thumb:hover {
+        background: rgb(124 37 253 / 0.62);
+    }
+
+    .dark html::-webkit-scrollbar-thumb,
+    .dark .overflow-y-auto::-webkit-scrollbar-thumb,
+    .dark .overflow-x-auto::-webkit-scrollbar-thumb,
+    .dark .overflow-auto::-webkit-scrollbar-thumb {
+        background: rgb(196 181 253 / 0.45);
+    }
+
+    .dark html::-webkit-scrollbar-thumb:hover,
+    .dark .overflow-y-auto::-webkit-scrollbar-thumb:hover,
+    .dark .overflow-x-auto::-webkit-scrollbar-thumb:hover,
+    .dark .overflow-auto::-webkit-scrollbar-thumb:hover {
+        background: rgb(196 181 253 / 0.7);
+    }
 }
 
 @layer components {
     .saas-shell {
-        @apply min-h-screen overflow-x-clip bg-zinc-50 dark:bg-zinc-950;
+        @apply min-h-screen bg-zinc-50 dark:bg-zinc-950;
     }
 
     .saas-sidebar {
-        @apply fixed inset-y-0 start-0 z-50 flex w-64 flex-col border-e border-zinc-200/80 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900 max-lg:pb-[env(safe-area-inset-bottom)] lg:z-40 lg:translate-x-0 lg:bg-white/80 lg:shadow-none lg:backdrop-blur-xl dark:lg:bg-zinc-900/80;
+        @apply fixed inset-y-0 start-0 z-50 flex w-max max-w-full flex-col border-e border-zinc-200/80 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900 max-lg:pb-[env(safe-area-inset-bottom)] lg:z-40 lg:bg-white lg:shadow-none dark:lg:bg-zinc-900;
+    }
+
+    .saas-sidebar-sizer {
+        visibility: hidden;
+        pointer-events: none;
+        height: 0;
+        flex: 0 0 auto;
+        width: max-content;
+        overflow: hidden;
+    }
+
+    .saas-sidebar-body {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        min-height: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
     }
 
     @media (max-width: 1023px) {
@@ -73,6 +151,33 @@
 
         .saas-sidebar.saas-sidebar--open {
             display: flex !important;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .saas-frame {
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+        }
+
+        .saas-sidebar {
+            position: sticky;
+            top: 0;
+            bottom: auto;
+            height: 100dvh;
+            max-height: 100dvh;
+            flex: 0 0 auto;
+            align-self: flex-start;
+            overflow: hidden;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
+
+        .saas-main {
+            flex: 1 1 auto;
+            min-width: 0;
+            padding-inline-start: 0;
         }
     }
 
@@ -142,19 +247,19 @@
     }
 
     .saas-main {
-        @apply min-h-screen min-w-0 ps-0 transition-all duration-300 lg:ps-64;
+        @apply min-h-screen min-w-0 ps-0;
     }
 
     .saas-topbar {
-        @apply sticky top-0 z-30 flex h-16 items-center justify-between border-b border-zinc-200/80 bg-white/70 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-900/70 sm:px-6;
+        @apply sticky top-0 z-30 flex h-16 items-center justify-between border-b border-zinc-200/80 bg-white px-4 pt-[env(safe-area-inset-top)] dark:border-zinc-800 dark:bg-zinc-900 sm:px-6;
     }
 
     .saas-content {
-        @apply mx-auto min-w-0 max-w-7xl px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8 lg:pb-8;
+        @apply mx-auto min-w-0 w-full px-3 py-4 pb-16 sm:px-4 sm:py-4 lg:px-5 lg:pb-5;
     }
 
     .saas-page {
-        @apply min-w-0 max-w-full space-y-8;
+        @apply min-w-0 max-w-full space-y-5;
     }
 
     .saas-page > .grid {
@@ -490,17 +595,6 @@
         @apply mt-3 flex min-h-0 flex-col gap-1.5 overflow-y-auto overscroll-contain pe-0.5;
         max-height: min(16rem, 42vh);
         scrollbar-gutter: stable;
-        scrollbar-width: thin;
-        scrollbar-color: rgb(139 92 246 / 0.75) transparent;
-    }
-
-    .saas-today-summary-list::-webkit-scrollbar {
-        width: 8px;
-    }
-
-    .saas-today-summary-list::-webkit-scrollbar-thumb {
-        border-radius: 999px;
-        background: rgb(139 92 246 / 0.7);
     }
 
     .saas-today-summary-row {
@@ -528,30 +622,62 @@
     }
 
     .saas-stat-row {
-        @apply grid w-full min-w-0 grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-5;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: stretch;
+        justify-content: center;
+        width: 100%;
+        min-width: 0;
+        gap: 0.75rem;
     }
 
     .saas-stat-row > .saas-stat.saas-stat--compact {
+        flex: 0 1 auto;
+        align-self: stretch;
+        width: min(11.5rem, calc(50% - 0.375rem));
+        max-width: 11.5rem;
         min-width: 0;
+        height: auto;
     }
 
     .saas-stat-row > .saas-stat.saas-stat--compact .saas-stat-label {
-        white-space: nowrap;
+        min-height: 2.5rem;
+        white-space: normal;
+    }
+
+    .saas-stat-row > .saas-stat.saas-stat--compact .saas-stat-meta,
+    .saas-stat-row > .saas-stat.saas-stat--compact .saas-stat-meta:not(:has(*)) {
+        display: block;
+        margin-top: auto;
+        min-height: 2.3rem;
     }
 
     .saas-stat.saas-stat--compact {
-        @apply w-full max-w-full shrink-0 gap-1.5 px-4 py-3.5 sm:gap-2 sm:px-5 sm:py-4;
-        min-width: max(12.5rem, max-content);
+        @apply w-full max-w-full shrink-0 gap-1 px-3 py-3 sm:gap-1.5 sm:px-3.5 sm:py-3;
+        min-width: 0;
         container-type: inline-size;
     }
 
     .saas-stat--compact .saas-stat-label {
-        @apply min-h-0 whitespace-nowrap leading-5;
-        font-size: clamp(0.8125rem, 8.6cqi, 1rem);
+        @apply min-h-0 leading-5;
+        font-size: 0.75rem;
+        white-space: normal;
     }
 
     .saas-stat--compact .saas-stat-value {
-        @apply text-2xl sm:text-3xl lg:text-3xl;
+        @apply text-2xl sm:text-3xl;
+        line-height: 1.15;
+    }
+
+    .saas-stat--compact .saas-stat-meta p.saas-stat-comparison {
+        white-space: normal;
+        font-size: 0.6875rem;
+        line-height: 1.15rem;
+    }
+
+    .saas-stat--compact .saas-stat-comparison span {
+        min-width: 0;
+        white-space: normal;
     }
 
     .saas-stat--good,
@@ -927,19 +1053,56 @@
     }
 
     .saas-nav-item {
-        @apply flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white max-lg:min-h-11 max-lg:rounded-lg max-lg:px-4 max-lg:py-3;
+        @apply flex items-center gap-3 rounded-md border border-transparent px-3 py-2.5 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white max-lg:min-h-11 max-lg:rounded-lg max-lg:px-4 max-lg:py-3;
     }
 
-    .saas-nav-item-active {
-        @apply bg-brand text-white hover:bg-brand-hover hover:text-white dark:bg-brand dark:text-white dark:hover:bg-brand-hover dark:hover:text-white;
+    .saas-nav-label {
+        white-space: nowrap;
+    }
+
+    .saas-nav-item.saas-nav-item-active {
+        color: #6820db;
+        background:
+            linear-gradient(160deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.18)),
+            linear-gradient(180deg, rgba(124, 37, 253, 0.46), rgba(99, 102, 241, 0.24));
+        border-color: rgba(124, 37, 253, 0.38);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.72),
+            0 8px 22px rgba(124, 37, 253, 0.16);
+    }
+
+    .saas-nav-item.saas-nav-item-active:hover {
+        color: #6820db;
+        background:
+            linear-gradient(160deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.22)),
+            linear-gradient(180deg, rgba(124, 37, 253, 0.54), rgba(99, 102, 241, 0.28));
+        border-color: rgba(124, 37, 253, 0.48);
+    }
+
+    .dark .saas-nav-item.saas-nav-item-active,
+    .dark .saas-nav-item.saas-nav-item-active:hover {
+        color: #f5f3ff;
+        background:
+            linear-gradient(145deg, rgba(124, 37, 253, 0.46), rgba(99, 102, 241, 0.18)),
+            rgba(24, 24, 27, 0.4);
+        border-color: rgba(196, 181, 253, 0.4);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.16),
+            0 8px 24px rgba(124, 37, 253, 0.28);
     }
 
     .saas-nav-item-icon {
         @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 max-lg:h-9 max-lg:w-9;
     }
 
-    .saas-nav-item-active .saas-nav-item-icon {
-        @apply bg-white/20 text-white dark:bg-white/20 dark:text-white;
+    .saas-nav-item.saas-nav-item-active .saas-nav-item-icon {
+        background: rgba(124, 37, 253, 0.14);
+        color: #7c25fd;
+    }
+
+    .dark .saas-nav-item.saas-nav-item-active .saas-nav-item-icon {
+        background: rgba(255, 255, 255, 0.12);
+        color: #ddd6fe;
     }
 
     .saas-btn {
@@ -988,6 +1151,192 @@
 
     .crm-directory-header-actions {
         @apply flex flex-col items-end gap-3;
+    }
+
+    .crm-directory-header-bar {
+        @apply flex flex-wrap items-center justify-end gap-2;
+    }
+
+    .crm-directory-actions {
+        @apply flex flex-wrap items-center gap-2;
+    }
+
+    .crm-directory-action {
+        @apply inline-flex h-11 items-center justify-center rounded-xl px-4 text-sm font-semibold no-underline transition focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2;
+        outline-color: var(--color-brand);
+    }
+
+    .crm-directory-action svg {
+        @apply h-4 w-4 shrink-0;
+    }
+
+    .crm-directory-action--add {
+        background: var(--color-brand);
+        color: #fff;
+        box-shadow: 0 8px 18px rgba(124, 37, 253, 0.28);
+    }
+
+    .crm-directory-action--add:hover {
+        background: var(--color-brand-hover);
+    }
+
+    .crm-directory-export .saas-btn-secondary {
+        height: 2.75rem;
+        border-radius: 0.75rem;
+        border-color: color-mix(in oklab, var(--color-ai) 30%, white);
+        background: color-mix(in oklab, var(--color-ai) 10%, white);
+        color: var(--color-ai);
+        font-weight: 600;
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.16);
+    }
+
+    .crm-directory-export .saas-btn-secondary:hover {
+        background: color-mix(in oklab, var(--color-ai) 16%, white);
+        color: var(--color-ai);
+    }
+
+    .dark .crm-directory-export .saas-btn-secondary {
+        border-color: rgba(99, 102, 241, 0.45);
+        background: rgba(99, 102, 241, 0.16);
+        color: #c7d2fe;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    .dark .crm-directory-export .saas-btn-secondary:hover {
+        background: rgba(99, 102, 241, 0.26);
+        color: #e0e7ff;
+    }
+
+    .crm-create-dialog {
+        @apply fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/45 p-3 sm:items-center sm:p-6;
+    }
+
+    .crm-create-dialog__panel {
+        @apply flex max-h-[min(92vh,52rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-950;
+    }
+
+    .crm-create-dialog__header {
+        @apply flex items-center justify-between gap-3 border-b border-zinc-100 px-4 py-4 sm:px-6 dark:border-zinc-800;
+    }
+
+    .crm-create-dialog__switch {
+        @apply inline-flex min-w-0 items-center gap-1 rounded-2xl bg-zinc-100 p-1 dark:bg-zinc-900;
+    }
+
+    .crm-create-dialog__tab {
+        @apply inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-zinc-500 transition sm:px-4;
+    }
+
+    .crm-create-dialog__tab svg {
+        @apply h-4 w-4 shrink-0;
+    }
+
+    .crm-create-dialog__tab.is-active {
+        border: 1.5px solid var(--color-brand);
+        background: #fff;
+        color: var(--color-brand);
+        box-shadow: 0 4px 14px rgba(124, 37, 253, 0.12);
+    }
+
+    .dark .crm-create-dialog__tab.is-active {
+        background: rgb(24 24 27);
+        color: #ddd6fe;
+    }
+
+    .crm-create-dialog__close {
+        @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-500 transition hover:bg-zinc-50 hover:text-zinc-800 dark:border-zinc-700 dark:hover:bg-zinc-900 dark:hover:text-zinc-100;
+    }
+
+    .crm-create-dialog__close svg {
+        @apply h-5 w-5;
+    }
+
+    .crm-create-dialog__body {
+        @apply space-y-5 overflow-y-auto px-4 py-5 sm:px-6;
+    }
+
+    .crm-create-dialog__grid {
+        @apply grid gap-4 sm:grid-cols-2;
+    }
+
+    .crm-create-dialog__field {
+        @apply block min-w-0 text-sm font-medium text-zinc-800 dark:text-zinc-100;
+    }
+
+    .crm-create-dialog__field--full {
+        @apply sm:col-span-2;
+    }
+
+    .crm-create-dialog__field > span {
+        @apply mb-2 block;
+    }
+
+    .crm-create-dialog__required {
+        color: var(--color-brand);
+    }
+
+    .crm-create-dialog__input {
+        @apply w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-normal text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none focus:ring-2 focus:ring-violet-200 disabled:bg-zinc-50 disabled:text-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:disabled:bg-zinc-900;
+    }
+
+    .crm-create-dialog__error {
+        @apply mt-1 text-xs font-normal text-rose-600;
+    }
+
+    .crm-create-dialog__company {
+        @apply space-y-4 rounded-2xl p-4 sm:p-5;
+        background: var(--color-lavender);
+    }
+
+    .crm-create-dialog__company h3 {
+        @apply text-sm font-semibold;
+        color: var(--color-brand);
+    }
+
+    .crm-create-dialog__company > p {
+        @apply text-xs leading-6 text-zinc-500;
+    }
+
+    .dark .crm-create-dialog__company {
+        background: rgba(124, 37, 253, 0.12);
+    }
+
+    .dark .crm-create-dialog__company h3 {
+        color: #ddd6fe;
+    }
+
+    .crm-create-dialog__note {
+        @apply flex items-start gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-xs leading-6 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/70;
+    }
+
+    .crm-create-dialog__note svg {
+        @apply mt-0.5 h-4 w-4 shrink-0 text-zinc-400;
+    }
+
+    .crm-create-dialog__footer {
+        @apply flex flex-col gap-3 border-t border-zinc-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 dark:border-zinc-800;
+    }
+
+    .crm-create-dialog__footer > p {
+        @apply text-xs text-zinc-400;
+    }
+
+    .crm-create-dialog__footer-actions {
+        @apply flex items-center justify-end gap-2;
+    }
+
+    .crm-create-dialog__cancel {
+        @apply inline-flex h-11 items-center justify-center rounded-xl border border-zinc-200 bg-white px-5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200;
+    }
+
+    .crm-create-dialog__submit {
+        @apply inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold text-white transition disabled:opacity-60;
+        background: var(--color-brand);
+        box-shadow: 0 8px 18px rgba(124, 37, 253, 0.24);
+    }
+
+    .crm-create-dialog__submit:hover {
+        background: var(--color-brand-hover);
     }
 
     .crm-directory-stats {
@@ -1366,14 +1715,33 @@
         @apply flex gap-3 overflow-x-auto pb-2;
     }
 
+    .crm-deal-card,
+    .crm-deal-card__title {
+        cursor: grab;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    .crm-deal-card:active,
+    .crm-deal-card__title:active {
+        cursor: grabbing;
+    }
+
     .crm-pipeline-stage-card {
         @apply flex w-[17.5rem] shrink-0 flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950;
     }
 
     .crm-pipeline-stage-card__header {
-        @apply mx-3 mt-3 flex cursor-grab items-center justify-center px-4 py-2.5 text-sm font-medium text-white active:cursor-grabbing;
+        @apply mx-3 mt-3 flex cursor-grab items-center justify-center px-4 py-2.5 text-sm font-medium text-white select-none active:cursor-grabbing;
         background: var(--stage-color, #6366f1);
         clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%);
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    .crm-pipeline-stage-card__header > * {
+        pointer-events: none;
+        -webkit-user-drag: none;
     }
 
     .crm-pipeline-stage-card__body {
@@ -1580,7 +1948,6 @@
 
     .crm-products-categories__track {
         @apply flex min-w-0 flex-1 gap-2 overflow-x-auto pb-0.5;
-        scrollbar-width: thin;
     }
 
     .crm-products-category-card {

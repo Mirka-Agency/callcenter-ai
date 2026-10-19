@@ -22,34 +22,38 @@ class OpenAiApiClient
             : LlmOperationResult::failure('OpenAI connection failed: '.$response->body());
     }
 
-    public function transcribe(string $recordingUrl, string $model, ?string $language): LlmOperationResult
+    /**
+     * @param  array<string, scalar|null>  $fields
+     */
+    public function transcribeFile(string $bytes, string $filename, array $fields): LlmOperationResult
     {
-        $audioResponse = Http::timeout(60)->get($recordingUrl);
-
-        if (! $audioResponse->successful()) {
-            return LlmOperationResult::failure('Unable to fetch recording for transcription.');
-        }
+        $payload = array_filter(
+            $fields,
+            fn (mixed $value) => $value !== null && $value !== '',
+        );
 
         $response = Http::withToken($this->apiKey)
-            ->timeout(120)
-            ->attach('file', $audioResponse->body(), 'recording.mp3')
-            ->post(($this->baseUrl ?? 'https://api.openai.com/v1').'/audio/transcriptions', [
-                'model' => $model,
-                'language' => $language,
-                'response_format' => 'json',
-            ]);
+            ->timeout(300)
+            ->attach('file', $bytes, $filename)
+            ->post(rtrim($this->baseUrl ?? 'https://api.openai.com/v1', '/').'/audio/transcriptions', $payload);
 
         if (! $response->successful()) {
-            return LlmOperationResult::failure('OpenAI transcription failed: '.$response->body());
+            return LlmOperationResult::failure(
+                'OpenAI transcription failed (HTTP '.$response->status().'): '.$response->body(),
+            );
         }
 
         $body = $response->json();
 
+        if (! is_array($body)) {
+            $body = ['text' => trim($response->body())];
+        }
+
         return LlmOperationResult::success(
-            data: [
-                'transcript' => $body['text'] ?? '',
-                'language' => $language ?? $body['language'] ?? null,
-            ],
+            data: $body,
+            message: 'Transcription completed.',
+            inputTokens: (int) ($body['usage']['input_tokens'] ?? $body['usage']['prompt_tokens'] ?? 0),
+            outputTokens: (int) ($body['usage']['output_tokens'] ?? $body['usage']['completion_tokens'] ?? 0),
         );
     }
 }

@@ -56,6 +56,51 @@ class LlmModelResolverTest extends TestCase
         $this->assertNotSame($primaryOpenAi->api_key, $config->credentials->apiKey);
     }
 
+    public function test_resolves_platform_transcription_model_separately_from_analysis(): void
+    {
+        $organization = Organization::factory()->create();
+        $analysisProvider = $this->createProvider('Analysis', 'analysis-key');
+        $transcriptionProvider = $this->createProvider('Speech', 'speech-key', baseUrl: 'https://stt.test/v1');
+
+        $analysis = $this->createModel($analysisProvider, 'gpt-4o', isDefault: true);
+        $transcription = $this->createModel($transcriptionProvider, 'whisper-large-v3', isDefault: false, isTranscriptionDefault: true);
+
+        PlatformAiSettings::current()->update([
+            'default_llm_provider_id' => $analysisProvider->id,
+            'default_llm_model_id' => $analysis->id,
+            'default_transcription_provider_id' => $transcriptionProvider->id,
+            'default_transcription_model_id' => $transcription->id,
+        ]);
+
+        $resolvedAnalysis = app(LlmModelResolver::class)->resolveForOrganization($organization->id);
+        $resolvedTranscription = app(LlmModelResolver::class)->resolveTranscriptionForOrganization($organization->id);
+        [$config] = app(LlmConnectionResolver::class)->resolveForModel(
+            $organization->id,
+            $resolvedTranscription,
+            $resolvedTranscription->model_key,
+        );
+
+        $this->assertSame($analysis->id, $resolvedAnalysis->id);
+        $this->assertSame($transcription->id, $resolvedTranscription->id);
+        $this->assertSame('speech-key', $config->credentials->apiKey);
+        $this->assertSame('https://stt.test/v1', $config->credentials->baseUrl);
+        $this->assertSame('whisper-large-v3', $config->settings->transcriptionModel);
+    }
+
+    public function test_transcription_falls_back_when_the_selected_provider_is_inactive(): void
+    {
+        $organization = Organization::factory()->create();
+        $inactive = $this->createProvider('Inactive Speech', 'inactive-key', isActive: false);
+        $this->createModel($inactive, 'whisper-1', isDefault: false, isTranscriptionDefault: true);
+
+        PlatformAiSettings::current()->update([
+            'default_transcription_provider_id' => $inactive->id,
+            'default_transcription_model_id' => LlmModel::query()->where('model_key', 'whisper-1')->value('id'),
+        ]);
+
+        $this->assertNull(app(LlmModelResolver::class)->resolveTranscriptionForOrganization($organization->id));
+    }
+
     public function test_skips_inactive_provider_even_when_model_is_flagged_default(): void
     {
         $organization = Organization::factory()->create();
@@ -71,18 +116,23 @@ class LlmModelResolverTest extends TestCase
         $this->assertSame($activeProvider->id, $resolved->provider_id);
     }
 
-    private function createProvider(string $name, string $apiKey, bool $isActive = true): LlmProvider
+    private function createProvider(string $name, string $apiKey, bool $isActive = true, ?string $baseUrl = null): LlmProvider
     {
         return LlmProvider::query()->create([
             'name' => $name,
             'code' => LlmProviderCode::OpenAi->value,
             'api_key' => $apiKey,
+            'base_url' => $baseUrl,
             'is_active' => $isActive,
         ]);
     }
 
-    private function createModel(LlmProvider $provider, string $modelKey, bool $isDefault): LlmModel
-    {
+    private function createModel(
+        LlmProvider $provider,
+        string $modelKey,
+        bool $isDefault,
+        bool $isTranscriptionDefault = false,
+    ): LlmModel {
         return LlmModel::query()->create([
             'provider_id' => $provider->id,
             'name' => $modelKey,
@@ -90,6 +140,7 @@ class LlmModelResolverTest extends TestCase
             'input_price_per_million_tokens' => 1,
             'output_price_per_million_tokens' => 2,
             'is_default' => $isDefault,
+            'is_transcription_default' => $isTranscriptionDefault,
             'is_active' => true,
         ]);
     }

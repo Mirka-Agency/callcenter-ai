@@ -1,7 +1,3 @@
-@php
-    $companyCreateRoute = $portal === 'employee' ? 'employee.customers.companies.create' : 'employer.customers.companies.create';
-@endphp
-
 <div class="saas-page space-y-6" data-tour="customers-directory">
     <x-saas.page-header
         title="اشخاص و شرکت‌ها"
@@ -10,17 +6,14 @@
         data-tour="page-header"
     >
         <x-slot:actions>
-            <div class="crm-directory-header-actions">
-                @include('livewire.shared.customers.partials.directory-stats', [
-                    'stats' => $stats,
-                    'portal' => $portal,
-                    'active' => 'companies',
-                ])
-                <div class="flex flex-wrap items-center justify-end gap-2">
-                    <a href="{{ route($companyCreateRoute) }}" class="saas-btn-primary text-sm" wire:navigate>شرکت جدید</a>
-                    <x-saas.customer-list-export :portal="$portal" entity="companies" :search="$search" :sort="$sort" />
-                </div>
-            </div>
+            @include('livewire.shared.customers.partials.directory-header-actions', [
+                'stats' => $stats,
+                'portal' => $portal,
+                'active' => 'companies',
+                'exportEntity' => 'companies',
+                'search' => $search,
+                'sort' => $sort,
+            ])
         </x-slot:actions>
     </x-saas.page-header>
 
@@ -61,7 +54,7 @@
                 title="{{ __('ui.empty.no_companies.title') }}"
                 description="{{ __('ui.empty.no_companies.description') }}"
             >
-                <a href="{{ route($companyCreateRoute) }}" class="saas-btn-primary mt-4 text-sm" wire:navigate>ثبت اولین شرکت</a>
+                <button type="button" class="saas-btn-brand mt-4 text-sm" wire:click="openCreateDialog('company')">ثبت اولین شرکت</button>
             </x-saas.empty-state>
         @else
             @include('livewire.shared.customers.partials.companies-table', [
@@ -71,4 +64,6 @@
             @include('livewire.shared.customers.partials.directory-pagination', ['paginator' => $companies])
         @endif
     </section>
+
+    @include('livewire.shared.customers.partials.create-dialog')
 </div>

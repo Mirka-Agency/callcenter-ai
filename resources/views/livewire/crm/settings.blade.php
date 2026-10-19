@@ -71,6 +71,19 @@
     </section>
 
     <section class="saas-card space-y-2 p-5">
+        <h2 class="text-base font-semibold text-zinc-900 dark:text-white">مسئول پیش‌فرض شخص</h2>
+        <label class="flex cursor-pointer items-start gap-3">
+            <input type="checkbox" wire:model="assignFromCall" class="mt-1 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500">
+            <span>
+                <span class="block text-sm font-medium text-zinc-800 dark:text-zinc-200">کارشناس تماس، مسئول شخص تازه باشد</span>
+                <span class="mt-1 block text-sm leading-6 text-zinc-500">
+                    اگر شخص از تماس تازه ساخته شود و کارشناس همان تماس عضو فعال سازمان باشد، او مسئول پیش‌فرض شود. مشتریان قبلی تغییر نمی‌کنند.
+                </span>
+            </span>
+        </label>
+    </section>
+
+    <section class="saas-card space-y-2 p-5">
         <h2 class="text-base font-semibold text-zinc-900 dark:text-white">پیش‌فاکتور توسط AI</h2>
         <label class="flex cursor-pointer items-start gap-3">
             <input type="checkbox" wire:model="aiProformaEnabled" class="mt-1 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500">
@@ -207,7 +220,7 @@
 
         <div class="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200/80 pt-5 dark:border-zinc-800">
             <p class="text-xs text-zinc-500">
-                {{ PersianNumber::format($pipelines->count()) ?? $pipelines->count() }} کاریز · ذخیره شامل کاریز خلاصه تماس و گزینه‌های AI هم می‌شود.
+                {{ PersianNumber::format($pipelines->count()) ?? $pipelines->count() }} کاریز · ذخیره شامل کاریز خلاصه تماس، مسئول پیش‌فرض شخص و گزینه‌های AI هم می‌شود.
             </p>
             <button type="submit" class="saas-btn-primary" wire:loading.attr="disabled">ذخیره تنظیمات</button>
         </div>

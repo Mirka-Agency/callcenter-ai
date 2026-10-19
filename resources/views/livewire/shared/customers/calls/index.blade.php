@@ -6,13 +6,14 @@
         data-tour="page-header"
     >
         <x-slot:actions>
-            <div class="crm-directory-header-actions">
-                @include('livewire.shared.customers.partials.directory-stats', [
-                    'stats' => $stats,
-                    'portal' => $portal,
-                    'active' => null,
-                ])
-            </div>
+            @include('livewire.shared.customers.partials.directory-header-actions', [
+                'stats' => $stats,
+                'portal' => $portal,
+                'active' => null,
+                'exportEntity' => 'contacts',
+                'exportSearch' => '',
+                'exportSort' => 'last_contact',
+            ])
         </x-slot:actions>
     </x-saas.page-header>
 
@@ -61,4 +62,6 @@
             @include('livewire.shared.customers.partials.directory-pagination', ['paginator' => $calls])
         @endif
     </section>
+
+    @include('livewire.shared.customers.partials.create-dialog')
 </div>

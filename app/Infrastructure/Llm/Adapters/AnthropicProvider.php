@@ -3,6 +3,7 @@
 namespace App\Infrastructure\Llm\Adapters;
 
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
+use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
 use Illuminate\Support\Facades\Http;
@@ -48,5 +49,10 @@ class AnthropicProvider extends AbstractLlmProvider
         }
 
         return $this->demoAudioAnalysis($request, $model);
+    }
+
+    public function transcribe(TranscriptionRequestData $request): LlmOperationResult
+    {
+        return $this->failure('تبدیل گفتار به متن برای این ارائه‌دهنده پشتیبانی نمی‌شود. مدل پیش‌فرض را روی OpenAI یا Gemini تنظیم کنید.');
     }
 }

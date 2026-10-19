@@ -35,4 +35,15 @@ return [
         $extraBlockedHosts,
     ))),
 
+    /*
+    | Fallback speech-to-text model when no transcription default is selected
+    | in Models & Pricing. OpenAI-compatible gateways call /audio/transcriptions.
+    */
+
+    'transcription' => [
+        'model' => env('LLM_TRANSCRIPTION_MODEL', 'whisper-1'),
+        'language' => 'fa',
+        'max_continuations' => 4,
+    ],
+
 ];

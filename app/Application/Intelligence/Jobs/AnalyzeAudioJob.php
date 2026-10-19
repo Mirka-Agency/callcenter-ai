@@ -33,7 +33,7 @@ class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 3;
 
-    public int $timeout = 600;
+    public int $timeout = 900;
 
     /** @return list<int> */
     public function backoff(): array
@@ -93,11 +93,10 @@ class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
                 return;
             }
 
-            $call->update(['processing_status' => CallProcessingStatus::Analyzing]);
+            $call->update(['processing_status' => CallProcessingStatus::Transcribing]);
 
             if ($job) {
-                $tracker->markSendingToAi($job);
-                $tracker->markWaitingForAi($job);
+                $tracker->markTranscribing($job);
             }
 
             $analysis::forOrganization($call->organization_id)

@@ -4,6 +4,7 @@ namespace App\Infrastructure\Llm\Adapters;
 
 use App\Application\Llm\Services\PromptBuilder;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
+use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
 use Illuminate\Support\Facades\Http;
@@ -68,7 +69,7 @@ class CustomLlmProvider extends AbstractLlmProvider
                 'storage_disk' => $request->storageDisk,
                 'recording_url' => $request->recordingUrl,
                 'model' => $model,
-                'system_prompt' => $promptBuilder->systemPrompt($request->promptVersion),
+                'system_prompt' => $promptBuilder->systemPromptFor($request),
                 'context_prompt' => $promptBuilder->contextPrompt($request),
             ]);
 
@@ -86,5 +87,13 @@ class CustomLlmProvider extends AbstractLlmProvider
             durationMs: (int) ((microtime(true) - $started) * 1000),
             model: $model,
         );
+    }
+
+    public function transcribe(TranscriptionRequestData $request): LlmOperationResult
+    {
+        $provider = new OpenAiProvider;
+        $provider->configure($this->config);
+
+        return $provider->transcribe($request);
     }
 }

@@ -3,7 +3,9 @@
 namespace App\Infrastructure\Llm\Adapters;
 
 use App\Application\Llm\Services\PromptBuilder;
+use App\Application\Llm\Services\TranscriptionPrompt;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
+use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
 use App\Services\PersianOutputGuard;
@@ -129,6 +131,103 @@ class GeminiProvider extends AbstractLlmProvider
         );
     }
 
+    public function transcribe(TranscriptionRequestData $request): LlmOperationResult
+    {
+        if (! $this->usesNativeGoogleEndpoint()) {
+            $provider = new OpenAiProvider;
+            $provider->configure($this->config);
+
+            return $provider->transcribe($request);
+        }
+
+        $audioRequest = $request->asAudioRequest();
+        $model = $this->resolveAudioAnalysisModel($request->model ?: $request->fallbackModel);
+
+        if (! $this->hasApiKey()) {
+            return $this->failure('برای تبدیل گفتار به متن، کلید API هوش مصنوعی باید در پنل ادمین تنظیم شود.');
+        }
+
+        if ($refused = $this->refuseIfRemoteDisabled()) {
+            return $refused;
+        }
+
+        $audioFormat = $this->resolveAudioFormat($audioRequest);
+        [$audioBase64, $mimeType] = $this->resolveInlineAudio($audioRequest, $audioFormat);
+
+        if (! $audioBase64) {
+            return $this->failure('فایل صوتی برای تبدیل به متن یافت نشد.');
+        }
+
+        $started = microtime(true);
+        $prompt = app(TranscriptionPrompt::class);
+        $transcript = '';
+        $inputTokens = 0;
+        $outputTokens = 0;
+        $continuations = 0;
+
+        do {
+            $response = Http::timeout(300)
+                ->withQueryParameters(['key' => $this->config->credentials->apiKey])
+                ->post($this->generateContentEndpoint($model), [
+                    'system_instruction' => [
+                        'parts' => [
+                            ['text' => $prompt::instructions()],
+                        ],
+                    ],
+                    'contents' => [
+                        [
+                            'role' => 'user',
+                            'parts' => [
+                                ['text' => $prompt::userTurn($request->context, $transcript)],
+                                [
+                                    'inline_data' => [
+                                        'mime_type' => $mimeType ?? $this->mimeTypeForFormat($audioFormat),
+                                        'data' => $audioBase64,
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                    'generationConfig' => $this->transcriptionGenerationConfig($model),
+                ]);
+
+            if (! $response->successful()) {
+                return $this->failure('Gemini transcription failed (HTTP '.$response->status().'): '.$response->body());
+            }
+
+            $body = $response->json();
+            $candidate = $body['candidates'][0] ?? [];
+            $content = is_array($candidate) ? (string) ($candidate['content']['parts'][0]['text'] ?? '') : '';
+            $transcript = $prompt::append($transcript, $content);
+            $usage = $body['usageMetadata'] ?? [];
+            $inputTokens += (int) ($usage['promptTokenCount'] ?? 0);
+            $outputTokens += (int) ($usage['candidatesTokenCount'] ?? 0) + (int) ($usage['thoughtsTokenCount'] ?? 0);
+            $finishReason = is_array($candidate) ? ($candidate['finishReason'] ?? null) : null;
+            $truncated = $prompt::isTruncated(is_string($finishReason) ? $finishReason : null);
+            $continuations++;
+        } while ($truncated && $continuations <= $prompt::maxContinuations());
+
+        if ($truncated) {
+            return $this->failure('رونویسی تماس ناقص ماند و برای تحلیل ارسال نشد.');
+        }
+
+        if (trim($transcript) === '') {
+            return $this->failure('متن مکالمه از فایل صوتی استخراج نشد.');
+        }
+
+        return LlmOperationResult::success(
+            data: [
+                'transcript' => trim($transcript),
+                'language' => $request->language,
+            ],
+            message: 'Transcription completed.',
+            inputTokens: $inputTokens,
+            outputTokens: $outputTokens,
+            durationMs: (int) ((microtime(true) - $started) * 1000),
+            model: $model,
+        );
+    }
+
     private function postGenerateContent(
         string $model,
         PromptBuilder $promptBuilder,
@@ -136,7 +235,7 @@ class GeminiProvider extends AbstractLlmProvider
         ?string $audioBase64,
         string $mimeType,
     ): Response {
-        $systemPrompt = $promptBuilder->systemPrompt($request->promptVersion);
+        $systemPrompt = $promptBuilder->systemPromptFor($request);
 
         $userParts = [
             ['text' => $promptBuilder->contextPrompt($request)],
@@ -256,6 +355,13 @@ class GeminiProvider extends AbstractLlmProvider
         };
     }
 
+    private function usesNativeGoogleEndpoint(): bool
+    {
+        $baseUrl = strtolower((string) ($this->config->credentials->baseUrl ?? ''));
+
+        return $baseUrl === '' || str_contains($baseUrl, 'generativelanguage.googleapis.com');
+    }
+
     private function resolveBaseUrl(): string
     {
         return rtrim($this->config->credentials->baseUrl ?? 'https://generativelanguage.googleapis.com/v1beta', '/');
@@ -280,6 +386,27 @@ class GeminiProvider extends AbstractLlmProvider
         }
 
         return self::DEFAULT_MODEL;
+    }
+
+    /** @return array<string, mixed> */
+    private function transcriptionGenerationConfig(string $model): array
+    {
+        $config = [
+            'maxOutputTokens' => $this->config->settings->maxOutputTokens ?? 16384,
+            'responseMimeType' => 'text/plain',
+        ];
+
+        if ($this->isGemini3($model)) {
+            $config['thinkingConfig'] = [
+                'thinkingLevel' => 'minimal',
+            ];
+
+            return $config;
+        }
+
+        $config['temperature'] = 0;
+
+        return $config;
     }
 
     /** @return array<string, mixed> */

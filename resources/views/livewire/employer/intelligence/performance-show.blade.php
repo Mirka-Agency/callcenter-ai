@@ -319,7 +319,7 @@
         }
 
         /* Print preview uses a narrow page width, which would otherwise hide the desktop sidebar. */
-        .saas-shell {
+        .saas-frame {
             display: flex !important;
             flex-direction: row !important;
             min-height: auto !important;
@@ -331,7 +331,7 @@
             position: relative !important;
             inset: auto !important;
             height: auto !important;
-            width: 16rem !important;
+            width: max-content !important;
             transform: none !important;
             box-shadow: none !important;
         }

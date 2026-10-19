@@ -196,6 +196,13 @@ class CustomerLifecycleTest extends TestCase
 
         $this->actingAs($employer);
         Livewire::test(EmployerContactsIndex::class)
+            ->assertSeeHtml('wire:model.live="stageFilter"')
+            ->assertSee('همه مراحل')
+            ->assertSee('سرنخ جدید')
+            ->assertSee('ارتباط برقرارشده')
+            ->assertSee('واجد شرایط')
+            ->assertSee('غیرفعال')
+            ->assertSee('نامشخص')
             ->set('stageFilter', 'qualified')
             ->assertSee('09120001007')
             ->assertDontSee('09120001006')

@@ -3,7 +3,9 @@
 namespace App\Infrastructure\Llm\Adapters;
 
 use App\Application\Llm\Services\PromptBuilder;
+use App\Application\Llm\Services\TranscriptionPrompt;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
+use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
 use App\Infrastructure\Llm\Clients\OpenAiApiClient;
@@ -126,6 +128,19 @@ class OpenAiProvider extends AbstractLlmProvider
             durationMs: (int) ((microtime(true) - $started) * 1000),
             model: (string) ($parsed['model'] ?? $model),
         );
+    }
+
+    public function transcribe(TranscriptionRequestData $request): LlmOperationResult
+    {
+        if (! $this->hasApiKey()) {
+            return $this->failure('برای تبدیل گفتار به متن، کلید API هوش مصنوعی باید در پنل ادمین تنظیم شود.');
+        }
+
+        if ($refused = $this->refuseIfRemoteDisabled()) {
+            return $refused;
+        }
+
+        return $this->transcribeWithSpeechApi($request, $this->speechTranscriptionModel($request));
     }
 
     /** @return array{0: ?string, 1: string, 2: ?string} */
@@ -265,5 +280,158 @@ class OpenAiProvider extends AbstractLlmProvider
         }
 
         return ! str_contains(rtrim(strtolower($baseUrl), '/'), 'api.openai.com');
+    }
+
+    private function speechTranscriptionModel(TranscriptionRequestData $request): string
+    {
+        $requested = trim((string) ($request->model ?? ''));
+
+        if ($requested !== '') {
+            return $requested;
+        }
+
+        $fromSettings = trim((string) ($this->config->settings->transcriptionModel ?? ''));
+
+        if ($fromSettings !== '') {
+            return $fromSettings;
+        }
+
+        return (string) config('llm.transcription.model', 'whisper-1');
+    }
+
+    private function transcribeWithSpeechApi(TranscriptionRequestData $request, string $model): LlmOperationResult
+    {
+        $audio = $this->readRecordingBytes($request);
+
+        if ($audio === null) {
+            return $this->failure('فایل صوتی برای تبدیل به متن یافت نشد.');
+        }
+
+        [$bytes, $format] = $audio;
+
+        if (strlen($bytes) > 24 * 1024 * 1024) {
+            return $this->failure('حجم فایل صوتی برای Whisper بیشتر از حد مجاز است.');
+        }
+
+        $started = microtime(true);
+        $client = new OpenAiApiClient(
+            apiKey: $this->config->credentials->apiKey,
+            baseUrl: $this->resolveBaseUrl(),
+        );
+
+        $result = $client->transcribeFile($bytes, 'recording.'.$format, [
+            'model' => $model,
+            'language' => $request->language ?: (string) config('llm.transcription.language', 'fa'),
+            'response_format' => 'verbose_json',
+            'prompt' => 'مکالمه فارسی مرکز تماس بین کارشناس و مشتری.',
+        ]);
+
+        if (! $result->success || ! is_array($result->data)) {
+            return $result;
+        }
+
+        $transcript = $this->formatSpeechTranscript($result->data);
+
+        if ($transcript === '') {
+            return $this->failure('متن مکالمه از فایل صوتی استخراج نشد.');
+        }
+
+        return LlmOperationResult::success(
+            data: [
+                'transcript' => $transcript,
+                'language' => $result->data['language'] ?? $request->language,
+                'speakers' => $this->speechSegments($result->data),
+            ],
+            message: 'Transcription completed.',
+            inputTokens: $result->inputTokens,
+            outputTokens: $result->outputTokens,
+            durationMs: (int) ((microtime(true) - $started) * 1000),
+            model: $model,
+        );
+    }
+
+    /** @param  array<string, mixed>  $body */
+    private function formatSpeechTranscript(array $body): string
+    {
+        $lines = [];
+
+        foreach ($this->speechSegments($body) as $segment) {
+            $text = trim((string) ($segment['text'] ?? ''));
+            if ($text === '') {
+                continue;
+            }
+
+            $speaker = trim((string) ($segment['speaker'] ?? $segment['speaker_label'] ?? ''));
+            $lines[] = $speaker !== '' ? $this->labelSpeaker($speaker).': '.$text : $text;
+        }
+
+        if ($lines !== []) {
+            return implode("\n", $lines);
+        }
+
+        return TranscriptionPrompt::unwrap((string) ($body['text'] ?? ''));
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return list<array<string, mixed>>
+     */
+    private function speechSegments(array $body): array
+    {
+        $segments = $body['segments'] ?? $body['utterances'] ?? [];
+
+        if (! is_array($segments)) {
+            return [];
+        }
+
+        return array_values(array_filter($segments, fn (mixed $segment) => is_array($segment)));
+    }
+
+    private function labelSpeaker(string $speaker): string
+    {
+        $normalized = mb_strtolower(trim($speaker));
+
+        return match ($normalized) {
+            'agent', 'کارشناس' => 'کارشناس',
+            'customer', 'client', 'مشتری' => 'مشتری',
+            default => 'گوینده '.$speaker,
+        };
+    }
+
+    /** @return array{0: string, 1: string, 2: string}|null */
+    private function readRecordingBytes(TranscriptionRequestData $request): ?array
+    {
+        if ($request->storagePath) {
+            $payload = app(RecordingStorage::class)->readForAnalysis(
+                $request->storagePath,
+                $request->storageDisk,
+            );
+
+            return [
+                $payload['content'],
+                $payload['format'],
+                $request->mimeType ?? $this->mimeTypeForFormat($payload['format']),
+            ];
+        }
+
+        $url = $request->playbackUrl ?: $request->recordingUrl;
+
+        if (! $url) {
+            return null;
+        }
+
+        $response = Http::timeout(120)->get($url);
+
+        if (! $response->successful() || $response->body() === '') {
+            return null;
+        }
+
+        $format = $this->resolveAudioFormat($request->asAudioRequest());
+
+        return [
+            $response->body(),
+            $format,
+            $request->mimeType ?? $this->mimeTypeForFormat($format),
+        ];
     }
 }

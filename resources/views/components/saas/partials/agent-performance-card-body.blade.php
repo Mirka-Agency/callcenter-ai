@@ -5,7 +5,7 @@
         ?: 'کارشناس تماس';
 @endphp
 
-<div class="space-y-4">
+<div class="flex h-full flex-col gap-4">
     <div class="flex items-start gap-4">
         <x-saas.avatar
             :name="$agent['name']"
@@ -72,7 +72,7 @@
         </p>
     @endif
 
-    <div class="grid gap-2 sm:grid-cols-2">
+    <div class="mt-auto grid gap-2 sm:grid-cols-2">
         <div class="rounded-md border border-emerald-200/70 bg-emerald-50/50 px-3 py-2 dark:border-emerald-900/40 dark:bg-emerald-950/20">
             <p class="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">نقطه قوت</p>
             <p class="mt-0.5 text-sm leading-6 text-zinc-800 dark:text-zinc-100">{{ filled($agent['top_strength'] ?? null) ? $agent['top_strength'] : 'ثبت نشده' }}</p>

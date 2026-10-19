@@ -55,8 +55,8 @@
         </span>
     </div>
 
-    <div class="mt-4 grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <article class="saas-today-summary-item">
+    <div class="mt-4 grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <article class="saas-today-summary-item h-full">
             <div class="saas-today-summary-icon saas-today-summary-icon--quality" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 17l6-6 4 4 8-8" />
@@ -75,7 +75,7 @@
         </article>
 
         @foreach ($summaryLists as $label => $rows)
-            <article class="saas-today-summary-item saas-today-summary-item--list">
+            <article class="saas-today-summary-item saas-today-summary-item--list h-full">
                 <p class="saas-today-summary-label">{{ $label }}</p>
                 @if ($rows === [])
                     <p class="mt-3 text-sm text-zinc-400">موردی نیست</p>

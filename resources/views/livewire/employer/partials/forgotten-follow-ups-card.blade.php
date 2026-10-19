@@ -25,7 +25,7 @@
 @endphp
 
 <div
-    class="saas-card min-w-0 overflow-hidden p-0"
+    class="saas-card h-full min-w-0 overflow-hidden p-0"
     data-tour="dashboard-forgotten-followups"
     @if ($forgottenCount > 0)
         x-data="{ filter: 'all' }"

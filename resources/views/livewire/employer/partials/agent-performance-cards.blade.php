@@ -51,11 +51,12 @@
         </div>
     </div>
 
-    <div class="max-h-[70vh] overflow-y-auto overscroll-contain pe-1">
-        <div class="grid gap-4 lg:grid-cols-2">
+    <div>
+        <div class="grid items-stretch gap-4 lg:grid-cols-2">
             @forelse ($feed['items'] as $agent)
-                <div wire:key="agent-card-{{ $agent['id'] }}">
+                <div class="h-full" wire:key="agent-card-{{ $agent['id'] }}">
                     <x-saas.agent-performance-card
+                        class="h-full"
                         :agent="$agent"
                         :href="$agentProfileUrl($agent)"
                     />

@@ -88,7 +88,7 @@ class ProcessingQueueCallStats
 
         return "CASE
             WHEN {$latest} IN ({$processing})
-                OR calls.processing_status IN ('".CallProcessingStatus::Downloading->value."', '".CallProcessingStatus::Analyzing->value."') THEN 'processing'
+                OR calls.processing_status IN ('".CallProcessingStatus::Downloading->value."', '".CallProcessingStatus::Transcribing->value."', '".CallProcessingStatus::Analyzing->value."') THEN 'processing'
             WHEN {$latest} = '".ProcessingJobStatus::Queued->value."'
                 OR calls.processing_status = '".CallProcessingStatus::Pending->value."' THEN 'queued'
             WHEN {$latest} IN ({$failed})

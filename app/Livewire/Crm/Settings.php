@@ -26,6 +26,8 @@ class Settings extends Component
 
     public bool $aiProformaEnabled = true;
 
+    public bool $assignFromCall = false;
+
     public bool $salesFollowUpEnabled = false;
 
     public string $salesFollowUpDefaultDays = '3, 10';
@@ -67,6 +69,7 @@ class Settings extends Component
         }
 
         $this->hydrateFromPreferences($preferences->forOrganization($this->organization()));
+        $this->assignFromCall = (bool) $this->organization()->assign_customer_owner_from_call;
     }
 
     public function saveSalesFollowUp(OrganizationCrmPreferencesService $preferences): void
@@ -102,6 +105,7 @@ class Settings extends Component
             'aiCatalogSearchEnabled' => ['boolean'],
             'requireNationalIdForNewNumbers' => ['boolean'],
             'aiProformaEnabled' => ['boolean'],
+            'assignFromCall' => ['boolean'],
             'legalName' => ['nullable', 'string', 'max:180'],
             'tradeName' => ['nullable', 'string', 'max:180'],
             'nationalId' => ['nullable', 'string', 'max:64'],
@@ -134,6 +138,9 @@ class Settings extends Component
         ]);
 
         $this->hydrateFromPreferences($prefs);
+        $this->organization()->update([
+            'assign_customer_owner_from_call' => $this->assignFromCall,
+        ]);
         $this->toast('تنظیمات ذخیره شد.');
     }
 

@@ -1,5 +1,28 @@
 @php
     $user = auth()->user();
+    $sidebarLabels = [];
+
+    foreach ($navItems as $item) {
+        $sidebarLabels[] = [
+            'label' => $item['label'],
+            'nested' => false,
+            'chevron' => ! empty($item['children']),
+        ];
+
+        foreach ($item['children'] ?? [] as $child) {
+            $sidebarLabels[] = [
+                'label' => $child['label'],
+                'nested' => true,
+                'chevron' => false,
+            ];
+        }
+    }
+
+    $sidebarLabels[] = [
+        'label' => ($impersonationContext ?? null) ? 'بازگشت به مدیریت' : 'خروج از حساب',
+        'nested' => false,
+        'chevron' => false,
+    ];
 @endphp
 
 <aside
@@ -7,6 +30,23 @@
     :class="{ 'saas-sidebar--open': $store.layout.sidebarOpen }"
     data-tour="sidebar"
 >
+    <div class="saas-sidebar-sizer" aria-hidden="true">
+        <div class="px-3 lg:px-4">
+            @foreach ($sidebarLabels as $entry)
+                <div @class(['ms-5 border-s border-transparent ps-2' => $entry['nested']])>
+                    <span class="saas-nav-item">
+                        <span class="saas-nav-item-icon"></span>
+                        <span class="saas-nav-label">{{ $entry['label'] }}</span>
+                        @if ($entry['chevron'])
+                            <span class="ms-auto h-4 w-4 shrink-0"></span>
+                        @endif
+                    </span>
+                </div>
+            @endforeach
+        </div>
+    </div>
+
+    <div class="saas-sidebar-body">
     <div class="saas-sidebar-header">
         <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-bold text-zinc-900 dark:text-white">{{ config('app.name') }}</p>
@@ -98,7 +138,7 @@
                         <span class="saas-nav-item-icon">
                             <x-saas.icon :name="$item['icon']" class="h-4 w-4" />
                         </span>
-                        <span class="truncate">{{ $item['label'] }}</span>
+                        <span class="saas-nav-label">{{ $item['label'] }}</span>
                         <svg class="ms-auto h-4 w-4 shrink-0 transition" :class="open ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                         </svg>
@@ -126,7 +166,7 @@
                                 <span class="saas-nav-item-icon">
                                     <x-saas.icon :name="$child['icon']" class="h-4 w-4" />
                                 </span>
-                                <span class="truncate">{{ $child['label'] }}</span>
+                                <span class="saas-nav-label">{{ $child['label'] }}</span>
                             </a>
                         @endforeach
                     </div>
@@ -145,7 +185,7 @@
                     <span class="saas-nav-item-icon">
                         <x-saas.icon :name="$item['icon']" class="h-4 w-4" />
                     </span>
-                    <span class="truncate">{{ $item['label'] }}</span>
+                    <span class="saas-nav-label">{{ $item['label'] }}</span>
                 </a>
             @endif
         @endforeach
@@ -159,7 +199,7 @@
                     <span class="saas-nav-item-icon">
                         <x-saas.icon name="home" class="h-4 w-4" />
                     </span>
-                    بازگشت به مدیریت
+                    <span class="saas-nav-label">بازگشت به مدیریت</span>
                 </button>
             </form>
         @else
@@ -169,10 +209,11 @@
                     <span class="saas-nav-item-icon">
                         <x-saas.icon name="logout" class="h-4 w-4" />
                     </span>
-                    خروج از حساب
+                    <span class="saas-nav-label">خروج از حساب</span>
                 </button>
             </form>
         @endif
+    </div>
     </div>
 </aside>
 

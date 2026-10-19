@@ -4,6 +4,7 @@ namespace App\Livewire\Employer\Customers\Contacts;
 
 use App\Livewire\Concerns\HasCustomerListPerPage;
 use App\Livewire\Concerns\HasCustomerListSort;
+use App\Livewire\Concerns\ManagesCustomerCreateDialog;
 use App\Models\OrganizationUser;
 use App\Services\EmployerContext;
 use App\Support\CustomerListQuery;
@@ -18,6 +19,7 @@ class Index extends Component
 {
     use HasCustomerListPerPage;
     use HasCustomerListSort;
+    use ManagesCustomerCreateDialog;
     use WithPagination;
 
     public string $search = '';
@@ -27,13 +29,6 @@ class Index extends Component
     public string $specificOwnerId = '';
 
     public string $stageFilter = 'all';
-
-    public bool $assignFromCall = false;
-
-    public function mount(): void
-    {
-        $this->assignFromCall = (bool) EmployerContext::organization()->assign_customer_owner_from_call;
-    }
 
     public function updatedSearch(): void
     {
@@ -53,15 +48,6 @@ class Index extends Component
     public function updatedStageFilter(): void
     {
         $this->resetPage();
-    }
-
-    public function saveOwnerPolicy(): void
-    {
-        EmployerContext::organization()->update([
-            'assign_customer_owner_from_call' => $this->assignFromCall,
-        ]);
-
-        $this->js("window.dispatchEvent(new CustomEvent('show-toast', { detail: { type: 'success', message: 'سیاست مسئول مشتری ذخیره شد.' } }))");
     }
 
     public function render()

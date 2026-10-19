@@ -239,6 +239,7 @@ class AnalysisListQuery
             $marked = [
                 CallProcessingStatus::Pending->value,
                 CallProcessingStatus::Downloading->value,
+                CallProcessingStatus::Transcribing->value,
                 CallProcessingStatus::Analyzing->value,
             ];
             $activeJobs = [

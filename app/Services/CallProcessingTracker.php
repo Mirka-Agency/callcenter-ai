@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Processing\Enums\ProcessingJobStage;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Domain\Processing\Enums\ProcessingLogLevel;
@@ -68,6 +69,18 @@ class CallProcessingTracker
             logLevel: ProcessingLogLevel::Info,
             logSource: 'queue',
             logMessage: 'کار تحلیل هوش مصنوعی آغاز شد',
+        );
+    }
+
+    public function markTranscribing(CallProcessingJob $job): CallProcessingJob
+    {
+        return $this->transition(
+            job: $job,
+            status: ProcessingJobStatus::Processing,
+            stage: ProcessingJobStage::Transcribing,
+            logLevel: ProcessingLogLevel::Info,
+            logSource: 'transcription',
+            logMessage: 'تبدیل گفتار تماس به متن',
         );
     }
 
@@ -209,7 +222,7 @@ class CallProcessingTracker
         );
 
         $job->call?->update([
-            'processing_status' => \App\Domain\Call\Enums\CallProcessingStatus::Pending,
+            'processing_status' => CallProcessingStatus::Pending,
             'processing_error' => null,
         ]);
 
