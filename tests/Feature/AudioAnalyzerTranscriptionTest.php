@@ -85,6 +85,77 @@ class AudioAnalyzerTranscriptionTest extends TestCase
         $this->assertSame(CallProcessingStatus::Analyzing, $call->fresh()->processing_status);
     }
 
+    public function test_selected_transcription_model_uses_its_own_provider(): void
+    {
+        Storage::fake('local');
+        $call = $this->seedCall();
+        $this->seedPlatformLlm();
+
+        $analysisModel = LlmModel::query()->where('is_default', true)->firstOrFail();
+        $analysisModel->provider->update(['base_url' => 'https://analysis.test/v1']);
+
+        $sttProvider = LlmProvider::query()->create([
+            'name' => 'Speech',
+            'code' => LlmProviderCode::OpenAi->value,
+            'api_key' => 'stt-key',
+            'base_url' => 'https://stt.test/v1',
+            'is_active' => true,
+        ]);
+
+        $sttModel = LlmModel::query()->create([
+            'provider_id' => $sttProvider->id,
+            'name' => 'Whisper Large',
+            'model_key' => 'whisper-large-v3',
+            'input_price_per_million_tokens' => 0,
+            'output_price_per_million_tokens' => 0,
+            'is_default' => false,
+            'is_transcription_default' => true,
+            'is_active' => true,
+            'sends_audio_file' => true,
+        ]);
+
+        PlatformAiSettings::current()->update([
+            'default_transcription_provider_id' => $sttProvider->id,
+            'default_transcription_model_id' => $sttModel->id,
+        ]);
+
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), '/audio/transcriptions')) {
+                $this->assertStringContainsString('https://stt.test/v1/audio/transcriptions', $request->url());
+                $this->assertStringContainsString('whisper-large-v3', $request->body());
+
+                return Http::response(['text' => 'کارشناس: سلام']);
+            }
+
+            $this->assertStringContainsString('https://analysis.test/v1/chat/completions', $request->url());
+            $this->assertStringContainsString('gpt-4o', json_encode($request->data(), JSON_UNESCAPED_UNICODE) ?: '');
+
+            return Http::response([
+                'choices' => [[
+                    'finish_reason' => 'stop',
+                    'message' => ['content' => json_encode([
+                        'score' => 70,
+                        'summary' => 'خلاصه تماس.',
+                        'sentiment' => 'neutral',
+                        'strengths' => [],
+                        'weaknesses' => [],
+                        'next_actions' => [],
+                        'evaluable' => true,
+                    ], JSON_UNESCAPED_UNICODE)],
+                ]],
+                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5],
+            ]);
+        });
+
+        AnalysisManager::forOrganization($call->organization_id)->analyzeCall($call->id);
+
+        $this->assertDatabaseHas('call_transcripts', [
+            'call_id' => $call->id,
+            'content' => 'کارشناس: سلام',
+            'model_name' => 'whisper-large-v3',
+        ]);
+    }
+
     private function seedCall(): Call
     {
         $organization = Organization::factory()->create();

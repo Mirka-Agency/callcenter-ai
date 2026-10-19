@@ -44,7 +44,8 @@ class LlmModelsTable
                     ->getStateUsing(fn ($record) => app(AiCostEstimatorService::class)->costPerHour($record))
                     ->formatStateUsing(fn ($state) => PlatformAiSettings::formatMoney($state))
                     ->sortable(false),
-                IconColumn::make('is_default')->boolean()->label(__('filament.fields.default')),
+                IconColumn::make('is_default')->boolean()->label(__('filament.fields.platform_default')),
+                IconColumn::make('is_transcription_default')->boolean()->label(__('filament.fields.transcription_default')),
                 IconColumn::make('sends_audio_file')
                     ->boolean()
                     ->label(__('filament.fields.sends_audio_file'))

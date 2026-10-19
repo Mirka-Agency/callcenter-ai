@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'cached_input_price_per_million_tokens',
     'reasoning_price_per_million_tokens',
     'is_default',
+    'is_transcription_default',
     'is_active',
     'sends_audio_file',
 ])]
@@ -28,6 +29,7 @@ class LlmModel extends Model
             'cached_input_price_per_million_tokens' => 'decimal:6',
             'reasoning_price_per_million_tokens' => 'decimal:6',
             'is_default' => 'boolean',
+            'is_transcription_default' => 'boolean',
             'is_active' => 'boolean',
             'sends_audio_file' => 'boolean',
         ];

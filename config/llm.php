@@ -36,8 +36,8 @@ return [
     ))),
 
     /*
-    | Speech-to-text model. Calls are transcribed with Whisper before analysis.
-    | OpenAI-compatible gateways use the same model on /audio/transcriptions.
+    | Fallback speech-to-text model when no transcription default is selected
+    | in Models & Pricing. OpenAI-compatible gateways call /audio/transcriptions.
     */
 
     'transcription' => [

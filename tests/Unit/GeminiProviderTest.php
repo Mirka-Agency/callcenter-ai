@@ -231,4 +231,46 @@ class GeminiProviderTest extends TestCase
         );
         $this->assertSame(2, $attempt);
     }
+
+    public function test_transcribe_prefers_the_selected_model_over_the_analysis_model(): void
+    {
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), 'example.com')) {
+                return Http::response('audio-bytes');
+            }
+
+            $this->assertStringContainsString('/models/gemini-2.5-flash:generateContent', $request->url());
+
+            return Http::response([
+                'candidates' => [[
+                    'finishReason' => 'STOP',
+                    'content' => ['parts' => [['text' => 'کارشناس: سلام']]],
+                ]],
+            ]);
+        });
+
+        $provider = new GeminiProvider;
+        $provider->configure(new LlmConnectionConfig(
+            connectionId: null,
+            organizationId: 1,
+            providerCode: LlmProviderCode::Gemini,
+            name: 'Gemini',
+            credentials: new LlmCredentials(apiKey: 'test-gemini-key'),
+            settings: new LlmSettings,
+            isDefault: true,
+            isActive: true,
+        ));
+
+        $result = $provider->transcribe(new TranscriptionRequestData(
+            callId: 11,
+            recordingUrl: 'https://example.com/recording.mp3',
+            model: 'gemini-2.5-flash',
+            fallbackModel: 'gemini-3.8-flash',
+            sendAudioFile: true,
+            mimeType: 'audio/mpeg',
+        ));
+
+        $this->assertTrue($result->success);
+        $this->assertSame('gemini-2.5-flash', $result->model);
+    }
 }

@@ -284,10 +284,16 @@ class OpenAiProvider extends AbstractLlmProvider
 
     private function speechTranscriptionModel(TranscriptionRequestData $request): string
     {
-        $explicit = strtolower(trim((string) ($request->model ?: $this->config->settings->transcriptionModel)));
+        $requested = trim((string) ($request->model ?? ''));
 
-        if ($explicit !== '' && str_contains($explicit, 'whisper')) {
-            return trim((string) ($request->model ?: $this->config->settings->transcriptionModel));
+        if ($requested !== '') {
+            return $requested;
+        }
+
+        $fromSettings = trim((string) ($this->config->settings->transcriptionModel ?? ''));
+
+        if ($fromSettings !== '') {
+            return $fromSettings;
         }
 
         return (string) config('llm.transcription.model', 'whisper-1');

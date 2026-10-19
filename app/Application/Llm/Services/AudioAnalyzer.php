@@ -17,10 +17,12 @@ use App\Domain\Llm\Exceptions\LlmTransientException;
 use App\Infrastructure\Llm\LlmOutboundGuard;
 use App\Models\Call;
 use App\Models\CallTranscript;
+use App\Models\LlmModel;
 use App\Models\OrganizationUser;
 use App\Models\VoipCallLog;
 use App\Services\AiBillingService;
 use App\Services\CallProcessingTracker;
+use App\Services\LlmModelResolver;
 use App\Services\RecordingUrlService;
 
 class AudioAnalyzer
@@ -28,6 +30,8 @@ class AudioAnalyzer
     public function __construct(
         private ConversationAnalysisRepositoryInterface $analyses,
         private AiBillingService $billing,
+        private LlmConnectionResolver $connections,
+        private LlmModelResolver $models,
     ) {}
 
     public function analyze(
@@ -83,7 +87,21 @@ class AudioAnalyzer
         );
 
         $recording = $call->recording;
-        $sendAudioFile = $llmModel->sends_audio_file;
+        $transcriptionModel = $this->models->resolveTranscriptionForOrganization($call->organization_id);
+        $transcriptionProvider = $provider;
+        $requestedTranscriptionModel = $config->settings->transcriptionModel;
+        $sendAudioFile = (bool) $llmModel->sends_audio_file;
+
+        if ($transcriptionModel instanceof LlmModel) {
+            [, $transcriptionProvider] = $this->connections->resolveForModel(
+                $call->organization_id,
+                $transcriptionModel,
+                $transcriptionModel->model_key,
+            );
+            $requestedTranscriptionModel = $transcriptionModel->model_key;
+            $sendAudioFile = (bool) $transcriptionModel->sends_audio_file;
+        }
+
         $playbackUrl = null;
 
         if ($recording && ! $sendAudioFile) {
@@ -95,13 +113,13 @@ class AudioAnalyzer
 
         $call->update(['processing_status' => CallProcessingStatus::Transcribing]);
 
-        $transcription = $provider->transcribe(new TranscriptionRequestData(
+        $transcription = $transcriptionProvider->transcribe(new TranscriptionRequestData(
             callId: $callId,
             storagePath: $sendAudioFile ? $recording?->storage_path : null,
             storageDisk: $sendAudioFile ? $recording?->storage_disk : null,
             recordingUrl: $recording?->source_url ?? $callLog?->recording_url,
             mimeType: $recording?->mime_type,
-            model: $config->settings->transcriptionModel,
+            model: $requestedTranscriptionModel,
             fallbackModel: $modelKey,
             context: $context,
             sendAudioFile: $sendAudioFile,

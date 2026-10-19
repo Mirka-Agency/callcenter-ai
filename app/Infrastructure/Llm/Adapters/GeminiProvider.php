@@ -141,7 +141,7 @@ class GeminiProvider extends AbstractLlmProvider
         }
 
         $audioRequest = $request->asAudioRequest();
-        $model = $this->resolveAudioAnalysisModel($request->fallbackModel ?? $request->model);
+        $model = $this->resolveAudioAnalysisModel($request->model ?: $request->fallbackModel);
 
         if (! $this->hasApiKey()) {
             return $this->failure('برای تبدیل گفتار به متن، کلید API هوش مصنوعی باید در پنل ادمین تنظیم شود.');

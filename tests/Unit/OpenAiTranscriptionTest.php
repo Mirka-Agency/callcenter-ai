@@ -88,6 +88,32 @@ class OpenAiTranscriptionTest extends TestCase
         $this->assertSame('whisper-1', $result->model);
     }
 
+    public function test_explicit_transcription_model_is_sent_to_the_speech_api(): void
+    {
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), 'example.com')) {
+                return Http::response('audio-bytes');
+            }
+
+            $this->assertStringContainsString('gpt-4o-transcribe', $request->body());
+            $this->assertStringNotContainsString('whisper-1', $request->body());
+
+            return Http::response(['text' => 'سلام']);
+        });
+
+        $result = $this->provider()->transcribe(new TranscriptionRequestData(
+            callId: 9,
+            recordingUrl: 'https://example.com/recording.mp3',
+            model: 'gpt-4o-transcribe',
+            fallbackModel: 'gemini-3.8-flash',
+            sendAudioFile: true,
+            mimeType: 'audio/mpeg',
+        ));
+
+        $this->assertTrue($result->success);
+        $this->assertSame('gpt-4o-transcribe', $result->model);
+    }
+
     public function test_append_drops_repeated_transcript_prefix(): void
     {
         $this->assertSame(

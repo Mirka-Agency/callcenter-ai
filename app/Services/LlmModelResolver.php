@@ -48,6 +48,26 @@ class LlmModelResolver
             ->first();
     }
 
+    public function resolveTranscriptionForOrganization(int $organizationId): ?LlmModel
+    {
+        unset($organizationId);
+
+        $platform = PlatformAiSettings::current()->load('transcriptionModel.provider');
+
+        if ($this->isUsableModel($platform->transcriptionModel)) {
+            return $platform->transcriptionModel;
+        }
+
+        $flagged = LlmModel::query()
+            ->with('provider')
+            ->where('is_active', true)
+            ->where('is_transcription_default', true)
+            ->whereHas('provider', fn ($query) => $query->where('is_active', true))
+            ->first();
+
+        return $this->isUsableModel($flagged) ? $flagged : null;
+    }
+
     private function isUsableModel(?LlmModel $model): bool
     {
         return $model?->is_active && $model->provider?->is_active;

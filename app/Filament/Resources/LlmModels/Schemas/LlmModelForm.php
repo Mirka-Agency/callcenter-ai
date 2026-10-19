@@ -68,6 +68,14 @@ class LlmModelForm
                         Toggle::make('is_active')
                             ->label(__('filament.fields.active'))
                             ->default(true),
+                    ])
+                    ->columns(2),
+                Section::make(__('filament.sections.transcription'))
+                    ->description(__('filament.sections.transcription_description'))
+                    ->schema([
+                        Toggle::make('is_transcription_default')
+                            ->label(__('filament.fields.transcription_default'))
+                            ->helperText(__('filament.misc.transcription_default_helper')),
                         Toggle::make('sends_audio_file')
                             ->label(__('filament.fields.sends_audio_file'))
                             ->helperText(__('filament.misc.sends_audio_file_helper'))
