@@ -35,4 +35,15 @@ return [
         $extraBlockedHosts,
     ))),
 
+    /*
+    | Speech-to-text model. Calls are transcribed with Whisper before analysis.
+    | OpenAI-compatible gateways use the same model on /audio/transcriptions.
+    */
+
+    'transcription' => [
+        'model' => env('LLM_TRANSCRIPTION_MODEL', 'whisper-1'),
+        'language' => 'fa',
+        'max_continuations' => 4,
+    ],
+
 ];

@@ -53,6 +53,7 @@ class CallAnalysisQueueService
                 CallProcessingStatus::Failed,
                 CallProcessingStatus::Skipped,
                 CallProcessingStatus::Analyzing,
+                CallProcessingStatus::Transcribing,
                 CallProcessingStatus::Downloading,
             ], true)) {
                 return false;
