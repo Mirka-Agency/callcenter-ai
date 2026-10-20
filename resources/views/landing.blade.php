@@ -19,6 +19,7 @@
 
         <main>
             <x-landing.hero />
+            <x-landing.partners />
             <x-landing.journey />
 
             <div class="insight" data-insight>
