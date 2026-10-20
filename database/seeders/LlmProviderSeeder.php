@@ -19,7 +19,7 @@ class LlmProviderSeeder extends Seeder
                 'config' => [
                     'default_api_url' => 'https://api.openai.com/v1',
                     'default_model' => 'gpt-4o-mini',
-                    'transcription_model' => 'whisper-1',
+                    'transcription_model' => 'gpt-4o-transcribe',
                 ],
             ],
             [

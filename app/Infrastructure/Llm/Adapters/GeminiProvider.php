@@ -4,6 +4,7 @@ namespace App\Infrastructure\Llm\Adapters;
 
 use App\Application\Llm\Services\PromptBuilder;
 use App\Application\Llm\Services\TranscriptionPrompt;
+use App\Application\Llm\Services\TranscriptSanitizer;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
@@ -210,6 +211,8 @@ class GeminiProvider extends AbstractLlmProvider
         if ($truncated) {
             return $this->failure('رونویسی تماس ناقص ماند و برای تحلیل ارسال نشد.');
         }
+
+        $transcript = app(TranscriptSanitizer::class)->clean($transcript);
 
         if (trim($transcript) === '') {
             return $this->failure('متن مکالمه از فایل صوتی استخراج نشد.');

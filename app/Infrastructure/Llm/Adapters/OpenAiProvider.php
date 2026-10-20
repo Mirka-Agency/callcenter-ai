@@ -4,6 +4,7 @@ namespace App\Infrastructure\Llm\Adapters;
 
 use App\Application\Llm\Services\PromptBuilder;
 use App\Application\Llm\Services\TranscriptionPrompt;
+use App\Application\Llm\Services\TranscriptSanitizer;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
@@ -354,7 +355,37 @@ class OpenAiProvider extends AbstractLlmProvider
             return $fromSettings;
         }
 
-        return (string) config('llm.transcription.model', 'whisper-1');
+        return (string) config('llm.transcription.model', 'gpt-4o-transcribe');
+    }
+
+    /**
+     * gpt-4o-transcribe rejects verbose_json. Whisper copies the prompt into the transcript,
+     * so an instruction sentence must not be sent to it.
+     *
+     * @return array<string, string>
+     */
+    private function speechTranscriptionFields(TranscriptionRequestData $request, string $model): array
+    {
+        $fields = [
+            'model' => $model,
+            'language' => $request->language ?: (string) config('llm.transcription.language', 'fa'),
+            'response_format' => $this->isGptTranscribeModel($model) ? 'json' : 'verbose_json',
+        ];
+
+        if ($this->isGptTranscribeModel($model)) {
+            $fields['prompt'] = TranscriptionPrompt::speechApiPrompt();
+            $fields['include[]'] = 'logprobs';
+        }
+
+        return $fields;
+    }
+
+    private function isGptTranscribeModel(string $model): bool
+    {
+        $key = strtolower(trim($model));
+        $key = str_contains($key, '/') ? (string) substr($key, strrpos($key, '/') + 1) : $key;
+
+        return in_array($key, ['gpt-4o-transcribe', 'gpt-4o-mini-transcribe'], true);
     }
 
     private function transcribeWithSpeechApi(TranscriptionRequestData $request, string $model): LlmOperationResult
@@ -368,7 +399,7 @@ class OpenAiProvider extends AbstractLlmProvider
         [$bytes, $format] = $audio;
 
         if (strlen($bytes) > 24 * 1024 * 1024) {
-            return $this->failure('حجم فایل صوتی برای Whisper بیشتر از حد مجاز است.');
+            return $this->failure('حجم فایل صوتی برای تبدیل گفتار به متن بیشتر از حد مجاز است.');
         }
 
         $started = microtime(true);
@@ -377,28 +408,35 @@ class OpenAiProvider extends AbstractLlmProvider
             baseUrl: $this->resolveBaseUrl(),
         );
 
-        $result = $client->transcribeFile($bytes, 'recording.'.$format, [
-            'model' => $model,
-            'language' => $request->language ?: (string) config('llm.transcription.language', 'fa'),
-            'response_format' => 'verbose_json',
-            'prompt' => 'مکالمه فارسی مرکز تماس بین کارشناس و مشتری.',
-        ]);
+        $fields = $this->speechTranscriptionFields($request, $model);
+        $result = $client->transcribeFile($bytes, 'recording.'.$format, $fields);
+
+        if (! $result->success && isset($fields['include[]']) && $this->providerRejectedLogprobs($result)) {
+            unset($fields['include[]']);
+            $result = $client->transcribeFile($bytes, 'recording.'.$format, $fields);
+        }
 
         if (! $result->success || ! is_array($result->data)) {
             return $result;
         }
 
+        $sanitizer = app(TranscriptSanitizer::class);
         $transcript = $this->formatSpeechTranscript($result->data);
 
         if ($transcript === '') {
             return $this->failure('متن مکالمه از فایل صوتی استخراج نشد.');
         }
 
+        $speakers = array_values(array_filter(
+            $sanitizer->reliableSegments($this->speechSegments($result->data)),
+            fn (array $segment): bool => $sanitizer->clean((string) ($segment['text'] ?? '')) !== '',
+        ));
+
         return LlmOperationResult::success(
             data: [
                 'transcript' => $transcript,
                 'language' => $result->data['language'] ?? $request->language,
-                'speakers' => $this->speechSegments($result->data),
+                'speakers' => $speakers,
             ],
             message: 'Transcription completed.',
             inputTokens: $result->inputTokens,
@@ -411,9 +449,11 @@ class OpenAiProvider extends AbstractLlmProvider
     /** @param  array<string, mixed>  $body */
     private function formatSpeechTranscript(array $body): string
     {
+        $sanitizer = app(TranscriptSanitizer::class);
+        $segments = $this->speechSegments($body);
         $lines = [];
 
-        foreach ($this->speechSegments($body) as $segment) {
+        foreach ($sanitizer->reliableSegments($segments) as $segment) {
             $text = trim((string) ($segment['text'] ?? ''));
             if ($text === '') {
                 continue;
@@ -423,11 +463,25 @@ class OpenAiProvider extends AbstractLlmProvider
             $lines[] = $speaker !== '' ? $this->labelSpeaker($speaker).': '.$text : $text;
         }
 
-        if ($lines !== []) {
-            return implode("\n", $lines);
+        if ($segments !== []) {
+            $transcript = implode("\n", $lines);
+        } else {
+            $transcript = TranscriptionPrompt::unwrap((string) ($body['text'] ?? ''));
+            $logprobs = $body['logprobs'] ?? null;
+            if (is_array($logprobs)) {
+                $transcript = $sanitizer->dropLowConfidenceSpans($transcript, $logprobs);
+            }
         }
 
-        return TranscriptionPrompt::unwrap((string) ($body['text'] ?? ''));
+        return $sanitizer->clean($transcript);
+    }
+
+    private function providerRejectedLogprobs(LlmOperationResult $result): bool
+    {
+        $error = mb_strtolower((string) $result->error);
+
+        return str_contains($error, 'http 400')
+            && (str_contains($error, 'logprob') || str_contains($error, 'include'));
     }
 
     /**

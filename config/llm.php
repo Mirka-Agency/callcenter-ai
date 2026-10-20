@@ -41,7 +41,7 @@ return [
     */
 
     'transcription' => [
-        'model' => env('LLM_TRANSCRIPTION_MODEL', 'whisper-1'),
+        'model' => env('LLM_TRANSCRIPTION_MODEL', 'gpt-4o-transcribe'),
         'language' => 'fa',
         'max_continuations' => 4,
     ],

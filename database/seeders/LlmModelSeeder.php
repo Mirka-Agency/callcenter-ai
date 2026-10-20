@@ -3,10 +3,10 @@
 namespace Database\Seeders;
 
 use App\Application\Llm\Actions\SetGemini38FlashAsDefaultAction;
+use App\Application\Llm\Actions\SetGpt4oTranscribeAsDefaultAction;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Models\LlmModel;
 use App\Models\LlmProvider;
-use App\Models\PlatformAiSettings;
 use Illuminate\Database\Seeder;
 
 class LlmModelSeeder extends Seeder
@@ -55,39 +55,6 @@ class LlmModelSeeder extends Seeder
         }
 
         app(SetGemini38FlashAsDefaultAction::class)->execute();
-
-        $this->seedTranscriptionDefault($openAi);
-    }
-
-    private function seedTranscriptionDefault(LlmProvider $openAi): void
-    {
-        $whisper = LlmModel::query()->updateOrCreate(
-            ['provider_id' => $openAi->id, 'model_key' => 'whisper-1'],
-            [
-                'name' => 'Whisper',
-                'input_price_per_million_tokens' => 0,
-                'output_price_per_million_tokens' => 0,
-                'is_default' => false,
-                'is_active' => true,
-                'sends_audio_file' => true,
-            ],
-        );
-
-        $settings = PlatformAiSettings::current();
-
-        if ($settings->default_transcription_model_id) {
-            return;
-        }
-
-        LlmModel::query()
-            ->whereKeyNot($whisper->id)
-            ->update(['is_transcription_default' => false]);
-
-        $whisper->update(['is_transcription_default' => true]);
-
-        $settings->update([
-            'default_transcription_provider_id' => $openAi->id,
-            'default_transcription_model_id' => $whisper->id,
-        ]);
+        app(SetGpt4oTranscribeAsDefaultAction::class)->execute();
     }
 }
