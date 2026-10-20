@@ -36,12 +36,12 @@ return [
     ))),
 
     /*
-    | Fallback speech-to-text model when no transcription default is selected
-    | in Models & Pricing. OpenAI-compatible gateways call /audio/transcriptions.
+    | Used only when Models & Pricing has no transcription model selected.
+    | A selected admin model is always sent as-is.
     */
 
     'transcription' => [
-        'model' => env('LLM_TRANSCRIPTION_MODEL', 'gpt-4o-transcribe'),
+        'model' => env('LLM_TRANSCRIPTION_MODEL', 'whisper-1'),
         'language' => 'fa',
         'max_continuations' => 4,
     ],

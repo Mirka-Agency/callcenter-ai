@@ -17,8 +17,10 @@ class OpenAiTranscriptionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_native_openai_transcribes_with_gpt4o_transcribe(): void
+    public function test_omitted_model_uses_the_configured_transcription_model_not_a_hardcoded_one(): void
     {
+        config(['llm.transcription.model' => 'whisper-large-v3']);
+
         Http::fake(function ($request) {
             if (str_contains($request->url(), 'example.com')) {
                 return Http::response('audio-bytes');
@@ -26,17 +28,18 @@ class OpenAiTranscriptionTest extends TestCase
 
             $this->assertStringContainsString('/audio/transcriptions', $request->url());
             $body = $request->body();
-            $this->assertStringContainsString('gpt-4o-transcribe', $body);
-            $this->assertStringContainsString('name="response_format"', $body);
-            $this->assertStringContainsString('json', $body);
-            $this->assertStringNotContainsString('verbose_json', $body);
-            $this->assertStringContainsString('name="language"', $body);
-            $this->assertStringContainsString('موسیقی انتظار', $body);
-            $this->assertStringContainsString('name="include[]"', $body);
-            $this->assertStringNotContainsString('نمونه: کارشناس', $body);
+            $this->assertStringContainsString('whisper-large-v3', $body);
+            $this->assertStringNotContainsString('gpt-4o-transcribe', $body);
+            $this->assertStringNotContainsString('gpt-4o"', $body);
+            $this->assertStringContainsString('verbose_json', $body);
+            $this->assertStringNotContainsString('name="prompt"', $body);
 
             return Http::response([
                 'text' => "کارشناس: سلام، شرکت آوایار هستم\nمشتری: سفارشم نرسیده",
+                'segments' => [
+                    ['text' => 'کارشناس: سلام، شرکت آوایار هستم'],
+                    ['text' => 'مشتری: سفارشم نرسیده'],
+                ],
             ]);
         });
 
@@ -55,27 +58,28 @@ class OpenAiTranscriptionTest extends TestCase
             "کارشناس: سلام، شرکت آوایار هستم\nمشتری: سفارشم نرسیده",
             $result->data['transcript'] ?? null,
         );
-        $this->assertSame('gpt-4o-transcribe', $result->model);
+        $this->assertSame('whisper-large-v3', $result->model);
     }
 
-    public function test_gateway_transcribes_with_gpt4o_transcribe_instead_of_the_analysis_model(): void
+    public function test_gateway_does_not_replace_the_selected_model_with_gpt(): void
     {
         Http::fake(function ($request) {
             if (str_contains($request->url(), 'example.com/recording.mp3')) {
                 return Http::response('audio-bytes');
             }
 
+            $body = $request->body();
             $this->assertStringContainsString('/audio/transcriptions', $request->url());
-            $this->assertStringContainsString('gpt-4o-transcribe', $request->body());
-            $this->assertStringNotContainsString('gemini-3.8-flash', $request->body());
-            $this->assertStringNotContainsString('verbose_json', $request->body());
+            $this->assertStringContainsString('gemini-2.5-flash', $body);
+            $this->assertStringNotContainsString('gpt-4o-transcribe', $body);
+            $this->assertStringNotContainsString('gemini-3.8-flash', $body);
 
             return Http::response([
                 'text' => "کارشناس: سلام\nمشتری: ممنون",
             ]);
         });
 
-        $provider = $this->provider('https://gateway.test/v1');
+        $provider = $this->provider('https://gateway.test/v1', 'gemini-2.5-flash');
 
         $result = $provider->transcribe(new TranscriptionRequestData(
             callId: 8,
@@ -87,7 +91,7 @@ class OpenAiTranscriptionTest extends TestCase
 
         $this->assertTrue($result->success);
         $this->assertSame("کارشناس: سلام\nمشتری: ممنون", $result->data['transcript'] ?? null);
-        $this->assertSame('gpt-4o-transcribe', $result->model);
+        $this->assertSame('gemini-2.5-flash', $result->model);
     }
 
     public function test_whisper_keeps_verbose_json_and_does_not_receive_an_instruction_prompt(): void
@@ -224,6 +228,7 @@ class OpenAiTranscriptionTest extends TestCase
         $result = $this->provider()->transcribe(new TranscriptionRequestData(
             callId: 14,
             recordingUrl: 'https://example.com/recording.mp3',
+            model: 'gpt-4o-transcribe',
             sendAudioFile: true,
             mimeType: 'audio/mpeg',
         ));
@@ -267,7 +272,7 @@ class OpenAiTranscriptionTest extends TestCase
         );
     }
 
-    private function provider(?string $baseUrl = null): OpenAiProvider
+    private function provider(?string $baseUrl = null, ?string $transcriptionModel = null): OpenAiProvider
     {
         $provider = new OpenAiProvider;
         $provider->configure(new LlmConnectionConfig(
@@ -276,7 +281,7 @@ class OpenAiTranscriptionTest extends TestCase
             providerCode: LlmProviderCode::OpenAi,
             name: 'OpenAI',
             credentials: new LlmCredentials(apiKey: 'test-key', baseUrl: $baseUrl),
-            settings: new LlmSettings,
+            settings: new LlmSettings(transcriptionModel: $transcriptionModel),
             isDefault: true,
             isActive: true,
         ));

@@ -355,7 +355,7 @@ class OpenAiProvider extends AbstractLlmProvider
             return $fromSettings;
         }
 
-        return (string) config('llm.transcription.model', 'gpt-4o-transcribe');
+        return (string) config('llm.transcription.model', 'whisper-1');
     }
 
     /**

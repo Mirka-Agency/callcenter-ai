@@ -75,7 +75,7 @@ class AudioAnalyzerTranscriptionTest extends TestCase
             'call_id' => $call->id,
             'content' => $transcript,
             'status' => 'completed',
-            'model_name' => 'gpt-4o-transcribe',
+            'model_name' => 'whisper-1',
         ]);
         $this->assertDatabaseHas('conversation_analyses', [
             'call_id' => $call->id,
