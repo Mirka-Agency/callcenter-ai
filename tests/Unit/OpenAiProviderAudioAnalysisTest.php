@@ -96,6 +96,115 @@ class OpenAiProviderAudioAnalysisTest extends TestCase
         Http::assertSentCount(2);
     }
 
+    public function test_disables_thinking_for_deepseek_v4_flash_so_json_is_not_truncated(): void
+    {
+        $analysisJson = json_encode([
+            'score' => 80,
+            'summary' => 'خلاصه',
+            'sentiment' => 'positive',
+            'strengths' => [],
+            'weaknesses' => [],
+            'next_actions' => [],
+        ], JSON_UNESCAPED_UNICODE);
+
+        Http::fake([
+            'https://api.avalai.ir/*' => Http::response([
+                'choices' => [[
+                    'message' => [
+                        'content' => $analysisJson,
+                        'reasoning_content' => null,
+                    ],
+                    'finish_reason' => 'stop',
+                ]],
+                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5],
+            ]),
+        ]);
+
+        $provider = new OpenAiProvider;
+        $provider->configure(new LlmConnectionConfig(
+            connectionId: 1,
+            organizationId: 1,
+            providerCode: LlmProviderCode::OpenAi,
+            name: 'AvalAI',
+            credentials: new LlmCredentials(
+                apiKey: 'test-key',
+                baseUrl: 'https://api.avalai.ir/v1',
+            ),
+            settings: new LlmSettings,
+            isDefault: true,
+            isActive: true,
+        ));
+
+        $result = $provider->analyzeAudio(new AudioAnalysisRequestData(
+            callId: 1,
+            model: 'deepseek-v4.1-flash',
+            context: new \App\Domain\Llm\DTOs\PromptContextData(transcript: 'کارشناس: سلام'),
+        ));
+
+        $this->assertTrue($result->success, $result->error ?? '');
+
+        Http::assertSent(function ($request) {
+            $data = $request->data();
+
+            return str_contains($request->url(), 'chat/completions')
+                && ($data['model'] ?? null) === 'deepseek-v4.1-flash'
+                && ($data['max_tokens'] ?? null) === 16384
+                && ($data['thinking']['type'] ?? null) === 'disabled'
+                && ($data['reasoning_effort'] ?? null) === 'none'
+                && ($data['response_format']['type'] ?? null) === 'json_object'
+                && str_contains(json_encode($data['messages'], JSON_UNESCAPED_UNICODE), 'JSON');
+        });
+    }
+
+    public function test_reads_json_from_reasoning_content_when_deepseek_content_is_empty(): void
+    {
+        $analysisJson = json_encode([
+            'score' => 64,
+            'summary' => 'خلاصه از استدلال',
+            'sentiment' => 'neutral',
+            'strengths' => [],
+            'weaknesses' => [],
+            'next_actions' => [],
+        ], JSON_UNESCAPED_UNICODE);
+
+        Http::fake([
+            'https://api.avalai.ir/*' => Http::response([
+                'choices' => [[
+                    'message' => [
+                        'content' => '',
+                        'reasoning_content' => $analysisJson,
+                    ],
+                    'finish_reason' => 'stop',
+                ]],
+                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5],
+            ]),
+        ]);
+
+        $provider = new OpenAiProvider;
+        $provider->configure(new LlmConnectionConfig(
+            connectionId: 1,
+            organizationId: 1,
+            providerCode: LlmProviderCode::OpenAi,
+            name: 'AvalAI',
+            credentials: new LlmCredentials(
+                apiKey: 'test-key',
+                baseUrl: 'https://api.avalai.ir/v1',
+            ),
+            settings: new LlmSettings,
+            isDefault: true,
+            isActive: true,
+        ));
+
+        $result = $provider->analyzeAudio(new AudioAnalysisRequestData(
+            callId: 1,
+            model: 'deepseek-v4.1-flash',
+            context: new \App\Domain\Llm\DTOs\PromptContextData(transcript: 'کارشناس: سلام'),
+        ));
+
+        $this->assertTrue($result->success, $result->error ?? '');
+        $this->assertSame('خلاصه از استدلال', $result->data['summary']);
+    }
+
     public function test_uses_higher_max_tokens_for_gemini_3_via_openai_compatible_endpoint(): void
     {
         $analysisJson = json_encode([
@@ -148,7 +257,8 @@ class OpenAiProviderAudioAnalysisTest extends TestCase
 
             return str_contains($request->url(), 'chat/completions')
                 && ($data['model'] ?? null) === 'gemini-3.8-flash'
-                && ($data['max_tokens'] ?? null) === 16384;
+                && ($data['max_tokens'] ?? null) === 16384
+                && ! array_key_exists('thinking', $data);
         });
     }
 
