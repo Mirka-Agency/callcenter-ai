@@ -95,8 +95,15 @@ class OpenAiProvider extends AbstractLlmProvider
 
         $body = $response->json();
         $choice = $body['choices'][0] ?? [];
-        $content = is_array($choice) ? (string) ($choice['message']['content'] ?? '') : '';
+        $content = $this->messageContent($choice);
         $parsed = $this->parseJsonResponse($content);
+
+        if (! $parsed && is_array($choice)) {
+            $reasoning = $choice['message']['reasoning_content'] ?? '';
+            if (is_string($reasoning) && trim($reasoning) !== '') {
+                $parsed = $this->parseJsonResponse($reasoning);
+            }
+        }
 
         if (! $parsed) {
             Log::warning('OpenAI audio analysis JSON parse failed', [
@@ -181,15 +188,62 @@ class OpenAiProvider extends AbstractLlmProvider
     /** @param  list<array{role: string, content: mixed}>  $messages */
     private function postChatCompletion(array $messages, string $model): Response
     {
+        $payload = [
+            'model' => $model,
+            'messages' => $messages,
+            'temperature' => $this->config->settings->temperature ?? 0.3,
+            'max_tokens' => $this->resolveMaxOutputTokens($model),
+            'response_format' => ['type' => 'json_object'],
+        ];
+
+        if ($this->isDeepSeekModel($model)) {
+            // Thinking is on by default and shares max_tokens with the answer.
+            // A long chain of thought leaves the JSON empty or cut off.
+            $payload['thinking'] = ['type' => 'disabled'];
+            $payload['reasoning_effort'] = 'none';
+        }
+
         return Http::withToken($this->config->credentials->apiKey)
             ->timeout(300)
-            ->post(rtrim($this->resolveBaseUrl(), '/').'/chat/completions', [
-                'model' => $model,
-                'messages' => $messages,
-                'temperature' => $this->config->settings->temperature ?? 0.3,
-                'max_tokens' => $this->resolveMaxOutputTokens($model),
-                'response_format' => ['type' => 'json_object'],
-            ]);
+            ->post(rtrim($this->resolveBaseUrl(), '/').'/chat/completions', $payload);
+    }
+
+    private function isDeepSeekModel(string $model): bool
+    {
+        return str_contains(strtolower($model), 'deepseek');
+    }
+
+    private function messageContent(mixed $choice): string
+    {
+        if (! is_array($choice)) {
+            return '';
+        }
+
+        $content = $choice['message']['content'] ?? '';
+
+        if (is_string($content)) {
+            return $content;
+        }
+
+        if (! is_array($content)) {
+            return '';
+        }
+
+        $parts = [];
+
+        foreach ($content as $part) {
+            if (is_string($part)) {
+                $parts[] = $part;
+
+                continue;
+            }
+
+            if (is_array($part) && is_string($part['text'] ?? null)) {
+                $parts[] = $part['text'];
+            }
+        }
+
+        return implode('', $parts);
     }
 
     /**
@@ -205,6 +259,10 @@ class OpenAiProvider extends AbstractLlmProvider
         $normalized = strtolower($model);
 
         if (str_contains($normalized, 'gemini-3') || str_contains($normalized, 'gemini/3')) {
+            return 16384;
+        }
+
+        if (str_contains($normalized, 'deepseek')) {
             return 16384;
         }
 
