@@ -42,10 +42,13 @@ class LlmModel extends Model
 
     public function calculateCost(int $inputTokens, int $outputTokens, int $cachedTokens = 0, int $reasoningTokens = 0): float
     {
-        $inputCost = ($inputTokens / 1_000_000) * (float) $this->input_price_per_million_tokens;
+        $cachedTokens = max(0, min($cachedTokens, $inputTokens));
+        $freshInputTokens = $inputTokens - $cachedTokens;
+        $inputCost = ($freshInputTokens / 1_000_000) * (float) $this->input_price_per_million_tokens;
         $outputCost = ($outputTokens / 1_000_000) * (float) $this->output_price_per_million_tokens;
-        $cachedCost = $cachedTokens > 0 && $this->cached_input_price_per_million_tokens
-            ? ($cachedTokens / 1_000_000) * (float) $this->cached_input_price_per_million_tokens
+        $cachedPrice = $this->cached_input_price_per_million_tokens;
+        $cachedCost = $cachedTokens > 0
+            ? ($cachedTokens / 1_000_000) * (float) ($cachedPrice ?? $this->input_price_per_million_tokens)
             : 0;
         $reasoningCost = $reasoningTokens > 0 && $this->reasoning_price_per_million_tokens
             ? ($reasoningTokens / 1_000_000) * (float) $this->reasoning_price_per_million_tokens

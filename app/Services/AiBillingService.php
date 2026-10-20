@@ -50,13 +50,14 @@ class AiBillingService
         ?string $transcript = null,
         ?array $crmContext = null,
         ?\DateTimeInterface $analyzedAt = null,
+        int $cachedTokens = 0,
     ): AnalysisResultData {
         $response = app(AnalysisResponseNormalizer::class)->apply(
             app(WeaknessEvaluationFilter::class)->filterResponse($response),
             $crmContext,
         );
 
-        $pricing = $this->costCalculator->calculateWithSnapshots($model, $inputTokens, $outputTokens);
+        $pricing = $this->costCalculator->calculateWithSnapshots($model, $inputTokens, $outputTokens, $cachedTokens);
 
         return AnalysisResultData::fromProviderResponse(
             response: $response,

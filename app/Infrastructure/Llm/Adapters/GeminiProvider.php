@@ -2,20 +2,23 @@
 
 namespace App\Infrastructure\Llm\Adapters;
 
+use App\Application\Llm\Services\AudioSegmenter;
 use App\Application\Llm\Services\PromptBuilder;
 use App\Application\Llm\Services\TranscriptionPrompt;
 use App\Application\Llm\Services\TranscriptSanitizer;
+use App\Domain\Llm\Contracts\CompletesJsonPrompt;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
+use App\Infrastructure\Llm\GeminiSystemPromptCache;
 use App\Services\PersianOutputGuard;
 use App\Services\RecordingStorage;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class GeminiProvider extends AbstractLlmProvider
+class GeminiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
 {
     public const DEFAULT_MODEL = 'gemini-3.8-flash';
 
@@ -117,18 +120,17 @@ class GeminiProvider extends AbstractLlmProvider
             ]);
         }
 
-        $usage = $body['usageMetadata'] ?? [];
-        $outputTokens = (int) ($usage['candidatesTokenCount'] ?? $parsed['output_tokens'] ?? 0)
-            + (int) ($usage['thoughtsTokenCount'] ?? 0);
+        [$inputTokens, $outputTokens, $cachedTokens] = $this->usageTokens($body['usageMetadata'] ?? [], $parsed);
 
         return LlmOperationResult::success(
             data: $parsed,
             message: 'Audio analysis completed.',
-            inputTokens: (int) ($usage['promptTokenCount'] ?? $parsed['input_tokens'] ?? 0),
+            inputTokens: $inputTokens,
             outputTokens: $outputTokens,
             cost: 0,
             durationMs: (int) ((microtime(true) - $started) * 1000),
             model: (string) ($parsed['model'] ?? $model),
+            cachedTokens: $cachedTokens,
         );
     }
 
@@ -159,57 +161,39 @@ class GeminiProvider extends AbstractLlmProvider
             return $this->failure('فایل صوتی برای تبدیل به متن یافت نشد.');
         }
 
+        $bytes = base64_decode($audioBase64, true);
+        if (! is_string($bytes) || $bytes === '') {
+            return $this->failure('فایل صوتی برای تبدیل به متن یافت نشد.');
+        }
+
+        $mimeType ??= $this->mimeTypeForFormat($audioFormat);
+        $segments = app(AudioSegmenter::class)->segments($bytes, $audioFormat) ?? [$bytes];
+
         $started = microtime(true);
         $prompt = app(TranscriptionPrompt::class);
         $transcript = '';
         $inputTokens = 0;
         $outputTokens = 0;
-        $continuations = 0;
+        $cachedTokens = 0;
 
-        do {
-            $response = Http::timeout(300)
-                ->withQueryParameters(['key' => $this->config->credentials->apiKey])
-                ->post($this->generateContentEndpoint($model), [
-                    'system_instruction' => [
-                        'parts' => [
-                            ['text' => $prompt::instructions()],
-                        ],
-                    ],
-                    'contents' => [
-                        [
-                            'role' => 'user',
-                            'parts' => [
-                                ['text' => $prompt::userTurn($request->context, $transcript)],
-                                [
-                                    'inline_data' => [
-                                        'mime_type' => $mimeType ?? $this->mimeTypeForFormat($audioFormat),
-                                        'data' => $audioBase64,
-                                    ],
-                                ],
-                            ],
-                        ],
-                    ],
-                    'generationConfig' => $this->transcriptionGenerationConfig($model),
-                ]);
+        foreach ($segments as $segment) {
+            $piece = $this->transcribeSegment(
+                request: $request,
+                model: $model,
+                mimeType: $mimeType,
+                audioBase64: base64_encode($segment),
+                prompt: $prompt,
+                transcriptSoFar: $transcript,
+                inputTokens: $inputTokens,
+                outputTokens: $outputTokens,
+                cachedTokens: $cachedTokens,
+            );
 
-            if (! $response->successful()) {
-                return $this->failure('Gemini transcription failed (HTTP '.$response->status().'): '.$response->body());
+            if ($piece instanceof LlmOperationResult) {
+                return $piece;
             }
 
-            $body = $response->json();
-            $candidate = $body['candidates'][0] ?? [];
-            $content = is_array($candidate) ? (string) ($candidate['content']['parts'][0]['text'] ?? '') : '';
-            $transcript = $prompt::append($transcript, $content);
-            $usage = $body['usageMetadata'] ?? [];
-            $inputTokens += (int) ($usage['promptTokenCount'] ?? 0);
-            $outputTokens += (int) ($usage['candidatesTokenCount'] ?? 0) + (int) ($usage['thoughtsTokenCount'] ?? 0);
-            $finishReason = is_array($candidate) ? ($candidate['finishReason'] ?? null) : null;
-            $truncated = $prompt::isTruncated(is_string($finishReason) ? $finishReason : null);
-            $continuations++;
-        } while ($truncated && $continuations <= $prompt::maxContinuations());
-
-        if ($truncated) {
-            return $this->failure('رونویسی تماس ناقص ماند و برای تحلیل ارسال نشد.');
+            $transcript = $prompt::append($transcript, $piece);
         }
 
         $transcript = app(TranscriptSanitizer::class)->clean($transcript);
@@ -228,7 +212,139 @@ class GeminiProvider extends AbstractLlmProvider
             outputTokens: $outputTokens,
             durationMs: (int) ((microtime(true) - $started) * 1000),
             model: $model,
+            cachedTokens: $cachedTokens,
         );
+    }
+
+    public function completeJson(string $model, string $system, string $user, int $maxOutputTokens = 512): LlmOperationResult
+    {
+        if (! $this->usesNativeGoogleEndpoint()) {
+            $provider = new OpenAiProvider;
+            $provider->configure($this->config);
+
+            return $provider->completeJson($model, $system, $user, $maxOutputTokens);
+        }
+
+        if (! $this->hasApiKey()) {
+            return $this->failure('برای تحلیل واقعی تماس، کلید API هوش مصنوعی باید در پنل ادمین تنظیم شود.');
+        }
+
+        if ($refused = $this->refuseIfRemoteDisabled()) {
+            return $refused;
+        }
+
+        $model = $this->resolveAudioAnalysisModel($model);
+        $started = microtime(true);
+        $response = Http::timeout(60)
+            ->withQueryParameters(['key' => $this->config->credentials->apiKey])
+            ->post($this->generateContentEndpoint($model), [
+                'system_instruction' => [
+                    'parts' => [
+                        ['text' => $system],
+                    ],
+                ],
+                'contents' => [
+                    [
+                        'role' => 'user',
+                        'parts' => [
+                            ['text' => $user],
+                        ],
+                    ],
+                ],
+                'generationConfig' => $this->jsonCompletionConfig($model, $maxOutputTokens),
+            ]);
+
+        if (! $response->successful()) {
+            return $this->failure('Gemini JSON completion failed (HTTP '.$response->status().').');
+        }
+
+        $body = $response->json();
+        $content = (string) ($body['candidates'][0]['content']['parts'][0]['text'] ?? '');
+        $parsed = $this->parseJsonResponse($content);
+
+        if (! $parsed) {
+            return $this->failure('Failed to parse Gemini JSON completion.');
+        }
+
+        [$inputTokens, $outputTokens, $cachedTokens] = $this->usageTokens($body['usageMetadata'] ?? [], $parsed);
+
+        return LlmOperationResult::success(
+            data: $parsed,
+            inputTokens: $inputTokens,
+            outputTokens: $outputTokens,
+            durationMs: (int) ((microtime(true) - $started) * 1000),
+            model: $model,
+            cachedTokens: $cachedTokens,
+        );
+    }
+
+    /**
+     * One audio piece. A truncated reply continues on this piece only.
+     * Token counters are updated by reference.
+     */
+    private function transcribeSegment(
+        TranscriptionRequestData $request,
+        string $model,
+        string $mimeType,
+        string $audioBase64,
+        TranscriptionPrompt $prompt,
+        string $transcriptSoFar,
+        int &$inputTokens,
+        int &$outputTokens,
+        int &$cachedTokens,
+    ): string|LlmOperationResult {
+        $piece = '';
+        $continuations = 0;
+        $truncated = false;
+
+        do {
+            $response = Http::timeout(300)
+                ->withQueryParameters(['key' => $this->config->credentials->apiKey])
+                ->post($this->generateContentEndpoint($model), [
+                    'system_instruction' => [
+                        'parts' => [
+                            ['text' => $prompt::instructions()],
+                        ],
+                    ],
+                    'contents' => [
+                        [
+                            'role' => 'user',
+                            'parts' => [
+                                ['text' => $prompt::userTurn($request->context, trim($transcriptSoFar."\n".$piece))],
+                                [
+                                    'inline_data' => [
+                                        'mime_type' => $mimeType,
+                                        'data' => $audioBase64,
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                    'generationConfig' => $this->transcriptionGenerationConfig($model),
+                ]);
+
+            if (! $response->successful()) {
+                return $this->failure('Gemini transcription failed (HTTP '.$response->status().'): '.$response->body());
+            }
+
+            $body = $response->json();
+            $candidate = $body['candidates'][0] ?? [];
+            $content = is_array($candidate) ? (string) ($candidate['content']['parts'][0]['text'] ?? '') : '';
+            $piece = $prompt::append($piece, $content);
+            [$input, $output, $cached] = $this->usageTokens(is_array($body) ? ($body['usageMetadata'] ?? []) : []);
+            $inputTokens += $input;
+            $outputTokens += $output;
+            $cachedTokens += $cached;
+            $finishReason = is_array($candidate) ? ($candidate['finishReason'] ?? null) : null;
+            $truncated = $prompt::isTruncated(is_string($finishReason) ? $finishReason : null);
+            $continuations++;
+        } while ($truncated && $continuations <= $prompt::maxContinuations());
+
+        if ($truncated) {
+            return $this->failure('رونویسی تماس ناقص ماند و برای تحلیل ارسال نشد.');
+        }
+
+        return $piece;
     }
 
     private function postGenerateContent(
@@ -253,22 +369,75 @@ class GeminiProvider extends AbstractLlmProvider
             ];
         }
 
+        $cache = app(GeminiSystemPromptCache::class);
+        $apiKey = (string) $this->config->credentials->apiKey;
+        $cacheName = $cache->get($model, $systemPrompt, $apiKey, $this->resolveBaseUrl());
+        $response = $this->sendGenerateContent($model, $userParts, $systemPrompt, $cacheName);
+
+        if ($cacheName !== null && $this->cachedPromptRejected($response)) {
+            $cache->forget($model, $systemPrompt);
+            $response = $this->sendGenerateContent($model, $userParts, $systemPrompt, null);
+        }
+
+        return $response;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $userParts
+     */
+    private function sendGenerateContent(string $model, array $userParts, string $systemPrompt, ?string $cacheName): Response
+    {
+        $payload = [
+            'contents' => [
+                [
+                    'role' => 'user',
+                    'parts' => $userParts,
+                ],
+            ],
+            'generationConfig' => $this->generationConfig($model),
+        ];
+
+        if ($cacheName !== null) {
+            $payload['cachedContent'] = $cacheName;
+        } else {
+            $payload['system_instruction'] = [
+                'parts' => [
+                    ['text' => $systemPrompt],
+                ],
+            ];
+        }
+
         return Http::timeout(300)
             ->withQueryParameters(['key' => $this->config->credentials->apiKey])
-            ->post($this->generateContentEndpoint($model), [
-                'system_instruction' => [
-                    'parts' => [
-                        ['text' => $systemPrompt],
-                    ],
-                ],
-                'contents' => [
-                    [
-                        'role' => 'user',
-                        'parts' => $userParts,
-                    ],
-                ],
-                'generationConfig' => $this->generationConfig($model),
-            ]);
+            ->post($this->generateContentEndpoint($model), $payload);
+    }
+
+    private function cachedPromptRejected(Response $response): bool
+    {
+        if ($response->successful()) {
+            return false;
+        }
+
+        $body = mb_strtolower($response->body());
+
+        return $response->status() === 404
+            || str_contains($body, 'cachedcontent')
+            || str_contains($body, 'cached content');
+    }
+
+    /**
+     * @param  array<string, mixed>  $usage
+     * @param  array<string, mixed>  $parsed
+     * @return array{0: int, 1: int, 2: int}
+     */
+    private function usageTokens(array $usage, array $parsed = []): array
+    {
+        $input = (int) ($usage['promptTokenCount'] ?? $parsed['input_tokens'] ?? 0);
+        $cached = (int) ($usage['cachedContentTokenCount'] ?? 0);
+        $output = (int) ($usage['candidatesTokenCount'] ?? $parsed['output_tokens'] ?? 0)
+            + (int) ($usage['thoughtsTokenCount'] ?? 0);
+
+        return [$input, $output, max(0, min($cached, $input))];
     }
 
     /** @return array{0: ?string, 1: ?string} */
@@ -389,6 +558,27 @@ class GeminiProvider extends AbstractLlmProvider
         }
 
         return self::DEFAULT_MODEL;
+    }
+
+    /** @return array<string, mixed> */
+    private function jsonCompletionConfig(string $model, int $maxOutputTokens): array
+    {
+        $config = [
+            'maxOutputTokens' => max(1, $maxOutputTokens),
+            'responseMimeType' => 'application/json',
+        ];
+
+        if ($this->isGemini3($model)) {
+            $config['thinkingConfig'] = [
+                'thinkingLevel' => 'minimal',
+            ];
+
+            return $config;
+        }
+
+        $config['temperature'] = 0;
+
+        return $config;
     }
 
     /** @return array<string, mixed> */

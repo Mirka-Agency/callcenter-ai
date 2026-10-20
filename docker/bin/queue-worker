@@ -9,6 +9,6 @@ exec php artisan queue:work \
     --queue="${QUEUE_WORKER_QUEUES:-voip,analysis,followup}" \
     --sleep="${QUEUE_WORKER_SLEEP:-3}" \
     --tries="${QUEUE_WORKER_TRIES:-3}" \
-    --timeout="${QUEUE_WORKER_TIMEOUT:-600}" \
+    --timeout="${QUEUE_WORKER_TIMEOUT:-1200}" \
     --max-jobs="${QUEUE_WORKER_MAX_JOBS:-500}" \
     --max-time="${QUEUE_WORKER_MAX_TIME:-3600}"

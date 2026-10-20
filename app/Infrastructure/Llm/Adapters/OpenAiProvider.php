@@ -5,6 +5,7 @@ namespace App\Infrastructure\Llm\Adapters;
 use App\Application\Llm\Services\PromptBuilder;
 use App\Application\Llm\Services\TranscriptionPrompt;
 use App\Application\Llm\Services\TranscriptSanitizer;
+use App\Domain\Llm\Contracts\CompletesJsonPrompt;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
@@ -16,7 +17,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class OpenAiProvider extends AbstractLlmProvider
+class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
 {
     public function getProviderCode(): LlmProviderCode
     {
@@ -124,8 +125,7 @@ class OpenAiProvider extends AbstractLlmProvider
             ]);
         }
 
-        $inputTokens = (int) ($body['usage']['prompt_tokens'] ?? $parsed['input_tokens'] ?? 0);
-        $outputTokens = (int) ($body['usage']['completion_tokens'] ?? $parsed['output_tokens'] ?? 0);
+        [$inputTokens, $outputTokens, $cachedTokens] = $this->usageTokens(is_array($body) ? ($body['usage'] ?? []) : [], $parsed);
 
         return LlmOperationResult::success(
             data: $parsed,
@@ -135,6 +135,62 @@ class OpenAiProvider extends AbstractLlmProvider
             cost: 0,
             durationMs: (int) ((microtime(true) - $started) * 1000),
             model: (string) ($parsed['model'] ?? $model),
+            cachedTokens: $cachedTokens,
+        );
+    }
+
+    public function completeJson(string $model, string $system, string $user, int $maxOutputTokens = 512): LlmOperationResult
+    {
+        if (! $this->hasApiKey()) {
+            return $this->failure('برای تحلیل واقعی تماس، کلید API هوش مصنوعی باید در پنل ادمین تنظیم شود.');
+        }
+
+        if ($refused = $this->refuseIfRemoteDisabled()) {
+            return $refused;
+        }
+
+        $started = microtime(true);
+        $payload = [
+            'model' => $model,
+            'messages' => [
+                ['role' => 'system', 'content' => $system],
+                ['role' => 'user', 'content' => $user],
+            ],
+            'temperature' => 0,
+            'max_tokens' => max(1, $maxOutputTokens),
+            'response_format' => ['type' => 'json_object'],
+        ];
+
+        if ($this->isDeepSeekModel($model)) {
+            $payload['thinking'] = ['type' => 'disabled'];
+            $payload['reasoning_effort'] = 'none';
+        }
+
+        $response = Http::withToken($this->config->credentials->apiKey)
+            ->timeout(60)
+            ->post(rtrim($this->resolveBaseUrl(), '/').'/chat/completions', $payload);
+
+        if (! $response->successful()) {
+            return $this->failure('JSON completion failed (HTTP '.$response->status().').');
+        }
+
+        $body = $response->json();
+        $choice = is_array($body) ? ($body['choices'][0] ?? []) : [];
+        $parsed = $this->parseJsonResponse($this->messageContent($choice));
+
+        if (! $parsed) {
+            return $this->failure('Failed to parse JSON completion.');
+        }
+
+        [$inputTokens, $outputTokens, $cachedTokens] = $this->usageTokens(is_array($body) ? ($body['usage'] ?? []) : [], $parsed);
+
+        return LlmOperationResult::success(
+            data: $parsed,
+            inputTokens: $inputTokens,
+            outputTokens: $outputTokens,
+            durationMs: (int) ((microtime(true) - $started) * 1000),
+            model: $model,
+            cachedTokens: $cachedTokens,
         );
     }
 
@@ -149,6 +205,25 @@ class OpenAiProvider extends AbstractLlmProvider
         }
 
         return $this->transcribeWithSpeechApi($request, $this->speechTranscriptionModel($request));
+    }
+
+    /**
+     * @param  array<string, mixed>  $usage
+     * @param  array<string, mixed>  $parsed
+     * @return array{0: int, 1: int, 2: int}
+     */
+    private function usageTokens(array $usage, array $parsed = []): array
+    {
+        $input = (int) ($usage['prompt_tokens'] ?? $parsed['input_tokens'] ?? 0);
+        $output = (int) ($usage['completion_tokens'] ?? $parsed['output_tokens'] ?? 0);
+        $details = $usage['prompt_tokens_details'] ?? [];
+        $cached = (int) (is_array($details) ? ($details['cached_tokens'] ?? 0) : 0);
+
+        if ($cached === 0) {
+            $cached = (int) ($usage['prompt_cache_hit_tokens'] ?? 0);
+        }
+
+        return [$input, $output, max(0, min($cached, $input))];
     }
 
     /** @return array{0: ?string, 1: string, 2: ?string} */

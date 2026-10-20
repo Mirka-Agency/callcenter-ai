@@ -85,6 +85,112 @@ class AudioAnalyzerTranscriptionTest extends TestCase
         $this->assertSame(CallProcessingStatus::Analyzing, $call->fresh()->processing_status);
     }
 
+    public function test_a_completed_transcript_is_not_transcribed_again(): void
+    {
+        Storage::fake('local');
+        $call = $this->seedCall();
+        $this->seedPlatformLlm();
+        $transcriptions = 0;
+
+        Http::fake(function ($request) use (&$transcriptions) {
+            if (str_contains($request->url(), '/audio/transcriptions')) {
+                $transcriptions++;
+
+                return Http::response(['text' => 'کارشناس: سلام']);
+            }
+
+            $encoded = json_encode($request->data(), JSON_UNESCAPED_UNICODE) ?: '';
+
+            if (str_contains($encoded, 'تو فقط تماس را دسته‌بندی')) {
+                return Http::response([
+                    'choices' => [[
+                        'message' => ['content' => json_encode([
+                            'kind' => 'real',
+                            'confidence' => 0.2,
+                            'summary' => '',
+                            'personal_reason' => '',
+                        ], JSON_UNESCAPED_UNICODE)],
+                    ]],
+                    'usage' => ['prompt_tokens' => 4, 'completion_tokens' => 2],
+                ]);
+            }
+
+            return Http::response([
+                'choices' => [[
+                    'finish_reason' => 'stop',
+                    'message' => ['content' => json_encode([
+                        'score' => 70,
+                        'summary' => 'خلاصه تماس.',
+                        'sentiment' => 'neutral',
+                        'strengths' => [],
+                        'weaknesses' => [],
+                        'next_actions' => [],
+                        'evaluable' => true,
+                    ], JSON_UNESCAPED_UNICODE)],
+                ]],
+                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5],
+            ]);
+        });
+
+        AnalysisManager::forOrganization($call->organization_id)->analyzeCall($call->id);
+        AnalysisManager::forOrganization($call->organization_id)->analyzeCall($call->id);
+
+        $this->assertSame(1, $transcriptions);
+    }
+
+    public function test_a_confident_personal_call_skips_the_full_analysis(): void
+    {
+        Storage::fake('local');
+        $call = $this->seedCall();
+        $this->seedPlatformLlm();
+        $fullAnalyses = 0;
+
+        Http::fake(function ($request) use (&$fullAnalyses) {
+            if (str_contains($request->url(), '/audio/transcriptions')) {
+                return Http::response(['text' => 'کارشناس: یک پیتزا سفارش می‌دهم.']);
+            }
+
+            $encoded = json_encode($request->data(), JSON_UNESCAPED_UNICODE) ?: '';
+
+            if (str_contains($encoded, 'تو فقط تماس را دسته‌بندی')) {
+                return Http::response([
+                    'choices' => [[
+                        'message' => ['content' => json_encode([
+                            'kind' => 'personal',
+                            'confidence' => 0.95,
+                            'summary' => 'کارشناس برای سفارش غذا تماس گرفت.',
+                            'personal_reason' => 'سفارش غذا',
+                        ], JSON_UNESCAPED_UNICODE)],
+                    ]],
+                    'usage' => ['prompt_tokens' => 8, 'completion_tokens' => 4],
+                ]);
+            }
+
+            $fullAnalyses++;
+
+            return Http::response([
+                'choices' => [[
+                    'message' => ['content' => json_encode([
+                        'score' => 80,
+                        'summary' => 'نباید این خلاصه ذخیره شود.',
+                        'sentiment' => 'positive',
+                        'evaluable' => true,
+                    ], JSON_UNESCAPED_UNICODE)],
+                ]],
+                'usage' => ['prompt_tokens' => 100, 'completion_tokens' => 80],
+            ]);
+        });
+
+        $result = AnalysisManager::forOrganization($call->organization_id)->analyzeCall($call->id);
+
+        $this->assertSame(0, $fullAnalyses);
+        $this->assertTrue($result->isPersonal);
+        $this->assertFalse($result->isEvaluable);
+        $this->assertSame(0, $result->score);
+        $this->assertSame('سفارش غذا', $result->personalReason);
+        $this->assertSame('کارشناس برای سفارش غذا تماس گرفت.', $result->summary);
+    }
+
     public function test_selected_transcription_model_uses_its_own_provider(): void
     {
         Storage::fake('local');

@@ -16,6 +16,7 @@ readonly class LlmOperationResult
         public float $cost = 0.0,
         public int $durationMs = 0,
         public ?string $model = null,
+        public int $cachedTokens = 0,
     ) {}
 
     public static function success(
@@ -26,6 +27,7 @@ readonly class LlmOperationResult
         float $cost = 0.0,
         int $durationMs = 0,
         ?string $model = null,
+        int $cachedTokens = 0,
     ): self {
         return new self(
             success: true,
@@ -36,6 +38,7 @@ readonly class LlmOperationResult
             cost: $cost,
             durationMs: $durationMs,
             model: $model,
+            cachedTokens: $cachedTokens,
         );
     }
 
