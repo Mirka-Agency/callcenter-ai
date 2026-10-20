@@ -238,6 +238,80 @@ class OpenAiTranscriptionTest extends TestCase
         $this->assertSame('کارشناس: سلام', $result->data['transcript'] ?? null);
     }
 
+    public function test_scribe_v2_admin_key_is_sent_as_scribe_v2_with_json(): void
+    {
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), 'example.com')) {
+                return Http::response('audio-bytes');
+            }
+
+            $body = $request->body();
+            $this->assertStringContainsString('name="model"', $body);
+            $this->assertStringContainsString('scribe_v2', $body);
+            $this->assertStringNotContainsString('scribe-v2', $body);
+            $this->assertStringContainsString('name="response_format"', $body);
+            $this->assertStringNotContainsString('verbose_json', $body);
+            $this->assertStringNotContainsString('name="prompt"', $body);
+            $this->assertStringNotContainsString('name="include[]"', $body);
+
+            return Http::response([
+                'text' => "کارشناس: سلام\nمشتری: وقت بخیر",
+                'language' => 'fa',
+            ]);
+        });
+
+        $result = $this->provider()->transcribe(new TranscriptionRequestData(
+            callId: 21,
+            recordingUrl: 'https://example.com/recording.mp3',
+            model: 'scribe-v2',
+            sendAudioFile: true,
+            mimeType: 'audio/mpeg',
+        ));
+
+        $this->assertTrue($result->success);
+        $this->assertSame("کارشناس: سلام\nمشتری: وقت بخیر", $result->data['transcript'] ?? null);
+        $this->assertSame('scribe_v2', $result->model);
+    }
+
+    public function test_scribe_v2_falls_back_to_the_admin_key_when_the_gateway_rejects_scribe_v2(): void
+    {
+        $attempts = 0;
+
+        Http::fake(function ($request) use (&$attempts) {
+            if (str_contains($request->url(), 'example.com')) {
+                return Http::response('audio-bytes');
+            }
+
+            $attempts++;
+            $body = $request->body();
+            $this->assertStringNotContainsString('verbose_json', $body);
+
+            if ($attempts === 1) {
+                $this->assertStringContainsString('scribe_v2', $body);
+
+                return Http::response(['error' => ['message' => 'The model scribe_v2 does not exist']], 400);
+            }
+
+            $this->assertStringContainsString('scribe-v2', $body);
+            $this->assertStringNotContainsString('scribe_v2', $body);
+
+            return Http::response(['text' => 'کارشناس: سلام']);
+        });
+
+        $result = $this->provider()->transcribe(new TranscriptionRequestData(
+            callId: 22,
+            recordingUrl: 'https://example.com/recording.mp3',
+            model: 'scribe-v2',
+            sendAudioFile: true,
+            mimeType: 'audio/mpeg',
+        ));
+
+        $this->assertTrue($result->success);
+        $this->assertSame(2, $attempts);
+        $this->assertSame('scribe-v2', $result->model);
+        $this->assertSame('کارشناس: سلام', $result->data['transcript'] ?? null);
+    }
+
     public function test_explicit_transcription_model_is_sent_to_the_speech_api(): void
     {
         Http::fake(function ($request) {

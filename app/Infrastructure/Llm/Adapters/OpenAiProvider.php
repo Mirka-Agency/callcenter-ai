@@ -434,8 +434,9 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
     }
 
     /**
-     * gpt-4o-transcribe rejects verbose_json. Whisper copies the prompt into the transcript,
-     * so an instruction sentence must not be sent to it.
+     * gpt-4o-transcribe and ElevenLabs Scribe reject verbose_json.
+     * Whisper copies the prompt into the transcript, so an instruction sentence must not be sent to it.
+     * Admin may store scribe-v2; AvalAI's transcription id is scribe_v2.
      *
      * @return array<string, string>
      */
@@ -444,7 +445,7 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
         $fields = [
             'model' => $model,
             'language' => $request->language ?: (string) config('llm.transcription.language', 'fa'),
-            'response_format' => $this->isGptTranscribeModel($model) ? 'json' : 'verbose_json',
+            'response_format' => $this->speechResponseFormat($model),
         ];
 
         if ($this->isGptTranscribeModel($model)) {
@@ -455,15 +456,57 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
         return $fields;
     }
 
-    private function isGptTranscribeModel(string $model): bool
+    private function speechResponseFormat(string $model): string
     {
-        $key = strtolower(trim($model));
-        $key = str_contains($key, '/') ? (string) substr($key, strrpos($key, '/') + 1) : $key;
+        if ($this->isGptTranscribeModel($model) || $this->isScribeModel($model)) {
+            return 'json';
+        }
 
-        return in_array($key, ['gpt-4o-transcribe', 'gpt-4o-mini-transcribe'], true);
+        return 'verbose_json';
     }
 
-    private function transcribeWithSpeechApi(TranscriptionRequestData $request, string $model): LlmOperationResult
+    /**
+     * scribe-v2 is the admin spelling of AvalAI / ElevenLabs scribe_v2.
+     */
+    private function canonicalSpeechModel(string $model): string
+    {
+        $canonical = match ($this->speechModelKey($model)) {
+            'scribe-v1', 'scribe_v1' => 'scribe_v1',
+            'scribe-v2', 'scribe_v2' => 'scribe_v2',
+            default => null,
+        };
+
+        if ($canonical === null || $canonical === $this->speechModelKey($model)) {
+            return $model;
+        }
+
+        $separator = strrpos($model, '/');
+
+        if ($separator === false) {
+            return $canonical;
+        }
+
+        return substr($model, 0, $separator + 1).$canonical;
+    }
+
+    private function speechModelKey(string $model): string
+    {
+        $key = strtolower(trim($model));
+
+        return str_contains($key, '/') ? (string) substr($key, strrpos($key, '/') + 1) : $key;
+    }
+
+    private function isGptTranscribeModel(string $model): bool
+    {
+        return in_array($this->speechModelKey($model), ['gpt-4o-transcribe', 'gpt-4o-mini-transcribe'], true);
+    }
+
+    private function isScribeModel(string $model): bool
+    {
+        return in_array($this->speechModelKey($model), ['scribe-v1', 'scribe_v1', 'scribe-v2', 'scribe_v2'], true);
+    }
+
+    private function transcribeWithSpeechApi(TranscriptionRequestData $request, string $requestedModel): LlmOperationResult
     {
         $audio = $this->readRecordingBytes($request);
 
@@ -483,12 +526,22 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
             baseUrl: $this->resolveBaseUrl(),
         );
 
+        $model = $this->canonicalSpeechModel($requestedModel);
         $fields = $this->speechTranscriptionFields($request, $model);
         $result = $client->transcribeFile($bytes, 'recording.'.$format, $fields);
 
         if (! $result->success && isset($fields['include[]']) && $this->providerRejectedLogprobs($result)) {
             unset($fields['include[]']);
             $result = $client->transcribeFile($bytes, 'recording.'.$format, $fields);
+        }
+
+        if (! $result->success && $model !== $requestedModel && $this->providerRejectedModel($result)) {
+            $fields['model'] = $requestedModel;
+            $result = $client->transcribeFile($bytes, 'recording.'.$format, $fields);
+
+            if ($result->success) {
+                $model = $requestedModel;
+            }
         }
 
         if (! $result->success || ! is_array($result->data)) {
@@ -557,6 +610,24 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
 
         return str_contains($error, 'http 400')
             && (str_contains($error, 'logprob') || str_contains($error, 'include'));
+    }
+
+    private function providerRejectedModel(LlmOperationResult $result): bool
+    {
+        $error = mb_strtolower((string) $result->error);
+        $rejected = str_contains($error, 'http 400') || str_contains($error, 'http 404');
+
+        if (! $rejected) {
+            return false;
+        }
+
+        foreach (['model', 'not found', 'does not exist', 'unsupported', 'unknown'] as $needle) {
+            if (str_contains($error, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
