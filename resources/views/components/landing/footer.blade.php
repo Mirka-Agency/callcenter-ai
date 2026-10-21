@@ -1,4 +1,9 @@
-    <footer class="site-footer">
+    @php
+        $section = function (string $hash): string {
+            return request()->routeIs('home') ? $hash : route('home').$hash;
+        };
+    @endphp
+    <footer class="site-footer" id="site-footer">
         <div class="site-footer__inner">
             <div class="site-footer__grid">
                 <div class="site-footer__brand">
@@ -13,12 +18,13 @@
                     <h2>دسترسی سریع</h2>
                     <ul class="site-footer__links">
                         @foreach ([
-                            ['#sample-call', 'ویژگی‌ها'],
-                            ['#journey', 'مسیر تماس'],
-                            ['#challenges', 'چالش‌ها'],
-                            ['#sample-call', 'نمونه تحلیل'],
-                            ['#coaching', 'کوچینگ'],
-                            ['#faq', 'سوالات متداول'],
+                            [$section('#sample-call'), 'ویژگی‌ها'],
+                            [$section('#journey'), 'مسیر تماس'],
+                            [$section('#challenges'), 'چالش‌ها'],
+                            [$section('#sample-call'), 'نمونه تحلیل'],
+                            [$section('#coaching'), 'کوچینگ'],
+                            [$section('#faq'), 'سوالات متداول'],
+                            [route('about'), 'درباره ما'],
                         ] as [$href, $label])
                             <li>
                                 <a href="{{ $href }}">
@@ -59,7 +65,7 @@
                             @endauth
                         </li>
                         <li>
-                            <a href="#faq">
+                            <a href="{{ $section('#faq') }}">
                                 <span class="site-footer__icon" aria-hidden="true">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8" /><path d="M9.6 9.4a2.4 2.4 0 1 1 3.3 2.2c-.6.3-.9.8-.9 1.4V13.4" /><path d="M12 16.6h.01" /></svg>
                                 </span>

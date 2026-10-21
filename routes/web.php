@@ -19,6 +19,14 @@ Route::get('/', function () {
     return view('landing');
 })->name('home');
 
+Route::get('/about', function () {
+    if (! LandingHost::matches(request())) {
+        return redirect()->route('login');
+    }
+
+    return view('about');
+})->name('about');
+
 Route::post('/consultation-requests', [ConsultationRequestController::class, 'store'])
     ->middleware(['throttle:8,1', 'landing-host'])
     ->name('consultation-requests.store');

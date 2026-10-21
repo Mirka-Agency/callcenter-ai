@@ -1,8 +1,14 @@
 @php
+    $section = function (string $id): string {
+        $hash = '#'.$id;
+
+        return request()->routeIs('home') ? $hash : route('home').$hash;
+    };
     $links = [
-        ['href' => '#sample-call', 'label' => 'امکانات'],
-        ['href' => '#journey', 'label' => 'نحوه کار'],
-        ['href' => '#faq', 'label' => 'سوالات متداول'],
+        ['href' => $section('sample-call'), 'label' => 'امکانات', 'current' => false],
+        ['href' => $section('journey'), 'label' => 'نحوه کار', 'current' => false],
+        ['href' => $section('faq'), 'label' => 'سوالات متداول', 'current' => false],
+        ['href' => route('about'), 'label' => 'درباره ما', 'current' => request()->routeIs('about')],
     ];
     $authActionHref = auth()->check() ? auth()->user()->portalRoute() : route('login');
     $authActionLabel = auth()->check() ? 'پنل کاربری' : 'ورود';
@@ -17,7 +23,7 @@
 
         <nav class="hidden items-center justify-center gap-6 text-sm font-medium text-ink lg:flex dark:text-zinc-100" aria-label="بخش‌های صفحه">
             @foreach ($links as $link)
-                <a href="{{ $link['href'] }}" class="transition hover:text-brand">{{ $link['label'] }}</a>
+                <a href="{{ $link['href'] }}" @class(['transition hover:text-brand', 'text-brand' => $link['current']]) @if ($link['current']) aria-current="page" @endif>{{ $link['label'] }}</a>
             @endforeach
         </nav>
 
@@ -33,7 +39,7 @@
                 </summary>
                 <div class="absolute end-0 z-50 mt-2 w-56 rounded-xl border border-line bg-white p-2 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                     @foreach ($links as $link)
-                        <a href="{{ $link['href'] }}" class="block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas dark:text-zinc-100 dark:hover:bg-zinc-800" onclick="this.closest('details').open=false">{{ $link['label'] }}</a>
+                        <a href="{{ $link['href'] }}" @class(['block rounded-lg px-3 py-2 text-sm font-medium hover:bg-canvas dark:hover:bg-zinc-800', 'text-brand' => $link['current'], 'text-ink dark:text-zinc-100' => ! $link['current']]) @if ($link['current']) aria-current="page" @endif onclick="this.closest('details').open=false">{{ $link['label'] }}</a>
                     @endforeach
                     <button type="button" class="block w-full rounded-lg border-0 bg-transparent px-3 py-2 text-start text-sm font-medium text-ink hover:bg-canvas dark:text-zinc-100 dark:hover:bg-zinc-800" data-consult-open>درخواست مشاوره</button>
                     <a href="{{ $authActionHref }}" class="mt-1 block rounded-lg px-3 py-2 text-sm font-medium text-ink hover:bg-canvas sm:hidden dark:text-zinc-100 dark:hover:bg-zinc-800">{{ $authActionLabel }}</a>
