@@ -253,7 +253,10 @@ class TranscriptSanitizer
     private function isPromptLeak(string $speech): bool
     {
         return str_contains($speech, 'فقط حرف‌های واقعی آدم‌ها را بنویس')
+            || str_contains($speech, 'فقط حرف واقعی را بنویس')
             || str_contains($speech, 'به‌جایشان کلمه یا شعر نساز')
+            || str_contains($speech, 'به‌جایشان کلمه نساز')
+            || str_contains($speech, 'این نام شرکت مشتری نیست')
             || str_contains($speech, 'رونویسی لفظ‌به‌لفظ مکالمه تلفنی فارسی');
     }
 

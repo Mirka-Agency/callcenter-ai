@@ -12,11 +12,20 @@ use App\Domain\Llm\DTOs\PromptContextData;
  */
 class TranscriptTriage
 {
+    private const FULL_ANALYSIS_CHARS = 900;
+
     public function decide(LlmProviderInterface $provider, string $model, PromptContextData $context): TranscriptTriageDecision
     {
         $transcript = trim((string) $context->transcript);
 
         if ($transcript === '' || ! $provider instanceof CompletesJsonPrompt) {
+            return TranscriptTriageDecision::full();
+        }
+
+        // A real conversation is long enough that a second full-transcript call
+        // only adds latency and tokens. Short calls still get this cheap check
+        // so silence and one-line personal calls can skip the analysis prompt.
+        if (mb_strlen($transcript) >= self::FULL_ANALYSIS_CHARS) {
             return TranscriptTriageDecision::full();
         }
 
@@ -118,9 +127,10 @@ class TranscriptTriage
 - summary برای personal و none یک یا دو جمله فارسی است. برای real رشته خالی بگذار
 - personal_reason برای personal یک جمله کوتاه فارسی است. در غیر این صورت رشته خالی
 
-real یعنی فروش، پشتیبانی، پیگیری پرداخت، یا هماهنگی کاری خود سازمان.
+real یعنی فروش، پشتیبانی، پیگیری پرداخت، یا هماهنگی کاری خود سازمان. اگر کارشناس از طرف سازمان پول می‌خواهد، real است.
 personal یعنی کارشناس برای کار خودش تماس گرفته است: سفارش غذا، خرید شخصی، خانواده یا دوست.
 none یعنی مکالمه شکل نگرفته: سکوت، بوق، موسیقی انتظار، یا سلام و قطع بدون موضوع.
+نام کارشناس و نام سازمان زمینه، هویت مشتری نیست.
 
 اگر تردید داری kind را real بگذار و confidence را پایین بگذار.
 PROMPT;

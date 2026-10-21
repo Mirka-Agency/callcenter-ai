@@ -6,6 +6,7 @@ use App\Application\Llm\Services\TranscriptionPrompt;
 use App\Domain\Llm\DTOs\LlmConnectionConfig;
 use App\Domain\Llm\DTOs\LlmCredentials;
 use App\Domain\Llm\DTOs\LlmSettings;
+use App\Domain\Llm\DTOs\PromptContextData;
 use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Infrastructure\Llm\Adapters\OpenAiProvider;
@@ -336,6 +337,38 @@ class OpenAiTranscriptionTest extends TestCase
 
         $this->assertTrue($result->success);
         $this->assertSame('gpt-4o-transcribe', $result->model);
+    }
+
+    public function test_gpt_transcribe_prompt_carries_the_agent_and_organization(): void
+    {
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), 'example.com')) {
+                return Http::response('audio-bytes');
+            }
+
+            $body = $request->body();
+            $this->assertStringContainsString('gpt-4o-transcribe', $body);
+            $this->assertStringContainsString('میرکو', $body);
+            $this->assertStringContainsString('علی رضایی', $body);
+            $this->assertStringContainsString('این نام شرکت مشتری نیست', $body);
+
+            return Http::response(['text' => 'کارشناس: سلام']);
+        });
+
+        $result = $this->provider()->transcribe(new TranscriptionRequestData(
+            callId: 31,
+            recordingUrl: 'https://example.com/recording.mp3',
+            model: 'gpt-4o-transcribe',
+            sendAudioFile: true,
+            mimeType: 'audio/mpeg',
+            context: new PromptContextData(
+                employeeName: 'علی رضایی',
+                organizationName: 'میرکو',
+                callDirection: 'outbound',
+            ),
+        ));
+
+        $this->assertTrue($result->success);
     }
 
     public function test_append_drops_repeated_transcript_prefix(): void

@@ -82,7 +82,7 @@ class GeminiProviderTest extends TestCase
             return str_contains($request->url(), 'models/gemini-3.8-flash:generateContent')
                 && str_contains($request->url(), 'key=test-gemini-key')
                 && ($generationConfig['responseMimeType'] ?? null) === 'application/json'
-                && ($generationConfig['thinkingConfig']['thinkingLevel'] ?? null) === 'medium'
+                && ($generationConfig['thinkingConfig']['thinkingLevel'] ?? null) === 'low'
                 && ! array_key_exists('temperature', $generationConfig)
                 && ($parts[1]['inline_data']['mime_type'] ?? null) === 'audio/mpeg'
                 && ($parts[1]['inline_data']['data'] ?? null) === base64_encode('audio-bytes');

@@ -267,7 +267,7 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
         $payload = [
             'model' => $model,
             'messages' => $messages,
-            'temperature' => $this->config->settings->temperature ?? 0.3,
+            'temperature' => $this->config->settings->temperature ?? 0,
             'max_tokens' => $this->resolveMaxOutputTokens($model),
             'response_format' => ['type' => 'json_object'],
         ];
@@ -449,7 +449,7 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
         ];
 
         if ($this->isGptTranscribeModel($model)) {
-            $fields['prompt'] = TranscriptionPrompt::speechApiPrompt();
+            $fields['prompt'] = TranscriptionPrompt::speechApiPrompt($request->context);
             $fields['include[]'] = 'logprobs';
         }
 

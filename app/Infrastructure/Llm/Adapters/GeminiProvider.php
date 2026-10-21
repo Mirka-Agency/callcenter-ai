@@ -612,13 +612,13 @@ class GeminiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
 
         if ($this->isGemini3($model)) {
             $config['thinkingConfig'] = [
-                'thinkingLevel' => 'medium',
+                'thinkingLevel' => 'low',
             ];
 
             return $config;
         }
 
-        $config['temperature'] = $this->config->settings->temperature ?? 0.3;
+        $config['temperature'] = $this->config->settings->temperature ?? 0;
 
         return $config;
     }

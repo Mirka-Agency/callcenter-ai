@@ -28,6 +28,21 @@ class TranscriptTriageTest extends TestCase
         $this->assertSame(6, $decision->inputTokens);
     }
 
+    public function test_a_long_transcript_skips_the_extra_classification_call(): void
+    {
+        $provider = \Mockery::mock(LlmProviderInterface::class, CompletesJsonPrompt::class);
+        $provider->shouldNotReceive('completeJson');
+
+        $decision = (new TranscriptTriage)->decide(
+            $provider,
+            'gpt-4o',
+            new PromptContextData(transcript: str_repeat('کارشناس: سلام. مشتری: بله. ', 40)),
+        );
+
+        $this->assertFalse($decision->skipFullAnalysis);
+        $this->assertSame(0, $decision->inputTokens);
+    }
+
     public function test_a_confident_empty_call_skips_the_full_analysis(): void
     {
         $decision = (new TranscriptTriage)->decide(
