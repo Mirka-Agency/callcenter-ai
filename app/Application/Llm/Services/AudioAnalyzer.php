@@ -14,6 +14,7 @@ use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Events\AnalysisFailed;
 use App\Domain\Llm\Events\ConversationAnalyzed;
 use App\Domain\Llm\Exceptions\LlmTransientException;
+use App\Domain\Llm\ValueObjects\LlmOperationResult;
 use App\Infrastructure\Llm\LlmOutboundGuard;
 use App\Models\Call;
 use App\Models\CallTranscript;
@@ -111,32 +112,47 @@ class AudioAnalyzer
             );
         }
 
-        $call->update(['processing_status' => CallProcessingStatus::Transcribing]);
+        $storedTranscript = $this->reusableTranscript($call);
+        $transcriptionInput = 0;
+        $transcriptionOutput = 0;
+        $transcriptionCached = 0;
+        $transcriptionDuration = 0;
 
-        $transcription = $transcriptionProvider->transcribe(new TranscriptionRequestData(
-            callId: $callId,
-            storagePath: $sendAudioFile ? $recording?->storage_path : null,
-            storageDisk: $sendAudioFile ? $recording?->storage_disk : null,
-            recordingUrl: $recording?->source_url ?? $callLog?->recording_url,
-            mimeType: $recording?->mime_type,
-            model: $requestedTranscriptionModel,
-            fallbackModel: $modelKey,
-            context: $context,
-            sendAudioFile: $sendAudioFile,
-            playbackUrl: $playbackUrl,
-        ));
+        if ($storedTranscript instanceof CallTranscript) {
+            $transcript = trim($storedTranscript->content);
+        } else {
+            $call->update(['processing_status' => CallProcessingStatus::Transcribing]);
 
-        if (! $transcription->success || ! is_array($transcription->data)) {
-            $this->fail($config, $callId, $transcription->error ?? 'تبدیل گفتار به متن ناموفق بود.');
+            $transcription = $transcriptionProvider->transcribe(new TranscriptionRequestData(
+                callId: $callId,
+                storagePath: $sendAudioFile ? $recording?->storage_path : null,
+                storageDisk: $sendAudioFile ? $recording?->storage_disk : null,
+                recordingUrl: $recording?->source_url ?? $callLog?->recording_url,
+                mimeType: $recording?->mime_type,
+                model: $requestedTranscriptionModel,
+                fallbackModel: $modelKey,
+                context: $context,
+                sendAudioFile: $sendAudioFile,
+                playbackUrl: $playbackUrl,
+            ));
+
+            if (! $transcription->success || ! is_array($transcription->data)) {
+                $this->fail($config, $callId, $transcription->error ?? 'تبدیل گفتار به متن ناموفق بود.');
+            }
+
+            $transcript = trim((string) ($transcription->data['transcript'] ?? ''));
+
+            if ($transcript === '') {
+                $this->fail($config, $callId, 'متن مکالمه از فایل صوتی استخراج نشد.');
+            }
+
+            $transcriptionInput = $transcription->inputTokens;
+            $transcriptionOutput = $transcription->outputTokens;
+            $transcriptionCached = $transcription->cachedTokens;
+            $transcriptionDuration = $transcription->durationMs;
+
+            $this->storeTranscript($call, $transcript, $transcription->model, $transcription->durationMs, $transcription->data['speakers'] ?? null);
         }
-
-        $transcript = trim((string) ($transcription->data['transcript'] ?? ''));
-
-        if ($transcript === '') {
-            $this->fail($config, $callId, 'متن مکالمه از فایل صوتی استخراج نشد.');
-        }
-
-        $this->storeTranscript($call, $transcript, $transcription->model, $transcription->durationMs, $transcription->data['speakers'] ?? null);
 
         $call->update(['processing_status' => CallProcessingStatus::Analyzing]);
         $tracker = app(CallProcessingTracker::class);
@@ -164,22 +180,44 @@ class AudioAnalyzer
             transcript: $transcript,
         );
 
-        $request = new AudioAnalysisRequestData(
-            callId: $callId,
-            model: $modelKey,
-            promptVersion: $config->settings->promptVersion,
-            context: $context,
-            organizationId: $call->organization_id,
-            organizationUserId: $call->organization_user_id,
-            voipCallLogId: $call->voip_call_log_id,
-            sendAudioFile: false,
-        );
+        $triage = app(TranscriptTriage::class)->decide($provider, $modelKey, $context);
 
-        $result = $provider->analyzeAudio($request);
+        if ($triage->skipFullAnalysis) {
+            $result = LlmOperationResult::success(
+                data: $triage->payload,
+                inputTokens: $triage->inputTokens,
+                outputTokens: $triage->outputTokens,
+                durationMs: $triage->durationMs,
+                model: $modelKey,
+                cachedTokens: $triage->cachedTokens,
+            );
+        } else {
+            $request = new AudioAnalysisRequestData(
+                callId: $callId,
+                model: $modelKey,
+                promptVersion: $config->settings->promptVersion,
+                context: $context,
+                organizationId: $call->organization_id,
+                organizationUserId: $call->organization_user_id,
+                voipCallLogId: $call->voip_call_log_id,
+                sendAudioFile: false,
+            );
 
-        if (! $result->success || ! $result->data) {
-            $this->fail($config, $callId, $result->error ?? 'Unknown analysis error');
+            $result = $provider->analyzeAudio($request);
+
+            if (! $result->success || ! $result->data) {
+                $this->fail($config, $callId, $result->error ?? 'Unknown analysis error');
+            }
         }
+
+        if (! is_array($result->data)) {
+            $this->fail($config, $callId, 'Unknown analysis error');
+        }
+
+        $triageInput = $triage->skipFullAnalysis ? 0 : $triage->inputTokens;
+        $triageOutput = $triage->skipFullAnalysis ? 0 : $triage->outputTokens;
+        $triageCached = $triage->skipFullAnalysis ? 0 : $triage->cachedTokens;
+        $triageDuration = $triage->skipFullAnalysis ? 0 : $triage->durationMs;
 
         $analysisData = $this->billing->buildAnalysisResult(
             response: $result->data,
@@ -188,9 +226,9 @@ class AudioAnalyzer
             organizationUserId: $call->organization_user_id,
             voipCallLogId: $call->voip_call_log_id,
             organizationLlmConnectionId: $config->connectionId ?: null,
-            inputTokens: $result->inputTokens + $transcription->inputTokens,
-            outputTokens: $result->outputTokens + $transcription->outputTokens,
-            processingDurationMs: $result->durationMs + $transcription->durationMs,
+            inputTokens: $result->inputTokens + $transcriptionInput + $triageInput,
+            outputTokens: $result->outputTokens + $transcriptionOutput + $triageOutput,
+            processingDurationMs: $result->durationMs + $transcriptionDuration + $triageDuration,
             promptVersion: $config->settings->promptVersion,
             callId: $callId,
             source: $call->source ?? ConversationSource::Voip,
@@ -201,6 +239,7 @@ class AudioAnalyzer
             ], fn (mixed $value) => is_string($value) && trim($value) !== ''),
             // When the model finished — call day stays on calls.* / occurredAt().
             analyzedAt: now(),
+            cachedTokens: $result->cachedTokens + $transcriptionCached + $triageCached,
         );
 
         $stored = $this->billing->storeAndCharge($analysisData, $this->analyses);
@@ -212,6 +251,17 @@ class AudioAnalyzer
         ));
 
         return $stored;
+    }
+
+    private function reusableTranscript(Call $call): ?CallTranscript
+    {
+        $existing = CallTranscript::query()->where('call_id', $call->id)->latest('id')->first();
+
+        if (! $existing || $existing->status !== CallTranscript::STATUS_COMPLETED) {
+            return null;
+        }
+
+        return trim($existing->content) === '' ? null : $existing;
     }
 
     private function fail(LlmConnectionConfig $config, int $callId, string $error): never

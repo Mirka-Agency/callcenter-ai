@@ -144,6 +144,9 @@ class PromptBuilderPersianLanguageTest extends TestCase
             PromptBuilder::persianStrictRetryPolicy(),
         ]);
 
+        $this->assertStringContainsString('موسیقی انتظار', PromptBuilder::transcriptAnalysisPolicy());
+        $this->assertStringContainsString('انتقال تماس به داخلی دیگر', PromptBuilder::transcriptAnalysisPolicy());
+
         foreach ([
             'Generate a detailed business summary',
             'You are provided with the current CRM user name',

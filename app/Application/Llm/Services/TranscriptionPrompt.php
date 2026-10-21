@@ -9,45 +9,77 @@ class TranscriptionPrompt
     public static function instructions(): string
     {
         return <<<'PROMPT'
-شما فقط رونویس مکالمه تلفنی فارسی هستید.
-خروجی فقط متن گفتگو باشد. خلاصه، تحلیل، عنوان، مارک‌داون و توضیح ننویسید.
-همه گفته‌ها را لفظ‌به‌لفظ و کامل بنویسید. هیچ جمله‌ای را حذف، ادغام، ترجمه یا اصلاح نکنید.
-هر نوبت گفتار در یک خط جدا و با یکی از این برچسب‌ها:
-کارشناس: ...
-مشتری: ...
-نامشخص: ...
-کلمات نامفهوم را با [نامفهوم] علامت بزنید و به‌جای آن حدس نزنید.
-اعداد، نام‌ها، کدها و اصطلاحات را همان‌طور که شنیده می‌شوند بنویسید.
-از اطلاعات زمینه فقط برای تشخیص کارشناس از مشتری استفاده کنید. اگر چیزی در صدا گفته نشده، آن را در متن نیاورید.
-تا آخرین جمله فایل را بنویسید.
+فقط رونویس مکالمه تلفنی فارسی. خروجی فقط خط گفتگو باشد. خلاصه، تحلیل و توضیح ننویس.
+نقش را قبل از نوشتن مشخص کن و برچسب را تا پایان عوض نکن:
+- نام سازمان و نام کارشناس در زمینه همیشه طرف کارشناس است. این نام‌ها را به مشتری نده.
+- تماس ورودی: کسی که جواب می‌دهد و سازمان را معرفی می‌کند کارشناس است. کسی که دلیل تماس را می‌گوید مشتری است.
+- تماس خروجی: کسی که زنگ زده و سازمان را معرفی می‌کند کارشناس است. طرف مقابل مشتری است.
+- پیگیری پول: کسی که از طرف سازمان طلب را می‌خواهد کارشناس است.
+- «من فلان هستم» فقط به همان گوینده تعلق دارد.
+هر نوبت یک خط: «کارشناس:» یا «مشتری:». نوبت‌های پشت‌سرهم یک نفر را در همان خط ادغام کن. از «نامشخص» فقط وقتی استفاده کن که واقعاً معلوم نیست.
+بوق، زنگ، موسیقی انتظار، آهنگ بین داخلی، سکوت و صدای دکمه را حذف کن و به‌جایشان کلمه نساز.
+«آهان»، «خب» و «بله» تکراری را اگر جواب سؤال نیستند حذف کن. نام، عدد، قیمت، کد، اعتراض و قول را همان‌طور که گفته شده بنویس و حدس نزن. حرف نامفهوم انسان را [نامفهوم] بگذار.
+چیزی را که در صدا گفته نشده از زمینه وارد متن نکن. تا آخرین حرف واقعی را بنویس.
 PROMPT;
     }
 
-    public static function userTurn(?PromptContextData $context, string $transcriptSoFar = ''): string
+    public static function speechApiPrompt(?PromptContextData $context = null): string
     {
-        $lines = ['فایل صوتی مکالمه پیوست شده است. آن را کامل به متن تبدیل کنید.'];
+        $parts = ['فقط حرف واقعی را بنویس. بوق، زنگ و موسیقی انتظار را حذف کن و به‌جایشان کلمه نساز. هر نوبت با «کارشناس:» یا «مشتری:» باشد.'];
 
         $organization = trim((string) $context?->organizationName);
         $agent = trim((string) $context?->employeeName);
         $direction = trim((string) $context?->callDirection);
 
         if ($organization !== '') {
-            $lines[] = "نام سازمان کارشناس: {$organization}";
+            $parts[] = "سازمان کارشناس: {$organization}. این نام شرکت مشتری نیست.";
         }
         if ($agent !== '') {
-            $lines[] = "نام کارشناس: {$agent}";
+            $parts[] = "نام کارشناس: {$agent}. این نام مشتری نیست.";
         }
         if ($direction !== '') {
-            $lines[] = "جهت تماس: {$direction}";
+            $parts[] = "جهت تماس: {$direction}.";
+        }
+
+        return implode(' ', $parts);
+    }
+
+    public static function userTurn(?PromptContextData $context, string $transcriptSoFar = ''): string
+    {
+        $lines = ['صدا را رونویسی کن. بوق و موسیقی انتظار را حذف کن.'];
+
+        $organization = trim((string) $context?->organizationName);
+        $agent = trim((string) $context?->employeeName);
+        $direction = trim((string) $context?->callDirection);
+
+        if ($organization !== '') {
+            $lines[] = "سازمان کارشناس: {$organization}. این نام شرکت مشتری نیست.";
+        }
+        if ($agent !== '') {
+            $lines[] = "نام کارشناس: {$agent}. این نام مشتری نیست.";
+        }
+        if ($direction !== '') {
+            $lines[] = 'جهت: '.self::directionHint($direction);
         }
 
         $soFar = trim($transcriptSoFar);
         if ($soFar !== '') {
-            $tail = mb_substr($soFar, -800);
-            $lines[] = "رونویسی تا اینجا انجام شده و به‌خاطر طول فایل قطع شده است. از ادامه همان‌جا بنویسید و بخش زیر را تکرار نکنید:\n{$tail}";
+            $tail = mb_substr($soFar, -240);
+            $lines[] = "ادامه بده و این بخش را تکرار نکن:\n{$tail}";
         }
 
         return implode("\n", $lines);
+    }
+
+    private static function directionHint(string $direction): string
+    {
+        $normalized = mb_strtolower(trim($direction));
+
+        return match ($normalized) {
+            'inbound', 'in', 'incoming' => 'ورودی. پاسخ‌دهنده کارشناس است.',
+            'outbound', 'out', 'outgoing' => 'خروجی. تماس‌گیرنده کارشناس است.',
+            default => $direction,
+        };
     }
 
     public static function append(string $existing, string $next): string

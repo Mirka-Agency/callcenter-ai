@@ -46,4 +46,13 @@ class PromptBuilderCustomerIdentityTest extends TestCase
         $this->assertStringNotContainsString('Do NOT identify these values as customer information', $policy);
         $this->assertStringNotContainsString('You are provided with the current CRM user name', $policy);
     }
+
+    public function test_speaker_role_policy_is_in_the_system_prompt(): void
+    {
+        $prompt = (new PromptBuilder)->systemPrompt();
+
+        $this->assertStringContainsString(PromptBuilder::speakerRolePolicy(), $prompt);
+        $this->assertStringContainsString('برچسب خط را عوض نکن', $prompt);
+        $this->assertStringContainsString('پیگیری پول', $prompt);
+    }
 }

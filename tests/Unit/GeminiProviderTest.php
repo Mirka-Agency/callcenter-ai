@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Application\Llm\Services\AudioSegmenter;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\DTOs\LlmConnectionConfig;
 use App\Domain\Llm\DTOs\LlmCredentials;
@@ -81,12 +82,12 @@ class GeminiProviderTest extends TestCase
             return str_contains($request->url(), 'models/gemini-3.8-flash:generateContent')
                 && str_contains($request->url(), 'key=test-gemini-key')
                 && ($generationConfig['responseMimeType'] ?? null) === 'application/json'
-                && ($generationConfig['thinkingConfig']['thinkingLevel'] ?? null) === 'medium'
+                && ($generationConfig['thinkingConfig']['thinkingLevel'] ?? null) === 'low'
                 && ! array_key_exists('temperature', $generationConfig)
                 && ($parts[1]['inline_data']['mime_type'] ?? null) === 'audio/mpeg'
                 && ($parts[1]['inline_data']['data'] ?? null) === base64_encode('audio-bytes');
         });
-        Http::assertSentCount(2);
+        Http::assertSentCount(3);
     }
 
     public function test_english_analysis_is_accepted_without_a_second_model_request(): void
@@ -139,7 +140,7 @@ class GeminiProviderTest extends TestCase
         Http::assertSent(function ($request) {
             return str_contains($request->url(), 'models/gemini-3.8-flash:generateContent');
         });
-        Http::assertSentCount(2);
+        Http::assertSentCount(3);
     }
 
     public function test_analyze_audio_without_api_key_and_audio_refuses_real_analysis(): void
@@ -272,5 +273,125 @@ class GeminiProviderTest extends TestCase
 
         $this->assertTrue($result->success);
         $this->assertSame('gemini-2.5-flash', $result->model);
+    }
+
+    public function test_analyze_audio_uses_a_cached_system_prompt_when_the_provider_stores_one(): void
+    {
+        $analysisJson = json_encode([
+            'score' => 80,
+            'summary' => 'خلاصه فارسی',
+            'sentiment' => 'positive',
+            'strengths' => [],
+            'weaknesses' => [],
+            'next_actions' => [],
+        ], JSON_UNESCAPED_UNICODE);
+
+        Http::fake(function ($request) use ($analysisJson) {
+            if (str_contains($request->url(), 'example.com')) {
+                return Http::response('audio-bytes');
+            }
+
+            if (str_contains($request->url(), '/cachedContents')) {
+                return Http::response(['name' => 'cachedContents/call-policy']);
+            }
+
+            $body = $request->data();
+            $this->assertSame('cachedContents/call-policy', $body['cachedContent'] ?? null);
+            $this->assertArrayNotHasKey('system_instruction', $body);
+
+            return Http::response([
+                'candidates' => [[
+                    'content' => ['parts' => [['text' => $analysisJson]]],
+                ]],
+                'usageMetadata' => [
+                    'promptTokenCount' => 10000,
+                    'cachedContentTokenCount' => 9000,
+                    'candidatesTokenCount' => 200,
+                ],
+            ]);
+        });
+
+        $provider = new GeminiProvider;
+        $provider->configure(new LlmConnectionConfig(
+            connectionId: null,
+            organizationId: 1,
+            providerCode: LlmProviderCode::Gemini,
+            name: 'Gemini',
+            credentials: new LlmCredentials(apiKey: 'test-gemini-key'),
+            settings: new LlmSettings,
+            isDefault: true,
+            isActive: true,
+        ));
+
+        $result = $provider->analyzeAudio(new AudioAnalysisRequestData(
+            callId: 4,
+            recordingUrl: 'https://example.com/recording.mp3',
+            model: 'gemini-3.8-flash',
+            sendAudioFile: true,
+            mimeType: 'audio/mpeg',
+        ));
+
+        $this->assertTrue($result->success);
+        $this->assertSame(10000, $result->inputTokens);
+        $this->assertSame(9000, $result->cachedTokens);
+    }
+
+    public function test_transcribe_sends_each_segment_once_instead_of_repeating_the_whole_file(): void
+    {
+        $this->app->instance(AudioSegmenter::class, new class extends AudioSegmenter
+        {
+            public function segments(string $bytes, string $format): ?array
+            {
+                return ['chunk-one', 'chunk-two'];
+            }
+        });
+
+        $seen = [];
+
+        Http::fake(function ($request) use (&$seen) {
+            if (str_contains($request->url(), 'example.com')) {
+                return Http::response('full-audio');
+            }
+
+            $audio = $request->data()['contents'][0]['parts'][1]['inline_data']['data'] ?? '';
+            $seen[] = $audio;
+            $text = $audio === base64_encode('chunk-one') ? 'کارشناس: سلام' : 'مشتری: بله';
+
+            return Http::response([
+                'candidates' => [[
+                    'finishReason' => 'STOP',
+                    'content' => ['parts' => [['text' => $text]]],
+                ]],
+                'usageMetadata' => ['promptTokenCount' => 5, 'candidatesTokenCount' => 2],
+            ]);
+        });
+
+        $provider = new GeminiProvider;
+        $provider->configure(new LlmConnectionConfig(
+            connectionId: null,
+            organizationId: 1,
+            providerCode: LlmProviderCode::Gemini,
+            name: 'Gemini',
+            credentials: new LlmCredentials(apiKey: 'test-gemini-key'),
+            settings: new LlmSettings,
+            isDefault: true,
+            isActive: true,
+        ));
+
+        $result = $provider->transcribe(new TranscriptionRequestData(
+            callId: 8,
+            recordingUrl: 'https://example.com/recording.mp3',
+            fallbackModel: 'gemini-3.8-flash',
+            sendAudioFile: true,
+            mimeType: 'audio/mpeg',
+        ));
+
+        $this->assertTrue($result->success);
+        $this->assertSame(
+            [base64_encode('chunk-one'), base64_encode('chunk-two')],
+            $seen,
+        );
+        $this->assertSame("کارشناس: سلام\nمشتری: بله", $result->data['transcript'] ?? null);
+        $this->assertSame(10, $result->inputTokens);
     }
 }

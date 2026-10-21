@@ -33,7 +33,7 @@ class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 3;
 
-    public int $timeout = 900;
+    public int $timeout = 1140;
 
     /** @return list<int> */
     public function backoff(): array

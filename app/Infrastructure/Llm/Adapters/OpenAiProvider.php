@@ -4,6 +4,8 @@ namespace App\Infrastructure\Llm\Adapters;
 
 use App\Application\Llm\Services\PromptBuilder;
 use App\Application\Llm\Services\TranscriptionPrompt;
+use App\Application\Llm\Services\TranscriptSanitizer;
+use App\Domain\Llm\Contracts\CompletesJsonPrompt;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
@@ -15,7 +17,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-class OpenAiProvider extends AbstractLlmProvider
+class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
 {
     public function getProviderCode(): LlmProviderCode
     {
@@ -123,8 +125,7 @@ class OpenAiProvider extends AbstractLlmProvider
             ]);
         }
 
-        $inputTokens = (int) ($body['usage']['prompt_tokens'] ?? $parsed['input_tokens'] ?? 0);
-        $outputTokens = (int) ($body['usage']['completion_tokens'] ?? $parsed['output_tokens'] ?? 0);
+        [$inputTokens, $outputTokens, $cachedTokens] = $this->usageTokens(is_array($body) ? ($body['usage'] ?? []) : [], $parsed);
 
         return LlmOperationResult::success(
             data: $parsed,
@@ -134,6 +135,62 @@ class OpenAiProvider extends AbstractLlmProvider
             cost: 0,
             durationMs: (int) ((microtime(true) - $started) * 1000),
             model: (string) ($parsed['model'] ?? $model),
+            cachedTokens: $cachedTokens,
+        );
+    }
+
+    public function completeJson(string $model, string $system, string $user, int $maxOutputTokens = 512): LlmOperationResult
+    {
+        if (! $this->hasApiKey()) {
+            return $this->failure('برای تحلیل واقعی تماس، کلید API هوش مصنوعی باید در پنل ادمین تنظیم شود.');
+        }
+
+        if ($refused = $this->refuseIfRemoteDisabled()) {
+            return $refused;
+        }
+
+        $started = microtime(true);
+        $payload = [
+            'model' => $model,
+            'messages' => [
+                ['role' => 'system', 'content' => $system],
+                ['role' => 'user', 'content' => $user],
+            ],
+            'temperature' => 0,
+            'max_tokens' => max(1, $maxOutputTokens),
+            'response_format' => ['type' => 'json_object'],
+        ];
+
+        if ($this->isDeepSeekModel($model)) {
+            $payload['thinking'] = ['type' => 'disabled'];
+            $payload['reasoning_effort'] = 'none';
+        }
+
+        $response = Http::withToken($this->config->credentials->apiKey)
+            ->timeout(60)
+            ->post(rtrim($this->resolveBaseUrl(), '/').'/chat/completions', $payload);
+
+        if (! $response->successful()) {
+            return $this->failure('JSON completion failed (HTTP '.$response->status().').');
+        }
+
+        $body = $response->json();
+        $choice = is_array($body) ? ($body['choices'][0] ?? []) : [];
+        $parsed = $this->parseJsonResponse($this->messageContent($choice));
+
+        if (! $parsed) {
+            return $this->failure('Failed to parse JSON completion.');
+        }
+
+        [$inputTokens, $outputTokens, $cachedTokens] = $this->usageTokens(is_array($body) ? ($body['usage'] ?? []) : [], $parsed);
+
+        return LlmOperationResult::success(
+            data: $parsed,
+            inputTokens: $inputTokens,
+            outputTokens: $outputTokens,
+            durationMs: (int) ((microtime(true) - $started) * 1000),
+            model: $model,
+            cachedTokens: $cachedTokens,
         );
     }
 
@@ -148,6 +205,25 @@ class OpenAiProvider extends AbstractLlmProvider
         }
 
         return $this->transcribeWithSpeechApi($request, $this->speechTranscriptionModel($request));
+    }
+
+    /**
+     * @param  array<string, mixed>  $usage
+     * @param  array<string, mixed>  $parsed
+     * @return array{0: int, 1: int, 2: int}
+     */
+    private function usageTokens(array $usage, array $parsed = []): array
+    {
+        $input = (int) ($usage['prompt_tokens'] ?? $parsed['input_tokens'] ?? 0);
+        $output = (int) ($usage['completion_tokens'] ?? $parsed['output_tokens'] ?? 0);
+        $details = $usage['prompt_tokens_details'] ?? [];
+        $cached = (int) (is_array($details) ? ($details['cached_tokens'] ?? 0) : 0);
+
+        if ($cached === 0) {
+            $cached = (int) ($usage['prompt_cache_hit_tokens'] ?? 0);
+        }
+
+        return [$input, $output, max(0, min($cached, $input))];
     }
 
     /** @return array{0: ?string, 1: string, 2: ?string} */
@@ -191,7 +267,7 @@ class OpenAiProvider extends AbstractLlmProvider
         $payload = [
             'model' => $model,
             'messages' => $messages,
-            'temperature' => $this->config->settings->temperature ?? 0.3,
+            'temperature' => $this->config->settings->temperature ?? 0,
             'max_tokens' => $this->resolveMaxOutputTokens($model),
             'response_format' => ['type' => 'json_object'],
         ];
@@ -357,7 +433,80 @@ class OpenAiProvider extends AbstractLlmProvider
         return (string) config('llm.transcription.model', 'whisper-1');
     }
 
-    private function transcribeWithSpeechApi(TranscriptionRequestData $request, string $model): LlmOperationResult
+    /**
+     * gpt-4o-transcribe and ElevenLabs Scribe reject verbose_json.
+     * Whisper copies the prompt into the transcript, so an instruction sentence must not be sent to it.
+     * Admin may store scribe-v2; AvalAI's transcription id is scribe_v2.
+     *
+     * @return array<string, string>
+     */
+    private function speechTranscriptionFields(TranscriptionRequestData $request, string $model): array
+    {
+        $fields = [
+            'model' => $model,
+            'language' => $request->language ?: (string) config('llm.transcription.language', 'fa'),
+            'response_format' => $this->speechResponseFormat($model),
+        ];
+
+        if ($this->isGptTranscribeModel($model)) {
+            $fields['prompt'] = TranscriptionPrompt::speechApiPrompt($request->context);
+            $fields['include[]'] = 'logprobs';
+        }
+
+        return $fields;
+    }
+
+    private function speechResponseFormat(string $model): string
+    {
+        if ($this->isGptTranscribeModel($model) || $this->isScribeModel($model)) {
+            return 'json';
+        }
+
+        return 'verbose_json';
+    }
+
+    /**
+     * scribe-v2 is the admin spelling of AvalAI / ElevenLabs scribe_v2.
+     */
+    private function canonicalSpeechModel(string $model): string
+    {
+        $canonical = match ($this->speechModelKey($model)) {
+            'scribe-v1', 'scribe_v1' => 'scribe_v1',
+            'scribe-v2', 'scribe_v2' => 'scribe_v2',
+            default => null,
+        };
+
+        if ($canonical === null || $canonical === $this->speechModelKey($model)) {
+            return $model;
+        }
+
+        $separator = strrpos($model, '/');
+
+        if ($separator === false) {
+            return $canonical;
+        }
+
+        return substr($model, 0, $separator + 1).$canonical;
+    }
+
+    private function speechModelKey(string $model): string
+    {
+        $key = strtolower(trim($model));
+
+        return str_contains($key, '/') ? (string) substr($key, strrpos($key, '/') + 1) : $key;
+    }
+
+    private function isGptTranscribeModel(string $model): bool
+    {
+        return in_array($this->speechModelKey($model), ['gpt-4o-transcribe', 'gpt-4o-mini-transcribe'], true);
+    }
+
+    private function isScribeModel(string $model): bool
+    {
+        return in_array($this->speechModelKey($model), ['scribe-v1', 'scribe_v1', 'scribe-v2', 'scribe_v2'], true);
+    }
+
+    private function transcribeWithSpeechApi(TranscriptionRequestData $request, string $requestedModel): LlmOperationResult
     {
         $audio = $this->readRecordingBytes($request);
 
@@ -368,7 +517,7 @@ class OpenAiProvider extends AbstractLlmProvider
         [$bytes, $format] = $audio;
 
         if (strlen($bytes) > 24 * 1024 * 1024) {
-            return $this->failure('حجم فایل صوتی برای Whisper بیشتر از حد مجاز است.');
+            return $this->failure('حجم فایل صوتی برای تبدیل گفتار به متن بیشتر از حد مجاز است.');
         }
 
         $started = microtime(true);
@@ -377,28 +526,45 @@ class OpenAiProvider extends AbstractLlmProvider
             baseUrl: $this->resolveBaseUrl(),
         );
 
-        $result = $client->transcribeFile($bytes, 'recording.'.$format, [
-            'model' => $model,
-            'language' => $request->language ?: (string) config('llm.transcription.language', 'fa'),
-            'response_format' => 'verbose_json',
-            'prompt' => 'مکالمه فارسی مرکز تماس بین کارشناس و مشتری.',
-        ]);
+        $model = $this->canonicalSpeechModel($requestedModel);
+        $fields = $this->speechTranscriptionFields($request, $model);
+        $result = $client->transcribeFile($bytes, 'recording.'.$format, $fields);
+
+        if (! $result->success && isset($fields['include[]']) && $this->providerRejectedLogprobs($result)) {
+            unset($fields['include[]']);
+            $result = $client->transcribeFile($bytes, 'recording.'.$format, $fields);
+        }
+
+        if (! $result->success && $model !== $requestedModel && $this->providerRejectedModel($result)) {
+            $fields['model'] = $requestedModel;
+            $result = $client->transcribeFile($bytes, 'recording.'.$format, $fields);
+
+            if ($result->success) {
+                $model = $requestedModel;
+            }
+        }
 
         if (! $result->success || ! is_array($result->data)) {
             return $result;
         }
 
+        $sanitizer = app(TranscriptSanitizer::class);
         $transcript = $this->formatSpeechTranscript($result->data);
 
         if ($transcript === '') {
             return $this->failure('متن مکالمه از فایل صوتی استخراج نشد.');
         }
 
+        $speakers = array_values(array_filter(
+            $sanitizer->reliableSegments($this->speechSegments($result->data)),
+            fn (array $segment): bool => $sanitizer->clean((string) ($segment['text'] ?? '')) !== '',
+        ));
+
         return LlmOperationResult::success(
             data: [
                 'transcript' => $transcript,
                 'language' => $result->data['language'] ?? $request->language,
-                'speakers' => $this->speechSegments($result->data),
+                'speakers' => $speakers,
             ],
             message: 'Transcription completed.',
             inputTokens: $result->inputTokens,
@@ -411,9 +577,11 @@ class OpenAiProvider extends AbstractLlmProvider
     /** @param  array<string, mixed>  $body */
     private function formatSpeechTranscript(array $body): string
     {
+        $sanitizer = app(TranscriptSanitizer::class);
+        $segments = $this->speechSegments($body);
         $lines = [];
 
-        foreach ($this->speechSegments($body) as $segment) {
+        foreach ($sanitizer->reliableSegments($segments) as $segment) {
             $text = trim((string) ($segment['text'] ?? ''));
             if ($text === '') {
                 continue;
@@ -423,11 +591,43 @@ class OpenAiProvider extends AbstractLlmProvider
             $lines[] = $speaker !== '' ? $this->labelSpeaker($speaker).': '.$text : $text;
         }
 
-        if ($lines !== []) {
-            return implode("\n", $lines);
+        if ($segments !== []) {
+            $transcript = implode("\n", $lines);
+        } else {
+            $transcript = TranscriptionPrompt::unwrap((string) ($body['text'] ?? ''));
+            $logprobs = $body['logprobs'] ?? null;
+            if (is_array($logprobs)) {
+                $transcript = $sanitizer->dropLowConfidenceSpans($transcript, $logprobs);
+            }
         }
 
-        return TranscriptionPrompt::unwrap((string) ($body['text'] ?? ''));
+        return $sanitizer->clean($transcript);
+    }
+
+    private function providerRejectedLogprobs(LlmOperationResult $result): bool
+    {
+        $error = mb_strtolower((string) $result->error);
+
+        return str_contains($error, 'http 400')
+            && (str_contains($error, 'logprob') || str_contains($error, 'include'));
+    }
+
+    private function providerRejectedModel(LlmOperationResult $result): bool
+    {
+        $error = mb_strtolower((string) $result->error);
+        $rejected = str_contains($error, 'http 400') || str_contains($error, 'http 404');
+
+        if (! $rejected) {
+            return false;
+        }
+
+        foreach (['model', 'not found', 'does not exist', 'unsupported', 'unknown'] as $needle) {
+            if (str_contains($error, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

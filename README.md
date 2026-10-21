@@ -149,7 +149,7 @@ Or run services individually:
 
 ```bash
 php artisan serve
-php artisan queue:listen --queue=voip,analysis,followup --tries=3 --timeout=600
+php artisan queue:listen --queue=voip,analysis,followup --tries=3 --timeout=1200
 php artisan reverb:start
 npm run dev
 ```
@@ -182,7 +182,7 @@ The default `web` container runs **Nginx**, **PHP-FPM**, **queue workers**, and 
 | `scheduler` | `scheduler` only |
 | `reverb` | `php artisan reverb:start` |
 
-Optional queue tuning env vars: `ANALYSIS_QUEUE_WORKERS`, `QUEUE_WORKER_QUEUES`, `QUEUE_WORKER_SLEEP`, `QUEUE_WORKER_TRIES` (default 5), `QUEUE_WORKER_TIMEOUT` (default 600), `DB_QUEUE_RETRY_AFTER` (default 630 — must exceed job timeout).
+Optional queue tuning env vars: `ANALYSIS_QUEUE_WORKERS`, `QUEUE_WORKER_QUEUES`, `QUEUE_WORKER_SLEEP`, `QUEUE_WORKER_TRIES` (default 3), `QUEUE_WORKER_TIMEOUT` (default 1200), `DB_QUEUE_RETRY_AFTER` (default 1260 — must exceed the worker timeout). The analysis job allows 1140 seconds.
 
 Health check: `GET /up`
 
