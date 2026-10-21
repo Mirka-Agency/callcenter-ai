@@ -435,7 +435,8 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
 
     /**
      * gpt-4o-transcribe and ElevenLabs Scribe reject verbose_json.
-     * Whisper copies the prompt into the transcript, so an instruction sentence must not be sent to it.
+     * Whisper, including groq.whisper-large-v3, copies an instruction into the transcript.
+     * Its prompt is only a short spelling list. Speaker labels are added after the text returns.
      * Admin may store scribe-v2; AvalAI's transcription id is scribe_v2.
      *
      * @return array<string, string>
@@ -451,6 +452,12 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
         if ($this->isGptTranscribeModel($model)) {
             $fields['prompt'] = TranscriptionPrompt::speechApiPrompt($request->context);
             $fields['include[]'] = 'logprobs';
+        }
+
+        if ($this->isWhisperModel($model)) {
+            $fields['temperature'] = '0';
+            $fields['prompt'] = TranscriptionPrompt::whisperPrompt($request->context);
+            $fields['timestamp_granularities[]'] = 'segment';
         }
 
         return $fields;
@@ -501,6 +508,11 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
         return in_array($this->speechModelKey($model), ['gpt-4o-transcribe', 'gpt-4o-mini-transcribe'], true);
     }
 
+    private function isWhisperModel(string $model): bool
+    {
+        return TranscriptionPrompt::isWhisperModel($model);
+    }
+
     private function isScribeModel(string $model): bool
     {
         return in_array($this->speechModelKey($model), ['scribe-v1', 'scribe_v1', 'scribe-v2', 'scribe_v2'], true);
@@ -532,6 +544,17 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
 
         if (! $result->success && isset($fields['include[]']) && $this->providerRejectedLogprobs($result)) {
             unset($fields['include[]']);
+            $result = $client->transcribeFile($bytes, 'recording.'.$format, $fields);
+        }
+
+        if (! $result->success && $this->isWhisperModel($model) && $this->providerRejectedWhisperOption($result)) {
+            unset($fields['timestamp_granularities[]']);
+            $fields['response_format'] = 'json';
+            $result = $client->transcribeFile($bytes, 'recording.'.$format, $fields);
+        }
+
+        if (! $result->success && isset($fields['prompt']) && $this->providerRejectedField($result, 'prompt')) {
+            unset($fields['prompt']);
             $result = $client->transcribeFile($bytes, 'recording.'.$format, $fields);
         }
 
@@ -606,10 +629,26 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
 
     private function providerRejectedLogprobs(LlmOperationResult $result): bool
     {
+        return $this->providerRejectedField($result, 'logprob')
+            || $this->providerRejectedField($result, 'include');
+    }
+
+    private function providerRejectedWhisperOption(LlmOperationResult $result): bool
+    {
+        foreach (['verbose', 'timestamp', 'granular', 'response_format', 'response format'] as $needle) {
+            if ($this->providerRejectedField($result, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function providerRejectedField(LlmOperationResult $result, string $needle): bool
+    {
         $error = mb_strtolower((string) $result->error);
 
-        return str_contains($error, 'http 400')
-            && (str_contains($error, 'logprob') || str_contains($error, 'include'));
+        return str_contains($error, 'http 400') && str_contains($error, $needle);
     }
 
     private function providerRejectedModel(LlmOperationResult $result): bool

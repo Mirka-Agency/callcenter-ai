@@ -44,6 +44,96 @@ PROMPT;
         return implode(' ', $parts);
     }
 
+    /**
+     * Groq and OpenAI Whisper use this as a style and spelling hint.
+     * An instruction is copied into the transcript, so this stays a short word list.
+     */
+    public static function whisperPrompt(?PromptContextData $context = null): string
+    {
+        $names = [];
+
+        foreach ([$context?->employeeName, $context?->organizationName] as $value) {
+            $value = trim((string) $value);
+            if ($value !== '') {
+                $names[] = $value;
+            }
+        }
+
+        $prompt = 'واژه‌ها: سلام، وقت بخیر، بله، متوجه شدم';
+        if ($names !== []) {
+            $prompt .= '، '.implode('، ', $names);
+        }
+
+        return mb_substr($prompt.'.', 0, 180);
+    }
+
+    public static function isWhisperModel(string $model): bool
+    {
+        $key = strtolower(trim($model));
+        if (str_contains($key, '/')) {
+            $key = (string) substr($key, (int) strrpos($key, '/') + 1);
+        }
+
+        return str_contains($key, 'whisper');
+    }
+
+    public static function needsSpeakerLabels(string $transcript): bool
+    {
+        $lines = preg_split('/\R/u', trim($transcript)) ?: [];
+        $lines = array_values(array_filter(
+            array_map(trim(...), $lines),
+            fn (string $line): bool => $line !== '',
+        ));
+
+        if ($lines === []) {
+            return false;
+        }
+
+        $labeled = 0;
+        foreach ($lines as $line) {
+            if (preg_match('/^(?:کارشناس|مشتری)\s*[:：]/u', $line) === 1) {
+                $labeled++;
+            }
+        }
+
+        return ($labeled / count($lines)) < 0.5;
+    }
+
+    public static function speakerTurnSystem(): string
+    {
+        return <<<'PROMPT'
+این متن رونویسی ویسپر است و گوینده ندارد. فقط همان واژه‌ها را به نوبت گفتگو تقسیم کن.
+فقط یک شیء JSON با کلید transcript برگردان.
+هر نوبت یک خط و با «کارشناس:» یا «مشتری:» شروع شود.
+نام کارشناس و نام سازمان در زمینه، طرف کارشناس است. این نام‌ها را به مشتری نده.
+تماس ورودی: کسی که سازمان را معرفی می‌کند کارشناس است. تماس خروجی: کسی که زنگ زده و سازمان را معرفی می‌کند کارشناس است.
+پیگیری پول: کسی که از طرف سازمان طلب را می‌خواهد کارشناس است. «من فلان هستم» فقط به همان گوینده تعلق دارد.
+جمله تازه نساز، خلاصه نکن و واژه‌ای را حذف نکن. برچسب نامشخص نگذار.
+PROMPT;
+    }
+
+    public static function speakerTurnUser(?PromptContextData $context, string $transcript): string
+    {
+        $lines = ['متن زیر را بدون تغییر واژه‌ها به خط‌های کارشناس و مشتری تقسیم کن.'];
+        $organization = trim((string) $context?->organizationName);
+        $agent = trim((string) $context?->employeeName);
+        $direction = trim((string) $context?->callDirection);
+
+        if ($organization !== '') {
+            $lines[] = "سازمان کارشناس: {$organization}";
+        }
+        if ($agent !== '') {
+            $lines[] = "نام کارشناس: {$agent}";
+        }
+        if ($direction !== '') {
+            $lines[] = 'جهت: '.self::directionHint($direction);
+        }
+
+        $lines[] = "متن:\n".trim($transcript);
+
+        return implode("\n", $lines);
+    }
+
     public static function userTurn(?PromptContextData $context, string $transcriptSoFar = ''): string
     {
         $lines = ['صدا را رونویسی کن. بوق و موسیقی انتظار را حذف کن.'];

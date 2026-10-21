@@ -257,7 +257,8 @@ class TranscriptSanitizer
             || str_contains($speech, 'به‌جایشان کلمه یا شعر نساز')
             || str_contains($speech, 'به‌جایشان کلمه نساز')
             || str_contains($speech, 'این نام شرکت مشتری نیست')
-            || str_contains($speech, 'رونویسی لفظ‌به‌لفظ مکالمه تلفنی فارسی');
+            || str_contains($speech, 'رونویسی لفظ‌به‌لفظ مکالمه تلفنی فارسی')
+            || str_contains($speech, 'واژه‌ها:');
     }
 
     private function stripSpeaker(string $line): string

@@ -150,8 +150,21 @@ class AudioAnalyzer
             $transcriptionOutput = $transcription->outputTokens;
             $transcriptionCached = $transcription->cachedTokens;
             $transcriptionDuration = $transcription->durationMs;
+        }
 
-            $this->storeTranscript($call, $transcript, $transcription->model, $transcription->durationMs, $transcription->data['speakers'] ?? null);
+        $turns = app(SpeakerTurnLabeler::class)->label($provider, $modelKey, $context, $transcript);
+        $transcript = $turns['transcript'];
+        $transcriptionInput += $turns['inputTokens'];
+        $transcriptionOutput += $turns['outputTokens'];
+        $transcriptionCached += $turns['cachedTokens'];
+        $transcriptionDuration += $turns['durationMs'];
+
+        if ($storedTranscript instanceof CallTranscript) {
+            if ($storedTranscript->content !== $transcript) {
+                $storedTranscript->update(['content' => $transcript]);
+            }
+        } else {
+            $this->storeTranscript($call, $transcript, $transcription->model ?? $requestedTranscriptionModel, $transcriptionDuration, $transcription->data['speakers'] ?? null);
         }
 
         $call->update(['processing_status' => CallProcessingStatus::Analyzing]);
