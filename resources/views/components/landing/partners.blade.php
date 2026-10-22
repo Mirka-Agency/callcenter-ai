@@ -52,7 +52,7 @@
                 همکاری با شرکت‌ها
             </p>
             <h2 id="partners-title" class="partners__title">همراهان مسیر هوشمندسازی</h2>
-            <p class="partners__lead">سازمان‌ها و تیم‌های حرفه‌ای برای تحلیل هوشمند تماس‌ها و بهبود عملکرد، آوایار را انتخاب کرده‌اند.</p>
+            <p class="partners__lead">سازمان‌های نتیجه‌محور برای ارتقای استاندارد مرکز تماس، پایش مستمر کیفیت مکالمات و افزایش نرخ تبدیل فروش، آوایار را به‌عنوان شریک تحلیلی خود برگزیده‌اند.</p>
         @endif
 
         <div class="partners__viewport" data-partners-viewport>
@@ -99,7 +99,7 @@
         </div>
 
         @if ($intro)
-            <p class="partners__note">و ده‌ها تیم دیگر برای تحلیل هوشمند تماس‌ها به آوایار اعتماد کرده‌اند.</p>
+            <p class="partners__note">همراه با ده‌ها تیم فروش، پشتیبانی و امور مشتریان که تصمیم‌گیری روزانه خود را بر پایه داده‌های آوایار بنا کرده‌اند.</p>
         @endif
         <p class="partners__sr" data-partners-status aria-live="polite"></p>
     </div>

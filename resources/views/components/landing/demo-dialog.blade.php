@@ -3,7 +3,7 @@
             <div class="consult-dialog__head">
                 <div>
                     <h2 id="demo-title">درخواست دمو</h2>
-                    <p>اطلاعات تماس را بگذارید تا دموی آوایار را برای سازمانتان هماهنگ کنیم.</p>
+                    <p>اطلاعات سازمان خود را وارد فرمایید تا جلسه ارائه اختصاصی و دموی زنده آوایار برای تیم شما هماهنگ شود.</p>
                 </div>
                 <button type="button" class="consult-dialog__close" data-demo-close aria-label="بستن">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -73,8 +73,8 @@
             </form>
 
             <div id="demo-success" class="consult-success" hidden>
-                <h3>درخواست شما ثبت شد</h3>
-                <p>به‌زودی برای هماهنگی دمو با شما تماس می‌گیریم.</p>
+                <h3>درخواست دموی شما با موفقیت ثبت شد</h3>
+                <p>تیم ما به‌زودی جهت هماهنگی زمان جلسه دمو با شما تماس خواهد گرفت.</p>
                 <button type="button" data-demo-close>بستن</button>
             </div>
         </div>

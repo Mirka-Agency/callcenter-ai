@@ -215,7 +215,7 @@
     top: auto;
     right: auto;
     bottom: 0.15rem;
-    left: 1.15rem;
+    left: 0.5rem;
 }
 
 .landing-hero__chip--call::after,
@@ -228,14 +228,14 @@
 
 .landing-hero__chip--opp::after {
     bottom: calc(100% + 3px);
-    left: 28%;
+    left: 34%;
     width: 1.5px;
     height: 118px;
 }
 
 .landing-hero__chip--voice {
     bottom: 0.15rem;
-    inset-inline-start: 46%;
+    inset-inline-start: 38%;
 }
 
 .landing-hero__chip--voice::after {

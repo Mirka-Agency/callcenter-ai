@@ -3,7 +3,7 @@
             <div class="consult-dialog__head">
                 <div>
                     <h2 id="consult-title">درخواست مشاوره</h2>
-                    <p>اطلاعات تماس را بگذارید تا درباره نیاز سازمانتان صحبت کنیم.</p>
+                    <p>مشخصات خود را ثبت فرمایید تا کارشناسان آوایار جهت بررسی دقیق نیازهای سازمان با شما تماس بگیرند.</p>
                 </div>
                 <button type="button" class="consult-dialog__close" data-consult-close aria-label="بستن">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -73,8 +73,8 @@
             </form>
 
             <div id="consult-success" class="consult-success" hidden>
-                <h3>درخواست شما ثبت شد</h3>
-                <p>به‌زودی با شما تماس می‌گیریم.</p>
+                <h3>درخواست مشاوره شما با موفقیت ثبت شد</h3>
+                <p>کارشناسان ما در کوتاه‌ترین زمان ممکن با شما تماس خواهند گرفت.</p>
                 <button type="button" data-consult-close>بستن</button>
             </div>
         </div>

@@ -23,7 +23,7 @@
                         <span>آوایار،</span>
                         <span class="is-accent">تحلیلگر هوشمند تماس</span>
                     </h1>
-                    <p>هر تماس، فرصتی برای شناخت بهتر مشتری و رشد کسب‌وکار شماست. آوایار با تحلیل هوشمند مکالمات، عملکرد تیم و فرصت‌های فروش را آشکار می‌کند تا تصمیم‌های دقیق‌تری بگیرید.</p>
+                    <p>آوایار مکالمات پایان‌یافته را با هوش مصنوعی تحلیل کرده و عملکرد کارشناسان، رضایت مشتریان و فرصت‌های فروش را به بینش‌های دقیق مدیریتی تبدیل می‌کند.</p>
                     <div class="landing-hero__actions">
                         <button type="button" class="landing-hero__btn landing-hero__btn--primary" data-consult-open>
                             <span>درخواست مشاوره</span>
@@ -42,12 +42,12 @@
                 </div>
 
                 <figure class="landing-hero__stage">
-                    <figcaption class="landing-hero__sr">پیش‌نمایش نمونه داشبورد آوایار. عددها نمایشی هستند و نتیجه واقعی سازمان نیستند.</figcaption>
+                    <figcaption class="landing-hero__sr">پیش‌نمایش نمونه داشبورد مدیریتی آوایار؛ ارقام صرفاً نمایشی و جهت معرفی قابلیت‌های سامانه هستند.</figcaption>
                     <div class="landing-hero__chips">
-                        <span class="landing-hero__chip landing-hero__chip--call">تحلیل در کمتر از چند ثانیه</span>
-                        <span class="landing-hero__chip landing-hero__chip--ai">عملکرد امروز در یک نگاه</span>
-                        <span class="landing-hero__chip landing-hero__chip--opp">هر گفتگو یک اتفاق مهم</span>
-                        <span class="landing-hero__chip landing-hero__chip--voice">روند پیشرفت کارشناس</span>
+                        <span class="landing-hero__chip landing-hero__chip--call">پردازش در چند ثانیه</span>
+                        <span class="landing-hero__chip landing-hero__chip--ai">پایش شاخص‌ها در یک نگاه</span>
+                        <span class="landing-hero__chip landing-hero__chip--opp">کشف فرصت‌های فروش</span>
+                        <span class="landing-hero__chip landing-hero__chip--voice">ارزیابی عملکرد کارشناس</span>
                     </div>
                     <div class="landing-hero__tilt">
                         <div class="landing-window">
@@ -166,19 +166,19 @@
                                     </div>
                                     <div class="landing-panel landing-note">
                                         <div class="landing-panel__head">
-                                            <strong>خلاصه هوش مصنوعی</strong>
+                                            <strong>چکیده تحلیلی هوش مصنوعی</strong>
                                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--color-brand)" stroke-width="1.7" aria-hidden="true">
                                                 <path stroke-linejoin="round" d="M12 3.2l1.3 4.3L17.6 8.8l-4.3 1.3L12 14.4l-1.3-4.3L6.4 8.8l4.3-1.3L12 3.2z" />
                                                 <path stroke-linecap="round" d="M17.5 14.5l.6 1.8 1.8.6-1.8.6-.6 1.8-.6-1.8-1.8-.6 1.8-.6.6-1.8z" />
                                             </svg>
                                         </div>
                                         <ul>
-                                            <li>رضایت این هفته از هفته قبل بالاتر است.</li>
-                                            <li>موضوع غالب: تمدید، اشکال سرویس و پیگیری.</li>
-                                            <li>۳۲ تماس نشانه فرصت فروش داشتند.</li>
+                                            <li>شاخص رضایت مشتریان نسبت به هفته گذشته صعودی است.</li>
+                                            <li>محورهای پرتکرار: تمدید قرارداد، پشتیبانی فنی و پیگیری.</li>
+                                            <li>۳۲ مکالمه دارای سیگنال قطعی خرید و آماده پیگیری هستند.</li>
                                         </ul>
                                         <a class="landing-note__more" href="#sample-call">
-                                            مشاهده جزئیات
+                                            مشاهده نمونه تحلیل
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14 6l-6 6 6 6"/></svg>
                                         </a>
                                     </div>

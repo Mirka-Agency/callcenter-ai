@@ -82,10 +82,10 @@
                             }
                         }
                         setStatus(progress < 0.47
-                            ? 'در حال ارسال به آوایار'
+                            ? 'دریافت خودکار مکالمه در آوایار'
                             : progress < 0.71
-                                ? 'در حال ارسال به هوش مصنوعی'
-                                : 'دریافت نتیجه در کمتر از چند ثانیه');
+                                ? 'پردازش و واکاوی با هوش مصنوعی'
+                                : 'ثبت گزارش تحلیلی در داشبورد');
                         for (var i = 0; i < rings.length; i++) {
                             var travel = Number(rings[i].getAttribute('data-ring')) || 120;
                             var shift = reduce.matches ? 0 : (0.5 - progress) * travel;
