@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "99281e5a58b00740b343faa0afd7e79a",
+    "content-hash": "fc1d94173e8737e112256b08ffc2ac21",
     "packages": [
         {
             "name": "ariaieboy/filament-jalali",
@@ -12164,7 +12164,7 @@
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": "^8.3"
+        "php": "^8.5.12"
     },
     "platform-dev": {},
     "plugin-api-version": "2.9.0"
