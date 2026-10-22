@@ -13,7 +13,6 @@
             window.__employerOnboarding = {
                 currentRoute: @json(\Illuminate\Support\Facades\Route::currentRouteName()),
                 routes: @json($onboardingRoutes),
-                hideBilling: @json(\App\Support\OnPrem::billingHidden()),
             };
         </script>
     @endif

@@ -82,7 +82,6 @@ class EmployeeDashboardAnalytics
             'improvement_trend' => $this->improvementTrend(),
             'score_trend' => $this->scoreTrend(),
             'sentiment_trend' => $this->sentimentTrend(),
-            'token_usage' => (int) $this->analysisQuery()->sum('total_tokens'),
         ];
     }
 

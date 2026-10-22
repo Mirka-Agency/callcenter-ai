@@ -6,9 +6,7 @@ use App\Application\Intelligence\Jobs\AnalyzeAudioJob;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
-use App\Exceptions\InsufficientWalletBalanceException;
 use App\Models\Call;
-use App\Services\AiBillingService;
 use App\Services\CallIntake\CallIntakePolicy;
 use App\Services\CallProcessingTracker;
 use App\Support\UnconnectedCallSignals;
@@ -17,7 +15,6 @@ class CallAnalysisQueueService
 {
     public function __construct(
         private CallProcessingTracker $tracker,
-        private AiBillingService $billing,
         private CallIntakePolicy $intake,
     ) {}
 
@@ -63,12 +60,6 @@ class CallAnalysisQueueService
         $existing = $this->tracker->forCall($call->id);
 
         if ($existing && in_array($existing->status, [ProcessingJobStatus::Queued, ProcessingJobStatus::Processing, ProcessingJobStatus::Uploading], true)) {
-            return false;
-        }
-
-        try {
-            $this->billing->assertCanAnalyze($call->organization_id);
-        } catch (InsufficientWalletBalanceException) {
             return false;
         }
 

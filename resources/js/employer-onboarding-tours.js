@@ -399,36 +399,6 @@ export const employerPageTours = {
             },
         ],
     },
-    'employer.wallet.index': {
-        label: 'اعتبار هوش مصنوعی',
-        steps: [
-            {
-                selector: '[data-tour="page-header"]',
-                title: 'اعتبار AI',
-                content: 'مدیریت موجودی کیف پول و پایش مصرف تحلیل‌های هوش مصنوعی.',
-            },
-            {
-                selector: '[data-tour="wallet-balance"]',
-                title: 'موجودی فعلی',
-                content: 'اعتبار باقی‌مانده و تخمین روزهای مانده بر اساس مصرف اخیر.',
-            },
-            {
-                selector: '[data-tour="wallet-stats"]',
-                title: 'مصرف ماه جاری',
-                content: 'تحلیل‌ها، هزینه، توکن و میانگین هزینه هر تحلیل.',
-            },
-            {
-                selector: '[data-tour="wallet-charts"]',
-                title: 'نمودارهای مصرف',
-                content: 'روند روزانه تحلیل و هزینه، توکن‌ها و هزینه ماهانه.',
-            },
-            {
-                selector: '[data-tour="wallet-transactions"]',
-                title: 'تراکنش‌ها',
-                content: 'واریز، مصرف و تعدیل‌های کیف پول.',
-            },
-        ],
-    },
 };
 
 const navSteps = [
@@ -442,12 +412,7 @@ const navSteps = [
     ['employer.crm.index', 'CRM', 'اتصال سیستم ارتباط با مشتری.'],
     ['employer.voip.index', 'خطوط تلفنی', 'اتصال VoIP و وب‌هوک تماس.'],
     ['employer.organization.profile', 'پروفایل سازمان', 'اطلاعات سازمان، اتصال ویپ، فیلتر تماس‌های ورودی و تعطیلات شرکت.'],
-    ['employer.wallet.index', 'اعتبار هوش مصنوعی', 'موجودی و مصرف اعتبار تحلیل AI.'],
 ];
-
-function billingHidden() {
-    return Boolean(window.__employerOnboarding?.hideBilling);
-}
 
 /** @returns {TourStep[]} */
 export function buildFullEmployerTour() {
@@ -471,10 +436,6 @@ export function buildFullEmployerTour() {
     ];
 
     navSteps.forEach(([route, title, content]) => {
-        if (route === 'employer.wallet.index' && billingHidden()) {
-            return;
-        }
-
         if (! window.__employerOnboarding?.routes?.[route]) {
             return;
         }
@@ -530,7 +491,6 @@ export const employerRouteMatchers = [
     { pattern: /^\/app\/unmatched-extensions\/?$/, route: 'employer.extensions.index' },
     { pattern: /^\/app\/voip\/?$/, route: 'employer.voip.index' },
     { pattern: /^\/app\/organization\/?$/, route: 'employer.organization.profile' },
-    { pattern: /^\/app\/wallet\/?$/, route: 'employer.wallet.index' },
 ];
 
 export function resolveEmployerRoute(pathname) {
@@ -547,10 +507,6 @@ export function resolveEmployerRoute(pathname) {
 
 export function tourForRoute(route) {
     if (! route) {
-        return null;
-    }
-
-    if (route === 'employer.wallet.index' && billingHidden()) {
         return null;
     }
 

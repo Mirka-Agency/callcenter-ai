@@ -7,7 +7,6 @@ return [
     'navigation' => [
         'groups' => [
             'ai_management' => 'مدیریت هوش مصنوعی',
-            'ai_billing' => 'صورتحساب هوش مصنوعی',
             'crm' => 'CRM',
             'voip' => 'VoIP',
             'security' => 'امنیت',
@@ -29,7 +28,7 @@ return [
         'organization_consumption' => 'مصرف شرکت‌ها',
         'employee_ai_consumption' => 'مصرف هوش مصنوعی کارشناس',
         'llm_providers' => 'ارائه‌دهندگان LLM',
-        'llm_models' => 'مدل‌ها و قیمت‌گذاری',
+        'llm_models' => 'مدل‌ها',
         'platform_billing' => 'صورتحساب پلتفرم',
         'organization_wallets' => 'کیف پول شرکت‌ها',
         'cost_estimator' => 'برآورد هزینه',

@@ -128,7 +128,6 @@ class CoachingAnalysisNormalizerTest extends TestCase
             modelName: 'gpt-4o-mini',
             inputTokens: 1,
             outputTokens: 1,
-            cost: 0,
             processingDurationMs: 1,
         );
 
@@ -156,7 +155,6 @@ class CoachingAnalysisNormalizerTest extends TestCase
             modelName: 'gemini-3.8-flash',
             inputTokens: 1,
             outputTokens: 1,
-            cost: 0,
             processingDurationMs: 1,
             analyzedAt: $callDay,
         );

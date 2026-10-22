@@ -3,7 +3,6 @@
 namespace App\Support\Navigation;
 
 use App\Domain\Crm\OrganizationCrmMode;
-use App\Support\OnPrem;
 
 class EmployerNavigation
 {
@@ -25,10 +24,6 @@ class EmployerNavigation
             ['label' => 'خطوط تلفنی', 'route' => 'employer.voip.index', 'icon' => 'phone'],
             ['label' => 'پروفایل سازمان', 'route' => 'employer.organization.profile', 'icon' => 'building'],
         ];
-
-        if (! OnPrem::billingHidden()) {
-            $items[] = ['label' => 'اعتبار هوش مصنوعی', 'route' => 'employer.wallet.index', 'icon' => 'wallet'];
-        }
 
         return $items;
     }

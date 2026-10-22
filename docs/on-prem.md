@@ -188,7 +188,7 @@ nano .env   # یا vim
 | `ONPREM_EMPLOYER_EMAIL` | ایمیل کارفرما برای `/app` |
 | `ONPREM_EMPLOYER_PASSWORD` | رمز کارفرما |
 | `ONPREM_ORG_TITLE` | نام سازمان مشتری |
-| `ONPREM_ENABLED` | `true` در compose محلی؛ کیف پول و صورتحساب SaaS را مخفی می‌کند |
+| `ONPREM_ENABLED` | `true` در compose محلی برای نصب تک‌سازمانی |
 | `RECORDINGS_DISK` | `local` (همین پیش‌فرض مثال) |
 
 نمونهٔ حداقلی برای بخش کاربران:
@@ -211,13 +211,12 @@ ONPREM_EMPLOYER_EMAIL=manager@customer.local
 ONPREM_EMPLOYER_PASSWORD=Employer!Pass-ChangeMe
 
 ONPREM_ORG_TITLE="شرکت نمونه"
-ONPREM_WALLET_BALANCE=50000000
 ONPREM_EMPLOYER_CAN_MANAGE_INTEGRATIONS=true
 ```
 
 `ONPREM_EMPLOYER_CAN_MANAGE_INTEGRATIONS=true` یعنی کارفرما در `/app` بتواند اتصال VoIP/webhook را ببیند؛ اگر می‌خواهید فقط شما از `/admin` تنظیم کنید، `false` بگذارید.
 
-در استقرار محلی، بخش **صورتحساب / اعتبار هوش مصنوعی** (کیف پول کارفرما، کیف پول شرکت‌ها در ادمین، و تنظیمات صورتحساب پلتفرم) نمایش داده نمی‌شود و تحلیل تماس به موجودی اعتبار وابسته نیست. ارائه‌دهندگان و مدل‌های LLM همچنان از `/admin` قابل تنظیم هستند.
+ارائه‌دهندگان و مدل‌های LLM از `/admin` قابل تنظیم هستند. تحلیل تماس به اعتبار یا کیف پول وابسته نیست.
 
 ---
 

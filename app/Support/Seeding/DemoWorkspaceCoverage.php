@@ -2,7 +2,6 @@
 
 namespace App\Support\Seeding;
 
-use App\Domain\Billing\Enums\WalletTransactionType;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Call\Enums\UploaderType;
 use App\Domain\Crm\Enums\CrmLogStatus;
@@ -33,17 +32,15 @@ use App\Models\VoipCallLog;
 use App\Models\VoipProvider;
 use App\Models\VoipSyncLog;
 use App\Models\VoipWebhookLog;
-use App\Models\WalletTransaction;
 use App\Services\Performance\EmployeePerformanceAnalytics;
 use App\Services\Reports\DefinedExtensionCallConstraint;
 use App\Services\Reports\OrganizationCallMetrics;
-use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 /**
  * Fills demo-only screens that the call analytics seed leaves empty:
- * VoIP, extensions, CRM, manual uploads, the processing queue, and wallet usage.
+ * VoIP, extensions, CRM, manual uploads, and the processing queue.
  */
 final class DemoWorkspaceCoverage
 {
@@ -67,7 +64,6 @@ final class DemoWorkspaceCoverage
         $this->attachCalls($organization, $connection, $extensions);
         $this->seedCrm($organization);
         app(DemoInternalCrm::class)->seed($organization);
-        $this->seedWalletUsage($organization);
 
         app(DefinedExtensionCallConstraint::class)->refreshOrganization($organization->id);
         EmployeePerformanceAnalytics::forgetOrganizationCaches($organization->id);
@@ -393,62 +389,6 @@ final class DemoWorkspaceCoverage
                 'payload' => ['demo' => true],
             ]);
         }
-    }
-
-    private function seedWalletUsage(Organization $organization): void
-    {
-        WalletTransaction::query()
-            ->where('organization_id', $organization->id)
-            ->where('description', 'like', self::DEMO_MARKER.'%')
-            ->delete();
-
-        $balance = (float) DemoCatalog::WALLET_BALANCE_IRR;
-        $usages = [1850, 2400, 960, 3100, 1420, 2750, 1180, 860];
-
-        foreach ($usages as $index => $amount) {
-            $before = $balance;
-            $balance -= $amount;
-            $this->walletRow(
-                $organization->id,
-                WalletTransactionType::AiUsage,
-                -$amount,
-                $before,
-                $balance,
-                self::DEMO_MARKER.': تحلیل تماس‌های روز '.($index + 1),
-                now()->subDays(count($usages) - $index)->setTime(11, 15),
-            );
-        }
-
-        $this->walletRow(
-            $organization->id,
-            WalletTransactionType::Deposit,
-            (float) DemoCatalog::WALLET_BALANCE_IRR - $balance,
-            $balance,
-            (float) DemoCatalog::WALLET_BALANCE_IRR,
-            self::DEMO_MARKER.': شارژ تکمیلی برای ادامه تحلیل‌ها',
-            now()->subHours(2),
-        );
-    }
-
-    private function walletRow(
-        int $organizationId,
-        WalletTransactionType $type,
-        float $amount,
-        float $before,
-        float $after,
-        string $description,
-        CarbonInterface $at,
-    ): void {
-        $transaction = new WalletTransaction([
-            'organization_id' => $organizationId,
-            'type' => $type,
-            'amount' => $amount,
-            'balance_before' => $before,
-            'balance_after' => $after,
-            'description' => $description,
-        ]);
-        $transaction->created_at = $at;
-        $transaction->save();
     }
 
     private function callSequence(Call $call): int

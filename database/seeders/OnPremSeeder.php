@@ -2,13 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Domain\Billing\Enums\WalletTransactionType;
 use App\Enums\UserRole;
 use App\Models\Organization;
-use App\Models\OrganizationWallet;
-use App\Models\PlatformAiSettings;
 use App\Models\User;
-use App\Models\WalletTransaction;
 use Illuminate\Database\Seeder;
 use RuntimeException;
 
@@ -71,76 +67,10 @@ class OnPremSeeder extends Seeder
             ],
         );
 
-        $this->seedWallet($organization);
-
         $this->command?->info('On-prem bootstrap complete.');
         $this->command?->info("Admin:    {$adminEmail} → /admin");
         $this->command?->info("Employer: {$employerEmail} → /app");
         $this->command?->warn('Use the exact ONPREM_* email/password from the container env (recreate app after editing .env).');
-    }
-
-    /** Matches organization_wallets.balance decimal(14, 6): |value| < 10^8 */
-    private const MAX_WALLET_BALANCE = 99_999_999.999999;
-
-    private const DEFAULT_WALLET_BALANCE = 50_000_000.0;
-
-    private function seedWallet(Organization $organization): void
-    {
-        $currency = PlatformAiSettings::currencyCode();
-        $balance = $this->resolveWalletBalance();
-
-        $wallet = OrganizationWallet::query()->firstOrCreate(
-            ['organization_id' => $organization->id],
-            [
-                'balance' => $balance,
-                'currency' => $currency,
-            ],
-        );
-
-        if ((float) $wallet->balance !== $balance) {
-            $wallet->update([
-                'balance' => $balance,
-                'currency' => $currency,
-            ]);
-        }
-
-        WalletTransaction::query()->firstOrCreate(
-            [
-                'organization_id' => $organization->id,
-                'type' => WalletTransactionType::Deposit,
-                'description' => 'شارژ اولیه استقرار محلی',
-            ],
-            [
-                'amount' => $balance,
-                'balance_before' => 0,
-                'balance_after' => $balance,
-                'created_at' => now(),
-            ],
-        );
-    }
-
-    private function resolveWalletBalance(): float
-    {
-        $raw = $_ENV['ONPREM_WALLET_BALANCE'] ?? getenv('ONPREM_WALLET_BALANCE');
-        if ($raw === false || $raw === null || (is_string($raw) && trim($raw) === '')) {
-            $raw = config('onprem.wallet_balance', self::DEFAULT_WALLET_BALANCE);
-        }
-
-        $balance = (float) $raw;
-
-        if (! is_finite($balance) || $balance < 0) {
-            $balance = self::DEFAULT_WALLET_BALANCE;
-        }
-
-        if ($balance > self::MAX_WALLET_BALANCE) {
-            $this->command?->warn(sprintf(
-                'ONPREM_WALLET_BALANCE too large for decimal(14,6); clamped to %s',
-                self::MAX_WALLET_BALANCE,
-            ));
-            $balance = self::MAX_WALLET_BALANCE;
-        }
-
-        return $balance;
     }
 
     private function setting(string $envKey, string $configKey, string $default): string

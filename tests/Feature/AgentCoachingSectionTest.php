@@ -199,7 +199,6 @@ class AgentCoachingSectionTest extends TestCase
             modelName: 'gpt-4o-mini',
             inputTokens: 10,
             outputTokens: 20,
-            cost: 0.1,
             processingDurationMs: 30,
         );
     }

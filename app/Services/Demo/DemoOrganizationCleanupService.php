@@ -12,7 +12,6 @@ use App\Models\OrganizationCrmConnection;
 use App\Models\OrganizationUser;
 use App\Models\OrganizationVoipConnection;
 use App\Models\User;
-use App\Models\WalletTransaction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -103,7 +102,6 @@ class DemoOrganizationCleanupService
             customers: Customer::query()->whereIn('organization_id', $organizationIds)->count(),
             calls: Call::query()->whereIn('organization_id', $organizationIds)->count(),
             analyses: ConversationAnalysis::query()->whereIn('organization_id', $organizationIds)->count(),
-            walletTransactions: WalletTransaction::query()->whereIn('organization_id', $organizationIds)->count(),
             activities: OrganizationActivity::query()->whereIn('organization_id', $organizationIds)->count(),
             integrations: OrganizationVoipConnection::query()->whereIn('organization_id', $organizationIds)->count()
                 + OrganizationCrmConnection::query()->whereIn('organization_id', $organizationIds)->count(),

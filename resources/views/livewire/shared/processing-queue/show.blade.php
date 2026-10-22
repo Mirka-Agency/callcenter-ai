@@ -62,9 +62,6 @@
                 @if ($showAiInfrastructure)
                     <div><dt class="text-zinc-500">مدل</dt><dd class="font-medium">{{ $analysis->model_name }}</dd></div>
                 @endif
-                <div><dt class="text-zinc-500">توکن‌های ورودی</dt><dd class="font-medium">{{ number_format($analysis->input_tokens) }}</dd></div>
-                <div><dt class="text-zinc-500">توکن‌های خروجی</dt><dd class="font-medium">{{ number_format($analysis->output_tokens) }}</dd></div>
-                <div><dt class="text-zinc-500">هزینه</dt><dd class="font-medium">{{ \App\Models\PlatformAiSettings::formatMoney($analysis->cost) }}</dd></div>
                 <div><dt class="text-zinc-500">پاسخ هوش مصنوعی</dt><dd class="font-medium text-emerald-600">موفق</dd></div>
             </dl>
             <p class="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">{{ $analysis->summary }}</p>

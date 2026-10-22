@@ -10,8 +10,7 @@ return [
     | Used when installing one organization on a customer LAN.
     | See docs/on-prem.md and .env.onprem.example.
     |
-    | docker-compose.onprem.yml sets ONPREM_ENABLED=true. When enabled,
-    | SaaS wallet/billing UI is hidden and analysis is not blocked by credits.
+    | docker-compose.onprem.yml sets ONPREM_ENABLED=true for a single-organization install.
     |
     */
 
@@ -26,7 +25,6 @@ return [
     'employer_password' => env('ONPREM_EMPLOYER_PASSWORD', 'password'),
 
     'org_title' => env('ONPREM_ORG_TITLE', 'شرکت محلی'),
-    'wallet_balance' => (float) env('ONPREM_WALLET_BALANCE', 50_000_000),
     'employer_can_manage_integrations' => filter_var(
         env('ONPREM_EMPLOYER_CAN_MANAGE_INTEGRATIONS', true),
         FILTER_VALIDATE_BOOLEAN,

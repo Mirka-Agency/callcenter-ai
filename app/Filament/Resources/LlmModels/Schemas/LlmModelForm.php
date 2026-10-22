@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\LlmModels\Schemas;
 
 use App\Models\LlmProvider;
-use App\Models\PlatformAiSettings;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -31,33 +30,6 @@ class LlmModelForm
                             ->required()
                             ->maxLength(255)
                             ->helperText(__('filament.misc.model_key_helper')),
-                    ])
-                    ->columns(2),
-                Section::make(__('filament.sections.token_pricing'))
-                    ->description(__('filament.sections.token_pricing_description'))
-                    ->schema([
-                        TextInput::make('input_price_per_million_tokens')
-                            ->label(fn () => __('filament.fields.input_price_per_1m').' ('.PlatformAiSettings::billingUnitCurrency().')')
-                            ->persianNumeric(null, 6)
-                            ->required()
-                            ->minValue(0)
-                            ->step(0.000001),
-                        TextInput::make('output_price_per_million_tokens')
-                            ->label(fn () => __('filament.fields.output_price_per_1m').' ('.PlatformAiSettings::billingUnitCurrency().')')
-                            ->persianNumeric(null, 6)
-                            ->required()
-                            ->minValue(0)
-                            ->step(0.000001),
-                        TextInput::make('cached_input_price_per_million_tokens')
-                            ->label(fn () => __('filament.fields.cached_input_price_per_1m').' ('.PlatformAiSettings::billingUnitCurrency().')')
-                            ->persianNumeric(null, 6)
-                            ->minValue(0)
-                            ->step(0.000001),
-                        TextInput::make('reasoning_price_per_million_tokens')
-                            ->label(fn () => __('filament.fields.reasoning_price_per_1m').' ('.PlatformAiSettings::billingUnitCurrency().')')
-                            ->persianNumeric(null, 6)
-                            ->minValue(0)
-                            ->step(0.000001),
                     ])
                     ->columns(2),
                 Section::make(__('filament.sections.settings'))

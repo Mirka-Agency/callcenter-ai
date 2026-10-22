@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\ConversationAnalyses\Pages;
 
 use App\Filament\Resources\ConversationAnalyses\ConversationAnalysisResource;
-use App\Models\PlatformAiSettings;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
@@ -27,10 +26,6 @@ class ViewConversationAnalysis extends ViewRecord
                         TextEntry::make('llm_provider')->label(__('filament.fields.provider')),
                         TextEntry::make('model_name')->label(__('filament.fields.model')),
                         TextEntry::make('prompt_version')->placeholder(__('filament.misc.em_dash')),
-                        TextEntry::make('input_tokens')->numeric(),
-                        TextEntry::make('output_tokens')->numeric(),
-                        TextEntry::make('total_tokens')->numeric(),
-                        TextEntry::make('cost')->money(fn () => PlatformAiSettings::currencyCode()),
                         TextEntry::make('processing_duration_ms')->label(__('filament.fields.processing_ms')),
                         TextEntry::make('score')->badge(),
                         TextEntry::make('sentiment')->badge(),

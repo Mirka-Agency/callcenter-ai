@@ -23,7 +23,7 @@ export const employeePageTours = {
             {
                 selector: '[data-tour="dashboard-summary"]',
                 title: 'عملکرد و دستاوردها',
-                content: 'خلاصه تحلیل‌های اخیر، توکن مصرف‌شده و نشان‌های کسب‌شده از عملکرد شما.',
+                content: 'خلاصه تحلیل‌های اخیر و نشان‌های کسب‌شده از عملکرد شما.',
             },
             {
                 selector: '[data-tour="dashboard-strengths"]',

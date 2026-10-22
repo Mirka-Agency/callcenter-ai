@@ -43,12 +43,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'input_tokens',
     'output_tokens',
     'total_tokens',
-    'cost',
     'llm_model_id',
-    'input_price_snapshot',
-    'output_price_snapshot',
-    'cached_input_price_snapshot',
-    'reasoning_price_snapshot',
     'processing_duration_ms',
     'analyzed_at',
 ])]
@@ -73,11 +68,6 @@ class ConversationAnalysis extends Model
             'needs_attention' => 'boolean',
             'attention_json' => 'array',
             'coaching_analysis_json' => 'array',
-            'cost' => 'decimal:6',
-            'input_price_snapshot' => 'decimal:6',
-            'output_price_snapshot' => 'decimal:6',
-            'cached_input_price_snapshot' => 'decimal:6',
-            'reasoning_price_snapshot' => 'decimal:6',
             'analyzed_at' => 'datetime',
         ];
     }

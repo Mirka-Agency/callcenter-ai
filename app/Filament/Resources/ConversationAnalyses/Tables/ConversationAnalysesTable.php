@@ -4,10 +4,10 @@ namespace App\Filament\Resources\ConversationAnalyses\Tables;
 
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
-use App\Filament\Resources\ConversationAnalyses\ConversationAnalysisResource;
-use App\Models\PlatformAiSettings;
+use App\Models\ConversationAnalysis;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\TextInput;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -47,19 +47,6 @@ class ConversationAnalysesTable
                 TextColumn::make('llm_provider')
                     ->label(__('filament.fields.provider'))
                     ->toggleable(),
-                TextColumn::make('input_tokens')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('output_tokens')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('total_tokens')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('cost')
-                    ->label(__('filament.widgets.cost'))
-                    ->money(fn () => PlatformAiSettings::currencyCode())
-                    ->sortable(),
                 TextColumn::make('processing_duration_ms')
                     ->label(__('filament.fields.processing_ms'))
                     ->sortable(),
@@ -93,20 +80,20 @@ class ConversationAnalysesTable
                         ->all()),
                 SelectFilter::make('llm_provider')
                     ->label(__('filament.fields.provider'))
-                    ->options(fn () => \App\Models\ConversationAnalysis::query()
+                    ->options(fn () => ConversationAnalysis::query()
                         ->distinct()
                         ->pluck('llm_provider', 'llm_provider')
                         ->all()),
                 SelectFilter::make('model_name')
                     ->label(__('filament.fields.model'))
-                    ->options(fn () => \App\Models\ConversationAnalysis::query()
+                    ->options(fn () => ConversationAnalysis::query()
                         ->distinct()
                         ->pluck('model_name', 'model_name')
                         ->all()),
                 Filter::make('score_range')
                     ->schema([
-                        \Filament\Forms\Components\TextInput::make('min')->persianNumeric(0)->label(__('filament.fields.min_score')),
-                        \Filament\Forms\Components\TextInput::make('max')->persianNumeric(0)->label(__('filament.fields.max_score')),
+                        TextInput::make('min')->persianNumeric(0)->label(__('filament.fields.min_score')),
+                        TextInput::make('max')->persianNumeric(0)->label(__('filament.fields.max_score')),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query

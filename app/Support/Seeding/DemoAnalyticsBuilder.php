@@ -14,7 +14,6 @@ use App\Models\LlmModel;
 use App\Models\Organization;
 use App\Models\OrganizationActivity;
 use App\Models\OrganizationUser;
-use App\Models\PlatformAiSettings;
 use App\Services\CustomerCompanyService;
 use Carbon\Carbon;
 use Faker\Generator;
@@ -119,9 +118,6 @@ class DemoAnalyticsBuilder
             $analyzedAt = $endedAt->copy()->addMinutes($faker->numberBetween(2, 15));
             $inputTokens = $faker->numberBetween(3_000, 8_000);
             $outputTokens = $faker->numberBetween(600, 1_800);
-            $cost = $defaultModel
-                ? $defaultModel->calculateCost($inputTokens, $outputTokens)
-                : $faker->randomFloat(4, 0.05, 0.35);
 
             ConversationAnalysis::query()->updateOrCreate(
                 [
@@ -154,13 +150,6 @@ class DemoAnalyticsBuilder
                     'input_tokens' => $inputTokens,
                     'output_tokens' => $outputTokens,
                     'total_tokens' => $inputTokens + $outputTokens,
-                    'cost' => $cost,
-                    'input_price_snapshot' => $defaultModel
-                        ? PlatformAiSettings::convertFromUnits((float) $defaultModel->input_price_per_million_tokens)
-                        : null,
-                    'output_price_snapshot' => $defaultModel
-                        ? PlatformAiSettings::convertFromUnits((float) $defaultModel->output_price_per_million_tokens)
-                        : null,
                     'processing_duration_ms' => $faker->numberBetween(1_800, 4_500),
                     'analyzed_at' => $analyzedAt,
                 ],

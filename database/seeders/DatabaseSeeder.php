@@ -13,6 +13,5 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(PlatformFoundationSeeder::class);
         $this->call(DemoSeeder::class);
-        $this->call(AiBillingSeeder::class);
     }
 }

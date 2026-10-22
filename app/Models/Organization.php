@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Domain\Crm\OrganizationCrmMode;
 use App\Services\CallIntake\CallIntakeSettings;
-use App\Services\WalletService;
 use App\Support\CompanyWorkCalendar;
 use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -14,7 +13,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['title', 'business_context', 'holiday_weekdays', 'call_intake_filters', 'crm_settings', 'disabled', 'employer_can_manage_integrations', 'crm_mode', 'user_id', 'is_demo', 'assign_customer_owner_from_call'])]
 class Organization extends Model
@@ -148,27 +146,8 @@ class Organization extends Model
         return $this->hasMany(ConversationAnalysis::class);
     }
 
-    public function aiUsageSnapshots(): HasMany
-    {
-        return $this->hasMany(AiUsageDailySnapshot::class);
-    }
-
-    public function wallet(): HasOne
-    {
-        return $this->hasOne(OrganizationWallet::class);
-    }
-
-    public function walletTransactions(): HasMany
-    {
-        return $this->hasMany(WalletTransaction::class)->latest('created_at');
-    }
-
     protected static function booted(): void
     {
-        static::created(function (Organization $organization): void {
-            app(WalletService::class)->forOrganization($organization->id);
-        });
-
         static::saved(function (Organization $organization): void {
             if ($organization->wasChanged('holiday_weekdays')) {
                 app()->forgetInstance('organization.holiday_weekdays.'.$organization->id);

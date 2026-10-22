@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="grid gap-4 sm:grid-cols-2">
         <x-filament::section>
             <p class="text-sm text-gray-500">{{ __('filament.fields.total_manual_uploads') }}</p>
             <p class="mt-2 text-3xl font-bold">{{ number_format($overview['total_uploads']) }}</p>
@@ -7,22 +7,6 @@
         <x-filament::section>
             <p class="text-sm text-gray-500">{{ __('filament.fields.total_analyzed') }}</p>
             <p class="mt-2 text-3xl font-bold">{{ number_format($overview['total_analyzed']) }}</p>
-        </x-filament::section>
-        <x-filament::section>
-            <p class="text-sm text-gray-500">{{ __('filament.fields.total_cost') }}</p>
-            <p class="mt-2 text-3xl font-bold">{{ \App\Models\PlatformAiSettings::formatMoney($overview['total_cost']) }}</p>
-        </x-filament::section>
-        <x-filament::section>
-            <p class="text-sm text-gray-500">{{ __('filament.widgets.input_tokens') }}</p>
-            <p class="mt-2 text-3xl font-bold">{{ number_format($overview['total_input_tokens']) }}</p>
-        </x-filament::section>
-        <x-filament::section>
-            <p class="text-sm text-gray-500">{{ __('filament.widgets.output_tokens') }}</p>
-            <p class="mt-2 text-3xl font-bold">{{ number_format($overview['total_output_tokens']) }}</p>
-        </x-filament::section>
-        <x-filament::section>
-            <p class="text-sm text-gray-500">{{ __('filament.widgets.total_tokens') }}</p>
-            <p class="mt-2 text-3xl font-bold">{{ number_format($overview['total_tokens']) }}</p>
         </x-filament::section>
     </div>
 

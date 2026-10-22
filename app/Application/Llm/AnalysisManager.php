@@ -82,7 +82,6 @@ class AnalysisManager
             response: ['score' => $result->score, 'sentiment' => $result->sentiment->value],
             inputTokens: $result->inputTokens,
             outputTokens: $result->outputTokens,
-            cost: $result->cost,
             durationMs: $result->processingDurationMs,
             message: 'Audio analyzed successfully.',
         );

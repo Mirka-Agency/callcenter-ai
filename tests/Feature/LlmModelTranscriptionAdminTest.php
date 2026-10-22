@@ -37,8 +37,6 @@ class LlmModelTranscriptionAdminTest extends TestCase
                 'provider_id' => $provider->id,
                 'name' => 'Whisper',
                 'model_key' => 'whisper-1',
-                'input_price_per_million_tokens' => '0',
-                'output_price_per_million_tokens' => '0',
                 'is_default' => false,
                 'is_active' => true,
                 'is_transcription_default' => true,
