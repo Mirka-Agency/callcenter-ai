@@ -8,8 +8,25 @@
             </div>
 
             <div class="about-team__collage">
-                <div class="about-team__slot about-team__slot--main" role="img" aria-label="جای تصویر تیم"></div>
-                <div class="about-team__slot about-team__slot--side" role="img" aria-label="جای تصویر دوم تیم"></div>
+                <div class="about-team__slot about-team__slot--main">
+                    <img
+                        src="{{ asset('images/about/team-meeting.webp') }}"
+                        width="1000"
+                        height="563"
+                        alt="اعضای تیم در جلسه دور میز کار"
+                        decoding="async"
+                    >
+                </div>
+                <div class="about-team__slot about-team__slot--side">
+                    <img
+                        src="{{ asset('images/about/team-review.webp') }}"
+                        width="1024"
+                        height="1024"
+                        alt="دو نفر از تیم در حال بررسی کار"
+                        loading="lazy"
+                        decoding="async"
+                    >
+                </div>
                 <span class="about-team__badge" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
                         <circle cx="9" cy="8" r="2.3" />

@@ -8,6 +8,7 @@
         ['href' => $section('sample-call'), 'label' => 'امکانات', 'current' => false],
         ['href' => $section('journey'), 'label' => 'نحوه کار', 'current' => false],
         ['href' => $section('faq'), 'label' => 'سوالات متداول', 'current' => false],
+        ['href' => route('blog'), 'label' => 'وبلاگ', 'current' => request()->routeIs('blog', 'blog.show')],
         ['href' => route('about'), 'label' => 'درباره ما', 'current' => request()->routeIs('about')],
         ['href' => route('contact'), 'label' => 'تماس با ما', 'current' => request()->routeIs('contact')],
     ];

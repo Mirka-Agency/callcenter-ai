@@ -127,41 +127,41 @@
 
             <aside class="contact__aside" aria-label="راه‌های ارتباطی">
                 <div class="contact__item">
-                    <div class="contact__copy">
-                        <p class="contact__label">ایمیل ما</p>
-                        <a class="contact__value" href="mailto:info@avayar.ir" dir="ltr">info@avayar.ir</a>
-                    </div>
                     <span class="contact__icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
                             <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
                             <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 7.5 7.5 5.5 7.5-5.5" />
                         </svg>
                     </span>
+                    <div class="contact__copy">
+                        <p class="contact__label">ایمیل ما</p>
+                        <a class="contact__value" href="mailto:info@avayar.ir" dir="ltr">info@avayar.ir</a>
+                    </div>
                 </div>
 
                 <div class="contact__item">
-                    <div class="contact__copy">
-                        <p class="contact__label">تماس با ما</p>
-                        <a class="contact__value" href="tel:+982191000000" dir="ltr">021-91000000</a>
-                    </div>
                     <span class="contact__icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
                             <path stroke-linejoin="round" d="M8.2 4.8h2.1l1.1 2.8-1.5 1a11.2 11.2 0 0 0 5.4 5.4l1-1.5 2.8 1.1v2.1a1.5 1.5 0 0 1-1.6 1.5A14.4 14.4 0 0 1 6.7 6.4a1.5 1.5 0 0 1 1.5-1.6Z" />
                         </svg>
                     </span>
+                    <div class="contact__copy">
+                        <p class="contact__label">تماس با ما</p>
+                        <a class="contact__value" href="tel:+981191011903" dir="ltr">011-91011903</a>
+                    </div>
                 </div>
 
                 <div class="contact__item">
-                    <div class="contact__copy">
-                        <p class="contact__label">آدرس ما</p>
-                        <p class="contact__value">تهران، ایران<br>خیابان مثال، پلاک ۱۲</p>
-                    </div>
                     <span class="contact__icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
                             <path stroke-linejoin="round" d="M12 21s6-5.1 6-10a6 6 0 1 0-12 0c0 4.9 6 10 6 10Z" />
                             <circle cx="12" cy="11" r="2" />
                         </svg>
                     </span>
+                    <div class="contact__copy">
+                        <p class="contact__label">آدرس ما</p>
+                        <p class="contact__value">مازندران، محمودآباد<br>خیابان آزادی، بلوار شالیزار</p>
+                    </div>
                 </div>
             </aside>
         </div>

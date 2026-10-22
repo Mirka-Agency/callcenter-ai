@@ -1,6 +1,7 @@
 <?php
 
 use App\Application\Impersonation\Actions\StopImpersonationAction;
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\ConsultationRequestController;
 use App\Http\Controllers\ContactMessageController;
 use App\Http\Controllers\DemoRequestController;
@@ -35,6 +36,11 @@ Route::get('/contact', function () {
 
     return view('contact');
 })->name('contact');
+
+Route::get('/blog', [BlogController::class, 'index'])->name('blog');
+Route::get('/blog/{slug}', [BlogController::class, 'show'])
+    ->where('slug', '[^/]+')
+    ->name('blog.show');
 
 Route::post('/consultation-requests', [ConsultationRequestController::class, 'store'])
     ->middleware(['throttle:8,1', 'landing-host'])

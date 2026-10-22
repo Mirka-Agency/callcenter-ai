@@ -24,6 +24,7 @@
                             [$section('#sample-call'), 'نمونه تحلیل'],
                             [$section('#coaching'), 'کوچینگ'],
                             [$section('#faq'), 'سوالات متداول'],
+                            [route('blog'), 'وبلاگ'],
                             [route('about'), 'درباره ما'],
                             [route('contact'), 'تماس با ما'],
                         ] as [$href, $label])

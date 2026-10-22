@@ -22,8 +22,9 @@ class ContactPageTest extends TestCase
             ->assertSee('موضوع')
             ->assertSee('متن پیام شما')
             ->assertSee('info@avayar.ir')
-            ->assertSee('021-91000000')
-            ->assertSee('تهران، ایران')
+            ->assertSee('011-91011903')
+            ->assertSee('مازندران، محمودآباد')
+            ->assertSee('خیابان آزادی، بلوار شالیزار')
             ->assertSee('images/contact/communication-icons.png', false)
             ->assertSee(route('contact-messages.store'), false);
     }

@@ -30,7 +30,10 @@ class AboutPageTest extends TestCase
             ->assertSee('کسب‌وکارهای در حال استفاده')
             ->assertSee('انسان‌هایی پشت یک هدف بزرگ')
             ->assertSee('فرصت‌های همکاری')
-            ->assertSee('images/about/mission-target.png', false);
+            ->assertSee('images/about/mission-target.png', false)
+            ->assertSee('images/about/team-meeting.webp', false)
+            ->assertSee('images/about/team-review.webp', false)
+            ->assertDontSee('جای تصویر تیم');
     }
 
     public function test_about_page_on_another_domain_goes_to_login(): void
