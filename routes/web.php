@@ -2,6 +2,7 @@
 
 use App\Application\Impersonation\Actions\StopImpersonationAction;
 use App\Http\Controllers\ConsultationRequestController;
+use App\Http\Controllers\ContactMessageController;
 use App\Http\Controllers\DemoRequestController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\VoipWebhookController;
@@ -27,9 +28,21 @@ Route::get('/about', function () {
     return view('about');
 })->name('about');
 
+Route::get('/contact', function () {
+    if (! LandingHost::matches(request())) {
+        return redirect()->route('login');
+    }
+
+    return view('contact');
+})->name('contact');
+
 Route::post('/consultation-requests', [ConsultationRequestController::class, 'store'])
     ->middleware(['throttle:8,1', 'landing-host'])
     ->name('consultation-requests.store');
+
+Route::post('/contact-messages', [ContactMessageController::class, 'store'])
+    ->middleware(['throttle:8,1', 'landing-host'])
+    ->name('contact-messages.store');
 
 Route::post('/demo-requests', [DemoRequestController::class, 'store'])
     ->middleware(['throttle:8,1', 'landing-host'])

@@ -673,3 +673,147 @@ function bindLeadDialog(config) {
     reduce.addEventListener('change', function () { layout(false); });
     layout(false);
 })();
+
+(function () {
+    var form = document.getElementById('contact-form');
+    var success = document.getElementById('contact-success');
+    var submit = document.getElementById('contact-submit');
+    var formError = form ? form.querySelector('[data-form-error]') : null;
+
+    if (!form || !success || !submit || !formError) {
+        return;
+    }
+
+    var submitLabel = submit.querySelector('[data-submit-label]');
+
+    function clearErrors() {
+        form.querySelectorAll('[data-error-for]').forEach(function (node) {
+            node.hidden = true;
+            node.textContent = '';
+            node.closest('.contact-field')?.classList.remove('is-invalid');
+        });
+        formError.hidden = true;
+        formError.textContent = '';
+    }
+
+    function showErrors(errors) {
+        Object.entries(errors).forEach(function (entry) {
+            var field = entry[0];
+            var messages = entry[1];
+            var node = form.querySelector('[data-error-for="' + field + '"]');
+            if (!node) {
+                return;
+            }
+            node.textContent = Array.isArray(messages) ? messages[0] : messages;
+            node.hidden = false;
+            node.closest('.contact-field')?.classList.add('is-invalid');
+        });
+    }
+
+    function captchaToken() {
+        var siteKey = form.dataset.recaptchaSiteKey;
+        var action = form.dataset.recaptchaAction || 'contact';
+
+        if (!siteKey) {
+            return Promise.resolve('');
+        }
+
+        return new Promise(function (resolve, reject) {
+            var timer = setTimeout(function () { reject(new Error('timeout')); }, 8000);
+
+            var run = function () {
+                window.grecaptcha.ready(function () {
+                    window.grecaptcha.execute(siteKey, { action: action })
+                        .then(function (token) {
+                            clearTimeout(timer);
+                            resolve(token);
+                        })
+                        .catch(function (error) {
+                            clearTimeout(timer);
+                            reject(error);
+                        });
+                });
+            };
+
+            if (window.grecaptcha && window.grecaptcha.execute) {
+                run();
+                return;
+            }
+
+            window.addEventListener('recaptcha-api-loaded', function () {
+                if (window.grecaptcha && window.grecaptcha.execute) {
+                    run();
+                    return;
+                }
+
+                clearTimeout(timer);
+                reject(new Error('unavailable'));
+            }, { once: true });
+        });
+    }
+
+    form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        clearErrors();
+        submit.disabled = true;
+        if (submitLabel) {
+            submitLabel.textContent = 'در حال ارسال...';
+        }
+
+        try {
+            var body = new FormData(form);
+
+            if (form.dataset.recaptchaSiteKey) {
+                try {
+                    body.set('captcha', await captchaToken());
+                } catch (error) {
+                    formError.textContent = 'تأیید امنیتی انجام نشد. لطفاً دوباره تلاش کنید.';
+                    formError.hidden = false;
+                    return;
+                }
+            }
+
+            var response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: body,
+            });
+            var data = await response.json().catch(function () { return {}; });
+
+            if (response.status === 422) {
+                showErrors(data.errors || {});
+                if (!data.errors) {
+                    formError.textContent = data.message || 'اطلاعات واردشده معتبر نیست.';
+                    formError.hidden = false;
+                }
+                return;
+            }
+
+            if (response.status === 429) {
+                formError.textContent = 'تعداد درخواست‌ها زیاد است. کمی بعد دوباره تلاش کنید.';
+                formError.hidden = false;
+                return;
+            }
+
+            if (!response.ok) {
+                formError.textContent = 'ارسال پیام انجام نشد. دوباره تلاش کنید.';
+                formError.hidden = false;
+                return;
+            }
+
+            form.hidden = true;
+            success.hidden = false;
+        } catch (error) {
+            formError.textContent = 'ارتباط با سرور برقرار نشد. دوباره تلاش کنید.';
+            formError.hidden = false;
+        } finally {
+            submit.disabled = false;
+            if (submitLabel) {
+                submitLabel.textContent = 'ارسال پیام';
+            }
+        }
+    });
+})();

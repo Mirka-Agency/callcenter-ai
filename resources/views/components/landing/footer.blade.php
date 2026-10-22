@@ -25,6 +25,7 @@
                             [$section('#coaching'), 'کوچینگ'],
                             [$section('#faq'), 'سوالات متداول'],
                             [route('about'), 'درباره ما'],
+                            [route('contact'), 'تماس با ما'],
                         ] as [$href, $label])
                             <li>
                                 <a href="{{ $href }}">
