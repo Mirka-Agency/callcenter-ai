@@ -366,14 +366,6 @@
                     </div>
                     @if ($showEmployeePerformance)
                         @include('livewire.shared.analysis-ai-infrastructure', ['analysis' => $analysis])
-                        <div class="flex items-start justify-between gap-3 border-t border-zinc-200/80 pt-3 dark:border-zinc-800">
-                            <dt class="text-zinc-500">هزینه تحلیل</dt>
-                            <dd class="text-end font-medium">{{ \App\Models\PlatformAiSettings::formatMoney($analysis->cost ?? 0) }}</dd>
-                        </div>
-                        <div class="flex items-start justify-between gap-3">
-                            <dt class="text-zinc-500">توکن‌ها</dt>
-                            <dd class="text-end font-medium tabular-nums">{{ number_format($analysis->total_tokens) }}</dd>
-                        </div>
                     @endif
                 </dl>
             </div>

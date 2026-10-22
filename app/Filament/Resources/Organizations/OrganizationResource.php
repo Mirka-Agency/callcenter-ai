@@ -9,11 +9,9 @@ use App\Filament\Resources\Organizations\RelationManagers\CrmConnectionsRelation
 use App\Filament\Resources\Organizations\RelationManagers\EmployeeMembershipsRelationManager;
 use App\Filament\Resources\Organizations\RelationManagers\EmployeesRelationManager;
 use App\Filament\Resources\Organizations\RelationManagers\VoipConnectionsRelationManager;
-use App\Filament\Resources\Organizations\RelationManagers\WalletTransactionsRelationManager;
 use App\Filament\Resources\Organizations\Schemas\OrganizationForm;
 use App\Filament\Resources\Organizations\Tables\OrganizationsTable;
 use App\Models\Organization;
-use App\Support\OnPrem;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -60,18 +58,12 @@ class OrganizationResource extends Resource
 
     public static function getRelations(): array
     {
-        $relations = [
+        return [
             EmployeesRelationManager::class,
             EmployeeMembershipsRelationManager::class,
             CrmConnectionsRelationManager::class,
             VoipConnectionsRelationManager::class,
         ];
-
-        if (! OnPrem::billingHidden()) {
-            array_unshift($relations, WalletTransactionsRelationManager::class);
-        }
-
-        return $relations;
     }
 
     public static function getPages(): array

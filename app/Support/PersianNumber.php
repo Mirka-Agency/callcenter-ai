@@ -62,7 +62,7 @@ class PersianNumber
             return (string) $value;
         }
 
-        $currency ??= \App\Models\PlatformAiSettings::currencyCode();
+        $currency ??= 'IRR';
 
         return Number::currency((float) $value, $currency, $locale, $decimalPlaces);
     }

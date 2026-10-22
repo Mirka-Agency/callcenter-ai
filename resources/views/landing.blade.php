@@ -3,8 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="آوایار مکالمه‌های مرکز تماس را تحلیل می‌کند؛ خلاصه، احساس مشتری، کیفیت لید، عملکرد کارشناسان و کوچینگ را در یک پلتفرم کنار هم می‌گذارد.">
-    <title>{{ config('app.name') }} — هوش تماس برای مرکز تماس</title>
+    <meta name="description" content="آوایار سامانه هوش تماس برای تحلیل عمیق مکالمات پایان‌یافته؛ استخراج خودکار خلاصه مکالمه، سنجش رضایت مشتری، امتیازدهی کیفیت سرنخ، ارزیابی عملکرد کارشناسان و کوچینگ هدفمند در یک پلتفرم یکپارچه.">
+    <title>{{ config('app.name') }} — هوش تماس و تحلیل هوشمند مکالمات سازمانی</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @vite(['resources/css/saas.css', 'resources/css/landing.css', 'resources/js/landing.js'])
     <script>
@@ -25,7 +25,6 @@
             <div class="insight" data-insight>
                 <div class="insight__main">
                     <x-landing.challenges />
-                    <x-landing.cost-calculator />
                     <x-landing.sample-call />
                 </div>
                 <x-landing.coaching />

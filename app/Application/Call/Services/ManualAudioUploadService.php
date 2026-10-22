@@ -10,7 +10,6 @@ use App\Domain\Call\Enums\UploaderType;
 use App\Domain\Recording\Contracts\RecordingRepositoryInterface;
 use App\Domain\Recording\DTOs\RecordingData;
 use App\Models\Call;
-use App\Services\AiBillingService;
 use App\Services\AudioUploadValidationService;
 use App\Services\CallProcessingTracker;
 use App\Services\RecordingStorage;
@@ -37,8 +36,6 @@ class ManualAudioUploadService
         UploadedFile $file,
         ManualUploadMetadata $metadata,
     ): int {
-        app(AiBillingService::class)->assertCanAnalyze($organizationId);
-
         $validated = $this->validator->validate($file);
 
         $callId = DB::transaction(function () use (

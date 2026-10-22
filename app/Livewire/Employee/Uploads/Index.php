@@ -6,11 +6,9 @@ use App\Application\Call\Services\ManualAudioUploadService;
 use App\Domain\Call\DTOs\ManualUploadMetadata;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Call\Enums\UploaderType;
-use App\Exceptions\InsufficientWalletBalanceException;
 use App\Livewire\Concerns\DispatchesUploadToasts;
 use App\Livewire\Concerns\InteractsWithManualAudioUpload;
 use App\Models\Call;
-use App\Services\AiBillingService;
 use App\Services\EmployeeContext;
 use App\Support\UserFacingError;
 use Illuminate\Support\Facades\Log;
@@ -136,10 +134,8 @@ class Index extends Component
                     conversationDate: $this->conversationDate ? new \DateTimeImmutable($this->conversationDate) : null,
                 ),
             );
-        } catch (InsufficientWalletBalanceException|ValidationException $e) {
-            $message = $e instanceof ValidationException
-                ? ($e->validator->errors()->first('audio') ?: $e->validator->errors()->first() ?: __('ui.upload.error_default'))
-                : $e->getMessage();
+        } catch (ValidationException $e) {
+            $message = $e->validator->errors()->first('audio') ?: $e->validator->errors()->first() ?: __('ui.upload.error_default');
 
             $this->addError('audio', $message);
             $this->dispatchUploadErrorToast($message);
@@ -191,7 +187,6 @@ class Index extends Component
             'uploads' => $uploads,
             'membership' => EmployeeContext::membership()->load('user'),
             'organizationId' => EmployeeContext::organizationId(),
-            'wallet' => app(AiBillingService::class)->walletOverview(EmployeeContext::organizationId()),
         ]);
     }
 

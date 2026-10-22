@@ -1,4 +1,9 @@
-    <footer class="site-footer">
+    @php
+        $section = function (string $hash): string {
+            return request()->routeIs('home') ? $hash : route('home').$hash;
+        };
+    @endphp
+    <footer class="site-footer" id="site-footer">
         <div class="site-footer__inner">
             <div class="site-footer__grid">
                 <div class="site-footer__brand">
@@ -6,19 +11,22 @@
                         <img src="{{ asset('images/journey/avayar-logo.webp') }}" width="480" height="151" alt="آوایار" decoding="async">
                         <x-landing.brand-mark aria-hidden="true" />
                     </a>
-                    <p class="site-footer__lead">تحلیل تماس‌های پایان‌یافته برای رشد تیم فروش، پشتیبانی و کیفیت. خلاصه، احساس مشتری، کیفیت لید و کوچینگ در یک داشبورد.</p>
+                    <p class="site-footer__lead">سامانه هوشمند تحلیل مکالمات و ارتقای عملکرد مرکز تماس؛ واکاوی عمیق تماس‌های پایان‌یافته، سنجش رضایت مشتری، ارزیابی کیفیت سرنخ و کوچینگ هدفمند کارشناسان در یک پلتفرم یکپارچه.</p>
                 </div>
 
                 <nav class="site-footer__col" aria-label="دسترسی سریع">
                     <h2>دسترسی سریع</h2>
                     <ul class="site-footer__links">
                         @foreach ([
-                            ['#sample-call', 'ویژگی‌ها'],
-                            ['#journey', 'مسیر تماس'],
-                            ['#challenges', 'چالش‌ها'],
-                            ['#sample-call', 'نمونه تحلیل'],
-                            ['#coaching', 'کوچینگ'],
-                            ['#faq', 'سوالات متداول'],
+                            [$section('#sample-call'), 'ویژگی‌ها'],
+                            [$section('#journey'), 'مسیر تماس'],
+                            [$section('#challenges'), 'چالش‌ها'],
+                            [$section('#sample-call'), 'نمونه تحلیل'],
+                            [$section('#coaching'), 'کوچینگ'],
+                            [$section('#faq'), 'سوالات متداول'],
+                            [route('blog'), 'وبلاگ'],
+                            [route('about'), 'درباره ما'],
+                            [route('contact'), 'تماس با ما'],
                         ] as [$href, $label])
                             <li>
                                 <a href="{{ $href }}">
@@ -38,7 +46,7 @@
                                 <span class="site-footer__icon" aria-hidden="true">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 10.5h8M8 14h5" /><path d="M7 6.5h10a2 2 0 0 1 2 2v7.2a2 2 0 0 1-2 2H10l-3.2 2.2v-2.2H7a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2Z" /></svg>
                                 </span>
-                                <span>درخواست مشاوره<small>گفتگو درباره نیاز تیم فروش، پشتیبانی یا کیفیت</small></span>
+                                <span>درخواست مشاوره<small>بررسی تخصصی نیازهای تیم فروش، پشتیبانی و کنترل کیفیت</small></span>
                             </button>
                         </li>
                         <li>
@@ -47,23 +55,23 @@
                                     <span class="site-footer__icon" aria-hidden="true">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8.5" r="2.6" /><path d="M7.2 17.4c.7-2.2 2.5-3.3 4.8-3.3s4.1 1.1 4.8 3.3" /></svg>
                                     </span>
-                                    <span>پنل کاربری<small>ورود به فضای کاری شما</small></span>
+                                    <span>پنل کاربری<small>دسترسی به داشبورد مدیریتی و فضای کاری</small></span>
                                 </a>
                             @else
                                 <a href="{{ route('login') }}">
                                     <span class="site-footer__icon" aria-hidden="true">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8.5" r="2.6" /><path d="M7.2 17.4c.7-2.2 2.5-3.3 4.8-3.3s4.1 1.1 4.8 3.3" /></svg>
                                     </span>
-                                    <span>ورود به پنل<small>فضای مدیر و کارشناس</small></span>
+                                    <span>ورود به پنل<small>ویژه مدیران و کارشناسان سازمان</small></span>
                                 </a>
                             @endauth
                         </li>
                         <li>
-                            <a href="#faq">
+                            <a href="{{ $section('#faq') }}">
                                 <span class="site-footer__icon" aria-hidden="true">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8" /><path d="M9.6 9.4a2.4 2.4 0 1 1 3.3 2.2c-.6.3-.9.8-.9 1.4V13.4" /><path d="M12 16.6h.01" /></svg>
                                 </span>
-                                <span>پرسش‌های اتصال<small>زمان تحلیل، خروجی‌ها و CRM</small></span>
+                                <span>پرسش‌های متداول<small>آشنایی با استقرار، زمان تحلیل و یکپارچه‌سازی CRM</small></span>
                             </a>
                         </li>
                     </ul>

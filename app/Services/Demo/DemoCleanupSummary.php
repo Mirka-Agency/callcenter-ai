@@ -11,7 +11,6 @@ final class DemoCleanupSummary
         public int $customers = 0,
         public int $calls = 0,
         public int $analyses = 0,
-        public int $walletTransactions = 0,
         public int $activities = 0,
         public int $integrations = 0,
     ) {}
@@ -29,7 +28,6 @@ final class DemoCleanupSummary
             + $this->customers
             + $this->calls
             + $this->analyses
-            + $this->walletTransactions
             + $this->activities
             + $this->integrations;
     }
@@ -46,7 +44,6 @@ final class DemoCleanupSummary
             ['label' => 'customers', 'count' => $this->customers],
             ['label' => 'calls', 'count' => $this->calls],
             ['label' => 'analyses', 'count' => $this->analyses],
-            ['label' => 'wallet_transactions', 'count' => $this->walletTransactions],
             ['label' => 'activities', 'count' => $this->activities],
             ['label' => 'integrations', 'count' => $this->integrations],
         ], fn (array $row): bool => $row['count'] > 0));

@@ -33,7 +33,9 @@ class OpenAiTranscriptionTest extends TestCase
             $this->assertStringNotContainsString('gpt-4o-transcribe', $body);
             $this->assertStringNotContainsString('gpt-4o"', $body);
             $this->assertStringContainsString('verbose_json', $body);
-            $this->assertStringNotContainsString('name="prompt"', $body);
+            $this->assertStringContainsString('واژه‌ها:', $body);
+            $this->assertStringContainsString('name="temperature"', $body);
+            $this->assertStringNotContainsString('فقط حرف واقعی را بنویس', $body);
 
             return Http::response([
                 'text' => "کارشناس: سلام، شرکت آوایار هستم\nمشتری: سفارشم نرسیده",
@@ -105,7 +107,8 @@ class OpenAiTranscriptionTest extends TestCase
             $body = $request->body();
             $this->assertStringContainsString('whisper-1', $body);
             $this->assertStringContainsString('verbose_json', $body);
-            $this->assertStringNotContainsString('name="prompt"', $body);
+            $this->assertStringContainsString('واژه‌ها:', $body);
+            $this->assertStringNotContainsString('فقط حرف واقعی را بنویس', $body);
 
             return Http::response([
                 'text' => 'سلام',
@@ -175,7 +178,8 @@ class OpenAiTranscriptionTest extends TestCase
                 return Http::response('audio-bytes');
             }
 
-            $this->assertStringNotContainsString('name="prompt"', $request->body());
+            $this->assertStringContainsString('واژه‌ها:', $request->body());
+            $this->assertStringNotContainsString('فقط حرف واقعی را بنویس', $request->body());
 
             return Http::response([
                 'text' => 'نباید از این متن کامل استفاده شود',
@@ -337,6 +341,50 @@ class OpenAiTranscriptionTest extends TestCase
 
         $this->assertTrue($result->success);
         $this->assertSame('gpt-4o-transcribe', $result->model);
+    }
+
+    public function test_groq_whisper_keeps_its_model_id_and_receives_a_spelling_prompt(): void
+    {
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), 'example.com')) {
+                return Http::response('audio-bytes');
+            }
+
+            $body = $request->body();
+            $this->assertStringContainsString('groq.whisper-large-v3', $body);
+            $this->assertStringContainsString('verbose_json', $body);
+            $this->assertStringContainsString('واژه‌ها:', $body);
+            $this->assertStringContainsString('میرکو', $body);
+            $this->assertStringContainsString('علی رضایی', $body);
+            $this->assertStringContainsString('name="temperature"', $body);
+            $this->assertStringContainsString('timestamp_granularities', $body);
+            $this->assertStringNotContainsString('فقط حرف واقعی را بنویس', $body);
+
+            return Http::response([
+                'text' => "واژه‌ها: سلام، وقت بخیر.\nسلام، میرکو هستم. سفارشتان نرسیده است",
+                'segments' => [
+                    ['text' => 'واژه‌ها: سلام، وقت بخیر.', 'no_speech_prob' => 0.1, 'avg_logprob' => -0.2, 'compression_ratio' => 1.1],
+                    ['text' => 'سلام، میرکو هستم. سفارشتان نرسیده است', 'no_speech_prob' => 0.05, 'avg_logprob' => -0.2, 'compression_ratio' => 1.1],
+                ],
+            ]);
+        });
+
+        $result = $this->provider()->transcribe(new TranscriptionRequestData(
+            callId: 41,
+            recordingUrl: 'https://example.com/recording.mp3',
+            model: 'groq.whisper-large-v3',
+            sendAudioFile: true,
+            mimeType: 'audio/mpeg',
+            context: new PromptContextData(
+                employeeName: 'علی رضایی',
+                organizationName: 'میرکو',
+                callDirection: 'inbound',
+            ),
+        ));
+
+        $this->assertTrue($result->success);
+        $this->assertSame('groq.whisper-large-v3', $result->model);
+        $this->assertSame('سلام، میرکو هستم. سفارشتان نرسیده است', $result->data['transcript'] ?? null);
     }
 
     public function test_gpt_transcribe_prompt_carries_the_agent_and_organization(): void

@@ -11,9 +11,6 @@ final class DemoCatalog
     /** Plain-text password for demo users only — never use in production. */
     public const DEMO_PASSWORD = '123456789';
 
-    /** ۲۰٬۰۰۰ تومان — stored as Rials (۱ تومان = ۱۰ ریال). */
-    public const WALLET_BALANCE_IRR = 200_000;
-
     public const ORGANIZATION_COUNT = 20;
 
     public const EMPLOYEES_PER_ORGANIZATION = 4;

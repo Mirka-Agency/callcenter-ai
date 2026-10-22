@@ -13,7 +13,6 @@ use App\Models\ConversationAnalysis;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\User;
-use App\Services\AiBillingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
@@ -27,8 +26,6 @@ class ManualAnalysisEmployeeRequiredTest extends TestCase
     public function test_manual_upload_asks_for_an_employee_before_analysis(): void
     {
         $organization = $this->actingAsEmployer();
-        $this->fakeWalletOverview();
-
         Livewire::test(EmployerManualAnalysesIndex::class)
             ->assertSee('کارشناس این تماس')
             ->set('audio', UploadedFile::fake()->create('call.mp3', 100, 'audio/mpeg'))
@@ -134,19 +131,8 @@ class ManualAnalysisEmployeeRequiredTest extends TestCase
             'strengths_json' => ['پیگیری واضح'],
             'weaknesses_json' => [],
             'next_actions_json' => [],
-            'cost' => 0,
             'total_tokens' => 0,
             'analyzed_at' => now(),
         ]);
-    }
-
-    private function fakeWalletOverview(): void
-    {
-        $this->mock(AiBillingService::class, function ($mock): void {
-            $mock->shouldReceive('walletOverview')->andReturn([
-                'balance' => 1_000_000,
-                'currency' => 'IRR',
-            ]);
-        });
     }
 }

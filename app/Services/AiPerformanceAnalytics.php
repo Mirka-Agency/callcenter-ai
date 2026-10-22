@@ -33,13 +33,6 @@ class AiPerformanceAnalytics
         );
     }
 
-    /** Billing totals stay on every finished analysis, including calls the intake filters hide. */
-    private function billingQuery(): Builder
-    {
-        return ConversationAnalysis::query()
-            ->where('organization_id', $this->organizationId);
-    }
-
     public function overview(): array
     {
         $query = $this->baseQuery();
@@ -52,9 +45,6 @@ class AiPerformanceAnalytics
             $this->organizationId,
         )->count();
         $avgScore = round((float) (clone $query)->evaluable()->avg('score'), 1);
-        $billing = $this->billingQuery();
-        $totalCost = round((float) (clone $billing)->sum('cost'), 4);
-        $totalTokens = (int) (clone $billing)->sum('total_tokens');
 
         $employeeAvg = round((float) OrganizationUser::query()
             ->where('organization_id', $this->organizationId)
@@ -88,8 +78,6 @@ class AiPerformanceAnalytics
             'average_sentiment' => $avgSentiment,
             'employee_average_score' => $employeeAvg ?: 0,
             'monthly_improvement' => $improvement,
-            'total_cost' => $totalCost,
-            'total_tokens' => $totalTokens,
         ];
     }
 

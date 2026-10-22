@@ -5,8 +5,6 @@ namespace App\Services;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
-use App\Models\Organization;
-use App\Models\OrganizationUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -22,10 +20,6 @@ class AiUploadAnalyticsService
 
         return [
             'total_uploads' => (clone $uploads)->count(),
-            'total_input_tokens' => (int) (clone $usage)->sum('input_tokens'),
-            'total_output_tokens' => (int) (clone $usage)->sum('output_tokens'),
-            'total_tokens' => (int) (clone $usage)->sum('total_tokens'),
-            'total_cost' => (float) (clone $usage)->sum('cost'),
             'total_analyzed' => (clone $usage)->count(),
         ];
     }

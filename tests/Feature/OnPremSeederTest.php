@@ -4,10 +4,8 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\Organization;
-use App\Models\OrganizationWallet;
 use App\Models\User;
 use App\Models\VoipProvider;
-use App\Models\WalletTransaction;
 use Database\Seeders\OnPremSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -27,7 +25,6 @@ class OnPremSeederTest extends TestCase
             'onprem.employer_email' => 'boss@onprem.test',
             'onprem.employer_password' => 'employer-secret',
             'onprem.org_title' => 'شرکت آزمایشی',
-            'onprem.wallet_balance' => 5_000_000,
             'onprem.employer_can_manage_integrations' => true,
         ]);
 
@@ -52,52 +49,7 @@ class OnPremSeederTest extends TestCase
         $this->assertTrue($organization->employer_can_manage_integrations);
         $this->assertFalse($organization->is_demo);
 
-        $wallet = OrganizationWallet::query()->where('organization_id', $organization->id)->first();
-        $this->assertNotNull($wallet);
-        $this->assertEquals(5_000_000, (float) $wallet->balance);
-
-        $this->assertTrue(
-            WalletTransaction::query()
-                ->where('organization_id', $organization->id)
-                ->where('description', 'شارژ اولیه استقرار محلی')
-                ->exists(),
-        );
-
         $this->assertGreaterThan(0, VoipProvider::query()->count());
-    }
-
-    public function test_on_prem_seeder_clamps_oversized_wallet_balance(): void
-    {
-        config([
-            'onprem.admin_email' => 'ops2@onprem.test',
-            'onprem.admin_password' => 'admin-secret',
-            'onprem.employer_email' => 'boss2@onprem.test',
-            'onprem.employer_password' => 'employer-secret',
-            'onprem.org_title' => 'شرکت بزرگ',
-            'onprem.wallet_balance' => 1.0e17,
-            'onprem.employer_can_manage_integrations' => true,
-        ]);
-
-        putenv('ONPREM_WALLET_BALANCE=100000000000000000');
-        $_ENV['ONPREM_WALLET_BALANCE'] = '100000000000000000';
-
-        try {
-            $this->seed(OnPremSeeder::class);
-        } finally {
-            putenv('ONPREM_WALLET_BALANCE');
-            unset($_ENV['ONPREM_WALLET_BALANCE']);
-        }
-
-        $employer = User::query()->where('email', 'boss2@onprem.test')->first();
-        $this->assertNotNull($employer);
-
-        $wallet = OrganizationWallet::query()
-            ->where('organization_id', $employer->primaryOrganization()?->id)
-            ->first();
-
-        $this->assertNotNull($wallet);
-        $this->assertLessThan(100_000_000, (float) $wallet->balance);
-        $this->assertEqualsWithDelta(99_999_999.999999, (float) $wallet->balance, 0.000001);
     }
 
     public function test_on_prem_seeder_rejects_identical_admin_and_employer_emails(): void

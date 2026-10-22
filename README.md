@@ -1,14 +1,14 @@
 # Call Center Intelligence Platform
 
-An AI-powered call center analytics and coaching platform built with Laravel. Organizations connect VoIP systems, analyze conversations with LLMs, track agent performance, manage customers, and bill AI usage through organization wallets.
+An AI-powered call center analytics and coaching platform built with Laravel. Organizations connect VoIP systems, analyze conversations with LLMs, track agent performance, and manage customers.
 
 The product ships with three user-facing surfaces:
 
 | Portal | URL prefix | Audience |
 |--------|------------|----------|
-| **Employer dashboard** | `/app` | Team managers — agents, intelligence, wallet |
+| **Employer dashboard** | `/app` | Team managers — agents, intelligence, calls |
 | **Employee workspace** | `/workspace` | Call specialists — personal performance, uploads, coaching |
-| **Admin panel** | `/admin` | Platform admins — organizations, billing, integrations (Filament) |
+| **Admin panel** | `/admin` | Platform admins — organizations, AI models, integrations (Filament) |
 
 Default locale is **Persian (fa)** with RTL UI and Jalali (Shamsi) dates in the SaaS dashboards.
 
@@ -37,12 +37,6 @@ Default locale is **Persian (fa)** with RTL UI and Jalali (Shamsi) dates in the 
 - VoIP provider catalog and per-organization connections
 - Webhook ingestion for call events
 - Incoming call center for employees (live sessions)
-
-### AI billing
-- Multiple LLM providers and models with configurable per-token pricing
-- Organization AI wallets, transactions, and usage analytics
-- Pre-analysis balance checks; cost snapshots on each analysis
-- Platform-wide billing settings and cost estimator
 
 ### Administration
 - Filament admin panel for users, organizations, integrations, and AI infrastructure
@@ -200,7 +194,7 @@ app/
 │   ├── Employee/         # /workspace portal
 │   └── Shared/           # Shared analysis & queue components
 ├── Models/
-├── Services/             # Analytics, billing, VoIP, reports, …
+├── Services/             # Analytics, VoIP, reports, …
 └── Support/              # JalaliDate, PersianNumber, presenters
 
 resources/
@@ -229,7 +223,6 @@ routes/
 - `/app/processing-queue` — AI processing queue
 - `/app/customers` — Customer intelligence
 - `/app/employees` — Agent management
-- `/app/wallet` — AI wallet & usage
 
 ### Employee (`/workspace`)
 - `/workspace` — Personal performance dashboard
@@ -246,9 +239,9 @@ routes/
 
 ## Seeding demo data
 
-The project includes comprehensive demo seeders with **20 organizations**, **100 demo users** (1 employer + 4 employees each), Persian names, AI wallets (**20,000 Toman / 200,000 IRR** per org), customers, **150 calls per organization** (10 dated today, the rest spread across the last 30 days), and matching conversation analyses. All demo accounts share the password **`123456789`** (hashed at seed time; demo/test only).
+The project includes comprehensive demo seeders with **20 organizations**, **100 demo users** (1 employer + 4 employees each), Persian names, customers, **150 calls per organization** (10 dated today, the rest spread across the last 30 days), and matching conversation analyses. All demo accounts share the password **`123456789`** (hashed at seed time; demo/test only).
 
-Demo organizations are **standalone**: they have no CRM, VoIP, or per-organization LLM connections. Call/analytics sample data is seeded locally for UI testing. All organizations use the **platform default AI provider and model** configured in admin billing settings.
+Demo organizations are **standalone**: they have no CRM, VoIP, or per-organization LLM connections. Call/analytics sample data is seeded locally for UI testing. All organizations use the **platform default AI provider and model** configured in admin.
 
 ```bash
 php artisan migrate:fresh --seed
@@ -273,7 +266,7 @@ Super admins can add more demo employees instantly from **Admin → Organization
 
 Demo organizations are flagged with `is_demo = true` (seeded automatically). Super admins can reset them from **Admin → Organizations** (`/admin/organizations`):
 
-- **مدیریت داده دمو → حذف همه سازمان‌های دمو** — deletes all demo organizations and cascaded data (users, calls, analyses, wallet transactions, etc.)
+- **مدیریت داده دمو → حذف همه سازمان‌های دمو** — deletes all demo organizations and cascaded data (users, calls, analyses, and related records)
 - **حذف داده‌های دمو** — per-organization action on the list or edit page
 
 The confirmation modal shows an irreversible warning, a scope-protection note, and record counts. Production organizations (`is_demo = false`) are never affected.

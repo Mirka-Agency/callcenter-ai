@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM php:8.4-cli-alpine AS vendor
+FROM php:8.5.12-cli-alpine AS vendor
 
 RUN apk add --no-cache \
     git \
@@ -53,7 +53,7 @@ COPY --from=vendor /app/vendor ./vendor
 
 RUN npm run build
 
-FROM php:8.4-fpm-alpine AS runtime
+FROM php:8.5.12-fpm-alpine AS runtime
 
 RUN apk add --no-cache \
     nginx \

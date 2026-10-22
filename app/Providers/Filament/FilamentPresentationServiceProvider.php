@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Models\PlatformAiSettings;
 use App\Support\PersianNumber;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
@@ -18,13 +17,13 @@ class FilamentPresentationServiceProvider extends ServiceProvider
         Table::configureUsing(function (Table $table): void {
             $table
                 ->defaultNumberLocale('fa')
-                ->defaultCurrency(fn (): string => PlatformAiSettings::currencyCode());
+                ->defaultCurrency('IRR');
         });
 
         Schema::configureUsing(function (Schema $schema): void {
             $schema
                 ->defaultNumberLocale('fa')
-                ->defaultCurrency(fn (): string => PlatformAiSettings::currencyCode());
+                ->defaultCurrency('IRR');
         });
 
         DatePicker::configureUsing(function (DatePicker $picker): void {

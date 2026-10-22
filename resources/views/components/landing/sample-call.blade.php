@@ -29,15 +29,15 @@
                         <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
                             <path d="M3.5 14.5V9.2M8 14.5V5.5M12.5 14.5V8M17 14.5V3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                         </svg>
-                        تحلیل هوشمند تماس‌ها
+                        تحلیل جامع مکالمات
                     </p>
-                    <h2 id="sample-call-title" class="sample-call__title">هر <span>مکالمه</span>، اطلاعاتی ارزشمند</h2>
-                    <p class="sample-call__lead">یک نمونه تحلیل تماس با خلاصه مکالمه، امتیاز کارشناس، احساس مشتری، کیفیت سرنخ و پیشنهاد بهبود نمایش بده</p>
+                    <h2 id="sample-call-title" class="sample-call__title">واکاوی دقیق هر <span>مکالمه</span> در چند ثانیه</h2>
+                    <p class="sample-call__lead">آوایار هر تماس پایان‌یافته را به گزارشی ساختاریافته شامل چکیده مکالمه، امتیازدهی چندبعدی کارشناس، سنجش احساس مشتری، ارزیابی کیفیت سرنخ و توصیه‌های اجرایی تبدیل می‌کند.</p>
                     <ul class="sample-call__points">
                         <li class="sample-call__point">
                             <div>
-                                <h3>خلاصه هوشمند مکالمه</h3>
-                                <p>استخراج نکات کلیدی و نتیجه مکالمه در چند ثانیه.</p>
+                                <h3>خلاصه‌سازی هوشمند و دقیق</h3>
+                                <p>استخراج خودکار موضوع تماس، توافقات انجام‌شده و نتیجه‌گیری نهایی بدون نیاز به بازشنوایی کل فایل صوتی.</p>
                             </div>
                             <span class="sample-call__icon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -48,8 +48,8 @@
                         </li>
                         <li class="sample-call__point">
                             <div>
-                                <h3>امتیاز کارشناس</h3>
-                                <p>ارزیابی مهارت‌ها بر اساس داده‌های واقعی تماس.</p>
+                                <h3>امتیازدهی چندبعدی به کارشناس</h3>
+                                <p>سنجش عینی مهارت‌های ارتباطی، تسلط بر محصول، مدیریت اعتراض و توان نهایی‌سازی مذاکره بر پایه داده‌های واقعی.</p>
                             </div>
                             <span class="sample-call__icon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
@@ -59,8 +59,8 @@
                         </li>
                         <li class="sample-call__point">
                             <div>
-                                <h3>احساس مشتری و کیفیت سرنخ</h3>
-                                <p>تشخیص فرصت فروش، فوریت و سطح ریسک.</p>
+                                <h3>تحلیل احساس مشتری و ارزش سرنخ</h3>
+                                <p>تشخیص دقیق سطح رضایت، میزان تمایل به خرید، درجه فوریت و ریسک از دست رفتن مشتری در هر گفتگو.</p>
                             </div>
                             <span class="sample-call__icon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -71,8 +71,8 @@
                         </li>
                         <li class="sample-call__point">
                             <div>
-                                <h3>پیشنهاد بهبود</h3>
-                                <p>راهنمایی مشخص برای تماس بعدی کارشناس.</p>
+                                <h3>توصیه‌های اجرایی برای اقدام بعدی</h3>
+                                <p>ارائه گام‌های پیشنهادی مشخص و کاربردی به کارشناس جهت پیگیری مؤثرتر و افزایش شانس موفقیت در تماس بعدی.</p>
                             </div>
                             <span class="sample-call__icon" aria-hidden="true">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -85,24 +85,24 @@
 
                 <div class="sample-call__stage">
                     <figure class="sample-call__preview">
-                        <div class="sample-call__board" role="img" aria-label="تحلیل واقعی تماس ۱۳۰۵ برای مشتری نصیری، کارشناس تینا فتحی از پارسین، امتیاز ۸۵ و کیفیت لید ۹۱.">
+                        <div class="sample-call__board" role="img" aria-label="نمونه گزارش تحلیل تماس برای مشتری نصیری، کارشناس تینا فتحی از پارسین، امتیاز مکالمه ۸۵ و کیفیت سرنخ ۹۱.">
                             <div class="sample-call__head">
                                 <div>
-                                    <p class="sample-call__eyebrow">تحلیل مکالمه</p>
+                                    <p class="sample-call__eyebrow">نمونه گزارش تحلیل مکالمه</p>
                                     <p class="sample-call__name">نصیری</p>
                                     <p class="sample-call__role">کارشناس: تینا فتحی · پارسین</p>
                                     <p class="sample-call__meta">
                                         <span>تاریخ تحلیل: ۱۴۰۵/۰۷/۱۸</span>
-                                        <span>منبع: ویپ</span>
+                                        <span>منبع: سیستم ویپ</span>
                                     </p>
                                     <div class="sample-call__chips">
                                         <span class="sample-call__chip is-good">احساس مشتری: مثبت</span>
-                                        <span class="sample-call__chip is-good">سطح لید: بالا</span>
+                                        <span class="sample-call__chip is-good">ارزش سرنخ: بالا</span>
                                     </div>
                                 </div>
                                 <div class="sample-call__scores">
                                     <div class="sample-call__score">
-                                        <span>کیفیت لید</span>
+                                        <span>کیفیت سرنخ</span>
                                         <strong>۹۱</strong>
                                         <span>از ۱۰۰</span>
                                     </div>
@@ -128,7 +128,7 @@
                             <div class="sample-call__split">
                                 <article class="sample-call__panel">
                                     <h3>خلاصه مکالمه</h3>
-                                    <p>کارشناس فروش برای اطلاع‌رسانی درباره ارسال پیش‌فاکتور با مشتری تماس گرفت. مشتری تأیید کرد که پیش‌فاکتور را دریافت کرده و آن را برای یکی از دوستانش نیز فرستاده تا در صورت نیاز، خرید مشترک و با تعداد بالاتر انجام دهند. همچنین کارشناس اشاره کرد که پیش‌فاکتور را به‌صورت غیررسمی تنظیم کرده است، زیرا مشتری قصد خرید شخصی دارد و مشتری نیز این موضوع را تأیید کرد. مکالمه با لحنی مثبت و توافق طرفین به پایان رسید.</p>
+                                    <p>کارشناس فروش به‌منظور پیگیری وضعیت پیش‌فاکتور ارسالی با مشتری گفتگو کرد. مشتری ضمن تأیید دریافت پیش‌فاکتور، اعلام نمود که مستندات را جهت بررسی خرید تجمیعی و افزایش تعداد سفارش با یکی از همکاران خود به اشتراک گذاشته است. همچنین نحوه صدور پیش‌فاکتور متناسب با درخواست خریدار مورد تأیید طرفین قرار گرفت و مکالمه با توافق بر سر پیگیری نهایی در روز آینده با لحنی کاملاً مثبت خاتمه یافت.</p>
                                 </article>
                                 <article class="sample-call__panel">
                                     <h3>ابعاد عملکرد</h3>
@@ -138,7 +138,7 @@
                                             <div class="sample-call__track"><i style="width:88%"></i></div>
                                         </div>
                                         <div>
-                                            <div class="sample-call__dim-head"><span>دانش محصول</span><strong>۸۲</strong></div>
+                                            <div class="sample-call__dim-head"><span>تسلط بر محصول</span><strong>۸۲</strong></div>
                                             <div class="sample-call__track"><i style="width:82%"></i></div>
                                         </div>
                                         <div>
@@ -146,11 +146,11 @@
                                             <div class="sample-call__track"><i style="width:80%"></i></div>
                                         </div>
                                         <div>
-                                            <div class="sample-call__dim-head"><span>توان بستن معامله</span><strong>۸۶</strong></div>
+                                            <div class="sample-call__dim-head"><span>نهایی‌سازی مذاکره</span><strong>۸۶</strong></div>
                                             <div class="sample-call__track"><i style="width:86%"></i></div>
                                         </div>
                                         <div>
-                                            <div class="sample-call__dim-head"><span>حرفه‌ای‌گری</span><strong>۸۹</strong></div>
+                                            <div class="sample-call__dim-head"><span>رفتار حرفه‌ای</span><strong>۸۹</strong></div>
                                             <div class="sample-call__track"><i style="width:89%"></i></div>
                                         </div>
                                     </div>
@@ -161,35 +161,35 @@
                                 <article class="sample-call__panel is-good">
                                     <h3>نقاط قوت</h3>
                                     <ul class="sample-call__strengths">
-                                        <li>پیگیری سریع وضعیت پیش‌فاکتور</li>
-                                        <li>لحن محترمانه در تمام مکالمه</li>
-                                        <li>جمع‌بندی واضح در پایان تماس</li>
+                                        <li>پیگیری به‌موقع و هدفمند وضعیت پیش‌فاکتور</li>
+                                        <li>حفظ لحن محترمانه، شفاف و حرفه‌ای در طول گفتگو</li>
+                                        <li>جمع‌بندی دقیق توافقات در پایان مکالمه</li>
                                     </ul>
                                 </article>
                                 <article class="sample-call__panel is-warn">
                                     <h3>نقاط قابل بهبود</h3>
                                     <ul class="sample-call__strengths">
-                                        <li>گزینه‌های پرداخت توضیح داده نشد</li>
-                                        <li>زمان دقیق تحویل اعلام نشد</li>
-                                        <li>مزیت خرید تعدادی پررنگ نشد</li>
+                                        <li>عدم تشریح شرایط و تنوع روش‌های پرداخت</li>
+                                        <li>مشخص نکردن زمان‌بندی دقیق تحویل سفارش</li>
+                                        <li>کمرنگ بودن معرفی مزایای مالی خرید تعدادی</li>
                                     </ul>
                                 </article>
                             </div>
 
                             <div class="sample-call__banners">
                                 <article class="sample-call__banner is-buy">
-                                    <h3>اقدامات پیشنهادی</h3>
+                                    <h3>اقدامات پیشنهادی بعدی</h3>
                                     <ul>
-                                        <li>ارسال نسخه رسمی پیش‌فاکتور</li>
-                                        <li>پیگیری تصمیم مشتری تا فردا</li>
-                                        <li>پیشنهاد شرایط خرید تعدادی</li>
+                                        <li>ارسال نسخه نهایی پیش‌فاکتور متناسب با سقف سفارش جدید</li>
+                                        <li>تماس پیگیری جهت نهایی‌سازی تصمیم خرید تا فردا</li>
+                                        <li>ارائه جدول تخفیف پلکانی برای ترغیب به خرید تعدادی</li>
                                     </ul>
                                 </article>
                                 <article class="sample-call__banner is-lead">
-                                    <h3>سیگنال‌های لید</h3>
+                                    <h3>سیگنال‌های کلیدی خرید</h3>
                                     <ul>
-                                        <li>ارسال پیش‌فاکتور برای دوست جهت افزایش تعداد سفارش</li>
-                                        <li>تأیید صدور پیش‌فاکتور شخصی</li>
+                                        <li>اشتراک‌گذاری پیش‌فاکتور با شریک تجاری جهت افزایش حجم سفارش</li>
+                                        <li>تأیید مشخصات پیش‌فاکتور و آمادگی برای ورود به مرحله پرداخت</li>
                                     </ul>
                                 </article>
                             </div>

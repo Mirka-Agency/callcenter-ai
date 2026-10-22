@@ -15,7 +15,7 @@ class LlmModelResolver
         $model = $this->resolveActiveDefaultModel();
 
         if (! $model) {
-            throw new \RuntimeException('No active LLM model configured. Mark one model as the platform default in Models & Pricing.');
+            throw new \RuntimeException('No active LLM model configured. Mark one model as the platform default.');
         }
 
         return $model;
@@ -76,20 +76,5 @@ class LlmModelResolver
     public function resolveProviderForOrganization(int $organizationId): ?LlmProvider
     {
         return $this->resolveForOrganization($organizationId)->provider;
-    }
-
-    public function overviewForOrganization(int $organizationId): array
-    {
-        $model = $this->resolveForOrganization($organizationId);
-
-        return [
-            'model_id' => $model->id,
-            'model_name' => $model->name,
-            'model_key' => $model->model_key,
-            'provider_name' => $model->provider?->name,
-            'provider_code' => $model->provider?->code,
-            'input_price_per_million' => PlatformAiSettings::convertFromUnits((float) $model->input_price_per_million_tokens),
-            'output_price_per_million' => PlatformAiSettings::convertFromUnits((float) $model->output_price_per_million_tokens),
-        ];
     }
 }

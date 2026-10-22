@@ -4,10 +4,10 @@ namespace App\Support\Seeding;
 
 use App\Application\Crm\Deals\AnalysisDealEvidence;
 use App\Application\Crm\Deals\DealAudit;
-use App\Domain\Billing\Enums\WalletTransactionType;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Call\Enums\UploaderType;
+use App\Domain\Coaching\CoachingCatalog;
 use App\Domain\Crm\Deals\DealActivityType;
 use App\Domain\Crm\Deals\DealSource;
 use App\Domain\Crm\Deals\DealStatus;
@@ -23,7 +23,6 @@ use App\Domain\Crm\Tasks\TaskPriority;
 use App\Domain\Crm\Tasks\TaskSource;
 use App\Domain\Crm\Tasks\TaskStatus;
 use App\Domain\Customer\CustomerLifecycleStage;
-use App\Domain\Coaching\CoachingCatalog;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Domain\Processing\Enums\ProcessingJobStage;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
@@ -58,13 +57,10 @@ use App\Models\Organization;
 use App\Models\OrganizationActivity;
 use App\Models\OrganizationUser;
 use App\Models\OrganizationVoipConnection;
-use App\Models\OrganizationWallet;
-use App\Models\PlatformAiSettings;
 use App\Models\User;
 use App\Models\VoipCallLog;
 use App\Models\VoipProvider;
 use App\Models\VoipSyncLog;
-use App\Models\WalletTransaction;
 use App\Services\CallIntake\CallIntakeSettings;
 use App\Services\CallIntake\Filters\InternalAgentCallsFilter;
 use App\Services\CustomerCompanyService;
@@ -123,7 +119,6 @@ final class AvayarShowcase
         $this->ensureCalls($organization, $employees, $customers);
         $this->ensureVoip($organization, $employees);
         $this->ensureCrm($organization, $employees, $customers);
-        $this->ensureWallet($organization);
 
         $this->ensureTodayDissatisfied($organization);
         $this->ensureChartSeries($organization);
@@ -1160,13 +1155,6 @@ final class AvayarShowcase
                     'input_tokens' => $inputTokens,
                     'output_tokens' => $outputTokens,
                     'total_tokens' => $inputTokens + $outputTokens,
-                    'cost' => $model ? $model->calculateCost($inputTokens, $outputTokens) : 0.12,
-                    'input_price_snapshot' => $model
-                        ? PlatformAiSettings::convertFromUnits((float) $model->input_price_per_million_tokens)
-                        : null,
-                    'output_price_snapshot' => $model
-                        ? PlatformAiSettings::convertFromUnits((float) $model->output_price_per_million_tokens)
-                        : null,
                     'processing_duration_ms' => $faker->numberBetween(1600, 4200),
                     'analyzed_at' => $analyzedAt,
                 ],
@@ -1656,49 +1644,6 @@ final class AvayarShowcase
                 'summary' => $analysis->summary,
             ],
         ]);
-    }
-
-    private function ensureWallet(Organization $organization): void
-    {
-        if (WalletTransaction::query()->where('organization_id', $organization->id)->exists()) {
-            return;
-        }
-
-        $wallet = OrganizationWallet::query()->firstOrCreate(
-            ['organization_id' => $organization->id],
-            ['balance' => 0, 'currency' => 'IRR'],
-        );
-
-        $balance = 0.0;
-        $rows = [
-            [WalletTransactionType::Deposit, 85_000_000, 'شارژ اعتبار تحلیل تماس، مهر ۱۴۰۴', now()->subDays(26)->setTime(10, 5)],
-        ];
-
-        foreach ([420000, 610000, 380000, 540000, 290000, 710000, 455000, 360000] as $offset => $amount) {
-            $rows[] = [
-                WalletTransactionType::AiUsage,
-                -$amount,
-                'مصرف تحلیل تماس‌ها',
-                now()->subDays(20 - ($offset * 2))->setTime(19, 40),
-            ];
-        }
-
-        foreach ($rows as [$type, $amount, $description, $at]) {
-            $before = $balance;
-            $balance += $amount;
-            $transaction = new WalletTransaction([
-                'organization_id' => $organization->id,
-                'type' => $type,
-                'amount' => $amount,
-                'balance_before' => $before,
-                'balance_after' => $balance,
-                'description' => $description,
-            ]);
-            $transaction->created_at = $at;
-            $transaction->save();
-        }
-
-        $wallet->update(['balance' => $balance, 'currency' => 'IRR']);
     }
 
     private function extensionFor(OrganizationUser $employee): string

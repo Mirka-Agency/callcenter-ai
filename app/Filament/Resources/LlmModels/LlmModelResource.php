@@ -3,14 +3,12 @@
 namespace App\Filament\Resources\LlmModels;
 
 use App\Filament\Concerns\OnlySuperAdmin;
-use App\Filament\Resources\LlmModels\Pages\CostEstimator;
 use App\Filament\Resources\LlmModels\Pages\CreateLlmModel;
 use App\Filament\Resources\LlmModels\Pages\EditLlmModel;
 use App\Filament\Resources\LlmModels\Pages\ListLlmModels;
 use App\Filament\Resources\LlmModels\Schemas\LlmModelForm;
 use App\Filament\Resources\LlmModels\Tables\LlmModelsTable;
 use App\Models\LlmModel;
-use App\Support\OnPrem;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -24,7 +22,7 @@ class LlmModelResource extends Resource
 
     protected static ?string $model = LlmModel::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCurrencyDollar;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCpuChip;
 
     protected static ?int $navigationSort = 2;
 
@@ -37,7 +35,7 @@ class LlmModelResource extends Resource
 
     public static function getNavigationGroup(): string|UnitEnum|null
     {
-        return OnPrem::llmNavigationGroup();
+        return __('filament.navigation.groups.ai_management');
     }
 
     public static function form(Schema $schema): Schema
@@ -54,7 +52,6 @@ class LlmModelResource extends Resource
     {
         return [
             'index' => ListLlmModels::route('/'),
-            'cost-estimator' => CostEstimator::route('/cost-estimator'),
             'create' => CreateLlmModel::route('/create'),
             'edit' => EditLlmModel::route('/{record}/edit'),
         ];

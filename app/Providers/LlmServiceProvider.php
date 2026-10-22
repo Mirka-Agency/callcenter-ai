@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Application\AiUsage\Listeners\RecordAiUsageSnapshot;
 use App\Application\Customer\Listeners\SyncCustomerFromAnalysis;
 use App\Application\Llm\AnalysisManager;
 use App\Application\Llm\Listeners\ForgetPerformanceDashboardCache;
@@ -50,7 +49,6 @@ class LlmServiceProvider extends ServiceProvider
             return $request;
         });
 
-        Event::listen(ConversationAnalyzed::class, RecordAiUsageSnapshot::class);
         Event::listen(ConversationAnalyzed::class, SyncCustomerFromAnalysis::class);
         Event::listen(ConversationAnalyzed::class, ForgetPerformanceDashboardCache::class);
     }

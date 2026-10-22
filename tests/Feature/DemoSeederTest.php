@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Application\Crm\Services\CrmDealSettingsService;
-use App\Domain\Billing\Enums\WalletTransactionType;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Enums\IntegrationSetupStatus;
 use App\Enums\UserRole;
@@ -13,16 +12,14 @@ use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\EmployeeIntegrationMeta;
 use App\Models\Organization;
+use App\Models\OrganizationActivity;
 use App\Models\OrganizationCrmConnection;
 use App\Models\OrganizationVoipConnection;
-use App\Models\OrganizationWallet;
-use App\Models\OrganizationActivity;
 use App\Models\User;
 use App\Models\VoipCallLog;
-use App\Models\WalletTransaction;
-use App\Services\OrganizationIntegrationStatusService;
 use App\Services\Demo\DemoEmployeeProvisioner;
 use App\Services\EmployerDashboardAnalytics;
+use App\Services\OrganizationIntegrationStatusService;
 use App\Services\Reports\OrganizationCallMetrics;
 use App\Support\Seeding\DemoCatalog;
 use Database\Seeders\DemoSeeder;
@@ -116,16 +113,6 @@ class DemoSeederTest extends TestCase
                     ->whereIn('organization_user_id', $organization->memberships()->pluck('id'))
                     ->count(),
             );
-            $this->assertGreaterThan(
-                0,
-                WalletTransaction::query()
-                    ->where('organization_id', $organization->id)
-                    ->where('type', WalletTransactionType::AiUsage)
-                    ->count(),
-            );
-            $wallet = OrganizationWallet::query()->where('organization_id', $organization->id)->first();
-            $this->assertNotNull($wallet);
-            $this->assertSame((float) DemoCatalog::WALLET_BALANCE_IRR, (float) $wallet->balance);
             $this->assertGreaterThanOrEqual(DemoCatalog::CUSTOMERS_PER_ORGANIZATION, Customer::query()->where('organization_id', $organization->id)->count());
             $this->assertSame(DemoCatalog::CALLS_PER_ORGANIZATION, Call::query()->where('organization_id', $organization->id)->count());
             $this->assertSame(

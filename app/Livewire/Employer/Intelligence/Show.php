@@ -8,12 +8,10 @@ use App\Application\Intelligence\Jobs\UpdateEmployeeMetricsJob;
 use App\Application\Intelligence\Services\CallAnalysisQueueService;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
-use App\Exceptions\InsufficientWalletBalanceException;
 use App\Livewire\Concerns\ResolvesRecordingPlayback;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\OrganizationUser;
-use App\Services\AiBillingService;
 use App\Services\EmployerContext;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -206,12 +204,6 @@ class Show extends Component
 
         if (! $call->organization_user_id) {
             return __('ui.intelligence.reanalyze_one_employee_required');
-        }
-
-        try {
-            app(AiBillingService::class)->assertCanAnalyze($call->organization_id);
-        } catch (InsufficientWalletBalanceException) {
-            return __('ui.wallet.insufficient');
         }
 
         return __('ui.intelligence.reanalyze_one_failed');

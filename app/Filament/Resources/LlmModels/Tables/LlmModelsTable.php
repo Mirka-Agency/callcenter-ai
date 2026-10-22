@@ -2,8 +2,6 @@
 
 namespace App\Filament\Resources\LlmModels\Tables;
 
-use App\Models\PlatformAiSettings;
-use App\Services\AiCostEstimatorService;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -12,7 +10,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class LlmModelsTable
 {
@@ -26,24 +23,6 @@ class LlmModelsTable
                     ->searchable(),
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('model_key')->badge()->searchable(),
-                TextColumn::make('input_price_per_million_tokens')
-                    ->label(__('filament.fields.input_per_1m'))
-                    ->money(fn () => PlatformAiSettings::billingUnitCurrency())
-                    ->sortable(),
-                TextColumn::make('output_price_per_million_tokens')
-                    ->label(__('filament.fields.output_per_1m'))
-                    ->money(fn () => PlatformAiSettings::billingUnitCurrency())
-                    ->sortable(),
-                TextColumn::make('est_cost_per_minute')
-                    ->label(__('filament.fields.est_per_min'))
-                    ->getStateUsing(fn ($record) => app(AiCostEstimatorService::class)->costPerMinute($record))
-                    ->formatStateUsing(fn ($state) => PlatformAiSettings::formatMoney($state))
-                    ->sortable(false),
-                TextColumn::make('est_cost_per_hour')
-                    ->label(__('filament.fields.est_per_hour'))
-                    ->getStateUsing(fn ($record) => app(AiCostEstimatorService::class)->costPerHour($record))
-                    ->formatStateUsing(fn ($state) => PlatformAiSettings::formatMoney($state))
-                    ->sortable(false),
                 IconColumn::make('is_default')->boolean()->label(__('filament.fields.platform_default')),
                 IconColumn::make('is_transcription_default')->boolean()->label(__('filament.fields.transcription_default')),
                 IconColumn::make('sends_audio_file')

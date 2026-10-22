@@ -74,9 +74,6 @@
             <div class="saas-card space-y-4">
                 <div><span class="text-sm text-zinc-500">امتیاز</span><p class="text-2xl font-bold text-emerald-600">{{ $analysis->score }}</p></div>
                 <div><span class="text-sm text-zinc-500">احساس</span><p class="font-medium">{{ $analysis->sentiment->label() }}</p></div>
-                <div><span class="text-sm text-zinc-500">توکن‌های ورودی</span><p class="font-medium">{{ number_format($analysis->input_tokens) }}</p></div>
-                <div><span class="text-sm text-zinc-500">توکن‌های خروجی</span><p class="font-medium">{{ number_format($analysis->output_tokens) }}</p></div>
-                <div><span class="text-sm text-zinc-500">هزینه کل</span><p class="font-medium">{{ \App\Models\PlatformAiSettings::formatMoney($analysis->cost) }}</p></div>
                 @include('livewire.shared.analysis-ai-infrastructure', ['analysis' => $analysis])
             </div>
         </div>

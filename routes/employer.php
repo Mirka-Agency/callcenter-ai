@@ -5,14 +5,14 @@ use App\Http\Controllers\Employer\ReportExportController;
 use App\Livewire\Crm\Deals\Index as CrmDealsIndex;
 use App\Livewire\Crm\Deals\OpportunityList as CrmDealsOpportunityList;
 use App\Livewire\Crm\Deals\Show as CrmDealsShow;
-use App\Livewire\Crm\Overview as CrmOverview;
 use App\Livewire\Crm\Invoices\Index as CrmInvoicesIndex;
 use App\Livewire\Crm\Invoices\Show as CrmInvoicesShow;
+use App\Livewire\Crm\Overview as CrmOverview;
 use App\Livewire\Crm\Pipelines\Form as CrmPipelinesForm;
 use App\Livewire\Crm\Pipelines\Index as CrmPipelinesIndex;
 use App\Livewire\Crm\Products\Index as CrmProductsIndex;
-use App\Livewire\Crm\Settings as CrmSettings;
 use App\Livewire\Crm\Reminders\Index as CrmRemindersIndex;
+use App\Livewire\Crm\Settings as CrmSettings;
 use App\Livewire\Crm\Tasks\Index as CrmTasksIndex;
 use App\Livewire\Crm\Tasks\Show as CrmTasksShow;
 use App\Livewire\Employer\Crm\Connections\Create;
@@ -44,7 +44,6 @@ use App\Livewire\Employer\ProcessingQueue\Show;
 use App\Livewire\Employer\Profile\Edit as ProfileEdit;
 use App\Livewire\Employer\Voip\Extensions;
 use App\Livewire\Employer\Voip\Index as VoipIndex;
-use App\Livewire\Employer\Wallet\Index as WalletIndex;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -144,6 +143,5 @@ Route::middleware(['auth', 'employer'])->group(function () {
     });
     Route::get('/organization', OrganizationProfile::class)->name('organization.profile');
     Route::permanentRedirect('/holidays', '/app/organization')->name('holidays.index');
-    Route::get('/wallet', WalletIndex::class)->name('wallet.index');
     Route::get('/profile', ProfileEdit::class)->name('profile.edit');
 });

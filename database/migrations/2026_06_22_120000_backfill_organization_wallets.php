@@ -1,19 +1,13 @@
 <?php
 
-use App\Models\Organization;
-use App\Services\WalletService;
 use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        $walletService = app(WalletService::class);
-
-        Organization::query()
-            ->whereDoesntHave('wallet')
-            ->pluck('id')
-            ->each(fn (int $organizationId) => $walletService->forOrganization($organizationId));
+        // Wallets were removed. This backfill is intentionally empty so fresh installs
+        // do not depend on the deleted wallet service.
     }
 
     public function down(): void

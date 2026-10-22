@@ -2,13 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Enums\UserRole;
 use App\Exceptions\DemoCleanupException;
 use App\Models\Call;
 use App\Models\ConversationAnalysis;
 use App\Models\Customer;
 use App\Models\Organization;
-use App\Models\OrganizationWallet;
 use App\Models\User;
 use App\Services\Demo\DemoOrganizationCleanupService;
 use App\Support\Seeding\DemoCatalog;
@@ -42,7 +40,6 @@ class DemoOrganizationCleanupTest extends TestCase
         $this->assertSame(0, Call::query()->where('organization_id', $organizationId)->count());
         $this->assertSame(0, ConversationAnalysis::query()->where('organization_id', $organizationId)->count());
         $this->assertSame(0, Customer::query()->where('organization_id', $organizationId)->count());
-        $this->assertSame(0, OrganizationWallet::query()->where('organization_id', $organizationId)->count());
         $this->assertSame(DemoCatalog::ORGANIZATION_COUNT - 1, Organization::query()->demo()->count());
     }
 

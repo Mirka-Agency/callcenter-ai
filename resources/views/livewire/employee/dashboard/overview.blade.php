@@ -121,7 +121,7 @@
                 <h2 class="text-lg font-semibold">عملکرد من</h2>
                 <a href="{{ route('employee.performance') }}" class="text-sm text-indigo-600 hover:underline">مشاهده جزئیات</a>
             </div>
-            <div class="mt-4 grid gap-4 sm:grid-cols-3">
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
                 <div class="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-900">
                     <p class="text-sm text-zinc-500">بهترین اخیر</p>
                     <p class="text-2xl font-bold">{{ collect($scoreTrend)->pluck('avg_score')->filter()->max() ?: '—' }}</p>
@@ -129,10 +129,6 @@
                 <div class="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-900">
                     <p class="text-sm text-zinc-500">تماس‌های تحلیل‌شده</p>
                     <p class="text-2xl font-bold">{{ $cockpit['analyzed_count'] }}</p>
-                </div>
-                <div class="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-900">
-                    <p class="text-sm text-zinc-500">توکن مصرف‌شده</p>
-                    <p class="text-2xl font-bold">{{ number_format($cockpit['token_usage']) }}</p>
                 </div>
             </div>
         </div>

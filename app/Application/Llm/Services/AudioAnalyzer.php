@@ -21,16 +21,15 @@ use App\Models\CallTranscript;
 use App\Models\LlmModel;
 use App\Models\OrganizationUser;
 use App\Models\VoipCallLog;
-use App\Services\AiBillingService;
 use App\Services\CallProcessingTracker;
 use App\Services\LlmModelResolver;
 use App\Services\RecordingUrlService;
+use App\Services\WeaknessEvaluationFilter;
 
 class AudioAnalyzer
 {
     public function __construct(
         private ConversationAnalysisRepositoryInterface $analyses,
-        private AiBillingService $billing,
         private LlmConnectionResolver $connections,
         private LlmModelResolver $models,
     ) {}
@@ -45,9 +44,7 @@ class AudioAnalyzer
 
         $call = Call::query()->with(['recording', 'organization'])->findOrFail($callId);
 
-        $this->billing->assertCanAnalyze($call->organization_id);
-
-        $llmModel = $this->billing->resolveModel($call->organization_id);
+        $llmModel = $this->models->resolveForOrganization($call->organization_id);
         $modelKey = $model ?? $llmModel->model_key;
 
         $callLog = $call->voip_call_log_id
@@ -115,7 +112,6 @@ class AudioAnalyzer
         $storedTranscript = $this->reusableTranscript($call);
         $transcriptionInput = 0;
         $transcriptionOutput = 0;
-        $transcriptionCached = 0;
         $transcriptionDuration = 0;
 
         if ($storedTranscript instanceof CallTranscript) {
@@ -148,10 +144,21 @@ class AudioAnalyzer
 
             $transcriptionInput = $transcription->inputTokens;
             $transcriptionOutput = $transcription->outputTokens;
-            $transcriptionCached = $transcription->cachedTokens;
             $transcriptionDuration = $transcription->durationMs;
+        }
 
-            $this->storeTranscript($call, $transcript, $transcription->model, $transcription->durationMs, $transcription->data['speakers'] ?? null);
+        $turns = app(SpeakerTurnLabeler::class)->label($provider, $modelKey, $context, $transcript);
+        $transcript = $turns['transcript'];
+        $transcriptionInput += $turns['inputTokens'];
+        $transcriptionOutput += $turns['outputTokens'];
+        $transcriptionDuration += $turns['durationMs'];
+
+        if ($storedTranscript instanceof CallTranscript) {
+            if ($storedTranscript->content !== $transcript) {
+                $storedTranscript->update(['content' => $transcript]);
+            }
+        } else {
+            $this->storeTranscript($call, $transcript, $transcription->model ?? $requestedTranscriptionModel, $transcriptionDuration, $transcription->data['speakers'] ?? null);
         }
 
         $call->update(['processing_status' => CallProcessingStatus::Analyzing]);
@@ -216,10 +223,9 @@ class AudioAnalyzer
 
         $triageInput = $triage->skipFullAnalysis ? 0 : $triage->inputTokens;
         $triageOutput = $triage->skipFullAnalysis ? 0 : $triage->outputTokens;
-        $triageCached = $triage->skipFullAnalysis ? 0 : $triage->cachedTokens;
         $triageDuration = $triage->skipFullAnalysis ? 0 : $triage->durationMs;
 
-        $analysisData = $this->billing->buildAnalysisResult(
+        $analysisData = $this->analysisResult(
             response: $result->data,
             model: $llmModel,
             organizationId: $call->organization_id,
@@ -237,12 +243,10 @@ class AudioAnalyzer
                 'current_user_name' => $employee?->full_name,
                 'current_company_name' => $call->organization?->title,
             ], fn (mixed $value) => is_string($value) && trim($value) !== ''),
-            // When the model finished — call day stays on calls.* / occurredAt().
             analyzedAt: now(),
-            cachedTokens: $result->cachedTokens + $transcriptionCached + $triageCached,
         );
 
-        $stored = $this->billing->storeAndCharge($analysisData, $this->analyses);
+        $stored = $analysisData->withId($this->analyses->store($analysisData));
 
         event(new ConversationAnalyzed(
             organizationId: $call->organization_id,
@@ -251,6 +255,52 @@ class AudioAnalyzer
         ));
 
         return $stored;
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     * @param  array<string, mixed>|null  $crmContext
+     */
+    private function analysisResult(
+        array $response,
+        LlmModel $model,
+        int $organizationId,
+        ?int $organizationUserId,
+        ?int $voipCallLogId,
+        ?int $organizationLlmConnectionId,
+        int $inputTokens,
+        int $outputTokens,
+        int $processingDurationMs,
+        ?string $promptVersion = null,
+        ?int $callId = null,
+        ?ConversationSource $source = null,
+        ?string $transcript = null,
+        ?array $crmContext = null,
+        ?\DateTimeInterface $analyzedAt = null,
+    ): AnalysisResultData {
+        $response = app(AnalysisResponseNormalizer::class)->apply(
+            app(WeaknessEvaluationFilter::class)->filterResponse($response),
+            $crmContext,
+        );
+
+        return AnalysisResultData::fromProviderResponse(
+            response: $response,
+            organizationId: $organizationId,
+            organizationUserId: $organizationUserId,
+            voipCallLogId: $voipCallLogId,
+            organizationLlmConnectionId: $organizationLlmConnectionId,
+            llmProvider: $model->provider?->code ?? 'unknown',
+            modelName: $model->model_key,
+            inputTokens: $inputTokens,
+            outputTokens: $outputTokens,
+            processingDurationMs: $processingDurationMs,
+            promptVersion: $promptVersion,
+            callId: $callId,
+            source: $source ?? ConversationSource::Voip,
+            transcript: $transcript,
+            llmModelId: $model->id,
+            analyzedAt: $analyzedAt,
+        );
     }
 
     private function reusableTranscript(Call $call): ?CallTranscript
