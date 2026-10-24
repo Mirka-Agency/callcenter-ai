@@ -161,6 +161,8 @@ class PublicBlogQuery
         $categorySlug = $post->category?->slug ?? 'guide';
         $minutes = $this->estimateReadingMinutes($post->body);
 
+        $authorName = trim((string) ($post->author_display_name ?? ''));
+
         $payload = [
             'id' => $post->id,
             'slug' => $post->slug,
@@ -177,7 +179,9 @@ class PublicBlogQuery
             'tone' => (abs(crc32((string) $post->slug)) % 3) + 1,
             'cover_image_url' => $post->cover_image_url,
             'cover_video_url' => $post->cover_video_url,
-            'author_display_name' => $post->author_display_name,
+            'author_display_name' => $authorName !== '' ? $authorName : null,
+            'author_initials' => $this->authorInitials($authorName),
+            'tags' => $this->presentTags($post->category?->name, $post->seo_keywords),
             'meta_title' => $post->meta_title ?: $post->title,
             'meta_description' => $post->meta_description ?: ($post->excerpt ?? ''),
             'seo_keywords' => $post->seo_keywords,
@@ -217,5 +221,46 @@ class PublicBlogQuery
         $minutes = (int) max(1, (int) ceil(count($words) / 180));
 
         return $minutes;
+    }
+
+    private function authorInitials(string $name): string
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return '';
+        }
+
+        $parts = preg_split('/\s+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $first = mb_substr($parts[0] ?? '', 0, 1);
+        $second = mb_substr($parts[1] ?? '', 0, 1);
+
+        return $first.$second;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function presentTags(?string $categoryName, ?string $seoKeywords): array
+    {
+        $tags = [];
+
+        if ($categoryName !== null && trim($categoryName) !== '') {
+            $tags[] = trim($categoryName);
+        }
+
+        if ($seoKeywords !== null && trim($seoKeywords) !== '') {
+            $parts = preg_split('/[,،|]+/u', $seoKeywords) ?: [];
+            foreach ($parts as $part) {
+                $tag = trim($part);
+                if ($tag === '') {
+                    continue;
+                }
+                if (! in_array($tag, $tags, true)) {
+                    $tags[] = $tag;
+                }
+            }
+        }
+
+        return array_slice($tags, 0, 8);
     }
 }

@@ -104,6 +104,9 @@ class BlogPageTest extends TestCase
             ->assertSee('راهنمای شروع کار با آوایار')
             ->assertSee('آوایار تماس پایان‌یافته را تحلیل می‌کند')
             ->assertSee('مقاله‌های مرتبط')
+            ->assertSee('اشتراک‌گذاری')
+            ->assertSee('برچسب‌ها')
+            ->assertSee('دقیقه مطالعه')
             ->assertSee(route('blog'), false);
 
         $this->get('http://avayar.org/blog/missing-article')
