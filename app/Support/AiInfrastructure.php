@@ -10,7 +10,7 @@ class AiInfrastructure
     {
         $role = auth()->user()?->role;
 
-        return $role instanceof UserRole && $role->canAccessAdminPanel();
+        return $role instanceof UserRole && $role->isAdminStaff();
     }
 
     public static function activeLabel(): string

@@ -3,8 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="آوایار با هوش مصنوعی، تماس‌های تلفنی کسب‌وکارها را به داده‌های ارزشمند تبدیل می‌کند تا هر گفتگو فرصتی برای یادگیری، بهبود و رشد باشد.">
-    <title>درباره آوایار — {{ config('app.name') }}</title>
+    <x-seo.head :meta="\App\Support\Seo\SeoMeta::resolve(\App\Support\Seo\SeoMeta::forPage('about', ['canonical' => route('about')]))" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @vite(['resources/css/saas.css', 'resources/css/landing.css', 'resources/js/landing.js'])
     <script>

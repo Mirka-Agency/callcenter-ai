@@ -71,6 +71,10 @@ class BlogPageTest extends TestCase
     public function test_category_filter_limits_the_visible_articles(): void
     {
         $this->get('http://avayar.org/blog?category=guide')
+            ->assertRedirect('http://avayar.org/blog/category/guide')
+            ->assertStatus(301);
+
+        $this->get('http://avayar.org/blog/category/guide')
             ->assertOk()
             ->assertSee('راهنمای شروع کار با آوایار')
             ->assertSee('جستجو بین مکالمه‌های تحلیل‌شده')

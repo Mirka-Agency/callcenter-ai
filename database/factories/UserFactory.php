@@ -61,4 +61,11 @@ class UserFactory extends Factory
             'role' => UserRole::Admin,
         ]);
     }
+
+    public function writer(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Writer,
+        ]);
+    }
 }

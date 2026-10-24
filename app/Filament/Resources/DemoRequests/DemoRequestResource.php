@@ -2,7 +2,8 @@
 
 namespace App\Filament\Resources\DemoRequests;
 
-use App\Filament\Concerns\OnlySuperAdmin;
+use App\Domain\Platform\Enums\AdminArea;
+use App\Filament\Concerns\RequiresAdminArea;
 use App\Filament\Resources\DemoRequests\Pages\ListDemoRequests;
 use App\Filament\Resources\DemoRequests\Pages\ViewDemoRequest;
 use App\Filament\Resources\DemoRequests\Tables\DemoRequestsTable;
@@ -16,9 +17,22 @@ use Illuminate\Database\Eloquent\Model;
 
 class DemoRequestResource extends Resource
 {
-    use OnlySuperAdmin;
+    use RequiresAdminArea;
 
     protected static ?string $model = DemoRequest::class;
+
+    protected static ?string $recordTitleAttribute = 'full_name';
+
+    /** @return list<string> */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['full_name', 'phone', 'company_name'];
+    }
+
+    public static function adminArea(): AdminArea
+    {
+        return AdminArea::Sales;
+    }
 
     protected static ?string $slug = 'demo-requests';
 
@@ -33,7 +47,7 @@ class DemoRequestResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return __('filament.navigation.groups.organizations');
+        return __('filament.navigation.groups.sales');
     }
 
     public static function getModelLabel(): string
@@ -79,5 +93,10 @@ class DemoRequestResource extends Resource
     public static function canView(Model $record): bool
     {
         return static::canAccess();
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
     }
 }

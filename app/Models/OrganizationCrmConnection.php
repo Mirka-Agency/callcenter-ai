@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\AuditedByAdmins;
+use Database\Factories\OrganizationCrmConnectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -19,7 +21,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class OrganizationCrmConnection extends Model
 {
-    /** @use HasFactory<\Database\Factories\OrganizationCrmConnectionFactory> */
+    use AuditedByAdmins;
+
+    /** @use HasFactory<OrganizationCrmConnectionFactory> */
     use HasFactory;
 
     protected function casts(): array

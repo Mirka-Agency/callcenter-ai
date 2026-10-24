@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Domain\Blog\BlogPostStatus;
+use App\Support\Seo\SitemapCache;
+use App\Support\Seo\SlugRedirects;
 use Database\Factories\BlogPostFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -33,6 +35,7 @@ use Illuminate\Support\Carbon;
     'og_description',
     'og_image_url',
     'faq_json',
+    'noindex',
     'content_version',
 ])]
 class BlogPost extends Model
@@ -49,8 +52,31 @@ class BlogPost extends Model
             'published_at' => 'datetime',
             'is_recoverable_draft' => 'boolean',
             'faq_json' => 'array',
+            'noindex' => 'boolean',
             'content_version' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(fn (BlogPost $post) => SlugRedirects::handleSaved($post, 'blog.show', $post->wasPublishedBeforeSave()));
+        static::deleted(fn () => SitemapCache::flush());
+    }
+
+    /** Whether the post was publicly visible before the current save (so its old URL may be indexed). */
+    public function wasPublishedBeforeSave(): bool
+    {
+        $status = $this->getOriginal('status');
+        $publishedAt = $this->getOriginal('published_at');
+
+        return ($status === BlogPostStatus::Published || $status === BlogPostStatus::Published->value)
+            && $publishedAt !== null
+            && Carbon::parse($publishedAt)->lte(Carbon::now('UTC'));
+    }
+
+    public function publicUrl(): string
+    {
+        return route('blog.show', $this->slug);
     }
 
     public function category(): BelongsTo

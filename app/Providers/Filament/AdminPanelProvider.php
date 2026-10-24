@@ -47,6 +47,9 @@ class AdminPanelProvider extends PanelProvider
                     array_values(__('filament.navigation.groups')),
                 ),
             )
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('60s')
+            ->globalSearchKeyBindings(['mod+k'])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\AuditedByAdmins;
 use App\Services\IntegrationMetaDefinitionSynchronizer;
 use Database\Factories\CrmProviderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 #[Fillable(['name', 'code', 'is_active', 'config'])]
 class CrmProvider extends Model
 {
+    use AuditedByAdmins;
+
     /** @use HasFactory<CrmProviderFactory> */
     use HasFactory;
 

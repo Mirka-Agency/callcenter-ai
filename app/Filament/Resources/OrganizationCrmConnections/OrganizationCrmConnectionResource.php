@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\OrganizationCrmConnections;
 
+use App\Filament\Concerns\AdminStaffOnly;
 use App\Filament\Resources\OrganizationCrmConnections\Pages\CreateOrganizationCrmConnection;
 use App\Filament\Resources\OrganizationCrmConnections\Pages\EditOrganizationCrmConnection;
 use App\Filament\Resources\OrganizationCrmConnections\Pages\ListOrganizationCrmConnections;
@@ -20,6 +21,8 @@ use UnitEnum;
 
 class OrganizationCrmConnectionResource extends Resource
 {
+    use AdminStaffOnly;
+
     protected static ?string $model = OrganizationCrmConnection::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedLink;

@@ -6,6 +6,8 @@ use App\Application\Call\Services\CallEmployeeResolver;
 use App\Filament\Support\FluentWidgetConfiguration;
 use App\Listeners\RecordUserLastLogin;
 use App\Services\CallIntake\CallIntakeSettings;
+use App\Services\PlatformAnalytics\OrganizationHealthScorer;
+use App\Services\PlatformAnalytics\PlatformMetrics;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\OrganizationCallMetrics;
 use App\Support\JalaliDate;
@@ -29,6 +31,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(CallIntakeSettings::class);
         $this->app->scoped(OrganizationCallMetrics::class);
         $this->app->scoped(ChartHolidayCalendar::class);
+        $this->app->scoped(PlatformMetrics::class);
+        $this->app->scoped(OrganizationHealthScorer::class);
     }
 
     public function boot(): void

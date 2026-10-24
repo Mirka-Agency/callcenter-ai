@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\AuditedByAdmins;
 use App\Services\IntegrationMetaDefinitionSynchronizer;
 use Database\Factories\VoipProviderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 #[Fillable(['name', 'code', 'adapter_class', 'supports_webhook', 'supports_polling', 'polling_interval_seconds', 'is_active', 'config'])]
 class VoipProvider extends Model
 {
+    use AuditedByAdmins;
+
     /** @use HasFactory<VoipProviderFactory> */
     use HasFactory;
 

@@ -8,6 +8,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -50,6 +51,20 @@ class OrganizationForm
                     ->preload()
                     ->required()
                     ->native(false),
+                Section::make(__('admin.billing.profile_heading'))
+                    ->description(__('admin.billing.profile_description'))
+                    ->collapsible()
+                    ->collapsed()
+                    ->columns(2)
+                    ->columnSpanFull()
+                    ->schema([
+                        TextInput::make('legal_name')->label(__('admin.billing.legal_name'))->maxLength(255),
+                        TextInput::make('national_id')->label(__('admin.billing.national_id'))->maxLength(20),
+                        TextInput::make('economic_code')->label(__('admin.billing.economic_code'))->maxLength(20),
+                        TextInput::make('postal_code')->label(__('admin.billing.postal_code'))->maxLength(20),
+                        TextInput::make('billing_phone')->label(__('admin.billing.billing_phone'))->tel()->maxLength(30),
+                        Textarea::make('billing_address')->label(__('admin.billing.billing_address'))->rows(2)->columnSpanFull(),
+                    ]),
             ]);
     }
 }

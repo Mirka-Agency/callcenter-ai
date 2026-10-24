@@ -4,12 +4,12 @@ namespace App\Filament\Resources\BlogPosts\Schemas;
 
 use App\Application\Blog\Support\BlogMediaUrl;
 use App\Enums\UserRole;
+use App\Filament\Support\SeoFields;
 use App\Models\BlogCategory;
 use App\Models\User;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -86,7 +86,7 @@ class BlogPostForm
                         Select::make('author_user_id')
                             ->label(__('filament.blog.fields.author'))
                             ->options(fn () => User::query()
-                                ->whereIn('role', [UserRole::SuperAdmin->value, UserRole::Admin->value])
+                                ->whereIn('role', [UserRole::SuperAdmin->value, UserRole::Admin->value, UserRole::Writer->value])
                                 ->orderBy('name')
                                 ->pluck('name', 'id'))
                             ->searchable()
@@ -124,67 +124,9 @@ class BlogPostForm
                     ])
                     ->columnSpan(['lg' => 1]),
 
-                Section::make(__('filament.blog.sections.seo'))
-                    ->schema([
-                        TextInput::make('meta_title')
-                            ->label(__('filament.blog.fields.meta_title'))
-                            ->maxLength(300),
-                        Textarea::make('meta_description')
-                            ->label(__('filament.blog.fields.meta_description'))
-                            ->rows(3)
-                            ->maxLength(5000),
-                        TextInput::make('seo_keywords')
-                            ->label(__('filament.blog.fields.seo_keywords'))
-                            ->maxLength(1000),
-                        TextInput::make('canonical_url')
-                            ->label(__('filament.blog.fields.canonical_url'))
-                            ->maxLength(1000),
-                        TextInput::make('og_title')
-                            ->label(__('filament.blog.fields.og_title'))
-                            ->maxLength(300),
-                        Textarea::make('og_description')
-                            ->label(__('filament.blog.fields.og_description'))
-                            ->rows(2)
-                            ->maxLength(5000),
-                        FileUpload::make('og_image_url')
-                            ->label(__('filament.blog.fields.og_image'))
-                            ->image()
-                            ->disk('public')
-                            ->directory('blog/og')
-                            ->visibility('public')
-                            ->maxSize(5120)
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
-                            ->nullable()
-                            ->formatStateUsing(fn (?string $state): ?string => BlogMediaUrl::toFormState($state))
-                            ->dehydrateStateUsing(fn (mixed $state): ?string => BlogMediaUrl::fromUploadState($state)),
-                    ])
-                    ->columns(2)
-                    ->collapsed()
-                    ->columnSpanFull(),
+                SeoFields::section('title', 'excerpt', fn (?string $slug): string => route('blog.show', filled($slug) ? $slug : 'slug'), 'blog/og', withKeywords: true),
 
-                Section::make(__('filament.blog.sections.faq'))
-                    ->schema([
-                        Repeater::make('faq_json')
-                            ->label(__('filament.blog.fields.faq'))
-                            ->schema([
-                                TextInput::make('question')
-                                    ->label(__('filament.blog.fields.faq_question'))
-                                    ->required()
-                                    ->maxLength(500),
-                                Textarea::make('answer')
-                                    ->label(__('filament.blog.fields.faq_answer'))
-                                    ->required()
-                                    ->rows(3)
-                                    ->maxLength(5000),
-                            ])
-                            ->default([])
-                            ->maxItems(50)
-                            ->collapsible()
-                            ->itemLabel(fn (array $state): ?string => $state['question'] ?? null)
-                            ->columnSpanFull(),
-                    ])
-                    ->collapsed()
-                    ->columnSpanFull(),
+                SeoFields::faqSection(),
             ])
             ->columns(3);
     }

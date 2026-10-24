@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Application\Demo\DemoRequestSmsNotifier;
+use App\Http\Middleware\CaptureLeadAttribution;
 use App\Models\DemoRequest;
 use App\Support\Recaptcha;
 use Illuminate\Http\JsonResponse;
@@ -84,6 +85,7 @@ class DemoRequestController extends Controller
             'company_name' => trim($validated['company_name']),
             'website_url' => $website,
             'ip_address' => $request->ip(),
+            ...CaptureLeadAttribution::forLead($request),
         ]);
 
         app(DemoRequestSmsNotifier::class)->notify($demo);

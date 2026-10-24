@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ContactMessageSubject;
+use App\Http\Middleware\CaptureLeadAttribution;
 use App\Models\ContactMessage;
 use App\Support\Recaptcha;
 use Illuminate\Http\JsonResponse;
@@ -63,6 +64,7 @@ class ContactMessageController extends Controller
             'subject' => $validated['subject'],
             'message' => trim($validated['message']),
             'ip_address' => $request->ip(),
+            ...CaptureLeadAttribution::forLead($request),
         ]);
 
         return response()->json([

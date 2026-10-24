@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\AuditedByAdmins;
 use App\Services\Reports\DefinedExtensionCallConstraint;
 use Database\Factories\OrganizationVoipConnectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -28,6 +29,8 @@ use Illuminate\Support\Str;
 ])]
 class OrganizationVoipConnection extends Model
 {
+    use AuditedByAdmins;
+
     /** @use HasFactory<OrganizationVoipConnectionFactory> */
     use HasFactory;
 

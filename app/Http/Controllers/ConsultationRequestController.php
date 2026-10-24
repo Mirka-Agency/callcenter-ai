@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Application\Consultation\ConsultationSmsNotifier;
+use App\Http\Middleware\CaptureLeadAttribution;
 use App\Models\ConsultationRequest;
 use App\Support\Recaptcha;
 use Illuminate\Http\JsonResponse;
@@ -73,6 +74,7 @@ class ConsultationRequestController extends Controller
             'department' => trim($validated['department']),
             'notes' => filled($validated['notes'] ?? null) ? trim($validated['notes']) : null,
             'ip_address' => $request->ip(),
+            ...CaptureLeadAttribution::forLead($request),
         ]);
 
         app(ConsultationSmsNotifier::class)->notify($consultation);

@@ -159,6 +159,7 @@ class SaveBlogPost
                     'og_image_url',
                 ),
                 'faq_json' => $this->faq->normalize($input['faq_json'] ?? []),
+                'noindex' => (bool) ($input['noindex'] ?? $post->noindex),
                 'content_version' => (int) $post->content_version + 1,
             ]);
 

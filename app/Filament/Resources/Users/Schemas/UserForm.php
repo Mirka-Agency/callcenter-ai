@@ -2,12 +2,16 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Domain\Platform\Enums\AdminArea;
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Support\JalaliDate;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class UserForm
@@ -34,11 +38,19 @@ class UserForm
                 Select::make('role')
                     ->options(UserRole::options())
                     ->required()
+                    ->live()
                     ->native(false),
+                CheckboxList::make('admin_areas')
+                    ->label(__('admin.users.admin_areas'))
+                    ->helperText(__('admin.users.admin_areas_help'))
+                    ->options(AdminArea::options())
+                    ->columns(3)
+                    ->visible(fn (Get $get): bool => ($get('role') instanceof UserRole ? $get('role')->value : $get('role')) === UserRole::Admin->value)
+                    ->columnSpanFull(),
                 Placeholder::make('last_login_at')
                     ->label(__('filament.fields.last_login_at'))
                     ->content(fn (?User $record): string => $record?->last_login_at
-                        ? \App\Support\JalaliDate::format($record->last_login_at, \App\Support\JalaliDate::DATETIME)
+                        ? JalaliDate::format($record->last_login_at, JalaliDate::DATETIME)
                         : __('filament.fields.never_logged_in'))
                     ->visible(fn (?User $record): bool => $record !== null),
                 DateTimePicker::make('email_verified_at'),

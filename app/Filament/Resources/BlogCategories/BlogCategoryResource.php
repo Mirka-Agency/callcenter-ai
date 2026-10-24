@@ -2,7 +2,8 @@
 
 namespace App\Filament\Resources\BlogCategories;
 
-use App\Filament\Concerns\OnlySuperAdmin;
+use App\Domain\Platform\Enums\AdminArea;
+use App\Filament\Concerns\RequiresAdminArea;
 use App\Filament\Resources\BlogCategories\Pages\CreateBlogCategory;
 use App\Filament\Resources\BlogCategories\Pages\EditBlogCategory;
 use App\Filament\Resources\BlogCategories\Pages\ListBlogCategories;
@@ -18,9 +19,14 @@ use UnitEnum;
 
 class BlogCategoryResource extends Resource
 {
-    use OnlySuperAdmin;
+    use RequiresAdminArea;
 
     protected static ?string $model = BlogCategory::class;
+
+    public static function adminArea(): AdminArea
+    {
+        return AdminArea::Content;
+    }
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;
 

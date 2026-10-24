@@ -9,6 +9,7 @@ return [
     'admin' => 'مدیر',
     'employer' => 'کارفرما',
     'employee' => 'کارشناس',
+    'writer' => 'نویسنده',
     // Common role aliases for UI consistency
     'supervisor' => 'سرپرست',
     'agent' => 'کارشناس',

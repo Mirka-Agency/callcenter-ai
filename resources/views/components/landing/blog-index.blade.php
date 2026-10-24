@@ -2,6 +2,7 @@
     'posts',
     'categories',
     'activeCategory' => null,
+    'category' => null,
     'query' => '',
 ])
 
@@ -12,10 +13,23 @@
                 <nav class="blog-crumb" aria-label="مسیر">
                     <a href="{{ route('home') }}">خانه</a>
                     <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M12 5 7 10l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                    <span aria-current="page">وبلاگ</span>
+                    @if ($category)
+                        <a href="{{ route('blog') }}">وبلاگ</a>
+                        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M12 5 7 10l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                        <span aria-current="page">{{ $category['name'] }}</span>
+                    @else
+                        <span aria-current="page">وبلاگ</span>
+                    @endif
                 </nav>
-                <h1 id="blog-title">وبلاگ آوایار</h1>
-                <p>مقالات، راهنماها و تجربیات کاربردی برای رشد کسب‌وکار شما با قدرت هوش مصنوعی و تحلیل مکالمات.</p>
+                @if ($category)
+                    <h1 id="blog-title">{{ $category['name'] }}</h1>
+                    @if (filled($category['description_html']))
+                        <div class="blog-hero__description">{!! $category['description_html'] !!}</div>
+                    @endif
+                @else
+                    <h1 id="blog-title">وبلاگ آوایار</h1>
+                    <p>مقالات، راهنماها و تجربیات کاربردی برای رشد کسب‌وکار شما با قدرت هوش مصنوعی و تحلیل مکالمات.</p>
+                @endif
             </div>
             <figure class="blog-hero__visual">
                 <img
@@ -31,10 +45,7 @@
 
         <div class="blog-layout">
             <div class="blog-main">
-                <form class="blog-search" method="get" action="{{ route('blog') }}" role="search">
-                    @if ($activeCategory)
-                        <input type="hidden" name="category" value="{{ $activeCategory }}">
-                    @endif
+                <form class="blog-search" method="get" action="{{ $activeCategory ? route('blog.category', $activeCategory) : route('blog') }}" role="search">
                     <label>
                         <span class="sr-only">جستجوی مقالات</span>
                         <input
@@ -65,27 +76,38 @@
                     </div>
                     <x-landing.blog-pagination :paginator="$posts" />
                 @endif
+
+                @if ($category && ! empty($category['faq']))
+                    <section class="blog-faq" aria-labelledby="category-faq-title">
+                        <h2 id="category-faq-title">پرسش‌های متداول</h2>
+                        <div class="blog-faq__list">
+                            @foreach ($category['faq'] as $item)
+                                <details class="blog-faq__item">
+                                    <summary>{{ $item['question'] ?? '' }}</summary>
+                                    <p>{{ $item['answer'] ?? '' }}</p>
+                                </details>
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
             </div>
 
             <aside class="blog-aside" aria-label="پالایش مقالات">
                 <section class="blog-panel blog-cats" aria-labelledby="blog-categories-title">
                     <h2 id="blog-categories-title">دسته‌بندی‌ها</h2>
                     <ul>
-                        @foreach ($categories as $category)
+                        @foreach ($categories as $filter)
                             @php
-                                $href = route('blog', array_filter([
-                                    'category' => $category['slug'],
-                                    'q' => $query !== '' ? $query : null,
-                                ]));
-                                $isActive = $category['slug'] === $activeCategory;
+                                $href = $filter['slug'] ? route('blog.category', $filter['slug']) : route('blog');
+                                $isActive = $filter['slug'] === $activeCategory;
                             @endphp
                             <li>
                                 <a href="{{ $href }}" @class(['is-active' => $isActive]) @if ($isActive) aria-current="page" @endif>
                                     <span>
-                                        <x-landing.blog-icon :name="$category['icon']" />
-                                        {{ $category['label'] }}
+                                        <x-landing.blog-icon :name="$filter['icon']" />
+                                        {{ $filter['label'] }}
                                     </span>
-                                    <span class="blog-cats__count">{{ \App\Support\PersianNumber::format($category['count']) }}</span>
+                                    <span class="blog-cats__count">{{ \App\Support\PersianNumber::format($filter['count']) }}</span>
                                 </a>
                             </li>
                         @endforeach

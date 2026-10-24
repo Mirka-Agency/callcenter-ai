@@ -23,6 +23,7 @@ class RedirectToPortal
             UserRole::Employer => redirect()->route('employer.dashboard'),
             UserRole::Employee => redirect()->route('employee.dashboard'),
             UserRole::SuperAdmin, UserRole::Admin => redirect('/admin'),
+            UserRole::Writer => redirect($request->user()->role->homeRoute()),
             default => $next($request),
         };
     }

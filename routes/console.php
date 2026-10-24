@@ -22,6 +22,10 @@ Schedule::command('recordings:purge-expired')->daily();
 Schedule::command('demo:refresh-analytics-clock')->daily();
 Schedule::command('voip:resolve-outcomes')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('crm:tasks-send-reminders')->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('admin:check-alerts')->everyTenMinutes()->withoutOverlapping();
+Schedule::command('billing:sync-statuses')->dailyAt('01:00');
+Schedule::command('admin:send-report weekly')->weeklyOn(6, '08:00');
+Schedule::command('admin:send-report monthly')->monthlyOn(1, '08:00');
 
 Artisan::command('transcriptions:cleanup', function () {
     if (! app(LlmOutboundGuard::class)->remoteAnalysisEnabled()) {

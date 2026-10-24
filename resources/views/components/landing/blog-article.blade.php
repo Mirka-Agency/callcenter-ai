@@ -20,7 +20,7 @@
                 <a href="{{ route('blog') }}">وبلاگ</a>
                 @if (! empty($post['category_label']))
                     <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M12 5 7 10l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                    <a href="{{ route('blog', ['category' => $post['category']]) }}">{{ $post['category_label'] }}</a>
+                    <a href="{{ route('blog.category', $post['category']) }}">{{ $post['category_label'] }}</a>
                 @endif
                 <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M12 5 7 10l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
                 <span aria-current="page">{{ $post['title'] }}</span>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\AuditedByAdmins;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Model;
 ])]
 class AudioUploadSettings extends Model
 {
+    use AuditedByAdmins;
+
     protected function casts(): array
     {
         return [

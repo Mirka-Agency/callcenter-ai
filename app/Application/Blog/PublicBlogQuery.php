@@ -79,12 +79,40 @@ class PublicBlogQuery
             $paginator->getCollection()->map(fn (BlogPost $post): array => $this->present($post))
         );
 
-        $paginator->withPath(route('blog'))->appends(array_filter([
-            'category' => $categorySlug,
+        $paginator->withPath($categorySlug ? route('blog.category', $categorySlug) : route('blog'))->appends(array_filter([
             'q' => $query,
         ]));
 
         return $paginator;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function findCategory(string $slug): ?array
+    {
+        $category = BlogCategory::query()->where('slug', $slug)->first();
+
+        if (! $category instanceof BlogCategory) {
+            return null;
+        }
+
+        return [
+            'id' => $category->id,
+            'slug' => $category->slug,
+            'name' => $category->name,
+            'description_html' => $category->description,
+            'image_url' => $category->image_url,
+            'meta_title' => $category->meta_title ?: $category->name,
+            'meta_description' => $category->meta_description ?: trim(html_entity_decode(strip_tags((string) $category->description))),
+            'canonical_url' => $category->canonical_url ?: route('blog.category', $category->slug),
+            'og_title' => $category->og_title,
+            'og_description' => $category->og_description,
+            'og_image_url' => $category->og_image_url ?: $category->image_url,
+            'faq' => is_array($category->faq_json) ? $category->faq_json : [],
+            'noindex' => (bool) $category->noindex,
+            'updated_at' => $category->updated_at?->toAtomString(),
+        ];
     }
 
     /**
@@ -190,6 +218,9 @@ class PublicBlogQuery
             'og_description' => $post->og_description ?: ($post->meta_description ?: ($post->excerpt ?? '')),
             'og_image_url' => $post->og_image_url ?: $post->cover_image_url,
             'faq' => is_array($post->faq_json) ? $post->faq_json : [],
+            'noindex' => (bool) $post->noindex,
+            'published_at_iso' => $post->published_at?->toAtomString(),
+            'updated_at_iso' => $post->updated_at?->toAtomString(),
             'body_html' => $post->body,
         ];
 

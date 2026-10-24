@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\DemoRequests\Pages;
 
 use App\Filament\Resources\DemoRequests\DemoRequestResource;
+use App\Filament\Support\LeadPipelineActions;
 use App\Filament\Support\RequestArchiveActions;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\ViewRecord;
@@ -15,7 +16,10 @@ class ViewDemoRequest extends ViewRecord
 
     protected function getHeaderActions(): array
     {
-        return RequestArchiveActions::recordActions();
+        return [
+            LeadPipelineActions::group(canConvert: true),
+            ...RequestArchiveActions::recordActions(),
+        ];
     }
 
     public function infolist(Schema $schema): Schema
@@ -42,6 +46,7 @@ class ViewDemoRequest extends ViewRecord
                             ->jalaliDateTime()
                             ->visible(fn ($record): bool => $record?->archived_at !== null),
                     ]),
+                LeadPipelineActions::infolistSection(),
             ]);
     }
 }

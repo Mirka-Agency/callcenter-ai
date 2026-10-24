@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Middleware\CaptureLeadAttribution;
 use App\Http\Middleware\EnsureEmployee;
 use App\Http\Middleware\EnsureEmployer;
 use App\Http\Middleware\EnsureLandingHost;
 use App\Http\Middleware\EnsureOrganizationCrmMode;
+use App\Http\Middleware\HandleSeoRedirects;
 use App\Http\Middleware\ImpersonationMiddleware;
+use App\Http\Middleware\RecordUserActivity;
 use App\Http\Middleware\TrustCapRoverTlsTermination;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -44,6 +47,8 @@ return Application::configure(basePath: dirname(__DIR__))
             TrustCapRoverTlsTermination::class,
         ]);
 
+        $middleware->append(HandleSeoRedirects::class);
+
         // External VoIP providers POST CDR events without a CSRF cookie.
         $middleware->validateCsrfTokens(except: [
             'webhooks/voip/*',
@@ -58,6 +63,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             ImpersonationMiddleware::class,
+            RecordUserActivity::class,
+            CaptureLeadAttribution::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

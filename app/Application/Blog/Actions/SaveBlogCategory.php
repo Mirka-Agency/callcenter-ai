@@ -4,6 +4,7 @@ namespace App\Application\Blog\Actions;
 
 use App\Application\Blog\BlogAuthorization;
 use App\Application\Blog\Support\BlogSlugger;
+use App\Application\Blog\Support\FaqNormalizer;
 use App\Application\Blog\Support\HtmlSanitizer;
 use App\Application\Blog\Support\SafeUrlValidator;
 use App\Models\BlogCategory;
@@ -18,6 +19,7 @@ class SaveBlogCategory
         private readonly BlogSlugger $slugger,
         private readonly HtmlSanitizer $sanitizer,
         private readonly SafeUrlValidator $urls,
+        private readonly FaqNormalizer $faq,
     ) {}
 
     /**
@@ -64,10 +66,31 @@ class SaveBlogCategory
                     'image_url',
                 ),
                 'icon' => $icon !== '' ? $icon : null,
+                'meta_title' => $this->nullableString($input['meta_title'] ?? null, 300),
+                'meta_description' => $this->nullableString($input['meta_description'] ?? null, 5000),
+                'canonical_url' => $this->urls->optional(
+                    isset($input['canonical_url']) ? (string) $input['canonical_url'] : null,
+                    'canonical_url',
+                ),
+                'og_title' => $this->nullableString($input['og_title'] ?? null, 300),
+                'og_description' => $this->nullableString($input['og_description'] ?? null, 5000),
+                'og_image_url' => $this->urls->optional(
+                    isset($input['og_image_url']) ? (string) $input['og_image_url'] : null,
+                    'og_image_url',
+                ),
+                'faq_json' => $this->faq->normalize($input['faq_json'] ?? []),
+                'noindex' => (bool) ($input['noindex'] ?? false),
             ]);
             $category->save();
 
             return $category->fresh() ?? $category;
         });
+    }
+
+    private function nullableString(mixed $value, int $max): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+
+        return $value === '' ? null : mb_substr($value, 0, $max);
     }
 }

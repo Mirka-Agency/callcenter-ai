@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ContactMessages\Pages;
 
 use App\Enums\ContactMessageSubject;
 use App\Filament\Resources\ContactMessages\ContactMessageResource;
+use App\Filament\Support\LeadPipelineActions;
 use App\Filament\Support\RequestArchiveActions;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\ViewRecord;
@@ -16,7 +17,10 @@ class ViewContactMessage extends ViewRecord
 
     protected function getHeaderActions(): array
     {
-        return RequestArchiveActions::recordActions();
+        return [
+            LeadPipelineActions::group(canConvert: false),
+            ...RequestArchiveActions::recordActions(),
+        ];
     }
 
     public function infolist(Schema $schema): Schema
@@ -42,6 +46,7 @@ class ViewContactMessage extends ViewRecord
                             ->jalaliDateTime()
                             ->visible(fn ($record): bool => $record?->archived_at !== null),
                     ]),
+                LeadPipelineActions::infolistSection(),
             ]);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DemoRequests\Tables;
 
+use App\Filament\Support\LeadPipelineActions;
 use App\Filament\Support\RequestArchiveActions;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
@@ -35,12 +36,17 @@ class DemoRequestsTable
                     ->label(__('filament.fields.created_at'))
                     ->jalaliDateTime()
                     ->sortable(),
+                ...LeadPipelineActions::columns(),
                 RequestArchiveActions::archivedAtColumn(),
             ])
+            ->filters(LeadPipelineActions::filters())
+            ->modifyQueryUsing(fn ($query) => $query->with('assignee:id,name'))
             ->recordActions([
                 ViewAction::make(),
+                LeadPipelineActions::group(canConvert: true),
                 ...RequestArchiveActions::recordActions(),
             ])
+            ->persistFiltersInSession()
             ->defaultSort('created_at', 'desc')
             ->paginated([25, 50, 100]);
     }

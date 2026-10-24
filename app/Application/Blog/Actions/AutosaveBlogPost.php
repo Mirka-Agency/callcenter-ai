@@ -119,6 +119,7 @@ class AutosaveBlogPost
                 'faq_json' => array_key_exists('faq_json', $input)
                     ? $this->faq->normalize($input['faq_json'])
                     : ($post->faq_json ?? []),
+                'noindex' => array_key_exists('noindex', $input) ? (bool) $input['noindex'] : $post->noindex,
                 'content_version' => (int) $post->content_version + 1,
             ]);
 

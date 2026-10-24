@@ -8,6 +8,7 @@ enum UserRole: string
     case Admin = 'admin';
     case Employer = 'employer';
     case Employee = 'employee';
+    case Writer = 'writer';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum UserRole: string
             self::Admin => __('roles.admin'),
             self::Employer => __('roles.employer'),
             self::Employee => __('roles.employee'),
+            self::Writer => __('roles.writer'),
         };
     }
 
@@ -32,10 +34,17 @@ enum UserRole: string
             UserRole::Employer => route('employer.dashboard'),
             UserRole::Employee => route('employee.dashboard'),
             UserRole::SuperAdmin, UserRole::Admin => url('/admin'),
+            UserRole::Writer => url('/admin/blog-posts'),
         };
     }
 
     public function canAccessAdminPanel(): bool
+    {
+        return in_array($this, [self::SuperAdmin, self::Admin, self::Writer], true);
+    }
+
+    /** Super admins and admins; writers use the admin panel but only for the blog. */
+    public function isAdminStaff(): bool
     {
         return in_array($this, [self::SuperAdmin, self::Admin], true);
     }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\OrganizationVoipConnections;
 
+use App\Filament\Concerns\AdminStaffOnly;
 use App\Filament\Resources\OrganizationVoipConnections\Pages\CreateOrganizationVoipConnection;
 use App\Filament\Resources\OrganizationVoipConnections\Pages\EditOrganizationVoipConnection;
 use App\Filament\Resources\OrganizationVoipConnections\Pages\ListOrganizationVoipConnections;
@@ -21,6 +22,8 @@ use UnitEnum;
 
 class OrganizationVoipConnectionResource extends Resource
 {
+    use AdminStaffOnly;
+
     protected static ?string $model = OrganizationVoipConnection::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPhoneArrowUpRight;

@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Domain\Platform\Enums\AdminArea;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Models\Concerns\HasAvatar;
 use App\Enums\UserRole;
+use App\Models\Concerns\AuditedByAdmins;
+use App\Models\Concerns\HasAvatar;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -17,12 +19,15 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
 
-#[Fillable(['name', 'email', 'phone', 'password', 'role', 'avatar_path'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'role', 'avatar_path', 'admin_areas'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
+    use AuditedByAdmins;
+
     /** @use HasFactory<UserFactory> */
     use HasAvatar;
+
     use HasFactory, Notifiable;
 
     /**
@@ -37,12 +42,24 @@ class User extends Authenticatable implements FilamentUser
             'last_login_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRole::class,
+            'admin_areas' => 'array',
         ];
     }
 
     public function canAccessPanel(Panel $panel): bool
     {
         return $panel->getId() === 'admin' && $this->role->canAccessAdminPanel();
+    }
+
+    /** Super admins see every area, admins only the areas granted to them, writers only content. */
+    public function hasAdminArea(AdminArea $area): bool
+    {
+        return match ($this->role) {
+            UserRole::SuperAdmin => true,
+            UserRole::Admin => in_array($area->value, $this->admin_areas ?? [], true),
+            UserRole::Writer => $area === AdminArea::Content,
+            default => false,
+        };
     }
 
     public function portalRoute(): string

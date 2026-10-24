@@ -3,13 +3,20 @@
 namespace App\Filament\Resources\Organizations\Tables;
 
 use App\Domain\Crm\OrganizationCrmMode;
+use App\Filament\Resources\Organizations\OrganizationResource;
+use App\Filament\Support\CsvExport;
 use App\Filament\Support\DemoOrganizationCleanupActions;
 use App\Models\Organization;
+use App\Services\PlatformAnalytics\OrganizationHealthScorer;
+use App\Support\JalaliDate;
+use App\Support\PersianNumber;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -45,6 +52,18 @@ class OrganizationsTable
                     ->jalaliDateTime()
                     ->sortable()
                     ->placeholder(__('filament.fields.never_logged_in')),
+                TextColumn::make('health')
+                    ->label(__('filament.platform_analytics.health_score'))
+                    ->badge()
+                    ->state(fn (Organization $record): ?int => app(OrganizationHealthScorer::class)->for($record)?->score)
+                    ->formatStateUsing(function (int $state, Organization $record): string {
+                        $health = app(OrganizationHealthScorer::class)->for($record);
+
+                        return $health->label().' · '.PersianNumber::format($state, 0);
+                    })
+                    ->color(fn (Organization $record): string => app(OrganizationHealthScorer::class)->for($record)?->color() ?? 'gray')
+                    ->tooltip(fn (Organization $record): ?string => implode('، ', app(OrganizationHealthScorer::class)->for($record)?->reasonLabels() ?? []) ?: null)
+                    ->placeholder('—'),
                 TextColumn::make('employees_count')
                     ->counts('employees')
                     ->label(__('filament.fields.employees'))
@@ -117,10 +136,21 @@ class OrganizationsTable
                             );
                     }),
             ])
+            ->recordUrl(fn (Organization $record): string => OrganizationResource::getUrl('overview', ['record' => $record]))
             ->recordActions([
+                Action::make('overview')
+                    ->label(__('admin.organization_overview.tab'))
+                    ->icon(Heroicon::OutlinedPresentationChartBar)
+                    ->color('gray')
+                    ->url(fn (Organization $record): string => OrganizationResource::getUrl('overview', ['record' => $record])),
                 EditAction::make(),
                 DemoOrganizationCleanupActions::deleteRecord(),
             ])
+            ->headerActions([
+                CsvExport::action('organizations', fn () => OrganizationsTable::exportRows()),
+            ])
+            ->persistFiltersInSession()
+            ->persistSortInSession()
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
@@ -138,5 +168,28 @@ class OrganizationsTable
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
+    }
+
+    /** @return iterable<array<string, mixed>> */
+    public static function exportRows(): iterable
+    {
+        $scorer = app(OrganizationHealthScorer::class);
+
+        foreach (Organization::query()->with(['employer', 'currentSubscription.plan'])->withCount('employees')->lazyById() as $organization) {
+            $health = $scorer->for($organization);
+
+            yield [
+                __('filament.fields.title') => $organization->title,
+                __('filament.fields.employer') => $organization->employer?->name,
+                __('filament.fields.employer_email') => $organization->employer?->email,
+                __('filament.fields.employees') => $organization->employees_count,
+                __('filament.platform_analytics.health_score') => $health?->score,
+                __('admin.billing.plan') => $organization->currentSubscription?->plan?->name,
+                __('admin.billing.subscription_status') => $organization->currentSubscription?->status->label(),
+                __('filament.fields.demo') => $organization->is_demo ? __('admin.common.yes') : __('admin.common.no'),
+                __('filament.fields.disabled') => $organization->disabled ? __('admin.common.yes') : __('admin.common.no'),
+                __('filament.fields.created_at') => JalaliDate::datetime($organization->created_at),
+            ];
+        }
     }
 }

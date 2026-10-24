@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VoipProviders;
 
+use App\Filament\Concerns\AdminStaffOnly;
 use App\Filament\Resources\VoipProviders\Pages\CreateVoipProvider;
 use App\Filament\Resources\VoipProviders\Pages\EditVoipProvider;
 use App\Filament\Resources\VoipProviders\Pages\ListVoipProviders;
@@ -17,6 +18,8 @@ use UnitEnum;
 
 class VoipProviderResource extends Resource
 {
+    use AdminStaffOnly;
+
     protected static ?string $model = VoipProvider::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPhone;

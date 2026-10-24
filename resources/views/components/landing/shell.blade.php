@@ -1,36 +1,32 @@
 @props([
-    'title',
-    'description',
+    'title' => null,
+    'description' => null,
     'canonical' => null,
     'ogTitle' => null,
     'ogDescription' => null,
     'ogImage' => null,
     'robots' => null,
+    'seo' => [],
 ])
+
+@php
+    $meta = \App\Support\Seo\SeoMeta::resolve(array_filter([
+        'title' => $title,
+        'description' => $description,
+        'canonical' => $canonical,
+        'og_title' => $ogTitle,
+        'og_description' => $ogDescription,
+        'og_image' => $ogImage,
+        'robots' => $robots,
+    ], fn ($value) => $value !== null) + $seo);
+@endphp
 
 <!DOCTYPE html>
 <html lang="fa" dir="rtl" class="scroll-smooth">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="{{ $description }}">
-    @if ($robots)
-        <meta name="robots" content="{{ $robots }}">
-    @endif
-    <title>{{ $title }}</title>
-    @if ($canonical)
-        <link rel="canonical" href="{{ $canonical }}">
-    @endif
-    <meta property="og:type" content="website">
-    <meta property="og:locale" content="fa_IR">
-    <meta property="og:title" content="{{ $ogTitle ?? $title }}">
-    <meta property="og:description" content="{{ $ogDescription ?? $description }}">
-    @if ($ogImage)
-        <meta property="og:image" content="{{ $ogImage }}">
-    @endif
-    @if ($canonical)
-        <meta property="og:url" content="{{ $canonical }}">
-    @endif
+    <x-seo.head :meta="$meta" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @vite(['resources/css/saas.css', 'resources/css/landing.css', 'resources/js/landing.js'])
     <script>

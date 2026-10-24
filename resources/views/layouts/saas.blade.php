@@ -50,6 +50,7 @@
     </div>
 
     @include('components.saas.impersonation-banner')
+    @include('components.saas.announcement-banner')
 
     <div class="saas-frame">
         @include('components.saas.sidebar', ['portal' => $portal ?? 'employer', 'navItems' => $navItems ?? []])
@@ -70,6 +71,10 @@
     @auth
         @include('components.saas.toast-stack')
     @endauth
+
+    @if (($portal ?? '') === 'employer' && \App\Livewire\Shared\NpsPrompt::shouldAsk(auth()->user()))
+        <livewire:shared.nps-prompt />
+    @endif
 
     @if (in_array($portal ?? '', ['employer', 'employee'], true))
         <x-saas.onboarding-tour :portal="$portal" />

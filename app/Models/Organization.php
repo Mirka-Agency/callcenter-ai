@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Domain\Crm\OrganizationCrmMode;
+use App\Models\Concerns\AuditedByAdmins;
 use App\Services\CallIntake\CallIntakeSettings;
 use App\Support\CompanyWorkCalendar;
 use Database\Factories\OrganizationFactory;
@@ -13,10 +14,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
-#[Fillable(['title', 'business_context', 'holiday_weekdays', 'call_intake_filters', 'crm_settings', 'disabled', 'employer_can_manage_integrations', 'crm_mode', 'user_id', 'is_demo', 'assign_customer_owner_from_call'])]
+#[Fillable(['title', 'business_context', 'holiday_weekdays', 'call_intake_filters', 'crm_settings', 'disabled', 'employer_can_manage_integrations', 'crm_mode', 'user_id', 'is_demo', 'assign_customer_owner_from_call', 'legal_name', 'national_id', 'economic_code', 'billing_address', 'postal_code', 'billing_phone'])]
 class Organization extends Model
 {
+    use AuditedByAdmins;
+
     /** @use HasFactory<OrganizationFactory> */
     use HasFactory;
 
@@ -89,6 +94,34 @@ class Organization extends Model
     public function scopeDemo(Builder $query): Builder
     {
         return $query->where('is_demo', true);
+    }
+
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    public function currentSubscription(): HasOne
+    {
+        return $this->hasOne(Subscription::class)->ofMany(
+            ['starts_at' => 'max', 'id' => 'max'],
+            fn (Builder $query) => $query->current(),
+        );
+    }
+
+    public function billingInvoices(): HasMany
+    {
+        return $this->hasMany(BillingInvoice::class);
+    }
+
+    public function billingPayments(): HasMany
+    {
+        return $this->hasMany(BillingPayment::class);
+    }
+
+    public function adminNotes(): MorphMany
+    {
+        return $this->morphMany(AdminNote::class, 'notable')->latest();
     }
 
     public function employer(): BelongsTo

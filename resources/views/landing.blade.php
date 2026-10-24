@@ -3,8 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="آوایار سامانه هوش تماس برای تحلیل عمیق مکالمات پایان‌یافته؛ استخراج خودکار خلاصه مکالمه، سنجش رضایت مشتری، امتیازدهی کیفیت سرنخ، ارزیابی عملکرد کارشناسان و کوچینگ هدفمند در یک پلتفرم یکپارچه.">
-    <title>{{ config('app.name') }} — هوش تماس و تحلیل هوشمند مکالمات سازمانی</title>
+    <x-seo.head :meta="\App\Support\Seo\SeoMeta::resolve(\App\Support\Seo\SeoMeta::forPage('home', ['canonical' => route('home'), 'json_ld' => [\App\Support\Seo\SeoMeta::organizationSchema(), \App\Support\Seo\SeoMeta::websiteSchema()]]))" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @vite(['resources/css/saas.css', 'resources/css/landing.css', 'resources/js/landing.js'])
     <script>

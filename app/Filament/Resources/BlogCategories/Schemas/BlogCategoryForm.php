@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\BlogCategories\Schemas;
 
 use App\Application\Blog\Support\BlogMediaUrl;
+use App\Filament\Support\SeoFields;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
@@ -69,6 +70,10 @@ class BlogCategoryForm
                             ->dehydrateStateUsing(fn (mixed $state): ?string => BlogMediaUrl::fromUploadState($state)),
                     ])
                     ->columns(2),
+
+                SeoFields::section('name', 'description', fn (?string $slug): string => route('blog.category', filled($slug) ? $slug : 'slug'), 'blog/categories/og'),
+
+                SeoFields::faqSection(),
             ]);
     }
 }

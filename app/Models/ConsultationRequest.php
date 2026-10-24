@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\Archivable;
+use App\Models\Concerns\IsLead;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Model;
 class ConsultationRequest extends Model
 {
     use Archivable;
+    use IsLead;
 
     protected function casts(): array
     {

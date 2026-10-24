@@ -3,8 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="اگر سوالی دارید یا می‌خواهید بیشتر با آوایار آشنا شوید، از فرم تماس یا راه‌های ارتباطی با ما در ارتباط باشید.">
-    <title>تماس با ما — {{ config('app.name') }}</title>
+    <x-seo.head :meta="\App\Support\Seo\SeoMeta::resolve(\App\Support\Seo\SeoMeta::forPage('contact', ['canonical' => route('contact')]))" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @vite(['resources/css/saas.css', 'resources/css/landing.css', 'resources/js/landing.js'])
     <script>

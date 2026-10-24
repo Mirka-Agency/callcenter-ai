@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CrmProviders;
 
+use App\Filament\Concerns\AdminStaffOnly;
 use App\Filament\Resources\CrmProviders\Pages\CreateCrmProvider;
 use App\Filament\Resources\CrmProviders\Pages\EditCrmProvider;
 use App\Filament\Resources\CrmProviders\Pages\ListCrmProviders;
@@ -17,6 +18,8 @@ use UnitEnum;
 
 class CrmProviderResource extends Resource
 {
+    use AdminStaffOnly;
+
     protected static ?string $model = CrmProvider::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCloud;
