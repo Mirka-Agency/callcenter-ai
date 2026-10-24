@@ -1,6 +1,6 @@
-# syntax=docker/dockerfile:1
-
-FROM php:8.5.12-cli-alpine AS vendor
+# CapRover's Docker daemon sends docker.io pulls to docker.arvancloud.ir, and that
+# host does not resolve on the server. These registries are pulled directly.
+FROM registry.docker.ir/library/php:8.5.12-cli-alpine3.24 AS vendor
 
 RUN apk add --no-cache \
     git \
@@ -12,7 +12,7 @@ RUN apk add --no-cache \
     && apk del $PHPIZE_DEPS \
     && rm -rf /var/cache/apk/* /tmp/*
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=registry.docker.ir/library/composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
@@ -38,7 +38,7 @@ RUN composer install \
     --optimize-autoloader \
     --ignore-platform-req=ext-gd
 
-FROM node:22-alpine AS assets
+FROM registry.docker.ir/library/node:22-alpine AS assets
 
 WORKDIR /app
 
@@ -53,16 +53,17 @@ COPY --from=vendor /app/vendor ./vendor
 
 RUN npm run build
 
-FROM php:8.5.12-fpm-alpine AS runtime
+FROM registry.docker.ir/library/php:8.5.12-fpm-alpine3.24 AS runtime
 
+# Alpine 3.24 dropped postgresql-dev; libpq-dev provides headers for pdo_pgsql.
+# Built into the official PHP 8.5 image — do not reinstall:
+# mbstring, pdo_sqlite, and opcache (always loaded in 8.5; no opcache.so).
 RUN apk add --no-cache \
     nginx \
     supervisor \
     icu-dev \
     libzip-dev \
-    oniguruma-dev \
-    postgresql-dev \
-    sqlite-dev \
+    libpq-dev \
     freetype-dev \
     libjpeg-turbo-dev \
     libpng-dev \
@@ -75,13 +76,9 @@ RUN apk add --no-cache \
     bcmath \
     gd \
     intl \
-    mbstring \
-    opcache \
     pcntl \
-    pdo \
     pdo_mysql \
     pdo_pgsql \
-    pdo_sqlite \
     zip \
     && apk del $PHPIZE_DEPS \
     && rm -rf /var/cache/apk/* /tmp/*
