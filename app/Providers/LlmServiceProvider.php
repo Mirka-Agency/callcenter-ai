@@ -8,14 +8,12 @@ use App\Application\Llm\Listeners\ForgetPerformanceDashboardCache;
 use App\Application\Llm\Services\AudioAnalyzer;
 use App\Application\Llm\Services\LlmConnectionResolver;
 use App\Domain\Llm\Contracts\ConversationAnalysisRepositoryInterface;
-use App\Domain\Llm\Contracts\LlmConnectionRepositoryInterface;
 use App\Domain\Llm\Contracts\LlmLogRepositoryInterface;
 use App\Domain\Llm\Events\ConversationAnalyzed;
 use App\Domain\Transcription\Contracts\TranscriptionClient;
 use App\Infrastructure\Llm\LlmAdapterRegistry;
 use App\Infrastructure\Llm\LlmOutboundGuard;
 use App\Infrastructure\Llm\Repositories\EloquentConversationAnalysisRepository;
-use App\Infrastructure\Llm\Repositories\EloquentLlmConnectionRepository;
 use App\Infrastructure\Llm\Repositories\EloquentLlmLogRepository;
 use App\Infrastructure\Transcription\SonioxClient;
 use Illuminate\Support\Facades\Event;
@@ -29,7 +27,6 @@ class LlmServiceProvider extends ServiceProvider
         $this->app->bind(TranscriptionClient::class, SonioxClient::class);
         $this->app->singleton(LlmAdapterRegistry::class);
 
-        $this->app->bind(LlmConnectionRepositoryInterface::class, EloquentLlmConnectionRepository::class);
         $this->app->bind(ConversationAnalysisRepositoryInterface::class, EloquentConversationAnalysisRepository::class);
         $this->app->bind(LlmLogRepositoryInterface::class, EloquentLlmLogRepository::class);
 

@@ -54,5 +54,15 @@ if [[ $# -gt 0 ]]; then
     args+=("$@")
 fi
 
+# registry.npmjs.org is reachable on IPv4. Node's IPv6 attempt times out and
+# leaves `npx caprover@latest` hanging before deploy starts.
+for node_opt in --dns-result-order=ipv4first --no-network-family-autoselection; do
+    case " ${NODE_OPTIONS:-} " in
+        *" ${node_opt} "*) ;;
+        *) NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }${node_opt}" ;;
+    esac
+done
+export NODE_OPTIONS
+
 echo "Deploying to CapRover app: $CAPROVER_APP ($CAPROVER_URL)"
 exec npx --yes caprover@latest "${args[@]}"
