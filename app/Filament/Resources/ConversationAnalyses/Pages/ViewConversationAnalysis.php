@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\ConversationAnalyses\Pages;
 
+use App\Domain\Call\Enums\ConversationSource;
+use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Filament\Resources\ConversationAnalyses\ConversationAnalysisResource;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Pages\ViewRecord;
@@ -19,21 +21,39 @@ class ViewConversationAnalysis extends ViewRecord
                 Section::make(__('filament.sections.usage'))
                     ->columns(3)
                     ->schema([
-                        TextEntry::make('source')->label(__('filament.fields.source'))->badge(),
+                        TextEntry::make('source')
+                            ->label(__('filament.fields.source'))
+                            ->badge()
+                            ->formatStateUsing(fn (?ConversationSource $state): ?string => $state?->label()),
                         TextEntry::make('organization.title')->label(__('filament.fields.organization')),
                         TextEntry::make('employee.full_name')->label(__('filament.fields.employee'))->placeholder(__('filament.misc.em_dash')),
-                        TextEntry::make('analyzed_at')->jalaliDateTime(),
+                        TextEntry::make('analyzed_at')
+                            ->label(__('filament.fields.call_date'))
+                            ->jalaliDateTime(),
                         TextEntry::make('llm_provider')->label(__('filament.fields.provider')),
                         TextEntry::make('model_name')->label(__('filament.fields.model')),
-                        TextEntry::make('prompt_version')->placeholder(__('filament.misc.em_dash')),
+                        TextEntry::make('prompt_version')
+                            ->label(__('filament.fields.prompt_version'))
+                            ->placeholder(__('filament.misc.em_dash')),
                         TextEntry::make('processing_duration_ms')->label(__('filament.fields.processing_ms')),
-                        TextEntry::make('score')->badge(),
-                        TextEntry::make('sentiment')->badge(),
+                        TextEntry::make('score')
+                            ->label(__('filament.fields.score'))
+                            ->badge(),
+                        TextEntry::make('sentiment')
+                            ->label(__('filament.fields.sentiment'))
+                            ->badge()
+                            ->formatStateUsing(fn (?AnalysisSentiment $state): ?string => $state?->label())
+                            ->color(fn (?AnalysisSentiment $state): string|array|null => $state?->color()),
                     ]),
                 Section::make(__('filament.sections.analysis'))
                     ->schema([
-                        TextEntry::make('summary')->columnSpanFull(),
-                        TextEntry::make('overall_evaluation')->columnSpanFull()->placeholder(__('filament.misc.em_dash')),
+                        TextEntry::make('summary')
+                            ->label(__('filament.fields.summary'))
+                            ->columnSpanFull(),
+                        TextEntry::make('overall_evaluation')
+                            ->label(__('filament.fields.overall_evaluation'))
+                            ->columnSpanFull()
+                            ->placeholder(__('filament.misc.em_dash')),
                         TextEntry::make('strengths_json')
                             ->label(__('filament.fields.strengths'))
                             ->listWithLineBreaks()

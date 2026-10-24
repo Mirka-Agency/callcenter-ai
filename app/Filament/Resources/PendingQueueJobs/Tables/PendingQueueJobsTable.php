@@ -3,11 +3,11 @@
 namespace App\Filament\Resources\PendingQueueJobs\Tables;
 
 use App\Models\PendingQueueJob;
+use App\Services\ProcessingQueueFlusher;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
-use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
@@ -63,7 +63,8 @@ class PendingQueueJobsTable
                 ViewAction::make(),
                 DeleteAction::make()
                     ->label(__('filament.actions.delete'))
-                    ->successNotificationTitle(__('filament.notifications.pending_queue_job_deleted')),
+                    ->successNotificationTitle(__('filament.notifications.pending_queue_job_deleted'))
+                    ->after(fn () => app(ProcessingQueueFlusher::class)->syncAfterPendingJobsRemoved()),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -71,7 +72,8 @@ class PendingQueueJobsTable
                         ->label(__('filament.actions.delete'))
                         ->successNotificationTitle(fn (int $count): string => __('filament.notifications.pending_queue_jobs_deleted', [
                             'count' => $count,
-                        ])),
+                        ]))
+                        ->after(fn () => app(ProcessingQueueFlusher::class)->syncAfterPendingJobsRemoved()),
                 ]),
             ])
             ->defaultSort('created_at', 'desc')

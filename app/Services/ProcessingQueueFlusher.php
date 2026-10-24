@@ -55,13 +55,39 @@ class ProcessingQueueFlusher
     /**
      * Cancel UI-tracked jobs that no longer have a matching Laravel queue entry.
      *
+     * Admin "pending queue jobs" edits the Laravel `jobs` table only; the employer/
+     * employee dashboard reads `call_processing_jobs`. Call this after deleting
+     * pending jobs so the UI queue stays in sync.
+     *
      * @return int Number of jobs reconciled.
      */
-    public function syncOrphans(?int $organizationId = null): int
+    public function syncOrphans(?int $organizationId = null, bool $immediate = false): int
     {
         $query = CallProcessingJob::query()
-            ->where('status', ProcessingJobStatus::Queued)
-            ->where('queued_at', '<', now()->subMinutes(3));
+            ->whereIn('status', [
+                ProcessingJobStatus::Queued,
+                ProcessingJobStatus::Processing,
+            ]);
+
+        if (! $immediate) {
+            // Grace period so a just-dispatched job is not cancelled before insert lands.
+            $cutoff = now()->subMinutes(3);
+            $query->where(function ($q) use ($cutoff) {
+                $q->where(function ($queued) use ($cutoff) {
+                    $queued->where('status', ProcessingJobStatus::Queued)
+                        ->where('queued_at', '<', $cutoff);
+                })->orWhere(function ($processing) use ($cutoff) {
+                    $processing->where('status', ProcessingJobStatus::Processing)
+                        ->where(function ($started) use ($cutoff) {
+                            $started->where('processing_started_at', '<', $cutoff)
+                                ->orWhere(function ($fallback) use ($cutoff) {
+                                    $fallback->whereNull('processing_started_at')
+                                        ->where('queued_at', '<', $cutoff);
+                                });
+                        });
+                });
+            });
+        }
 
         if ($organizationId) {
             $query->where('organization_id', $organizationId);
@@ -89,10 +115,19 @@ class ProcessingQueueFlusher
             Log::info('Processing queue orphans reconciled', [
                 'reconciled' => $reconciled,
                 'organization_id' => $organizationId,
+                'immediate' => $immediate,
             ]);
         }
 
         return $reconciled;
+    }
+
+    /**
+     * After admin removes Laravel pending jobs, reconcile the dashboard queue now.
+     */
+    public function syncAfterPendingJobsRemoved(): int
+    {
+        return $this->syncOrphans(immediate: true);
     }
 
     public function clearLaravelJobsForCall(int $callId): int
