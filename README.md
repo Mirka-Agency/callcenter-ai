@@ -241,7 +241,7 @@ routes/
 
 The project includes comprehensive demo seeders with **20 organizations**, **100 demo users** (1 employer + 4 employees each), Persian names, customers, **150 calls per organization** (10 dated today, the rest spread across the last 30 days), and matching conversation analyses. All demo accounts share the password **`123456789`** (hashed at seed time; demo/test only).
 
-Demo organizations are **standalone**: they have no CRM, VoIP, or per-organization LLM connections. Call/analytics sample data is seeded locally for UI testing. All organizations use the **platform default AI provider and model** configured in admin.
+Demo organizations are **standalone**: they have no CRM, VoIP, or per-organization LLM connections. Call/analytics sample data is seeded locally for UI testing. All organizations use the **AI provider and model configured in the deployment environment**.
 
 ```bash
 php artisan migrate:fresh --seed
@@ -302,7 +302,7 @@ php artisan test
 - Run Reverb in a dedicated container if you use realtime updates (`CONTAINER_ROLE=reverb`)
 - Configure S3 for `RECORDINGS_DISK` — recordings are kept until AI analysis completes, then deleted after `RECORDINGS_RETENTION_DAYS`
 - If you keep local disks, mount a **persistent volume** on `/var/www/html/storage` in CapRover
-- Set up LLM provider API keys in the admin panel
+- Set `LLM_API_KEY` and `SONIOX_API_KEY` in the deployment environment (see [AI configuration](docs/ai-configuration.md))
 - Configure organization VoIP/CRM connections
 - Run `php artisan config:cache`, `route:cache`, `view:cache`
 
@@ -340,3 +340,4 @@ MIT
 
 ## seed demo
 - Run `php artisan db:seed --class=DemoSeeder`
+AI provider and model configuration: [AI configuration and Soniox deployment](docs/ai-configuration.md).

@@ -4,34 +4,45 @@ namespace App\Application\Intelligence\Jobs;
 
 use App\Application\Intelligence\Services\CallAnalysisQueueService;
 use App\Application\Llm\AnalysisManager;
+use App\Application\Transcription\Jobs\CleanupSonioxTranscription;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Llm\Exceptions\LlmTransientException;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Domain\Recording\Contracts\RecordingDownloaderInterface;
 use App\Domain\Recording\Contracts\RecordingRepositoryInterface;
 use App\Domain\Recording\DTOs\RecordingData;
+use App\Domain\Transcription\Exceptions\TranscriptionPending;
 use App\Infrastructure\Llm\LlmOutboundGuard;
 use App\Models\Call;
 use App\Models\CallProcessingJob;
 use App\Models\CallRecording;
+use App\Models\CallTranscript;
 use App\Models\VoipCallLog;
 use App\Services\CallProcessingTracker;
 use App\Services\RecordingRetentionService;
 use App\Services\RecordingStorage;
+use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Bus\PendingChain;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
 
 class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
+    // Pending polls release the job without counting as provider failures.
+    public int $tries = 0;
+
+    public int $maxExceptions = 3;
+
+    public int $processingDeadline = 0;
 
     public int $timeout = 1140;
 
@@ -41,13 +52,23 @@ class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
         return [30, 120];
     }
 
-    public int $uniqueFor = 1800;
+    public int $uniqueFor = 4800;
 
     public function __construct(
         public int $callId,
         public ?string $recordingUrl = null,
     ) {
         $this->onQueue((string) config('queue.names.analysis'));
+        $deadlineSeconds = max(1, (int) config('soniox.deadline_seconds', 3600));
+        $this->processingDeadline = now()->addSeconds($deadlineSeconds)->timestamp;
+        $this->uniqueFor = $deadlineSeconds + $this->timeout + 120;
+    }
+
+    public function retryUntil(): \DateTimeInterface
+    {
+        return $this->processingDeadline > 0
+            ? CarbonImmutable::createFromTimestamp($this->processingDeadline)
+            : CarbonImmutable::now()->addSeconds((int) config('soniox.deadline_seconds', 3600));
     }
 
     public function uniqueId(): string
@@ -93,6 +114,10 @@ class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
                 return;
             }
 
+            if ($this->job instanceof SyncJob) {
+                throw new \RuntimeException('Soniox requires an asynchronous queue worker. Use QUEUE_CONNECTION=database or redis.');
+            }
+
             $call->update(['processing_status' => CallProcessingStatus::Transcribing]);
 
             if ($job) {
@@ -110,6 +135,11 @@ class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
             $call->update(['processing_status' => CallProcessingStatus::Analyzed]);
 
             $this->scheduleRetentionAfterAnalysis($call->id, $retention);
+        } catch (TranscriptionPending $e) {
+            if (! $this->job || $this->job instanceof SyncJob) {
+                throw new \RuntimeException('Soniox requires an asynchronous queue worker. Use QUEUE_CONNECTION=database or redis.', previous: $e);
+            }
+            $this->release((int) config('soniox.poll_interval_seconds', 5));
         } catch (\Throwable $e) {
             if ($this->canRetry($e)) {
                 $call->update([
@@ -127,7 +157,7 @@ class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
 
     private function canRetry(\Throwable $e): bool
     {
-        if ($this->attempts() >= $this->tries) {
+        if ($this->tries > 0 && $this->attempts() >= $this->tries) {
             return false;
         }
 
@@ -207,6 +237,23 @@ class AnalyzeAudioJob implements ShouldBeUnique, ShouldQueue
 
         if ($job && $job->status !== ProcessingJobStatus::Failed) {
             $tracker->markFailed($job, $e->getMessage());
+        }
+
+        $transcript = CallTranscript::query()
+            ->where('call_id', $call->id)
+            ->where('transcription_provider', 'soniox')
+            ->whereIn('status', ['pending', 'processing'])
+            ->latest('id')->first();
+        if ($transcript) {
+            $transcript->update(['status' => CallTranscript::STATUS_FAILED, 'error_message' => $e->getMessage()]);
+            try {
+                CleanupSonioxTranscription::dispatch($transcript->id);
+            } catch (\Throwable $cleanupError) {
+                Log::error('Soniox cleanup could not be queued; scheduled cleanup will retry.', [
+                    'transcript_id' => $transcript->id,
+                    'exception_type' => $cleanupError::class,
+                ]);
+            }
         }
     }
 

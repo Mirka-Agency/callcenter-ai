@@ -2,6 +2,7 @@
 
 namespace App\Application\Llm\Services;
 
+use App\Application\Llm\Prompts\TranscriptionPrompt;
 use App\Domain\Llm\Contracts\CompletesJsonPrompt;
 use App\Domain\Llm\Contracts\LlmProviderInterface;
 use App\Domain\Llm\DTOs\PromptContextData;

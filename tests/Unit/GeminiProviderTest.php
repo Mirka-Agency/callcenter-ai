@@ -80,7 +80,7 @@ class GeminiProviderTest extends TestCase
             $generationConfig = $body['generationConfig'] ?? [];
 
             return str_contains($request->url(), 'models/gemini-3.8-flash:generateContent')
-                && str_contains($request->url(), 'key=test-gemini-key')
+                && $request->hasHeader('x-goog-api-key', 'test-gemini-key')
                 && ($generationConfig['responseMimeType'] ?? null) === 'application/json'
                 && ($generationConfig['thinkingConfig']['thinkingLevel'] ?? null) === 'low'
                 && ! array_key_exists('temperature', $generationConfig)
@@ -181,7 +181,7 @@ class GeminiProviderTest extends TestCase
             $config = $body['generationConfig'] ?? [];
 
             $this->assertSame('text/plain', $config['responseMimeType'] ?? null);
-            $this->assertSame('minimal', $config['thinkingConfig']['thinkingLevel'] ?? null);
+            $this->assertSame('low', $config['thinkingConfig']['thinkingLevel'] ?? null);
 
             if ($attempt === 1) {
                 return Http::response([

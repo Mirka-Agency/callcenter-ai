@@ -2,6 +2,8 @@
 
 namespace App\Application\Llm\Services;
 
+use App\Application\Transcription\Services\CallTranscriber;
+use App\Application\Transcription\Services\SpeakerRoleMapper;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Contracts\ConversationAnalysisRepositoryInterface;
@@ -10,28 +12,23 @@ use App\Domain\Llm\DTOs\AnalysisResultData;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\DTOs\LlmConnectionConfig;
 use App\Domain\Llm\DTOs\PromptContextData;
-use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Events\AnalysisFailed;
 use App\Domain\Llm\Events\ConversationAnalyzed;
 use App\Domain\Llm\Exceptions\LlmTransientException;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
 use App\Infrastructure\Llm\LlmOutboundGuard;
 use App\Models\Call;
-use App\Models\CallTranscript;
-use App\Models\LlmModel;
 use App\Models\OrganizationUser;
 use App\Models\VoipCallLog;
 use App\Services\CallProcessingTracker;
-use App\Services\LlmModelResolver;
-use App\Services\RecordingUrlService;
 use App\Services\WeaknessEvaluationFilter;
 
 class AudioAnalyzer
 {
     public function __construct(
         private ConversationAnalysisRepositoryInterface $analyses,
-        private LlmConnectionResolver $connections,
-        private LlmModelResolver $models,
+        private CallTranscriber $transcriber,
+        private SpeakerRoleMapper $speakerRoles,
     ) {}
 
     public function analyze(
@@ -44,8 +41,10 @@ class AudioAnalyzer
 
         $call = Call::query()->with(['recording', 'organization'])->findOrFail($callId);
 
-        $llmModel = $this->models->resolveForOrganization($call->organization_id);
-        $modelKey = $model ?? $llmModel->model_key;
+        $modelKey = $model ?? $config->settings->defaultModel;
+        if (! $modelKey) {
+            throw new \RuntimeException('Missing LLM_MODEL environment configuration.');
+        }
 
         $callLog = $call->voip_call_log_id
             ? VoipCallLog::query()->find($call->voip_call_log_id)
@@ -84,81 +83,27 @@ class AudioAnalyzer
             agentRole: $employee?->position,
         );
 
-        $recording = $call->recording;
-        $transcriptionModel = $this->models->resolveTranscriptionForOrganization($call->organization_id);
-        $transcriptionProvider = $provider;
-        $requestedTranscriptionModel = $config->settings->transcriptionModel;
-        $sendAudioFile = (bool) $llmModel->sends_audio_file;
-
-        if ($transcriptionModel instanceof LlmModel) {
-            [, $transcriptionProvider] = $this->connections->resolveForModel(
-                $call->organization_id,
-                $transcriptionModel,
-                $transcriptionModel->model_key,
-            );
-            $requestedTranscriptionModel = $transcriptionModel->model_key;
-            $sendAudioFile = (bool) $transcriptionModel->sends_audio_file;
-        }
-
-        $playbackUrl = null;
-
-        if ($recording && ! $sendAudioFile) {
-            $playbackUrl = app(RecordingUrlService::class)->resolve(
-                $recording,
-                $recording->source_url ?? $callLog?->recording_url,
-            );
-        }
-
-        $storedTranscript = $this->reusableTranscript($call);
+        $storedTranscript = $this->transcriber->transcribe($call);
+        $transcript = trim($storedTranscript->content);
         $transcriptionInput = 0;
         $transcriptionOutput = 0;
-        $transcriptionDuration = 0;
+        $transcriptionDuration = (int) ($storedTranscript->processing_duration_ms ?? 0);
 
-        if ($storedTranscript instanceof CallTranscript) {
-            $transcript = trim($storedTranscript->content);
+        if ($storedTranscript->segments_json) {
+            $mapping = $this->speakerRoles->map($storedTranscript, $provider, $modelKey, $context);
+            $transcript = $storedTranscript->content;
+            $transcriptionInput = $mapping?->inputTokens ?? 0;
+            $transcriptionOutput = $mapping?->outputTokens ?? 0;
+            $transcriptionDuration += $mapping?->durationMs ?? 0;
         } else {
-            $call->update(['processing_status' => CallProcessingStatus::Transcribing]);
-
-            $transcription = $transcriptionProvider->transcribe(new TranscriptionRequestData(
-                callId: $callId,
-                storagePath: $sendAudioFile ? $recording?->storage_path : null,
-                storageDisk: $sendAudioFile ? $recording?->storage_disk : null,
-                recordingUrl: $recording?->source_url ?? $callLog?->recording_url,
-                mimeType: $recording?->mime_type,
-                model: $requestedTranscriptionModel,
-                fallbackModel: $modelKey,
-                context: $context,
-                sendAudioFile: $sendAudioFile,
-                playbackUrl: $playbackUrl,
-            ));
-
-            if (! $transcription->success || ! is_array($transcription->data)) {
-                $this->fail($config, $callId, $transcription->error ?? 'تبدیل گفتار به متن ناموفق بود.');
-            }
-
-            $transcript = trim((string) ($transcription->data['transcript'] ?? ''));
-
-            if ($transcript === '') {
-                $this->fail($config, $callId, 'متن مکالمه از فایل صوتی استخراج نشد.');
-            }
-
-            $transcriptionInput = $transcription->inputTokens;
-            $transcriptionOutput = $transcription->outputTokens;
-            $transcriptionDuration = $transcription->durationMs;
-        }
-
-        $turns = app(SpeakerTurnLabeler::class)->label($provider, $modelKey, $context, $transcript);
-        $transcript = $turns['transcript'];
-        $transcriptionInput += $turns['inputTokens'];
-        $transcriptionOutput += $turns['outputTokens'];
-        $transcriptionDuration += $turns['durationMs'];
-
-        if ($storedTranscript instanceof CallTranscript) {
+            $turns = app(SpeakerTurnLabeler::class)->label($provider, $modelKey, $context, $transcript);
+            $transcript = $turns['transcript'];
+            $transcriptionInput = $turns['inputTokens'];
+            $transcriptionOutput = $turns['outputTokens'];
+            $transcriptionDuration += $turns['durationMs'];
             if ($storedTranscript->content !== $transcript) {
                 $storedTranscript->update(['content' => $transcript]);
             }
-        } else {
-            $this->storeTranscript($call, $transcript, $transcription->model ?? $requestedTranscriptionModel, $transcriptionDuration, $transcription->data['speakers'] ?? null);
         }
 
         $call->update(['processing_status' => CallProcessingStatus::Analyzing]);
@@ -227,7 +172,8 @@ class AudioAnalyzer
 
         $analysisData = $this->analysisResult(
             response: $result->data,
-            model: $llmModel,
+            providerCode: $config->providerCode->value,
+            modelName: $modelKey,
             organizationId: $call->organization_id,
             organizationUserId: $call->organization_user_id,
             voipCallLogId: $call->voip_call_log_id,
@@ -263,7 +209,8 @@ class AudioAnalyzer
      */
     private function analysisResult(
         array $response,
-        LlmModel $model,
+        string $providerCode,
+        string $modelName,
         int $organizationId,
         ?int $organizationUserId,
         ?int $voipCallLogId,
@@ -289,8 +236,8 @@ class AudioAnalyzer
             organizationUserId: $organizationUserId,
             voipCallLogId: $voipCallLogId,
             organizationLlmConnectionId: $organizationLlmConnectionId,
-            llmProvider: $model->provider?->code ?? 'unknown',
-            modelName: $model->model_key,
+            llmProvider: $providerCode,
+            modelName: $modelName,
             inputTokens: $inputTokens,
             outputTokens: $outputTokens,
             processingDurationMs: $processingDurationMs,
@@ -298,20 +245,9 @@ class AudioAnalyzer
             callId: $callId,
             source: $source ?? ConversationSource::Voip,
             transcript: $transcript,
-            llmModelId: $model->id,
+            llmModelId: null,
             analyzedAt: $analyzedAt,
         );
-    }
-
-    private function reusableTranscript(Call $call): ?CallTranscript
-    {
-        $existing = CallTranscript::query()->where('call_id', $call->id)->latest('id')->first();
-
-        if (! $existing || $existing->status !== CallTranscript::STATUS_COMPLETED) {
-            return null;
-        }
-
-        return trim($existing->content) === '' ? null : $existing;
     }
 
     private function fail(LlmConnectionConfig $config, int $callId, string $error): never
@@ -327,44 +263,6 @@ class AudioAnalyzer
         }
 
         throw new \RuntimeException($error);
-    }
-
-    /** @param  list<array<string, mixed>>|null  $speakers */
-    private function storeTranscript(
-        Call $call,
-        string $transcript,
-        ?string $model,
-        int $durationMs,
-        ?array $speakers,
-    ): void {
-        $attributes = [
-            'organization_id' => $call->organization_id,
-            'voip_call_log_id' => $call->voip_call_log_id,
-            'organization_user_id' => $call->organization_user_id,
-            'content' => $transcript,
-            'language' => 'fa',
-            'duration_seconds' => $call->duration_seconds,
-            'status' => CallTranscript::STATUS_COMPLETED,
-            'error_message' => null,
-            'processed_at' => now(),
-            'transcription_provider' => 'llm',
-            'model_name' => $model,
-            'speakers_json' => $speakers,
-            'processing_duration_ms' => $durationMs,
-        ];
-
-        $existing = CallTranscript::query()->where('call_id', $call->id)->latest('id')->first();
-
-        if ($existing) {
-            $existing->update($attributes);
-
-            return;
-        }
-
-        CallTranscript::query()->create([
-            'call_id' => $call->id,
-            ...$attributes,
-        ]);
     }
 
     private function resolveCallDirection(Call $call, ?VoipCallLog $callLog): ?string

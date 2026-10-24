@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Application\Llm\Services\PromptBuilder;
+use App\Application\Llm\Prompts\PromptBuilder;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\DTOs\PromptContextData;
 use PHPUnit\Framework\TestCase;
@@ -45,7 +45,7 @@ class PromptBuilderCallMetadataTest extends TestCase
 
 وظیفه:
 به فایل صوتی پیوست‌شده گوش دهید و مکالمه را تحلیل کنید.
-خلاصه باید مفصل، کسب‌وکاری و کاملاً فارسی باشد.
+خلاصه باید مفصل، کسب‌وکاری و با نثر فارسی مطابق قانون زبان باشد.
 برچسب کارشناس و مشتری را عوض نکن. نام کارشناس و نام سازمان زمینه تماس هویت مشتری نیست.
 فقط یک شیء JSON معتبر برگردان و هر نکته را فقط یک‌بار بنویس.
 PROMPT,

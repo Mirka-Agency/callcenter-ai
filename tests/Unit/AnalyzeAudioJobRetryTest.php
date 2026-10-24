@@ -3,7 +3,7 @@
 namespace Tests\Unit;
 
 use App\Application\Intelligence\Jobs\AnalyzeAudioJob;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class AnalyzeAudioJobRetryTest extends TestCase
 {
@@ -11,7 +11,9 @@ class AnalyzeAudioJobRetryTest extends TestCase
     {
         $job = new AnalyzeAudioJob(42);
 
-        $this->assertSame(3, $job->tries);
+        $this->assertSame(0, $job->tries);
+        $this->assertSame(3, $job->maxExceptions);
+        $this->assertGreaterThan(now()->timestamp, $job->retryUntil()->getTimestamp());
         $this->assertSame([30, 120], $job->backoff());
         $this->assertSame('analyze-call-42', $job->uniqueId());
     }

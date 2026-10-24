@@ -140,7 +140,7 @@ class ForgottenFollowUpsDashboardTest extends TestCase
         $this->assertArrayHasKey('sort_call_date', $forgotten[0]);
     }
 
-    public function test_extension_redirect_weakness_becomes_forgotten_only_after_a_few_days(): void
+    public function test_extension_redirect_weakness_is_not_treated_as_a_promised_callback(): void
     {
         $organization = Organization::factory()->create();
 
@@ -154,23 +154,12 @@ class ForgottenFollowUpsDashboardTest extends TestCase
             'started_at' => now()->subDays(5),
         ]);
         $this->seedFollowUp($organization, [
-            'external_id' => 'redirect-recent',
-            'customer_name' => 'ارجاع تازه',
+            'external_id' => 'redirect-next-action',
+            'customer_name' => 'ارجاع اقدام بعدی',
             'customer_phone' => '09125550002',
-            'follow_up' => 'عدم پیگیری برای اتصال مستقیم مشتری به بخش مربوطه',
-            'weakness_only' => true,
-            'analyzed_at' => now()->subDay(),
-            'started_at' => now()->subDay(),
-        ]);
-        $this->seedFollowUp($organization, [
-            'external_id' => 'redirect-done',
-            'customer_name' => 'ارجاع انجام‌شده',
-            'customer_phone' => '09125550003',
-            'follow_up' => 'عدم پیگیری برای اتصال مستقیم مشتری به بخش مربوطه',
-            'weakness_only' => true,
-            'analyzed_at' => now()->subDays(6),
-            'started_at' => now()->subDays(6),
-            'followed_up_at' => now()->subDays(2),
+            'follow_up' => 'پیگیری از طریق بخش یا داخلی معرفی‌شده',
+            'analyzed_at' => now()->subDays(5),
+            'started_at' => now()->subDays(5),
         ]);
         $this->seedFollowUp($organization, [
             'external_id' => 'ordinary-weakness',
@@ -184,12 +173,7 @@ class ForgottenFollowUpsDashboardTest extends TestCase
 
         $forgotten = EmployerDashboardAnalytics::forOrganization($organization->id)->forgottenFollowUps();
 
-        $this->assertSame(['ارجاع معوق'], array_column($forgotten, 'customer'));
-        $this->assertSame(
-            'تماس پیگیری ۳ روز دیگر برای اتصال به بخش یا داخلی معرفی‌شده',
-            $forgotten[0]['forgotten_action'],
-        );
-        $this->assertGreaterThan(0, $forgotten[0]['days_overdue']);
+        $this->assertSame([], $forgotten);
     }
 
     public function test_forgotten_follow_up_lookup_ignores_unrelated_outbound_volume(): void

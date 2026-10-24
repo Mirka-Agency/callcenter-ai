@@ -2,7 +2,7 @@
 
 namespace App\Infrastructure\Llm\Adapters;
 
-use App\Application\Llm\Services\PromptBuilder;
+use App\Application\Llm\Prompts\PromptBuilder;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;

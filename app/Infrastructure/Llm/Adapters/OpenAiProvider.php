@@ -2,8 +2,8 @@
 
 namespace App\Infrastructure\Llm\Adapters;
 
-use App\Application\Llm\Services\PromptBuilder;
-use App\Application\Llm\Services\TranscriptionPrompt;
+use App\Application\Llm\Prompts\PromptBuilder;
+use App\Application\Llm\Prompts\TranscriptionPrompt;
 use App\Application\Llm\Services\TranscriptSanitizer;
 use App\Domain\Llm\Contracts\CompletesJsonPrompt;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
@@ -11,7 +11,6 @@ use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
 use App\Infrastructure\Llm\Clients\OpenAiApiClient;
-use App\Services\PersianOutputGuard;
 use App\Services\RecordingStorage;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -79,7 +78,6 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
             return $this->failure('آدرس قابل‌دسترس فایل صوتی برای تحلیل یافت نشد.');
         }
 
-        $guard = app(PersianOutputGuard::class);
         $messages = $promptBuilder->buildAudioMessages(
             $request,
             $audioFormat,
@@ -119,12 +117,6 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
             return $this->failure('Failed to parse OpenAI audio analysis response.');
         }
 
-        if ($guard->containsEnglish($parsed)) {
-            Log::warning('AI analysis contains English and was stored without a second model request', [
-                'call_id' => $request->callId,
-            ]);
-        }
-
         [$inputTokens, $outputTokens, $cachedTokens] = $this->usageTokens(is_array($body) ? ($body['usage'] ?? []) : [], $parsed);
 
         return LlmOperationResult::success(
@@ -150,21 +142,15 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
         }
 
         $started = microtime(true);
-        $payload = [
-            'model' => $model,
-            'messages' => [
+        $payload = $this->chatCompletionPayload(
+            [
                 ['role' => 'system', 'content' => $system],
                 ['role' => 'user', 'content' => $user],
             ],
-            'temperature' => 0,
-            'max_tokens' => max(1, $maxOutputTokens),
-            'response_format' => ['type' => 'json_object'],
-        ];
-
-        if ($this->isDeepSeekModel($model)) {
-            $payload['thinking'] = ['type' => 'disabled'];
-            $payload['reasoning_effort'] = 'none';
-        }
+            $model,
+            max(1, $maxOutputTokens),
+            0,
+        );
 
         $response = Http::withToken($this->config->credentials->apiKey)
             ->timeout(60)
@@ -264,13 +250,35 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
     /** @param  list<array{role: string, content: mixed}>  $messages */
     private function postChatCompletion(array $messages, string $model): Response
     {
+        return Http::withToken($this->config->credentials->apiKey)
+            ->timeout(300)
+            ->post(rtrim($this->resolveBaseUrl(), '/').'/chat/completions', $this->chatCompletionPayload(
+                $messages,
+                $model,
+                $this->resolveMaxOutputTokens($model),
+                $this->config->settings->temperature ?? 0,
+            ));
+    }
+
+    /**
+     * @param  list<array{role: string, content: mixed}>  $messages
+     * @return array<string, mixed>
+     */
+    private function chatCompletionPayload(array $messages, string $model, int $maxOutputTokens, float $temperature): array
+    {
         $payload = [
             'model' => $model,
             'messages' => $messages,
-            'temperature' => $this->config->settings->temperature ?? 0,
-            'max_tokens' => $this->resolveMaxOutputTokens($model),
+            'temperature' => $temperature,
+            'max_tokens' => $maxOutputTokens,
             'response_format' => ['type' => 'json_object'],
         ];
+
+        if ($model === 'gpt-6-luna') {
+            unset($payload['temperature'], $payload['max_tokens']);
+            $payload['max_completion_tokens'] = $maxOutputTokens;
+            $payload['reasoning_effort'] = 'low';
+        }
 
         if ($this->isDeepSeekModel($model)) {
             // Thinking is on by default and shares max_tokens with the answer.
@@ -279,9 +287,7 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
             $payload['reasoning_effort'] = 'none';
         }
 
-        return Http::withToken($this->config->credentials->apiKey)
-            ->timeout(300)
-            ->post(rtrim($this->resolveBaseUrl(), '/').'/chat/completions', $payload);
+        return $payload;
     }
 
     private function isDeepSeekModel(string $model): bool
@@ -330,6 +336,10 @@ class OpenAiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
     {
         if ($this->config->settings->maxOutputTokens !== null) {
             return max(1, (int) $this->config->settings->maxOutputTokens);
+        }
+
+        if ($model === 'gpt-6-luna') {
+            return 8192;
         }
 
         $normalized = strtolower($model);

@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Application\Llm\Services\PromptBuilder;
+use App\Application\Llm\Prompts\PromptBuilder;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\DTOs\PromptContextData;
 use PHPUnit\Framework\TestCase;

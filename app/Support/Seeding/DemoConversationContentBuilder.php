@@ -2,7 +2,7 @@
 
 namespace App\Support\Seeding;
 
-use App\Application\Llm\Services\PromptBuilder;
+use App\Application\Llm\Prompts\PromptBuilder;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Customer;
 use App\Models\OrganizationUser;

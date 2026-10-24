@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Application\Llm\Services\PromptBuilder;
+use App\Application\Llm\Prompts\PromptBuilder;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -30,7 +30,7 @@ class PromptBuilderAudioDeliveryTest extends TestCase
         $this->assertSame('mp3', $userContent[1]['input_audio']['format']);
         $this->assertSame('audio/mpeg', $userContent[1]['input_audio']['mime_type']);
         $this->assertArrayNotHasKey('url', $userContent[1]['input_audio']);
-        $this->assertStringContainsString('تمام مقدارهای متنی را فقط به فارسی بنویسید', $messages[0]['content']);
+        $this->assertStringContainsString('نثر توضیحی، خلاصه، ارزیابی، بازخورد و پیشنهادها را به فارسی روان بنویسید', $messages[0]['content']);
         $this->assertStringContainsString('نمونه خروجی درست', $messages[0]['content']);
         $this->assertStringNotContainsString('Generate a detailed business summary', $messages[0]['content']);
     }

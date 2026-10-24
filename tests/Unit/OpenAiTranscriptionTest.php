@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Application\Llm\Services\TranscriptionPrompt;
+use App\Application\Llm\Prompts\TranscriptionPrompt;
 use App\Domain\Llm\DTOs\LlmConnectionConfig;
 use App\Domain\Llm\DTOs\LlmCredentials;
 use App\Domain\Llm\DTOs\LlmSettings;

@@ -6,6 +6,8 @@ class CallCoachingRules
 {
     public const REDIRECT_FOLLOW_UP = 'تماس پیگیری ۳ روز دیگر برای اتصال به بخش یا داخلی معرفی‌شده';
 
+    public const REDIRECT_NEXT_ACTION = 'پیگیری از طریق بخش یا داخلی معرفی‌شده';
+
     /** @param  array<string, mixed>  $response */
     public static function responseLacksConversation(array $response): bool
     {
@@ -46,7 +48,7 @@ class CallCoachingRules
     }
 
     /**
-     * Being told to call another extension is a later callback, not a weakness of this call.
+     * Being told to call another extension is an operational next action, not a weakness or promised callback.
      *
      * @param  array<string, mixed>  $response
      * @return array<string, mixed>
@@ -55,7 +57,7 @@ class CallCoachingRules
     {
         $moved = false;
         $response['weaknesses'] = self::withoutRedirects($response['weaknesses'] ?? [], $moved);
-        $response['next_actions'] = self::withoutRedirects($response['next_actions'] ?? [], $moved);
+        $nextActions = self::withoutRedirects($response['next_actions'] ?? [], $moved);
 
         $operational = is_array($response['operational_insights'] ?? null)
             ? $response['operational_insights']
@@ -64,16 +66,16 @@ class CallCoachingRules
             $operational['missed_opportunities'] ?? [],
             $moved,
         );
+        $operational['follow_up_suggestions'] = self::withoutRedirects(
+            $operational['follow_up_suggestions'] ?? [],
+            $moved,
+        );
 
-        $suggestions = is_array($operational['follow_up_suggestions'] ?? null)
-            ? $operational['follow_up_suggestions']
-            : [];
-
-        if ($moved && ! self::listContains($suggestions, self::REDIRECT_FOLLOW_UP)) {
-            $suggestions[] = self::REDIRECT_FOLLOW_UP;
+        if ($moved && ! self::listContains($nextActions, self::REDIRECT_NEXT_ACTION)) {
+            $nextActions[] = self::REDIRECT_NEXT_ACTION;
         }
 
-        $operational['follow_up_suggestions'] = array_values($suggestions);
+        $response['next_actions'] = array_values($nextActions);
         $response['operational_insights'] = $operational;
 
         return $response;

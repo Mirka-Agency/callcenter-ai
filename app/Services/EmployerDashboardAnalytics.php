@@ -12,7 +12,6 @@ use App\Services\Performance\Calculators\SentimentScoreCalculator;
 use App\Services\Reports\ChartHolidayCalendar;
 use App\Services\Reports\OrganizationCallMetrics;
 use App\Support\AnalysisInsightPresenter;
-use App\Support\CallCoachingRules;
 use App\Support\CompanyWorkCalendar;
 use App\Support\FollowUpDueDateParser;
 use App\Support\ForgottenCallbackMatcher;
@@ -577,23 +576,6 @@ class EmployerDashboardAnalytics
                 $seen[$text] = true;
                 $actions[] = ['raw' => $raw, 'text' => $text];
             }
-        }
-
-        foreach ($analysis->weaknesses_json ?? [] as $raw) {
-            $text = $this->actionText($raw);
-
-            if ($text === null || ! CallCoachingRules::isDeferredRedirectFollowUp($text)) {
-                continue;
-            }
-
-            $followUp = CallCoachingRules::REDIRECT_FOLLOW_UP;
-
-            if (isset($seen[$followUp])) {
-                continue;
-            }
-
-            $seen[$followUp] = true;
-            $actions[] = ['raw' => $followUp, 'text' => $followUp];
         }
 
         return $actions;

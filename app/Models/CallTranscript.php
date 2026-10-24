@@ -7,6 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
+    'remote_file_id',
+    'remote_transcription_id',
+    'submitted_at',
+    'segments_json',
+    'remote_cleaned_at',
     'organization_id',
     'call_id',
     'voip_call_log_id',
@@ -36,6 +41,9 @@ class CallTranscript extends Model
             'speakers_json' => 'array',
             'confidence_scores_json' => 'array',
             'processed_at' => 'datetime',
+            'submitted_at' => 'immutable_datetime',
+            'remote_cleaned_at' => 'datetime',
+            'segments_json' => 'array',
         ];
     }
 
