@@ -38,7 +38,10 @@ class ConversationAnalysesTable
                     ->searchable()
                     ->placeholder(__('filament.misc.em_dash')),
                 TextColumn::make('sentiment')
+                    ->label(__('filament.fields.sentiment'))
                     ->badge()
+                    ->formatStateUsing(fn (?AnalysisSentiment $state): ?string => $state?->label())
+                    ->color(fn (?AnalysisSentiment $state): string|array|null => $state?->color())
                     ->toggleable(),
                 TextColumn::make('model_name')
                     ->label(__('filament.fields.model'))
@@ -51,6 +54,7 @@ class ConversationAnalysesTable
                     ->label(__('filament.fields.processing_ms'))
                     ->sortable(),
                 TextColumn::make('score')
+                    ->label(__('filament.fields.score'))
                     ->sortable()
                     ->badge()
                     ->color(fn (int $state): string => match (true) {
@@ -75,8 +79,9 @@ class ConversationAnalysesTable
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('sentiment')
+                    ->label(__('filament.fields.sentiment'))
                     ->options(collect(AnalysisSentiment::cases())
-                        ->mapWithKeys(fn (AnalysisSentiment $sentiment) => [$sentiment->value => ucfirst($sentiment->value)])
+                        ->mapWithKeys(fn (AnalysisSentiment $sentiment) => [$sentiment->value => $sentiment->label()])
                         ->all()),
                 SelectFilter::make('llm_provider')
                     ->label(__('filament.fields.provider'))
@@ -91,6 +96,7 @@ class ConversationAnalysesTable
                         ->pluck('model_name', 'model_name')
                         ->all()),
                 Filter::make('score_range')
+                    ->label(__('filament.fields.score'))
                     ->schema([
                         TextInput::make('min')->persianNumeric(0)->label(__('filament.fields.min_score')),
                         TextInput::make('max')->persianNumeric(0)->label(__('filament.fields.max_score')),
@@ -101,6 +107,7 @@ class ConversationAnalysesTable
                             ->when($data['max'], fn (Builder $q, $max) => $q->where('score', '<=', $max));
                     }),
                 Filter::make('analyzed_between')
+                    ->label(__('filament.fields.call_date'))
                     ->schema([
                         DatePicker::make('from')->jalali()->label(__('filament.fields.from')),
                         DatePicker::make('until')->jalali()->label(__('filament.fields.until')),
@@ -112,7 +119,7 @@ class ConversationAnalysesTable
                     }),
             ])
             ->recordActions([
-                ViewAction::make(),
+                ViewAction::make()->label(__('filament.actions.view')),
             ])
             ->defaultSort('analyzed_at', 'desc')
             ->paginated([25, 50, 100]);

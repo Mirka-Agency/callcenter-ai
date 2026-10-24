@@ -4,6 +4,7 @@ namespace App\Filament\Resources\PendingQueueJobs\Pages;
 
 use App\Filament\Resources\PendingQueueJobs\PendingQueueJobResource;
 use App\Models\PendingQueueJob;
+use App\Services\ProcessingQueueFlusher;
 use Filament\Actions\DeleteAction;
 use Filament\Infolists\Components\KeyValueEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -20,7 +21,8 @@ class ViewPendingQueueJob extends ViewRecord
         return [
             DeleteAction::make()
                 ->successNotificationTitle(__('filament.notifications.pending_queue_job_deleted'))
-                ->successRedirectUrl(PendingQueueJobResource::getUrl('index')),
+                ->successRedirectUrl(PendingQueueJobResource::getUrl('index'))
+                ->after(fn () => app(ProcessingQueueFlusher::class)->syncAfterPendingJobsRemoved()),
         ];
     }
 

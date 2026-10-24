@@ -138,6 +138,58 @@ class ProcessingQueueFlusherTest extends TestCase
         $this->assertSame(ProcessingJobStatus::Cancelled, $job->status);
     }
 
+    public function test_sync_after_pending_jobs_removed_cancels_fresh_dashboard_queue_rows(): void
+    {
+        $organization = Organization::factory()->create();
+        $call = $this->createCall($organization->id);
+
+        $job = CallProcessingJob::query()->create([
+            'job_uuid' => (string) Str::uuid(),
+            'call_id' => $call->id,
+            'organization_id' => $organization->id,
+            'file_name' => 'just-deleted.wav',
+            'status' => ProcessingJobStatus::Queued,
+            'stage' => ProcessingJobStage::Queued,
+            'progress_percentage' => ProcessingJobStage::Queued->progress(),
+            'queued_at' => now(),
+        ]);
+
+        // Without immediate=true, the 3-minute grace would keep this visible.
+        $this->assertSame(0, app(ProcessingQueueFlusher::class)->syncOrphans($organization->id));
+
+        $reconciled = app(ProcessingQueueFlusher::class)->syncAfterPendingJobsRemoved();
+
+        $job->refresh();
+
+        $this->assertSame(1, $reconciled);
+        $this->assertSame(ProcessingJobStatus::Cancelled, $job->status);
+    }
+
+    public function test_sync_orphans_cancels_processing_jobs_without_laravel_backing(): void
+    {
+        $organization = Organization::factory()->create();
+        $call = $this->createCall($organization->id);
+
+        $job = CallProcessingJob::query()->create([
+            'job_uuid' => (string) Str::uuid(),
+            'call_id' => $call->id,
+            'organization_id' => $organization->id,
+            'file_name' => 'stuck-processing.wav',
+            'status' => ProcessingJobStatus::Processing,
+            'stage' => ProcessingJobStage::Transcribing,
+            'progress_percentage' => ProcessingJobStage::Transcribing->progress(),
+            'queued_at' => now()->subMinutes(10),
+            'processing_started_at' => now()->subMinutes(5),
+        ]);
+
+        $reconciled = app(ProcessingQueueFlusher::class)->syncOrphans($organization->id);
+
+        $job->refresh();
+
+        $this->assertSame(1, $reconciled);
+        $this->assertSame(ProcessingJobStatus::Cancelled, $job->status);
+    }
+
     private function createCall(int $organizationId): Call
     {
         return Call::query()->create([

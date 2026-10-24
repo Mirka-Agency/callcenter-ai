@@ -4,6 +4,7 @@ namespace App\Filament\Resources\PendingQueueJobs\Pages;
 
 use App\Filament\Resources\PendingQueueJobs\PendingQueueJobResource;
 use App\Models\PendingQueueJob;
+use App\Services\ProcessingQueueFlusher;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
@@ -22,9 +23,10 @@ class ListPendingQueueJobs extends ListRecords
                 ->requiresConfirmation()
                 ->modalDescription(__('filament.misc.flush_pending_jobs_description'))
                 ->visible(fn (): bool => PendingQueueJob::query()->exists())
-                ->action(function (): void {
+                ->action(function (ProcessingQueueFlusher $flusher): void {
                     $count = PendingQueueJob::query()->count();
                     PendingQueueJob::query()->delete();
+                    $flusher->syncAfterPendingJobsRemoved();
 
                     Notification::make()
                         ->title(__('filament.notifications.pending_jobs_flushed'))
