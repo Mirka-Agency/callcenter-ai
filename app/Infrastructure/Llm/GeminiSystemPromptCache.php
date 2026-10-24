@@ -53,7 +53,7 @@ class GeminiSystemPromptCache
 
         try {
             $response = Http::timeout(30)
-                ->withQueryParameters(['key' => $apiKey])
+                ->withHeaders(['x-goog-api-key' => $apiKey])
                 ->post(rtrim($baseUrl, '/').'/cachedContents', [
                     'model' => $modelName,
                     'systemInstruction' => [

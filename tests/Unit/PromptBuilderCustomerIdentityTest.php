@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Application\Llm\Services\PromptBuilder;
+use App\Application\Llm\Prompts\PromptBuilder;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
 use App\Domain\Llm\DTOs\PromptContextData;
 use PHPUnit\Framework\TestCase;
@@ -34,7 +34,7 @@ class PromptBuilderCustomerIdentityTest extends TestCase
         $policy = PromptBuilder::customerIdentityPolicy();
 
         $this->assertStringContainsString('در تماس خروجی', $policy);
-        $this->assertStringContainsString('املای درست فارسی', $policy);
+        $this->assertStringContainsString('املای تأییدشده همان نام و مطابق قانون زبان', $policy);
         $this->assertStringContainsString('customer_identity', $policy);
         $this->assertStringContainsString('این مقدارها را هویت مشتری ندانید', $policy);
         $this->assertStringContainsString('نام کارشناس فعلی', $policy);

@@ -2,9 +2,9 @@
 
 namespace App\Infrastructure\Llm\Adapters;
 
+use App\Application\Llm\Prompts\PromptBuilder;
+use App\Application\Llm\Prompts\TranscriptionPrompt;
 use App\Application\Llm\Services\AudioSegmenter;
-use App\Application\Llm\Services\PromptBuilder;
-use App\Application\Llm\Services\TranscriptionPrompt;
 use App\Application\Llm\Services\TranscriptSanitizer;
 use App\Domain\Llm\Contracts\CompletesJsonPrompt;
 use App\Domain\Llm\DTOs\AudioAnalysisRequestData;
@@ -12,11 +12,9 @@ use App\Domain\Llm\DTOs\TranscriptionRequestData;
 use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Domain\Llm\ValueObjects\LlmOperationResult;
 use App\Infrastructure\Llm\GeminiSystemPromptCache;
-use App\Services\PersianOutputGuard;
 use App\Services\RecordingStorage;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class GeminiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
 {
@@ -57,10 +55,9 @@ class GeminiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
         }
 
         $model = $this->resolveModel(null, self::DEFAULT_MODEL);
-        $response = Http::timeout(30)->get(
-            $this->modelsEndpoint($model),
-            ['key' => $this->config->credentials->apiKey],
-        );
+        $response = Http::timeout(30)
+            ->withHeaders(['x-goog-api-key' => $this->config->credentials->apiKey])
+            ->get($this->modelsEndpoint($model));
 
         return $response->successful()
             ? LlmOperationResult::success(message: 'Gemini connection successful.')
@@ -93,7 +90,6 @@ class GeminiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
             return $this->failure('فایل صوتی برای تحلیل یافت نشد.');
         }
 
-        $guard = app(PersianOutputGuard::class);
         $response = $this->postGenerateContent(
             model: $model,
             promptBuilder: $promptBuilder,
@@ -112,12 +108,6 @@ class GeminiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
 
         if (! $parsed) {
             return $this->failure('Failed to parse Gemini audio analysis response.');
-        }
-
-        if ($guard->containsEnglish($parsed)) {
-            Log::warning('Gemini analysis contains English and was stored without a second model request', [
-                'call_id' => $request->callId,
-            ]);
         }
 
         [$inputTokens, $outputTokens, $cachedTokens] = $this->usageTokens($body['usageMetadata'] ?? [], $parsed);
@@ -236,7 +226,7 @@ class GeminiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
         $model = $this->resolveAudioAnalysisModel($model);
         $started = microtime(true);
         $response = Http::timeout(60)
-            ->withQueryParameters(['key' => $this->config->credentials->apiKey])
+            ->withHeaders(['x-goog-api-key' => $this->config->credentials->apiKey])
             ->post($this->generateContentEndpoint($model), [
                 'system_instruction' => [
                     'parts' => [
@@ -299,7 +289,7 @@ class GeminiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
 
         do {
             $response = Http::timeout(300)
-                ->withQueryParameters(['key' => $this->config->credentials->apiKey])
+                ->withHeaders(['x-goog-api-key' => $this->config->credentials->apiKey])
                 ->post($this->generateContentEndpoint($model), [
                     'system_instruction' => [
                         'parts' => [
@@ -408,7 +398,7 @@ class GeminiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
         }
 
         return Http::timeout(300)
-            ->withQueryParameters(['key' => $this->config->credentials->apiKey])
+            ->withHeaders(['x-goog-api-key' => $this->config->credentials->apiKey])
             ->post($this->generateContentEndpoint($model), $payload);
     }
 
@@ -531,7 +521,9 @@ class GeminiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
     {
         $baseUrl = strtolower((string) ($this->config->credentials->baseUrl ?? ''));
 
-        return $baseUrl === '' || str_contains($baseUrl, 'generativelanguage.googleapis.com');
+        return $baseUrl === ''
+            || str_contains($baseUrl, 'generativelanguage.googleapis.com')
+            || str_ends_with(rtrim((string) parse_url($baseUrl, PHP_URL_PATH), '/'), '/v1beta');
     }
 
     private function resolveBaseUrl(): string
@@ -570,7 +562,7 @@ class GeminiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
 
         if ($this->isGemini3($model)) {
             $config['thinkingConfig'] = [
-                'thinkingLevel' => 'minimal',
+                'thinkingLevel' => str_starts_with($model, 'gemini-3.8') ? 'low' : 'minimal',
             ];
 
             return $config;
@@ -591,7 +583,7 @@ class GeminiProvider extends AbstractLlmProvider implements CompletesJsonPrompt
 
         if ($this->isGemini3($model)) {
             $config['thinkingConfig'] = [
-                'thinkingLevel' => 'minimal',
+                'thinkingLevel' => str_starts_with($model, 'gemini-3.8') ? 'low' : 'minimal',
             ];
 
             return $config;

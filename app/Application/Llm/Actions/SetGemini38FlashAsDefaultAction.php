@@ -7,6 +7,7 @@ use App\Models\LlmModel;
 use App\Models\LlmProvider;
 use App\Models\PlatformAiSettings;
 
+/** Historical migration support only; runtime configuration comes from the environment. */
 class SetGemini38FlashAsDefaultAction
 {
     public const MODEL_KEY = 'gemini-3.8-flash';

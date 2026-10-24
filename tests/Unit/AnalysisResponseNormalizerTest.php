@@ -261,7 +261,7 @@ class AnalysisResponseNormalizerTest extends TestCase
         $this->assertSame([], $result['operational_insights']['follow_up_suggestions']);
     }
 
-    public function test_extension_redirect_becomes_a_follow_up_instead_of_a_weakness(): void
+    public function test_extension_redirect_becomes_a_next_action_instead_of_a_weakness_or_callback_promise(): void
     {
         $result = $this->normalizer->apply([
             'score' => 72,
@@ -272,17 +272,15 @@ class AnalysisResponseNormalizerTest extends TestCase
                 'جمع‌بندی ضعیف انتهای تماس',
             ],
             'operational_insights' => [
-                'follow_up_suggestions' => [],
+                'follow_up_suggestions' => ['تماس پیگیری ۳ روز دیگر برای اتصال به بخش یا داخلی معرفی‌شده'],
                 'missed_opportunities' => ['عدم پیگیری اتصال به بخش مربوطه انجام نشد'],
             ],
         ]);
 
         $this->assertTrue($result['evaluable']);
         $this->assertSame(['جمع‌بندی ضعیف انتهای تماس'], $result['weaknesses']);
-        $this->assertSame(
-            ['تماس پیگیری ۳ روز دیگر برای اتصال به بخش یا داخلی معرفی‌شده'],
-            $result['operational_insights']['follow_up_suggestions'],
-        );
+        $this->assertSame(['پیگیری از طریق بخش یا داخلی معرفی‌شده'], $result['next_actions']);
+        $this->assertSame([], $result['operational_insights']['follow_up_suggestions']);
         $this->assertSame([], $result['operational_insights']['missed_opportunities']);
     }
 

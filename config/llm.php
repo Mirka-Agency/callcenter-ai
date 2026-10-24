@@ -17,6 +17,11 @@ return [
     |
     */
 
+    'provider' => env('LLM_PROVIDER', 'gemini'),
+    'model' => env('LLM_MODEL', 'gemini-3.8-flash'),
+    'base_url' => env('LLM_BASE_URL', 'https://api.avalai.ir/v1beta'),
+    'api_key' => env('LLM_API_KEY'),
+
     'remote_enabled' => env('LLM_REMOTE_ENABLED') === null
         ? env('APP_ENV') !== 'local'
         : filter_var(env('LLM_REMOTE_ENABLED'), FILTER_VALIDATE_BOOLEAN),
@@ -51,8 +56,7 @@ return [
     'triage_confidence' => (float) env('LLM_TRIAGE_CONFIDENCE', 0.75),
 
     /*
-    | Used only when Models & Pricing has no transcription model selected.
-    | A selected admin model is always sent as-is.
+    | Legacy transcription settings used only by older provider adapters.
     */
 
     'transcription' => [

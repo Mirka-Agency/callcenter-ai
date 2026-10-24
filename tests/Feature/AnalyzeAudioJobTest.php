@@ -6,19 +6,16 @@ use App\Application\Intelligence\Jobs\AnalyzeAudioJob;
 use App\Application\Llm\Services\AudioAnalyzer;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
-use App\Domain\Llm\Enums\LlmProviderCode;
 use App\Domain\Llm\Exceptions\LlmTransientException;
 use App\Domain\Processing\Enums\ProcessingJobStage;
 use App\Domain\Processing\Enums\ProcessingJobStatus;
 use App\Domain\Recording\Exceptions\RecordingNotFoundException;
+use App\Domain\Transcription\Exceptions\TranscriptionPending;
 use App\Models\Call;
 use App\Models\CallProcessingJob;
 use App\Models\CallRecording;
-use App\Models\LlmModel;
-use App\Models\LlmProvider;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
-use App\Models\PlatformAiSettings;
 use App\Models\User;
 use App\Services\RecordingStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,11 +28,55 @@ class AnalyzeAudioJobTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_synchronous_queue_is_rejected_before_any_provider_request(): void
+    {
+        Storage::fake('local');
+        [$call] = $this->seedCallWithRecording();
+        $this->configureLlm();
+        Http::fake();
+        $this->mock(AudioAnalyzer::class, function ($mock) {
+            $mock->shouldNotReceive('analyze');
+        });
+
+        AnalyzeAudioJob::dispatchSync($call->id);
+
+        $this->assertSame(CallProcessingStatus::Failed, $call->fresh()->processing_status);
+        $this->assertStringContainsString('asynchronous queue worker', $call->fresh()->processing_error);
+        Http::assertNothingSent();
+    }
+
+    public function test_pending_transcription_releases_the_job_even_after_many_polls(): void
+    {
+        Storage::fake('local');
+        [$call, $processingJob] = $this->seedCallWithRecording();
+        $this->configureLlm();
+        $this->mock(AudioAnalyzer::class, function ($mock) {
+            $mock->shouldReceive('analyze')->once()->andThrow(new TranscriptionPending('Processing'));
+        });
+        $job = (new AnalyzeAudioJob($call->id))->withFakeQueueInteractions();
+        $job->job->attempts = 100;
+        $this->app->call([$job, 'handle']);
+        $job->assertReleased(5);
+        $job->assertNotFailed();
+        $this->assertSame(CallProcessingStatus::Transcribing, $call->fresh()->processing_status);
+        $this->assertNotSame(ProcessingJobStatus::Failed, $processingJob->fresh()->status);
+        $this->assertSame(3, $job->maxExceptions);
+    }
+
+    public function test_polling_deadline_survives_job_serialization(): void
+    {
+        $job = new AnalyzeAudioJob(1);
+        $deadline = $job->retryUntil()->getTimestamp();
+        $this->travel(10)->minutes();
+        $restored = unserialize(serialize($job));
+        $this->assertSame($deadline, $restored->retryUntil()->getTimestamp());
+    }
+
     public function test_analysis_failure_is_recorded_once_without_retry(): void
     {
         Storage::fake('local');
         [$call, $processingJob] = $this->seedCallWithRecording();
-        $this->seedPlatformLlm();
+        $this->configureLlm();
 
         $this->mock(AudioAnalyzer::class, function ($mock) {
             $mock->shouldReceive('analyze')
@@ -60,7 +101,7 @@ class AnalyzeAudioJobTest extends TestCase
     {
         Storage::fake('local');
         [$call, $processingJob] = $this->seedCallWithRecording();
-        $this->seedPlatformLlm();
+        $this->configureLlm();
 
         $this->mock(AudioAnalyzer::class, function ($mock) {
             $mock->shouldReceive('analyze')
@@ -90,7 +131,7 @@ class AnalyzeAudioJobTest extends TestCase
     {
         Storage::fake('local');
         [$call, $processingJob] = $this->seedCallWithRecording();
-        $this->seedPlatformLlm();
+        $this->configureLlm();
 
         $this->mock(AudioAnalyzer::class, function ($mock) {
             $mock->shouldReceive('analyze')
@@ -246,29 +287,8 @@ class AnalyzeAudioJobTest extends TestCase
         return [$call, $processingJob];
     }
 
-    private function seedPlatformLlm(): void
+    private function configureLlm(): void
     {
-        $provider = LlmProvider::query()->create([
-            'name' => 'OpenAI',
-            'code' => LlmProviderCode::OpenAi->value,
-            'api_key' => 'test-key',
-            'is_active' => true,
-        ]);
-
-        $model = LlmModel::query()->create([
-            'provider_id' => $provider->id,
-            'name' => 'gpt-4o',
-            'model_key' => 'gpt-4o',
-            'input_price_per_million_tokens' => 1,
-            'output_price_per_million_tokens' => 2,
-            'is_default' => true,
-            'is_active' => true,
-        ]);
-
-        PlatformAiSettings::current()->update([
-            'default_llm_provider_id' => $provider->id,
-            'default_llm_model_id' => $model->id,
-            'allow_negative_balance' => true,
-        ]);
+        config(['llm.api_key' => 'test-key']);
     }
 }

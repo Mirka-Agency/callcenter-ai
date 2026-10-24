@@ -2,6 +2,8 @@
 
 namespace App\Application\Llm\Services;
 
+use App\Application\Llm\Prompts\TranscriptionPrompt;
+
 /**
  * Drops ringtone, hold music, and other non-speech that speech models turn into words.
  */

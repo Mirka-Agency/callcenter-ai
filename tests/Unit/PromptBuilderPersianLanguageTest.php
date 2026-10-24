@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Application\Llm\Services\PromptBuilder;
+use App\Application\Llm\Prompts\PromptBuilder;
 use PHPUnit\Framework\TestCase;
 
 class PromptBuilderPersianLanguageTest extends TestCase
@@ -11,11 +11,28 @@ class PromptBuilderPersianLanguageTest extends TestCase
     {
         $policy = PromptBuilder::persianLanguagePolicy();
 
-        $this->assertStringContainsString('تمام مقدارهای متنی را فقط به فارسی بنویسید', $policy);
-        $this->assertStringContainsString('هیچ جمله، عبارت یا توضیح انگلیسی ننویسید', $policy);
-        $this->assertStringContainsString('نام کلیدهای خروجی را عوض نکنید', $policy);
+        $this->assertStringContainsString('نثر توضیحی، خلاصه، ارزیابی، بازخورد و پیشنهادها را به فارسی روان بنویسید', $policy);
+        $this->assertStringContainsString('مجاز بودن واژه انگلیسی به معنی نوشتن توضیح کامل به انگلیسی نیست', $policy);
+        $this->assertStringContainsString('واژه‌های انگلیسی، اصطلاحات فنی، نام اشخاص، برندها و محصولات را فقط وقتی در متن مکالمه یا فراداده معتبر آمده‌اند، با املای اصلی و قابل تشخیص حفظ کنید', $policy);
+        $this->assertStringContainsString('آن‌ها را به اجبار ترجمه یا فارسی‌نویسی آوایی نکنید', $policy);
+        $this->assertStringContainsString('ایمیل، نشانی وب، شناسه‌ها، شماره‌ها، نام مدل و مقدار skill_key را ترجمه یا فارسی‌نویسی نکنید', $policy);
+        $this->assertStringContainsString('نقل‌قول شاهد را با همان واژه‌ها و زبان منبع حفظ کنید', $policy);
+        $this->assertStringContainsString('املای مبهم، نام نامطمئن یا اصطلاح تازه حدس نزنید و شاهد نسازید', $policy);
+        $this->assertStringContainsString('نام کلیدهای خروجی و کدهای قراردادی را عوض نکنید', $policy);
         $this->assertStringContainsString('positive یا neutral یا negative یا mixed', $policy);
+        $this->assertStringNotContainsString('حتی یک کلمه انگلیسی در مقدارهای متنی ممنوع است', $policy);
+        $this->assertStringNotContainsString('به‌جز این کدها و نام کلیدها، هیچ حرف لاتین در متن نیاید', $policy);
         $this->assertStringNotContainsString('حتی نام بخش‌ها و لیبل‌ها هم فارسی باشند', $policy);
+    }
+
+    public function test_strict_retry_policy_preserves_allowed_source_terms_and_quotes(): void
+    {
+        $policy = PromptBuilder::persianStrictRetryPolicy();
+
+        $this->assertStringContainsString('نثر توضیحی خروجی را به فارسی روان بنویسید', $policy);
+        $this->assertStringContainsString('واژه‌های انگلیسی منبع، نام‌ها، اصطلاحات فنی و اطلاعات تماس را با املای اصلی حفظ کنید', $policy);
+        $this->assertStringContainsString('نقل‌قول مستقیم را ترجمه نکنید', $policy);
+        $this->assertStringNotContainsString('هیچ کلمه، عبارت یا جمله انگلیسی در هیچ فیلد متنی نباشد', $policy);
     }
 
     public function test_output_sample_is_persian_with_required_schema(): void
@@ -49,8 +66,8 @@ class PromptBuilderPersianLanguageTest extends TestCase
     {
         $policy = PromptBuilder::followUpPolicy();
 
-        $this->assertStringContainsString('follow_up_suggestions فقط برای تماس تلفنی برگشتی', $policy);
-        $this->assertStringContainsString('کارشناس باید دوباره با همان مشتری تلفنی تماس بگیرد', $policy);
+        $this->assertStringContainsString('follow_up_suggestions فقط برای قول صریح تماس تلفنی برگشتی', $policy);
+        $this->assertStringContainsString('کارشناس صریحاً قول داده یا با مشتری قرار گذاشته دوباره با همان مشتری تلفنی تماس بگیرد', $policy);
         $this->assertStringContainsString('ارسال فایل، سند، کاتالوگ، پیش‌فاکتور', $policy);
         $this->assertStringContainsString('واتساپ، تلگرام، اینستاگرام', $policy);
         $this->assertStringContainsString('ثبت تیکت، پیگیری مشکل سیستمی', $policy);
@@ -59,10 +76,21 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $this->assertStringContainsString('فقط قول صریح خود کارشناس', $policy);
         $this->assertStringContainsString('مشتری گفت خودش زنگ می‌زند', $policy);
         $this->assertStringContainsString('موعد را حدس نزنید', $policy);
-        $this->assertStringContainsString('ارجاع به داخلی یا بخش دیگر همان شرکت', $policy);
-        $this->assertStringContainsString('تماس پیگیری ۳ روز دیگر برای اتصال به بخش یا داخلی معرفی‌شده', $policy);
+        $this->assertStringContainsString('قاعده ارجاع به داخلی یا بخش دیگر همان شرکت', $policy);
+        $this->assertStringContainsString('پیگیری از طریق بخش یا داخلی معرفی‌شده', $policy);
+        $this->assertStringNotContainsString('تماس پیگیری ۳ روز دیگر برای اتصال به بخش یا داخلی معرفی‌شده', $policy);
         $this->assertStringContainsString('این نقطه ضعف «عدم پیگیری» نیست', PromptBuilder::weaknessEvaluationPolicy());
+        $this->assertStringContainsString('مستند به رفتار یا جمله مشخص و قابل مشاهده در همین مکالمه', PromptBuilder::weaknessEvaluationPolicy());
         $this->assertStringContainsString('مشتری یا طرف مقابل اصلاً پاسخ نداده', PromptBuilder::evaluableConversationPolicy());
+    }
+
+    public function test_transcript_analysis_policy_forbids_judging_voice_tone_or_speaking_speed(): void
+    {
+        $policy = PromptBuilder::transcriptAnalysisPolicy();
+
+        $this->assertStringContainsString('تن صدا', $policy);
+        $this->assertStringContainsString('سرعت صحبت', $policy);
+        $this->assertStringContainsString('ویژگی‌های صوتی که در متن قابل مشاهده نیستند', $policy);
     }
 
     public function test_personal_call_policy_separates_private_calls_from_work(): void
@@ -98,6 +126,8 @@ class PromptBuilderPersianLanguageTest extends TestCase
         $this->assertStringContainsString(PromptBuilder::coachingPolicy(), $prompt);
         $this->assertStringContainsString('فقط رفتار کارشناس را ارزیابی کنید', $prompt);
         $this->assertStringContainsString('need_discovery', $prompt);
+        $this->assertStringContainsString('کارشناس را به‌خاطر نداشتن پیشنهاد فروش، مذاکره قیمت یا بستن معامله جریمه نکنید', $prompt);
+        $this->assertStringContainsString('۸۵ تا ۱۰۰ (strength)', $prompt);
         $this->assertStringContainsString('فقط قول صریح کارشناس برای تماس تلفنی برگشتی با همین مشتری', $prompt);
         $this->assertStringContainsString('"follow_up_suggestions": ["تماس پیگیری در روز بعد برای اعلام تصمیم مشتری"]', $prompt);
     }

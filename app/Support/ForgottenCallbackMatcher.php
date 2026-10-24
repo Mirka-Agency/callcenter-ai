@@ -15,7 +15,7 @@ class ForgottenCallbackMatcher
             return false;
         }
 
-        if (self::isNegativeCallback($text) || self::isInternalHandoff($text)) {
+        if (self::isNegativeCallback($text) || self::isInternalHandoff($text) || CallCoachingRules::isDeferredRedirectFollowUp($text)) {
             return false;
         }
 

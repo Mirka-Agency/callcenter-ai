@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use App\Application\Llm\Services\PromptBuilder;
+use App\Application\Llm\Prompts\PromptBuilder;
 use App\Domain\Call\Enums\ConversationSource;
 use App\Domain\Llm\Enums\AnalysisSentiment;
 use App\Models\Call;

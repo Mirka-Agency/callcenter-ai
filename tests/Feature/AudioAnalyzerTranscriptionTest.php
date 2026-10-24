@@ -3,18 +3,18 @@
 namespace Tests\Feature;
 
 use App\Application\Llm\AnalysisManager;
+use App\Application\Transcription\Jobs\CleanupSonioxTranscription;
 use App\Domain\Call\Enums\CallProcessingStatus;
 use App\Domain\Call\Enums\ConversationSource;
-use App\Domain\Llm\Enums\LlmProviderCode;
+use App\Domain\Transcription\Exceptions\TranscriptionPending;
 use App\Models\Call;
 use App\Models\CallRecording;
-use App\Models\LlmModel;
-use App\Models\LlmProvider;
+use App\Models\CallTranscript;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
-use App\Models\PlatformAiSettings;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -23,243 +23,145 @@ class AudioAnalyzerTranscriptionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_call_is_transcribed_completely_before_the_transcript_is_analyzed(): void
+    protected function setUp(): void
     {
+        parent::setUp();
         Storage::fake('local');
+        Bus::fake([CleanupSonioxTranscription::class]);
+        Http::preventStrayRequests();
+        config([
+            'llm.prompt_cache' => false,
+            'llm.provider' => 'gemini',
+            'llm.api_key' => 'analysis-key',
+            'llm.model' => 'gemini-3.8-flash',
+            'llm.base_url' => 'https://analysis.test/v1beta',
+            'soniox.api_key' => 'speech-key',
+            'soniox.base_url' => 'https://speech.test/v1',
+        ]);
+    }
+
+    public function test_soniox_speech_is_stored_then_analyzed_without_sending_audio_to_the_llm(): void
+    {
         $call = $this->seedCall();
-        $this->seedPlatformLlm();
-
-        $transcript = "کارشناس: سلام، شرکت آوایار هستم.\nمشتری: سفارشم هنوز نرسیده است.";
-        $analysisSentTranscript = false;
-        $analysisSentAudio = false;
-
-        Http::fake(function ($request) use (&$analysisSentTranscript, &$analysisSentAudio) {
-            if (str_contains($request->url(), '/audio/transcriptions')) {
-                return Http::response([
-                    'segments' => [
-                        ['speaker' => 'agent', 'text' => 'سلام، شرکت آوایار هستم.'],
-                        ['speaker' => 'customer', 'text' => 'سفارشم هنوز نرسیده است.'],
-                    ],
-                ]);
-            }
-
-            $encoded = json_encode($request->data(), JSON_UNESCAPED_UNICODE) ?: '';
-            $analysisSentTranscript = str_contains($encoded, 'کارشناس: سلام، شرکت آوایار هستم.')
-                && str_contains($encoded, 'مشتری: سفارشم هنوز نرسیده است.')
-                && str_contains($encoded, 'فقط متن مکالمه بالا را تحلیل کنید.');
-            $analysisSentAudio = str_contains($encoded, 'input_audio');
-
-            return Http::response([
-                'choices' => [[
-                    'finish_reason' => 'stop',
-                    'message' => ['content' => json_encode([
-                        'score' => 70,
-                        'summary' => 'مشتری پیگیر نرسیدن سفارش بود و کارشناس بررسی را پذیرفت.',
-                        'sentiment' => 'negative',
-                        'strengths' => ['پاسخ روشن'],
-                        'weaknesses' => [],
-                        'next_actions' => [],
-                        'evaluable' => true,
-                    ], JSON_UNESCAPED_UNICODE)],
-                ]],
-                'usage' => ['prompt_tokens' => 40, 'completion_tokens' => 20],
-            ]);
-        });
+        $this->fakeProviders();
 
         $result = AnalysisManager::forOrganization($call->organization_id)->analyzeCall($call->id);
+        $transcript = CallTranscript::query()->where('call_id', $call->id)->firstOrFail();
 
-        $this->assertTrue($analysisSentTranscript);
-        $this->assertFalse($analysisSentAudio);
-        $this->assertSame($transcript, $result->transcript);
-        $this->assertDatabaseHas('call_transcripts', [
-            'call_id' => $call->id,
-            'content' => $transcript,
-            'status' => 'completed',
-            'model_name' => 'whisper-1',
-        ]);
-        $this->assertDatabaseHas('conversation_analyses', [
-            'call_id' => $call->id,
-            'transcript' => $transcript,
-            'summary' => 'مشتری پیگیر نرسیدن سفارش بود و کارشناس بررسی را پذیرفت.',
-        ]);
-        $this->assertSame(CallProcessingStatus::Analyzing, $call->fresh()->processing_status);
+        $this->assertSame("کارشناس: سلام، شرکت آوایار هستم.\nمشتری: سفارشم هنوز نرسیده است.", $result->transcript);
+        $this->assertSame('soniox', $transcript->transcription_provider);
+        $this->assertSame('stt-async-v5', $transcript->model_name);
+        $this->assertSame('file-1', $transcript->remote_file_id);
+        $this->assertSame('transcription-1', $transcript->remote_transcription_id);
+        $this->assertCount(2, $transcript->segments_json);
+        $this->assertSame(0.95, $transcript->segments_json[0]['tokens'][0]['confidence']);
+        $this->assertSame('gemini-3.8-flash', $result->modelName);
+        $this->assertSame('gemini', $result->llmProvider);
+        $this->assertNull($result->llmModelId);
+        $this->assertDatabaseHas('conversation_analyses', ['call_id' => $call->id, 'llm_model_id' => null]);
+        Bus::assertDispatched(CleanupSonioxTranscription::class);
+        Http::assertSent(function ($request) {
+            return str_ends_with($request->url(), '/transcriptions') && $request['language_hints'] === ['fa']
+                && $request['enable_speaker_diarization'] === true && $request['model'] === 'stt-async-v5'
+                && $request->hasHeader('Authorization', 'Bearer speech-key');
+        });
+        Http::assertNotSent(function ($request) {
+            return str_contains($request->url(), 'analysis.test') && str_contains(json_encode($request->data()), 'inline_data');
+        });
     }
 
-    public function test_a_completed_transcript_is_not_transcribed_again(): void
+    public function test_analysis_retries_reuse_transcription_and_speaker_mapping(): void
     {
-        Storage::fake('local');
         $call = $this->seedCall();
-        $this->seedPlatformLlm();
-        $transcriptions = 0;
-
-        Http::fake(function ($request) use (&$transcriptions) {
-            if (str_contains($request->url(), '/audio/transcriptions')) {
-                $transcriptions++;
-
-                return Http::response(['text' => 'کارشناس: سلام']);
-            }
-
-            $encoded = json_encode($request->data(), JSON_UNESCAPED_UNICODE) ?: '';
-
-            if (str_contains($encoded, 'تو فقط تماس را دسته‌بندی')) {
-                return Http::response([
-                    'choices' => [[
-                        'message' => ['content' => json_encode([
-                            'kind' => 'real',
-                            'confidence' => 0.2,
-                            'summary' => '',
-                            'personal_reason' => '',
-                        ], JSON_UNESCAPED_UNICODE)],
-                    ]],
-                    'usage' => ['prompt_tokens' => 4, 'completion_tokens' => 2],
-                ]);
-            }
-
-            return Http::response([
-                'choices' => [[
-                    'finish_reason' => 'stop',
-                    'message' => ['content' => json_encode([
-                        'score' => 70,
-                        'summary' => 'خلاصه تماس.',
-                        'sentiment' => 'neutral',
-                        'strengths' => [],
-                        'weaknesses' => [],
-                        'next_actions' => [],
-                        'evaluable' => true,
-                    ], JSON_UNESCAPED_UNICODE)],
-                ]],
-                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5],
-            ]);
-        });
-
-        AnalysisManager::forOrganization($call->organization_id)->analyzeCall($call->id);
+        $this->fakeProviders(failAnalysis: true);
+        try {
+            AnalysisManager::forOrganization($call->organization_id)->analyzeCall($call->id);
+            $this->fail('Analysis should fail.');
+        } catch (\Throwable $e) {
+            $this->assertStringContainsString('503', $e->getMessage());
+        }
+        $this->assertDatabaseHas('call_transcripts', ['call_id' => $call->id, 'status' => 'completed']);
+        $this->fakeProviders();
         AnalysisManager::forOrganization($call->organization_id)->analyzeCall($call->id);
 
-        $this->assertSame(1, $transcriptions);
+        $submissions = Http::recorded(fn ($request) => str_ends_with($request->url(), '/transcriptions'));
+        $this->assertCount(0, $submissions);
+        $mappings = Http::recorded(fn ($request) => str_contains(json_encode($request->data()), 'Map speaker IDs'));
+        $this->assertCount(0, $mappings);
     }
 
-    public function test_a_confident_personal_call_skips_the_full_analysis(): void
+    public function test_pending_soniox_work_does_not_invoke_the_llm(): void
     {
-        Storage::fake('local');
         $call = $this->seedCall();
-        $this->seedPlatformLlm();
-        $fullAnalyses = 0;
-
-        Http::fake(function ($request) use (&$fullAnalyses) {
-            if (str_contains($request->url(), '/audio/transcriptions')) {
-                return Http::response(['text' => 'کارشناس: یک پیتزا سفارش می‌دهم.']);
-            }
-
-            $encoded = json_encode($request->data(), JSON_UNESCAPED_UNICODE) ?: '';
-
-            if (str_contains($encoded, 'تو فقط تماس را دسته‌بندی')) {
-                return Http::response([
-                    'choices' => [[
-                        'message' => ['content' => json_encode([
-                            'kind' => 'personal',
-                            'confidence' => 0.95,
-                            'summary' => 'کارشناس برای سفارش غذا تماس گرفت.',
-                            'personal_reason' => 'سفارش غذا',
-                        ], JSON_UNESCAPED_UNICODE)],
-                    ]],
-                    'usage' => ['prompt_tokens' => 8, 'completion_tokens' => 4],
-                ]);
-            }
-
-            $fullAnalyses++;
-
-            return Http::response([
-                'choices' => [[
-                    'message' => ['content' => json_encode([
-                        'score' => 80,
-                        'summary' => 'نباید این خلاصه ذخیره شود.',
-                        'sentiment' => 'positive',
-                        'evaluable' => true,
-                    ], JSON_UNESCAPED_UNICODE)],
-                ]],
-                'usage' => ['prompt_tokens' => 100, 'completion_tokens' => 80],
-            ]);
-        });
-
-        $result = AnalysisManager::forOrganization($call->organization_id)->analyzeCall($call->id);
-
-        $this->assertSame(0, $fullAnalyses);
-        $this->assertTrue($result->isPersonal);
-        $this->assertFalse($result->isEvaluable);
-        $this->assertSame(0, $result->score);
-        $this->assertSame('سفارش غذا', $result->personalReason);
-        $this->assertSame('کارشناس برای سفارش غذا تماس گرفت.', $result->summary);
+        $this->fakeProviders(status: 'transcribing');
+        try {
+            AnalysisManager::forOrganization($call->organization_id)->analyzeCall($call->id);
+            $this->fail('Pending transcription must suspend analysis.');
+        } catch (TranscriptionPending) {
+            $this->assertDatabaseMissing('conversation_analyses', ['call_id' => $call->id]);
+        }
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'analysis.test'));
+        $this->fakeProviders();
+        AnalysisManager::forOrganization($call->organization_id)->analyzeCall($call->id);
+        $this->assertCount(0, Http::recorded(fn ($request) => str_ends_with($request->url(), '/transcriptions')));
     }
 
-    public function test_selected_transcription_model_uses_its_own_provider(): void
+    public function test_missing_llm_configuration_prevents_audio_submission(): void
     {
-        Storage::fake('local');
         $call = $this->seedCall();
-        $this->seedPlatformLlm();
+        config(['llm.api_key' => '']);
+        Http::fake();
+        try {
+            AnalysisManager::forOrganization($call->organization_id)->analyzeCall($call->id);
+            $this->fail('Missing configuration must fail.');
+        } catch (\Throwable $e) {
+            $this->assertStringContainsString('LLM_API_KEY', $e->getMessage());
+        }
+        Http::assertNothingSent();
+    }
 
-        $analysisModel = LlmModel::query()->where('is_default', true)->firstOrFail();
-        $analysisModel->provider->update(['base_url' => 'https://analysis.test/v1']);
-
-        $sttProvider = LlmProvider::query()->create([
-            'name' => 'Speech',
-            'code' => LlmProviderCode::OpenAi->value,
-            'api_key' => 'stt-key',
-            'base_url' => 'https://stt.test/v1',
-            'is_active' => true,
-        ]);
-
-        $sttModel = LlmModel::query()->create([
-            'provider_id' => $sttProvider->id,
-            'name' => 'Whisper Large',
-            'model_key' => 'whisper-large-v3',
-            'input_price_per_million_tokens' => 0,
-            'output_price_per_million_tokens' => 0,
-            'is_default' => false,
-            'is_transcription_default' => true,
-            'is_active' => true,
-            'sends_audio_file' => true,
-        ]);
-
-        PlatformAiSettings::current()->update([
-            'default_transcription_provider_id' => $sttProvider->id,
-            'default_transcription_model_id' => $sttModel->id,
-        ]);
-
+    private function fakeProviders(string $status = 'completed', bool $failAnalysis = false): void
+    {
+        config(['test.soniox_status' => $status, 'test.fail_analysis' => $failAnalysis]);
         Http::fake(function ($request) {
-            if (str_contains($request->url(), '/audio/transcriptions')) {
-                $this->assertStringContainsString('https://stt.test/v1/audio/transcriptions', $request->url());
-                $this->assertStringContainsString('whisper-large-v3', $request->body());
-
-                return Http::response(['text' => 'کارشناس: سلام']);
+            $status = config('test.soniox_status');
+            $failAnalysis = config('test.fail_analysis');
+            $url = $request->url();
+            if (str_ends_with($url, '/files')) {
+                return Http::response(['id' => 'file-1']);
             }
-
-            $this->assertStringContainsString('https://analysis.test/v1/chat/completions', $request->url());
-            $this->assertStringContainsString('gpt-4o', json_encode($request->data(), JSON_UNESCAPED_UNICODE) ?: '');
+            if (str_ends_with($url, '/transcriptions')) {
+                return Http::response(['id' => 'transcription-1']);
+            }
+            if (str_ends_with($url, '/transcript')) {
+                return Http::response(['tokens' => [
+                    ['text' => 'سلام، شرکت آوایار هستم.', 'speaker' => '1', 'start_ms' => 0, 'end_ms' => 1000, 'confidence' => 0.95],
+                    ['text' => 'سفارشم هنوز نرسیده است.', 'speaker' => '2', 'start_ms' => 1100, 'end_ms' => 2000],
+                ]]);
+            }
+            if (str_contains($url, '/transcriptions/transcription-1')) {
+                return Http::response(['status' => $status]);
+            }
+            $body = json_encode($request->data(), JSON_UNESCAPED_UNICODE);
+            if (str_contains($body, 'Map speaker IDs')) {
+                $payload = ['roles' => ['1' => 'agent', '2' => 'customer']];
+            } elseif (str_contains($body, 'تو فقط تماس را دسته‌بندی')) {
+                $payload = ['kind' => 'real', 'confidence' => 1];
+            } else {
+                if ($failAnalysis) {
+                    return Http::response(['error' => 'service_unavailable'], 503);
+                }
+                $this->assertSame('completed', CallTranscript::query()->firstOrFail()->status);
+                $this->assertStringContainsString('کارشناس: سلام، شرکت آوایار هستم.', $body);
+                $payload = ['score' => 70, 'summary' => 'مشتری پیگیر سفارش بود.', 'sentiment' => 'negative', 'strengths' => [], 'weaknesses' => [], 'next_actions' => [], 'evaluable' => true];
+            }
+            $this->assertSame('low', $request['generationConfig']['thinkingConfig']['thinkingLevel']);
 
             return Http::response([
-                'choices' => [[
-                    'finish_reason' => 'stop',
-                    'message' => ['content' => json_encode([
-                        'score' => 70,
-                        'summary' => 'خلاصه تماس.',
-                        'sentiment' => 'neutral',
-                        'strengths' => [],
-                        'weaknesses' => [],
-                        'next_actions' => [],
-                        'evaluable' => true,
-                    ], JSON_UNESCAPED_UNICODE)],
-                ]],
-                'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 5],
+                'candidates' => [['content' => ['parts' => [['text' => json_encode($payload, JSON_UNESCAPED_UNICODE)]]], 'finishReason' => 'STOP']],
+                'usageMetadata' => ['promptTokenCount' => 10, 'candidatesTokenCount' => 5],
             ]);
         });
-
-        AnalysisManager::forOrganization($call->organization_id)->analyzeCall($call->id);
-
-        $this->assertDatabaseHas('call_transcripts', [
-            'call_id' => $call->id,
-            'content' => 'کارشناس: سلام',
-            'model_name' => 'whisper-large-v3',
-        ]);
     }
 
     private function seedCall(): Call
@@ -301,32 +203,5 @@ class AudioAnalyzerTranscriptionTest extends TestCase
         ]);
 
         return $call;
-    }
-
-    private function seedPlatformLlm(): void
-    {
-        $provider = LlmProvider::query()->create([
-            'name' => 'OpenAI',
-            'code' => LlmProviderCode::OpenAi->value,
-            'api_key' => 'test-key',
-            'is_active' => true,
-        ]);
-
-        $model = LlmModel::query()->create([
-            'provider_id' => $provider->id,
-            'name' => 'gpt-4o',
-            'model_key' => 'gpt-4o',
-            'input_price_per_million_tokens' => 1,
-            'output_price_per_million_tokens' => 2,
-            'is_default' => true,
-            'is_active' => true,
-            'sends_audio_file' => true,
-        ]);
-
-        PlatformAiSettings::current()->update([
-            'default_llm_provider_id' => $provider->id,
-            'default_llm_model_id' => $model->id,
-            'allow_negative_balance' => true,
-        ]);
     }
 }

@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Enums\UserRole;
-use App\Models\PlatformAiSettings;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -14,10 +13,6 @@ class PlatformFoundationSeeder extends Seeder
         $this->call(CrmProviderSeeder::class);
         $this->call(VoipProviderSeeder::class);
         $this->call(IntegrationMetaDefinitionSeeder::class);
-        $this->call(LlmProviderSeeder::class);
-        $this->call(LlmModelSeeder::class);
-
-        PlatformAiSettings::current();
 
         User::query()->updateOrCreate(
             ['email' => 'admin@example.com'],

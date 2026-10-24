@@ -216,7 +216,7 @@ ONPREM_EMPLOYER_CAN_MANAGE_INTEGRATIONS=true
 
 `ONPREM_EMPLOYER_CAN_MANAGE_INTEGRATIONS=true` یعنی کارفرما در `/app` بتواند اتصال VoIP/webhook را ببیند؛ اگر می‌خواهید فقط شما از `/admin` تنظیم کنید، `false` بگذارید.
 
-ارائه‌دهندگان و مدل‌های LLM از `/admin` قابل تنظیم هستند. تحلیل تماس به اعتبار یا کیف پول وابسته نیست.
+مدل تحلیل و کلیدهای LLM و Soniox از متغیرهای محیطی تنظیم می‌شوند؛ راهنمای [تنظیمات AI](ai-configuration.md) را ببینید. تحلیل تماس به کیف پول داخلی وابسته نیست.
 
 ---
 
@@ -276,7 +276,7 @@ docker compose -f docker-compose.onprem.yml exec app php artisan db:seed --class
 
 این کار انجام می‌دهد:
 
-1. ارائه‌دهنده‌های CRM / VoIP / LLM و تنظیمات پلتفرم
+1. ارائه‌دهنده‌های CRM / VoIP و تنظیمات پلتفرم
 2. کاربر SuperAdmin با `ONPREM_ADMIN_*`
 3. کاربر Employer + یک Organization با `ONPREM_EMPLOYER_*` / `ONPREM_ORG_TITLE`
 4. شارژ اولیهٔ کیف‌پول AI
@@ -309,7 +309,7 @@ docker compose -f docker-compose.onprem.yml exec app php artisan db:seed --class
 
 با اکانت ادمین خودتان:
 
-1. **LLM:** کلید API ارائه‌دهنده و مدل پیش‌فرض پلتفرم را تنظیم کنید  
+1. **AI:** متغیرهای محیطی `LLM_API_KEY`، `LLM_MODEL` و `SONIOX_API_KEY` را طبق [راهنمای AI](ai-configuration.md) تنظیم کنید
 2. **کیف‌پول:** در صورت نیاز شارژ بیشتر برای سازمان  
 3. **VoIP:** اتصال سازمان را بسازید (بخش ۸)  
 4. **کارشناسان:** کاربران employee بسازید و extension را نگاشت کنید  
@@ -531,7 +531,7 @@ docker compose -f docker-compose.onprem.yml exec app php artisan config:clear
 5. docker compose -f docker-compose.onprem.yml up -d --build
 6. php artisan key:generate --force  (داخل کانتینر app)
 7. php artisan db:seed --class=OnPremSeeder --force
-8. ورود /admin با ONPREM_ADMIN_*  →  LLM + VoIP + کارشناسان
+8. ورود /admin با ONPREM_ADMIN_*  →  VoIP + کارشناسان؛ تنظیم AI از محیط
 9. تست webhook از Asterisk
 10. تحویل /app به کارفرما + بکاپ اول
 ```

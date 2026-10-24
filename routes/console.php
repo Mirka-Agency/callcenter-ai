@@ -1,5 +1,8 @@
 <?php
 
+use App\Application\Transcription\Jobs\CleanupSonioxTranscription;
+use App\Infrastructure\Llm\LlmOutboundGuard;
+use App\Models\CallTranscript;
 use App\Services\IntegrationMetaDefinitionSynchronizer;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -19,3 +22,24 @@ Schedule::command('recordings:purge-expired')->daily();
 Schedule::command('demo:refresh-analytics-clock')->daily();
 Schedule::command('voip:resolve-outcomes')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('crm:tasks-send-reminders')->everyFifteenMinutes()->withoutOverlapping();
+
+Artisan::command('transcriptions:cleanup', function () {
+    if (! app(LlmOutboundGuard::class)->remoteAnalysisEnabled()) {
+        $this->info('Remote processing is disabled; cleanup was not queued.');
+
+        return;
+    }
+
+    CallTranscript::query()
+        ->where('transcription_provider', 'soniox')
+        ->whereIn('status', [CallTranscript::STATUS_COMPLETED, CallTranscript::STATUS_FAILED])
+        ->whereNull('remote_cleaned_at')
+        ->whereNotNull('remote_file_id')
+        ->chunkById(100, function ($transcripts) {
+            foreach ($transcripts as $transcript) {
+                CleanupSonioxTranscription::dispatch($transcript->id);
+            }
+        });
+})->purpose('Retry cleanup of terminal Soniox transcription resources');
+
+Schedule::command('transcriptions:cleanup')->hourly()->withoutOverlapping();
